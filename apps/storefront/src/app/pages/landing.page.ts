@@ -21,6 +21,8 @@ interface Stage {
   line2: string;    // vermilion headline line
   caption: string;
   tag: string;      // small card tag, e.g. "₦ CURATED"
+  /** Vertical cover anchor (0=top … 1=bottom). Per-frame headroom trim. */
+  posY?: number;
 }
 
 interface FabricPiece {
@@ -65,6 +67,7 @@ interface FabricPiece {
                 [src]="'assets/' + stage.image"
                 [alt]="stage.caption"
                 [loading]="i === 0 ? 'eager' : 'lazy'"
+                [style.object-position]="'center ' + (stage.posY ?? 0.2) * 100 + '%'"
               />
             }
           </div>
@@ -147,19 +150,19 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('particleCanvas') canvasRef?: ElementRef<HTMLCanvasElement>;
 
   readonly stages: Stage[] = [
-    { image: 'act-1.jpg', index: '01', act: '[ACT 01: ORIGIN FORM]', metaRight: 'DROP 004 SPECIMEN',
+    { image: 'series-1.jpg', index: '01', act: '[ACT 01: ORIGIN FORM]', metaRight: 'DROP 004 SPECIMEN',
       line1: 'Built to', line2: 'Be worn.',
       caption: 'Architectural silhouettes. Raw luxury calibrated for the continental vanguard.', tag: '₦ CURATED' },
-    { image: 'act-2.jpg', index: '02', act: '[ACT 02: FOUNDATION LAYER]', metaRight: 'PIECE SPEC 01',
+    { image: 'series-2.jpg', index: '02', act: '[ACT 02: FOUNDATION LAYER]', metaRight: 'PIECE SPEC 01',
       line1: 'Start with', line2: 'The tee.',
       caption: 'Architectural silhouette cut from 280GSM Lagos loomed cotton. Dropped shoulder, boxy construct.', tag: 'BOX FIT — 280 GSM' },
-    { image: 'shop-3.jpg', index: '03', act: '[ACT 03: LOWER STRUCTURE]', metaRight: 'PIECE SPEC 02',
+    { image: 'series-3.jpg', index: '03', act: '[ACT 03: LOWER STRUCTURE]', metaRight: 'PIECE SPEC 02',
       line1: 'Anchor the', line2: 'Silhouette.',
       caption: 'Utility jogger in charcoal. Heavyweight French terry, dust-resistant tailoring.', tag: 'TAPERED — 30-36' },
-    { image: 'shop-1.jpg', index: '04', act: '[ACT 04: OUTER SHELL]', metaRight: 'PIECE SPEC 03',
+    { image: 'series-4.jpg', index: '04', act: '[ACT 04: OUTER SHELL]', metaRight: 'PIECE SPEC 03',
       line1: 'Layer the', line2: 'Hood.',
       caption: 'Lagos Proto Hood. Heavyweight French terry, raw-edge seams, dust-resistant tailoring.', tag: 'HOOD — S-XXL' },
-    { image: 'act-5.jpg', index: '05', act: '[STAGE 05 / 05 — CURATED REVEAL]', metaRight: 'LAGOS STUDIO',
+    { image: 'series-5.jpg', index: '05', act: '[STAGE 05 / 05 — CURATED REVEAL]', metaRight: 'LAGOS STUDIO',
       line1: 'The complete', line2: 'Look.',
       caption: 'Drop 04 archival assembly · edition of 180 pieces. Every silhouette constructed in Yaba, Lagos.', tag: '3 ITEMS' },
   ];
@@ -325,15 +328,18 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       // Sample at reduced resolution for cheap diffing, mapped back to
       // canvas space with the same cover math as the CSS images
       // (object-fit: cover; object-position: center 20%).
-      const sampleW = this.isMobile ? 220 : 340;
+      const sampleW = this.isMobile ? 240 : 400;
       const sampleH = Math.round((sampleW * this.canvasH) / this.canvasW);
-      const frames = images.map((img) => this.coverSample(img, sampleW, sampleH));
+      const frames = images.map((img, i) =>
+        this.coverSample(img, sampleW, sampleH, this.stages[i].posY ?? 0.2),
+      );
 
       this.garments = [];
       this.piecesByPair = [];
       for (let i = 0; i < frames.length - 1; i++) {
         const built = this.buildGarmentPanels(
           frames[i], frames[i + 1], images[i + 1], sampleW, sampleH,
+          this.stages[i + 1].posY ?? 0.2,
         );
         this.garments.push(built.garment);
         this.piecesByPair.push(built.pieces);
@@ -348,7 +354,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /** Draw an image with CSS-cover semantics into a small sampling canvas. */
-  private coverSample(img: HTMLImageElement, w: number, h: number): Uint8ClampedArray {
+  private coverSample(img: HTMLImageElement, w: number, h: number, posY = 0.2): Uint8ClampedArray {
     const off = document.createElement('canvas');
     off.width = w;
     off.height = h;
@@ -357,7 +363,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     const dw = img.naturalWidth * scale;
     const dh = img.naturalHeight * scale;
     const dx = (w - dw) * 0.5;
-    const dy = (h - dh) * 0.2; // matches object-position: center 20%
+    const dy = (h - dh) * posY; // matches the per-stage object-position
     octx.drawImage(img, dx, dy, dw, dh);
     return octx.getImageData(0, 0, w, h).data;
   }
@@ -375,6 +381,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     nextImg: HTMLImageElement,
     w: number,
     h: number,
+    posY = 0.2,
   ): { garment: HTMLCanvasElement | null; pieces: FabricPiece[] } {
     // -- 1. binary diff mask at sample resolution --
     const mask = new Uint8Array(w * h);
@@ -386,13 +393,13 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
           Math.abs(next[i] - prev[i]) +
           Math.abs(next[i + 1] - prev[i + 1]) +
           Math.abs(next[i + 2] - prev[i + 2]);
-        if (score > 105) scored.push({ x, y, score });
+        if (score > 80) scored.push({ x, y, score });
       }
     }
     if (scored.length < 40) return { garment: null, pieces: [] };
     // Keep only the strongest 40% of diffs — the garment, not scene lighting.
     scored.sort((a, b) => b.score - a.score);
-    scored.length = Math.max(40, Math.floor(scored.length * 0.4));
+    scored.length = Math.max(40, Math.floor(scored.length * 0.75));
 
     // Outlier pruning about the score-weighted centroid (kills background flecks).
     let cx = 0, cy = 0, wsum = 0;
@@ -420,7 +427,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     const scale = Math.max(this.canvasW / nextImg.naturalWidth, this.canvasH / nextImg.naturalHeight);
     const dw = nextImg.naturalWidth * scale;
     const dh = nextImg.naturalHeight * scale;
-    gctx.drawImage(nextImg, (this.canvasW - dw) * 0.5, (this.canvasH - dh) * 0.2, dw, dh);
+    gctx.drawImage(nextImg, (this.canvasW - dw) * 0.5, (this.canvasH - dh) * posY, dw, dh);
     const maskCanvas = document.createElement('canvas');
     maskCanvas.width = w;
     maskCanvas.height = h;
@@ -437,7 +444,9 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     mctx.putImageData(mdata, 0, 0);
     gctx.globalCompositeOperation = 'destination-in';
     gctx.imageSmoothingEnabled = true;
+    gctx.filter = 'blur(3px)'; // soften cut edges — fabric, not pixel stairs
     gctx.drawImage(maskCanvas, 0, 0, this.canvasW, this.canvasH);
+    gctx.filter = 'none';
 
     // -- 3. cut the garment into pattern-piece panels --
     const sx = this.canvasW / w;
