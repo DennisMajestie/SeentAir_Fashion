@@ -5,15 +5,20 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { AuthService } from './auth.service';
+import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/password-reset.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
+import { TotpCodeDto, Verify2faDto } from './dto/twofa.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   /** Tight per-IP throttle on credential endpoints (brute-force defense, layer 1). */
   @Public()
@@ -38,6 +43,36 @@ export class AuthController {
   @HttpCode(200)
   refresh(@Body() dto: RefreshDto) {
     return this.authService.refresh(dto.refreshToken);
+  }
+
+  /** Step 2 of a 2FA login. */
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('2fa/verify')
+  @HttpCode(200)
+  verify2fa(@Body() dto: Verify2faDto) {
+    return this.authService.verify2fa(dto.challengeToken, dto.code);
+  }
+
+  /** Begin 2FA enrolment: returns the secret + otpauth URI for an authenticator app. */
+  @Post('2fa/setup')
+  @ApiBearerAuth()
+  setup2fa(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.setup2fa(user.id);
+  }
+
+  /** Activate 2FA by proving a live code. */
+  @Post('2fa/enable')
+  @ApiBearerAuth()
+  enable2fa(@CurrentUser() user: AuthenticatedUser, @Body() dto: TotpCodeDto) {
+    return this.authService.enable2fa(user.id, dto.code);
+  }
+
+  /** Disable 2FA — requires a live code, and revokes all sessions. */
+  @Post('2fa/disable')
+  @ApiBearerAuth()
+  disable2fa(@CurrentUser() user: AuthenticatedUser, @Body() dto: TotpCodeDto) {
+    return this.authService.disable2fa(user.id, dto.code);
   }
 
   /** Enumeration-safe: identical response whether or not the email exists. */
@@ -67,7 +102,8 @@ export class AuthController {
 
   @Get('me')
   @ApiBearerAuth()
-  me(@CurrentUser() user: AuthenticatedUser) {
-    return user;
+  async me(@CurrentUser() user: AuthenticatedUser) {
+    const fresh = await this.usersService.findById(user.id);
+    return { ...user, name: fresh.name, totpEnabled: fresh.totpEnabled };
   }
 }

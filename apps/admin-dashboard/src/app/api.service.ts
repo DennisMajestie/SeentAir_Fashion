@@ -81,8 +81,39 @@ export interface AuditEntry {
 export class ApiService {
   private readonly http = inject(HttpClient);
 
-  login(email: string, password: string): Observable<{ accessToken: string }> {
-    return this.http.post<{ accessToken: string }>(`${API_BASE}/auth/login`, { email, password });
+  login(
+    email: string,
+    password: string,
+  ): Observable<{ accessToken?: string; requires2fa?: boolean; challengeToken?: string }> {
+    return this.http.post<{ accessToken?: string; requires2fa?: boolean; challengeToken?: string }>(
+      `${API_BASE}/auth/login`,
+      { email, password },
+    );
+  }
+
+  verify2fa(challengeToken: string, code: string): Observable<{ accessToken: string }> {
+    return this.http.post<{ accessToken: string }>(`${API_BASE}/auth/2fa/verify`, {
+      challengeToken,
+      code,
+    });
+  }
+
+  me(): Observable<{ name: string; email: string; role: string; totpEnabled: boolean }> {
+    return this.http.get<{ name: string; email: string; role: string; totpEnabled: boolean }>(
+      `${API_BASE}/auth/me`,
+    );
+  }
+
+  setup2fa(): Observable<{ secret: string; otpauthUrl: string }> {
+    return this.http.post<{ secret: string; otpauthUrl: string }>(`${API_BASE}/auth/2fa/setup`, {});
+  }
+
+  enable2fa(code: string): Observable<{ enabled: boolean }> {
+    return this.http.post<{ enabled: boolean }>(`${API_BASE}/auth/2fa/enable`, { code });
+  }
+
+  disable2fa(code: string): Observable<{ enabled: boolean }> {
+    return this.http.post<{ enabled: boolean }>(`${API_BASE}/auth/2fa/disable`, { code });
   }
 
   storeToken(token: string): void {

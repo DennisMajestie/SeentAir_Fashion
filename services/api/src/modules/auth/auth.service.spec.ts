@@ -35,9 +35,10 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
     save: jest.fn(async (v) => v),
     update: jest.fn(async () => ({ affected: 1 })),
   };
-  const usersService = {
+  const usersService: Record<string, jest.Mock> = {
     findByEmailWithPassword: jest.fn(async () => user),
     findById: jest.fn(async () => ({ id: 'u1', status: UserStatus.ACTIVE, role: { name: RoleName.CUSTOMER } })),
+    findByIdWithTotpSecret: jest.fn(),
     create: jest.fn(),
   };
   const jwtPayloads = new Map<string, unknown>();
@@ -116,7 +117,9 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
 
     it('a successful login resets the counter and issues tokens', async () => {
       user.failedLoginAttempts = 2;
-      const pair = await service.login('c@x.test', 'CorrectHorse1!');
+      const pair = (await service.login('c@x.test', 'CorrectHorse1!')) as {
+        accessToken: string;
+      };
       expect(userRepo.update).toHaveBeenCalledWith('u1', {
         failedLoginAttempts: 0,
         lockedUntil: null,
@@ -170,6 +173,69 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
     refreshRepo.update.mockResolvedValue({ affected: 3 });
     const result = await service.logout('u1');
     expect(result.revoked).toBe(3);
+  });
+
+  describe('2FA (TOTP)', () => {
+    it('a 2FA-enabled login returns a challenge, not tokens', async () => {
+      user.totpEnabled = true;
+      const result = await service.login('c@x.test', 'CorrectHorse1!');
+      expect(result).toEqual({ requires2fa: true, challengeToken: expect.any(String) });
+      expect(refreshRepo.save).not.toHaveBeenCalled(); // no session yet
+    });
+
+    it('a correct code on a valid challenge completes the login', async () => {
+      const { authenticator } = await import('otplib');
+      const secret = authenticator.generateSecret();
+      jwtService.verifyAsync.mockResolvedValue({ sub: 'u1', type: '2fa' });
+      usersService.findByIdWithTotpSecret = jest.fn(async () => ({
+        id: 'u1',
+        email: 'c@x.test',
+        status: UserStatus.ACTIVE,
+        totpEnabled: true,
+        totpSecret: secret,
+        role: { name: RoleName.MANAGEMENT },
+      })) as never;
+      const pair = await service.verify2fa('challenge', authenticator.generate(secret));
+      expect(pair.accessToken).toBeTruthy();
+    });
+
+    it('a wrong code is rejected', async () => {
+      const { authenticator } = await import('otplib');
+      jwtService.verifyAsync.mockResolvedValue({ sub: 'u1', type: '2fa' });
+      usersService.findByIdWithTotpSecret = jest.fn(async () => ({
+        id: 'u1',
+        email: 'c@x.test',
+        status: UserStatus.ACTIVE,
+        totpEnabled: true,
+        totpSecret: authenticator.generateSecret(),
+        role: { name: RoleName.MANAGEMENT },
+      })) as never;
+      await expect(service.verify2fa('challenge', '000000')).rejects.toThrow('Incorrect');
+    });
+
+    it('an access token cannot stand in for a 2FA challenge', async () => {
+      jwtService.verifyAsync.mockResolvedValue({ sub: 'u1', type: 'access' });
+      await expect(service.verify2fa('access-token', '123456')).rejects.toThrow(
+        'Not a 2FA challenge',
+      );
+    });
+
+    it('disabling 2FA requires a live code and revokes all sessions', async () => {
+      const { authenticator } = await import('otplib');
+      const secret = authenticator.generateSecret();
+      usersService.findByIdWithTotpSecret = jest.fn(async () => ({
+        id: 'u1',
+        totpEnabled: true,
+        totpSecret: secret,
+      })) as never;
+      await expect(service.disable2fa('u1', '000000')).rejects.toThrow('Incorrect');
+      await service.disable2fa('u1', authenticator.generate(secret));
+      expect(userRepo.update).toHaveBeenCalledWith('u1', { totpEnabled: false, totpSecret: null });
+      expect(refreshRepo.update).toHaveBeenCalledWith(
+        { userId: 'u1', revokedAt: expect.anything() },
+        { revokedAt: expect.any(Date) },
+      );
+    });
   });
 
   describe('password reset', () => {

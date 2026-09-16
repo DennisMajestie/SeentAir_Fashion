@@ -43,6 +43,13 @@ export class User {
   @Column({ name: 'locked_until', type: 'timestamptz', nullable: true })
   lockedUntil: Date | null;
 
+  /** TOTP 2FA (recommended for staff). Secret never selected by default. */
+  @Column({ name: 'totp_secret', type: 'varchar', nullable: true, select: false })
+  totpSecret: string | null;
+
+  @Column({ name: 'totp_enabled', type: 'boolean', default: false })
+  totpEnabled: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

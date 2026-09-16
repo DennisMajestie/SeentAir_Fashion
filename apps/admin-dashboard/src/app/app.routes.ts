@@ -5,6 +5,7 @@ import { DashboardPage } from './pages/dashboard.page';
 import { OrdersPage } from './pages/orders.page';
 import { ProductionPage } from './pages/production.page';
 import { ReturnsPage } from './pages/returns.page';
+import { SecurityPage } from './pages/security.page';
 
 export const routes: Routes = [
   { path: '', component: DashboardPage, title: 'Seentair Ops — Dashboard' },
@@ -13,5 +14,6 @@ export const routes: Routes = [
   { path: 'orders', component: OrdersPage, title: 'Seentair Ops — Orders' },
   { path: 'returns', component: ReturnsPage, title: 'Seentair Ops — Returns' },
   { path: 'audit', component: AuditPage, title: 'Seentair Ops — Audit log' },
+  { path: 'security', component: SecurityPage, title: 'Seentair Ops — Security' },
   { path: '**', redirectTo: '' },
 ];

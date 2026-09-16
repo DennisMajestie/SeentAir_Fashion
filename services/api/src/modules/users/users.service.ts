@@ -39,6 +39,16 @@ export class UsersService {
       .getOne();
   }
 
+  /** For 2FA verification only — includes the TOTP secret. */
+  async findByIdWithTotpSecret(id: string): Promise<User | null> {
+    return this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.totpSecret')
+      .leftJoinAndSelect('user.role', 'role')
+      .where('user.id = :id', { id })
+      .getOne();
+  }
+
   async create(dto: CreateUserDto): Promise<User> {
     const existing = await this.userRepo.findOne({ where: { email: dto.email } });
     if (existing) throw new ConflictException(`Email ${dto.email} is already registered`);

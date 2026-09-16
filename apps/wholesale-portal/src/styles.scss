@@ -4,10 +4,13 @@
 
 body {
   margin: 0;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
   color: #14202b;
   background: #f4f6f8;
 }
+
+h1, h2 { font-family: 'Anton', sans-serif; font-weight: 400; letter-spacing: 0.03em; text-transform: uppercase; }
+code { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; }
 
 main { max-width: 1000px; margin: 0 auto; padding: 1.2rem 16px 4rem; }
 
@@ -20,7 +23,7 @@ main { max-width: 1000px; margin: 0 auto; padding: 1.2rem 16px 4rem; }
   padding: 0.9rem 16px;
   background: #14202b;
   color: #fff;
-  .logo { font-weight: 900; letter-spacing: 0.15em; em { font-style: normal; color: #7fb2e5; font-weight: 400; } }
+  .logo { font-family: 'Anton', sans-serif; font-weight: 400; letter-spacing: 0.3em; em { font-style: normal; color: #7fb2e5; font-family: 'Space Grotesk', sans-serif; font-size: 0.75em; letter-spacing: 0.1em; } }
   nav { display: flex; gap: 1.2rem; align-items: center;
     a { color: #fff; text-decoration: none; font-size: 0.95rem; }
   }

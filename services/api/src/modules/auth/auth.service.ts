@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
+import { authenticator } from 'otplib';
 import { IsNull, Repository } from 'typeorm';
 import { RoleName, UserStatus } from '../../common/enums';
 import { JwtPayload } from '../../common/interfaces';
@@ -17,6 +18,9 @@ export interface TokenPair {
   accessToken: string;
   refreshToken: string;
 }
+
+/** Login either completes, or returns a short-lived 2FA challenge to finish. */
+export type LoginResult = TokenPair | { requires2fa: true; challengeToken: string };
 
 @Injectable()
 export class AuthService {
@@ -57,7 +61,7 @@ export class AuthService {
    * (in addition to per-IP throttling at the route). Error messages are
    * deliberately generic — no user enumeration.
    */
-  async login(email: string, password: string): Promise<TokenPair> {
+  async login(email: string, password: string): Promise<LoginResult> {
     const user = await this.usersService.findByEmailWithPassword(email);
     if (!user || user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException('Invalid credentials');
@@ -77,7 +81,78 @@ export class AuthService {
     if (user.failedLoginAttempts > 0 || user.lockedUntil) {
       await this.userRepo.update(user.id, { failedLoginAttempts: 0, lockedUntil: null });
     }
+
+    // 2FA-enabled accounts get a short-lived challenge instead of tokens.
+    if (user.totpEnabled) {
+      const challengeToken = await this.jwtService.signAsync(
+        { sub: user.id, email: user.email, role: user.role.name, type: '2fa' },
+        { secret: this.config.get<string>('jwt.secret'), expiresIn: '5m' },
+      );
+      return { requires2fa: true, challengeToken };
+    }
     return this.issueTokens(user.id, user.email, user.role.name);
+  }
+
+  /** Step 2 of a 2FA login: challenge token + authenticator code → real tokens. */
+  async verify2fa(challengeToken: string, code: string): Promise<TokenPair> {
+    let payload: { sub: string; type: string };
+    try {
+      payload = await this.jwtService.verifyAsync(challengeToken, {
+        secret: this.config.get<string>('jwt.secret'),
+      });
+    } catch {
+      throw new UnauthorizedException('2FA challenge expired — sign in again');
+    }
+    if (payload.type !== '2fa') throw new UnauthorizedException('Not a 2FA challenge token');
+    const user = await this.usersService.findByIdWithTotpSecret(payload.sub);
+    if (!user?.totpSecret || !user.totpEnabled || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('2FA is not active on this account');
+    }
+    if (!authenticator.check(code, user.totpSecret)) {
+      throw new UnauthorizedException('Incorrect authentication code');
+    }
+    return this.issueTokens(user.id, user.email, user.role.name);
+  }
+
+  /** Generate a pending TOTP secret; 2FA activates only after a verified code. */
+  async setup2fa(userId: string): Promise<{ secret: string; otpauthUrl: string }> {
+    const user = await this.usersService.findById(userId);
+    if (user.totpEnabled) {
+      throw new BadRequestException('2FA is already enabled — disable it first to re-enrol');
+    }
+    const secret = authenticator.generateSecret();
+    await this.userRepo.update(userId, { totpSecret: secret });
+    return {
+      secret,
+      otpauthUrl: authenticator.keyuri(user.email, 'Seentair', secret),
+    };
+  }
+
+  /** Confirm enrolment with a live code from the authenticator app. */
+  async enable2fa(userId: string, code: string): Promise<{ enabled: boolean }> {
+    const user = await this.usersService.findByIdWithTotpSecret(userId);
+    if (!user?.totpSecret) {
+      throw new BadRequestException('Run 2FA setup first');
+    }
+    if (!authenticator.check(code, user.totpSecret)) {
+      throw new UnauthorizedException('Incorrect authentication code');
+    }
+    await this.userRepo.update(userId, { totpEnabled: true });
+    return { enabled: true };
+  }
+
+  /** Disabling requires a live code — a stolen session alone cannot turn 2FA off. */
+  async disable2fa(userId: string, code: string): Promise<{ enabled: boolean }> {
+    const user = await this.usersService.findByIdWithTotpSecret(userId);
+    if (!user?.totpSecret || !user.totpEnabled) {
+      throw new BadRequestException('2FA is not enabled');
+    }
+    if (!authenticator.check(code, user.totpSecret)) {
+      throw new UnauthorizedException('Incorrect authentication code');
+    }
+    await this.userRepo.update(userId, { totpEnabled: false, totpSecret: null });
+    await this.revokeAllForUser(userId);
+    return { enabled: false };
   }
 
   /**
