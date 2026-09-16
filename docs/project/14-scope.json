@@ -1,0 +1,115 @@
+{
+  "project": "Seentair Limited Platform",
+  "client": {
+    "business_name": "Seentair Limited",
+    "contact_name": "Okereke Ndubuka Cynthia",
+    "approved_date": "2026-09-09"
+  },
+  "guiding_principle": "Customers can shop without struggling, while the owner can see what is happening in the business without needing to be physically present at the factory.",
+  "engineering_stack": {
+    "frontends": "angular",
+    "backend": "nodejs_nestjs",
+    "database": "postgresql",
+    "strategy": "backend_first_then_frontend_via_stitch_mcp"
+  },
+  "modules": {
+    "must_have_now": [
+      "manufacturing",
+      "production_tracking",
+      "raw_materials",
+      "inventory",
+      "product_catalogue",
+      "retail_ecommerce",
+      "wholesale",
+      "payments",
+      "order_tracking",
+      "returns",
+      "accounting",
+      "logistics",
+      "marketing",
+      "analytics",
+      "staff_management",
+      "approvals_audit_trail",
+      "whatsapp_live_chat"
+    ],
+    "important_later": [
+      "custom_pre_order_requests",
+      "partner_investor_portal",
+      "sms_notifications"
+    ],
+    "contradictory_status": [
+      {
+        "module": "pos_mall_sales_system",
+        "direct_answer": "later",
+        "feature_table_answer": "must_have_now",
+        "resolution_status": "unresolved",
+        "see": "03-Open-Questions.md#1"
+      }
+    ],
+    "explicitly_out_of_scope": [
+      "multiple_factories",
+      "third_party_marketplace",
+      "affiliate_commission_model",
+      "historical_data_migration"
+    ]
+  },
+  "roles": [
+    "business_owner_admin",
+    "sales",
+    "inventory",
+    "production",
+    "finance_accounting",
+    "management",
+    "partner_investor",
+    "wholesaler",
+    "retail_customer",
+    "distributor"
+  ],
+  "confirmed_business_rules": {
+    "wholesale_moq": 20,
+    "wholesale_price_tiers_exist": true,
+    "wholesale_price_tier_criteria": "unresolved - see Open Question #2",
+    "return_request_window_hours": 12,
+    "return_completion_window_hours": 24,
+    "returns_excluded": ["custom_orders", "special_requests"],
+    "part_payments_allowed_ordinary_orders": false,
+    "online_payment_provider": "paystack",
+    "first_logistics_integration": "GIGL",
+    "delivery_pricing_basis": ["weight", "location"],
+    "production_cost_components": [
+      "raw_material_cost",
+      "sewing_cost",
+      "branding_cost",
+      "packaging_cost"
+    ],
+    "qc_rejection_dispositions": ["burned", "repaired_restocked"],
+    "profit_split": {
+      "reinvestment_pct": 40,
+      "dividends_pct": 40,
+      "reserve_pct": 20
+    },
+    "total_shares": 1000000,
+    "share_allocation": {
+      "founder_ceo_pct": 60,
+      "partners_pct": 40
+    },
+    "data_migration_required": false,
+    "customer_credit_allowed": false,
+    "supplier_relationship_management_required": false
+  },
+  "integrations": [
+    "paystack",
+    "whatsapp",
+    "live_chat",
+    "sms",
+    "gigl_logistics",
+    "marketing_social_channels",
+    "future_pos_mall_systems"
+  ],
+  "open_questions_count": 7,
+  "open_questions_high_priority": [
+    "pos_priority_contradiction",
+    "currency_confirmation",
+    "ndpr_compliance_requirement"
+  ]
+}

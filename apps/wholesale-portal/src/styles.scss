@@ -1,0 +1,78 @@
+/* Task-oriented portal styling — clarity over cinematics (Design Spec §15.4). */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  color: #14202b;
+  background: #f4f6f8;
+}
+
+main { max-width: 1000px; margin: 0 auto; padding: 1.2rem 16px 4rem; }
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 16px;
+  background: #14202b;
+  color: #fff;
+  .logo { font-weight: 900; letter-spacing: 0.15em; em { font-style: normal; color: #7fb2e5; font-weight: 400; } }
+  nav { display: flex; gap: 1.2rem; align-items: center;
+    a { color: #fff; text-decoration: none; font-size: 0.95rem; }
+  }
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid #e1e7ec;
+  border-radius: 6px;
+  padding: 1.2rem;
+  margin: 1rem 0;
+}
+
+.auth { max-width: 420px; margin: 3rem auto; }
+
+label { display: block; margin: 0.6rem 0; font-size: 0.9rem;
+  input, textarea { display: block; width: 100%; padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #cfd8e0; border-radius: 4px; }
+}
+
+.cta {
+  background: #14202b; color: #fff; border: none; padding: 0.7rem 1.5rem;
+  font-weight: 700; cursor: pointer; border-radius: 4px;
+  &:disabled { opacity: 0.5; cursor: default; }
+  &.small { padding: 0.4rem 0.9rem; font-size: 0.85rem; }
+}
+
+.link { background: none; border: none; color: #2a6fb0; text-decoration: underline; cursor: pointer; font-size: 0.9rem; }
+
+.table {
+  width: 100%; border-collapse: collapse; background: #fff;
+  th, td { text-align: left; padding: 0.55rem 0.5rem; border-bottom: 1px solid #edf1f4; font-size: 0.92rem; }
+  input { width: 4.5rem; padding: 0.35rem; }
+  &.compact td { padding: 0.3rem 0.5rem; }
+}
+
+.tier-banner {
+  background: #e8f1fa; border: 1px solid #c9dff2; border-radius: 6px;
+  padding: 0.7rem 1rem; margin: 0.8rem 0; font-size: 0.95rem;
+}
+
+.order-bar {
+  position: sticky; bottom: 0; display: flex; justify-content: space-between;
+  align-items: center; gap: 1rem; background: #fff; border-top: 2px solid #14202b;
+  padding: 0.8rem; margin-top: 0.5rem; flex-wrap: wrap;
+}
+
+.invoice-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+.status { text-transform: capitalize; font-weight: 600; color: #2a6fb0; }
+.actions { display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem; }
+.custom-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 1rem; .wide { grid-column: 1 / -1; } }
+
+.muted { color: #6b7a88; }
+.small { font-size: 0.85rem; }
+.success { color: #0a7d33; }
+.error { color: #b3261e; }

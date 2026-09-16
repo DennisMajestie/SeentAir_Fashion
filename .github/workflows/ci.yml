@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: seentair
+          POSTGRES_PASSWORD: seentair
+          POSTGRES_DB: seentair_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U seentair"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_USER: seentair
+      DB_PASSWORD: seentair
+      DB_NAME: seentair_test
+      JWT_SECRET: ci-only-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Run migrations against a clean database
+        run: npm run api:migrate

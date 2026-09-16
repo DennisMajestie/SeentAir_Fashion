@@ -1,0 +1,21 @@
+{
+  "name": "seentair-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Seentair Limited central business system — manufacturing, inventory, commerce, accounting",
+  "workspaces": [
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "api:dev": "npm run start:dev --workspace services/api",
+    "api:migrate": "npm run migration:run --workspace services/api",
+    "api:seed": "npm run seed --workspace services/api"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
