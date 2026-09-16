@@ -156,9 +156,9 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     { image: 'shop-3.jpg', index: '03', act: '[ACT 03: LOWER STRUCTURE]', metaRight: 'PIECE SPEC 02',
       line1: 'Anchor the', line2: 'Silhouette.',
       caption: 'Utility jogger in charcoal. Heavyweight French terry, dust-resistant tailoring.', tag: 'TAPERED — 30-36' },
-    { image: 'shop-4.jpg', index: '04', act: '[ACT 04: GROUND CONTACT]', metaRight: 'PIECE SPEC 03',
-      line1: 'Finish on', line2: 'The street.',
-      caption: 'Street Runner 01 in chalk. Engineered for Lagos heat and industrial durability.', tag: 'RUNNER — 40-45' },
+    { image: 'shop-1.jpg', index: '04', act: '[ACT 04: OUTER SHELL]', metaRight: 'PIECE SPEC 03',
+      line1: 'Layer the', line2: 'Hood.',
+      caption: 'Lagos Proto Hood. Heavyweight French terry, raw-edge seams, dust-resistant tailoring.', tag: 'HOOD — S-XXL' },
     { image: 'act-5.jpg', index: '05', act: '[STAGE 05 / 05 — CURATED REVEAL]', metaRight: 'LAGOS STUDIO',
       line1: 'The complete', line2: 'Look.',
       caption: 'Drop 04 archival assembly · edition of 180 pieces. Every silhouette constructed in Yaba, Lagos.', tag: '3 ITEMS' },
@@ -170,7 +170,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-  private readonly fallbacks = ['shop-1.jpg', 'shop-2.jpg', 'shop-3.jpg', 'shop-4.jpg', 'shop-5.jpg', 'shop-6.jpg'];
+  private readonly fallbacks = ['shop-1.jpg', 'shop-2.jpg', 'shop-3.jpg', 'shop-5.jpg', 'shop-6.jpg'];
 
   // --- particle engine state ---
   private ctx: CanvasRenderingContext2D | null = null;

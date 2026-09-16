@@ -94,7 +94,7 @@ export class ShopPage implements OnInit {
     });
   });
 
-  private readonly fallbacks = ['shop-1.jpg', 'shop-2.jpg', 'shop-3.jpg', 'shop-4.jpg', 'shop-5.jpg', 'shop-6.jpg'];
+  private readonly fallbacks = ['shop-1.jpg', 'shop-2.jpg', 'shop-3.jpg', 'shop-5.jpg', 'shop-6.jpg'];
 
   ngOnInit(): void {
     this.api.products().subscribe({
