@@ -41,6 +41,15 @@ export class WholesaleController {
     return this.wholesaleService.apply(user);
   }
 
+  /** Staff: all wholesale accounts/applications, optionally filtered by status. */
+  @Get('accounts')
+  @RequireAccess(ModuleName.WHOLESALE_ORDERS, AccessLevel.VIEW)
+  findAccounts(@Query('status') status?: string) {
+    return this.wholesaleService.findAllAccounts(
+      status as import('./entities/wholesale-account.entity').WholesaleAccountStatus | undefined,
+    );
+  }
+
   @Get('accounts/:id')
   @RequireAccess(ModuleName.WHOLESALE_ORDERS, AccessLevel.VIEW)
   findAccount(@Param('id', ParseUUIDPipe) id: string) {

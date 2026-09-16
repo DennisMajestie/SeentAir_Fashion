@@ -1,0 +1,83 @@
+/* SEENTAIR Partners — Brutalist Atelier system (Stitch), calm and read-mostly. */
+
+:root {
+  --obsidian: #09090b;
+  --panel: #111114;
+  --panel-2: #16161a;
+  --hairline: #27272e;
+  --hairline-2: #32323a;
+  --ink: #ececf1;
+  --ink-dim: #8b8b96;
+  --acid: #ccff00;
+  --danger: #ff5a4e;
+  --ok: #7ce38b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  color: var(--ink);
+  background: var(--obsidian);
+  -webkit-font-smoothing: antialiased;
+}
+
+main { max-width: 920px; margin: 0 auto; padding: 1rem 16px 4rem; }
+
+h1 { font-family: 'Anton', sans-serif; font-weight: 400; text-transform: uppercase; letter-spacing: 0.03em; }
+.page-title { font-size: clamp(1.8rem, 5vw, 3rem); margin: 0 0 1rem; }
+.page-kicker { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.25em;
+  color: var(--acid); text-transform: uppercase; margin: 1.6rem 0 0.3rem; }
+code, .mono { font-family: 'JetBrains Mono', monospace; }
+
+.site-header {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;
+  padding: 0.9rem 16px; background: var(--panel); border-bottom: 1px solid var(--hairline);
+  .logo { font-family: 'Anton', sans-serif; letter-spacing: 0.3em; color: var(--ink);
+    em { font-style: normal; color: var(--acid); font-family: 'JetBrains Mono', monospace; font-size: 0.6em; letter-spacing: 0.2em; } }
+}
+.site-footer { padding: 2rem 16px; border-top: 1px solid var(--hairline); text-align: center;
+  color: var(--ink-dim); font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+
+.section-label {
+  display: flex; align-items: center; gap: 0.6rem;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink);
+  border-bottom: 1px solid var(--hairline); padding-bottom: 0.45rem; margin: 2rem 0 0.9rem;
+  &::before { content: '■'; color: var(--acid); font-size: 0.55rem; }
+  .count { color: var(--ink-dim); margin-left: auto; font-size: 0.65rem; }
+}
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 2px; }
+.tile {
+  background: var(--panel); border: 1px solid var(--hairline); padding: 0.9rem 1rem;
+  display: flex; flex-direction: column; gap: 0.15rem;
+  .label { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--ink-dim); }
+  strong { font-family: 'Anton', sans-serif; font-weight: 400; font-size: 1.8rem; color: var(--ink); }
+  .sub { font-size: 0.78rem; color: var(--ink-dim); font-family: 'JetBrains Mono', monospace; }
+  &.negative strong { color: var(--danger); }
+}
+
+.panel { background: var(--panel); border: 1px solid var(--hairline); padding: 1.2rem; margin: 1rem 0; }
+.auth { max-width: 400px; margin: 3rem auto; h1 { font-size: 1.4rem; } }
+
+label { display: block; margin: 0.7rem 0; font-size: 0.72rem; color: var(--ink-dim);
+  font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.12em;
+  input { display: block; width: 100%; padding: 0.55rem; margin-top: 0.3rem;
+    background: var(--obsidian); border: 1px solid var(--hairline-2); color: var(--ink);
+    font-family: 'Space Grotesk', sans-serif;
+    &:focus { outline: 1px solid var(--acid); border-color: var(--acid); } } }
+
+.cta { background: var(--acid); color: #0c0c00; border: none; padding: 0.7rem 1.5rem;
+  font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.82rem; }
+.link { background: none; border: none; color: var(--ink-dim); text-decoration: underline; cursor: pointer;
+  &:hover { color: var(--acid); } }
+
+.table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--hairline);
+  th { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--ink-dim); }
+  th, td { text-align: left; padding: 0.6rem; border-bottom: 1px solid var(--hairline); font-size: 0.92rem; } }
+
+.naira { font-family: 'Anton', sans-serif; color: var(--acid); font-size: 1.1rem; }
+.muted { color: var(--ink-dim); }
+.error { color: var(--danger); }

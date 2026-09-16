@@ -73,6 +73,16 @@ export class LogisticsService {
     );
   }
 
+  /** Staff view: all delivery legs, newest first. */
+  async findAll(page = 1, limit = 50): Promise<{ data: DeliveryLeg[]; total: number }> {
+    const [data, total] = await this.legRepo.findAndCount({
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { data, total };
+  }
+
   async updateStatus(id: string, dto: UpdateDeliveryStatusDto): Promise<DeliveryLeg> {
     const leg = await this.legRepo.findOne({ where: { id } });
     if (!leg) throw new NotFoundException(`Delivery leg ${id} not found`);

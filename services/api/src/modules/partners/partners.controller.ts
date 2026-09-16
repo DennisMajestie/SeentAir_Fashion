@@ -26,6 +26,13 @@ export class PartnersController {
     return this.partnersService.findAll();
   }
 
+  /** Portal entry point: the signed-in partner's own dashboard. */
+  @Get('partners/me/dashboard')
+  async myDashboard(@CurrentUser() user: AuthenticatedUser) {
+    const partner = await this.partnersService.findByUserId(user.id);
+    return this.partnersService.dashboard(partner.id, user);
+  }
+
   /** Read-mostly partner dashboard (own record, or staff with view access). */
   @Get('partners/:id/dashboard')
   dashboard(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {

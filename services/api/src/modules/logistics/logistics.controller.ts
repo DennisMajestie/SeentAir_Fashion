@@ -15,6 +15,12 @@ import { LogisticsService } from './logistics.service';
 export class LogisticsController {
   constructor(private readonly logisticsService: LogisticsService) {}
 
+  @Get('deliveries')
+  @RequireAccess(ModuleName.LOGISTICS, AccessLevel.VIEW)
+  findAll(@Query('page') page = '1', @Query('limit') limit = '50') {
+    return this.logisticsService.findAll(parseInt(page, 10), parseInt(limit, 10));
+  }
+
   @Post('deliveries')
   @RequireAccess(ModuleName.LOGISTICS, AccessLevel.FULL)
   create(@Body() dto: CreateDeliveryDto, @CurrentUser() user: AuthenticatedUser) {

@@ -1,76 +1,103 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { ApiService } from '../api.service';
 import { CartService } from '../cart.service';
 
+/** Checkout — Stitch two-column layout: manifest + sign-in left,
+    sticky "order summary" matrix with acid total and Paystack CTA right. */
 @Component({
   selector: 'app-checkout',
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <h1>Checkout</h1>
-    @if (cart.items().length === 0) {
-      <p class="muted">Nothing to check out. <a routerLink="/">Back to the shop</a></p>
+    <p class="page-kicker">Checkout stage 02 // Final payment</p>
+    <h1 class="page-title">Cart & checkout</h1>
+    @if (cart.items().length === 0 && !orderId()) {
+      <p class="muted">Nothing to check out. <a routerLink="/shop">Back to the shop</a></p>
     } @else {
-      <p class="total">Order total: <strong>₦{{ cart.total | number: '1.0-2' }}</strong></p>
-
-      @if (!api.isLoggedIn) {
-        <section class="auth-box">
-          <h2>Sign in to continue</h2>
-          <p class="muted small">One short step — full payment upfront, then you can track everything.</p>
-          <form (ngSubmit)="signIn()">
-            @if (mode() === 'register') {
-              <label>Name <input [(ngModel)]="name" name="name" required /></label>
-              <label>Phone (for delivery updates) <input [(ngModel)]="phone" name="phone" /></label>
+      <div class="checkout-cols">
+        <div>
+          @if (!orderId()) {
+            <p class="section-label">Order manifest <span class="count">[{{ cart.count | number: '2.0' }} items]</span></p>
+            @for (item of cart.items(); track item.variantId) {
+              <div class="manifest-row">
+                <div class="m-body">
+                  <p class="sku-line">{{ item.sku }}</p>
+                  <p class="m-name">{{ item.productName }}</p>
+                  <p class="muted small">{{ item.size || '—' }} / {{ item.colour || '—' }} × {{ item.quantity }}</p>
+                </div>
+                <span class="m-price">₦{{ item.unitPrice * item.quantity | number: '1.0-2' }}</span>
+              </div>
             }
-            <label>Email <input type="email" [(ngModel)]="email" name="email" required /></label>
-            <label>Password <input type="password" [(ngModel)]="password" name="password" required minlength="8" /></label>
-            <button class="cta" type="submit">
-              {{ mode() === 'login' ? 'Sign in' : 'Create account' }}
-            </button>
-          </form>
-          <button class="link" (click)="toggleMode()">
-            {{ mode() === 'login' ? 'New here? Create an account' : 'Have an account? Sign in' }}
-          </button>
-        </section>
-      } @else {
-        <button class="cta" (click)="placeOrder()" [disabled]="placing()">
-          {{ placing() ? 'Placing order…' : 'Place order & pay' }}
-        </button>
-      }
 
-      @if (error()) {
-        <p class="error">{{ error() }}</p>
-      }
-      @if (orderId()) {
-        <section class="success-box">
-          <h2>Order placed ✔</h2>
-          <p>Order reference: <code>{{ orderId() }}</code></p>
-          @if (paystackUrl()) {
-            <a class="cta" [href]="paystackUrl()!">Pay now with Paystack</a>
+            @if (!api.isLoggedIn) {
+              <p class="section-label">Your details</p>
+              <form class="auth-box" style="max-width:100%" (ngSubmit)="signIn()">
+                @if (mode() === 'register') {
+                  <label>Full name <input [(ngModel)]="name" name="name" required placeholder="e.g. Kojo Mensah" /></label>
+                  <label>Phone (delivery updates) <input [(ngModel)]="phone" name="phone" placeholder="+234 800 000 0000" /></label>
+                }
+                <label>Email <input type="email" [(ngModel)]="email" name="email" required placeholder="you@example.com" /></label>
+                <label>Password <input type="password" [(ngModel)]="password" name="password" required minlength="8" [attr.autocomplete]="mode() === 'register' ? 'new-password' : 'current-password'" /></label>
+                <button class="cta" type="submit">{{ mode() === 'login' ? 'Sign in' : 'Create account' }}</button>
+                <button class="link" type="button" (click)="toggleMode()">
+                  {{ mode() === 'login' ? 'New here? Create an account' : 'Have an account? Sign in' }}
+                </button>
+              </form>
+            }
           } @else {
-            <p>
-              Online payment is not available right now. Your order is reserved —
-              pay by <strong>bank transfer, cash, or POS</strong> and our team will confirm it.
-              You can follow progress on your <a routerLink="/account">account page</a>.
-            </p>
+            <section class="success-box" style="max-width:100%">
+              <h2>Order placed ✔</h2>
+              <p class="sku-line">Reference // {{ orderId() }}</p>
+              @if (paystackUrl()) {
+                <a class="cta" [href]="paystackUrl()!">Pay with Paystack [₦{{ paidTotal() | number: '1.0-0' }}]</a>
+              } @else {
+                <div class="settlement-box">
+                  <strong>Direct settlement.</strong> Online payment is not available right now.
+                  Your order is reserved — pay the exact total by <strong>bank transfer, cash, or POS</strong>
+                  and our team will confirm it. No part-payments.
+                </div>
+              }
+              <p class="small"><a routerLink="/account">Track it from your account →</a></p>
+            </section>
           }
-        </section>
-      }
+          @if (error()) { <p class="error">{{ error() }}</p> }
+        </div>
+
+        @if (!orderId()) {
+          <aside class="matrix-panel">
+            <p class="section-label" style="margin-top:0">Order summary</p>
+            <div class="matrix-row"><span>Subtotal</span><span>₦{{ cart.total | number: '1.0-2' }}</span></div>
+            <div class="matrix-row"><span>Payment policy</span><span>full, upfront</span></div>
+            <div class="matrix-row"><span>Delivery</span><span>quoted at dispatch</span></div>
+            <div class="matrix-total">
+              <span class="label">Total due</span>
+              <span class="value">₦{{ cart.total | number: '1.0-0' }}</span>
+            </div>
+            <button class="cta" (click)="placeOrder()" [disabled]="!api.isLoggedIn || placing()">
+              {{ placing() ? 'Placing order…' : api.isLoggedIn ? 'Place order & pay' : 'Sign in to continue' }}
+            </button>
+            <div class="settlement-box">
+              Paystack (card/bank) — or pay offline by <strong>bank transfer / cash / POS</strong>,
+              confirmed by our team.
+            </div>
+          </aside>
+        }
+      </div>
     }
   `,
 })
 export class CheckoutPage {
   readonly cart = inject(CartService);
   readonly api = inject(ApiService);
-  private readonly router = inject(Router);
 
   readonly mode = signal<'login' | 'register'>('login');
   readonly placing = signal(false);
   readonly error = signal<string | null>(null);
   readonly orderId = signal<string | null>(null);
   readonly paystackUrl = signal<string | null>(null);
+  readonly paidTotal = signal(0);
 
   name = '';
   phone = '';
@@ -84,7 +111,6 @@ export class CheckoutPage {
 
   signIn(): void {
     this.error.set(null);
-    // Tokens are stored by ApiService (in memory) + the httpOnly cookie.
     if (this.mode() === 'login') {
       this.api.login(this.email, this.password).subscribe({
         error: () => this.error.set('Sign-in failed — check your email and password.'),
@@ -104,8 +130,8 @@ export class CheckoutPage {
     this.api.createOrder(items, 'storefront').subscribe({
       next: (order) => {
         this.orderId.set(order.id);
+        this.paidTotal.set(order.totalAmount);
         this.cart.clear();
-        // Try Paystack; if not configured the offline instructions show instead.
         this.api.payWithPaystack(order.id, order.totalAmount).subscribe({
           next: (res) => {
             this.paystackUrl.set(res.authorizationUrl);

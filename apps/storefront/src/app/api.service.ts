@@ -131,6 +131,15 @@ export class ApiService {
     });
   }
 
+  requestReturn(
+    orderId: string,
+    variantId: string,
+    quantity: number,
+    reason: string,
+  ): Observable<unknown> {
+    return this.http.post(`${API_BASE}/returns`, { orderId, variantId, quantity, reason });
+  }
+
   submitReview(orderId: string, variantId: string, rating: number, comment: string): Observable<unknown> {
     return this.http.post(`${API_BASE}/orders/${orderId}/review`, {
       variantId,

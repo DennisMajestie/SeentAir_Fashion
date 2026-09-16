@@ -88,6 +88,13 @@ export class PartnersService {
     return this.partnerRepo.find({ order: { createdAt: 'ASC' } });
   }
 
+  /** The caller's own partner record (partner-portal entry point). */
+  async findByUserId(userId: string): Promise<Partner> {
+    const partner = await this.partnerRepo.findOne({ where: { user: { id: userId } } });
+    if (!partner) throw new NotFoundException('No partner record for this account');
+    return partner;
+  }
+
   /**
    * Quarterly distribution per the confirmed model: 40/40/20 split, dividend
    * pool shared 60% founder / partners by equity %. Fund movement → approval-gated.

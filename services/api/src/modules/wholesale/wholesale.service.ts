@@ -55,6 +55,14 @@ export class WholesaleService {
     );
   }
 
+  /** Staff view: all applications/accounts, optionally by status. */
+  async findAllAccounts(status?: WholesaleAccountStatus): Promise<WholesaleAccount[]> {
+    return this.accountRepo.find({
+      where: status ? { status } : {},
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async findByUserId(userId: string): Promise<WholesaleAccount | null> {
     return this.accountRepo.findOne({ where: { user: { id: userId } } });
   }
