@@ -18,7 +18,7 @@ import { CartService } from '../cart.service';
           @if (selected()?.imageUrl) {
             <img [src]="selected()!.imageUrl!" [alt]="p.name" />
           } @else {
-            <img src="assets/product-tee.jpg" [alt]="p.name" />
+            <img src="assets/shop-2.jpg" [alt]="p.name" />
           }
         </div>
         <div class="detail-body">

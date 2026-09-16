@@ -15,8 +15,12 @@ import { ApiService, Product } from '../api.service';
 interface Stage {
   image: string;
   index: string;
-  label: string;
+  act: string;      // "[ACT 01: ORIGIN FORM]"
+  metaRight: string; // "DROP 004 SPECIMEN"
+  line1: string;    // black headline line
+  line2: string;    // vermilion headline line
   caption: string;
+  tag: string;      // small card tag, e.g. "₦ CURATED"
 }
 
 interface Particle {
@@ -62,20 +66,33 @@ interface Particle {
             }
           </div>
           <canvas class="stage-canvas" #particleCanvas></canvas>
+          <div class="stage-meta">
+            <div class="meta-left">
+              <span>{{ stages[activeStage()].act }}</span>
+              <span>LAGOS / EDN. 2025</span>
+            </div>
+            <div class="meta-right">
+              <span>{{ stages[activeStage()].metaRight }}</span>
+              <span>SERIES ARCHIVE</span>
+            </div>
+          </div>
           <div class="stage-copy">
-            <p class="stage-index">{{ stages[activeStage()].index }} / 04</p>
-            <h1 class="stage-label">{{ stages[activeStage()].label }}</h1>
-            <p class="stage-caption">{{ stages[activeStage()].caption }}</p>
+            <h1 class="stage-label">{{ stages[activeStage()].line1 }} <em>{{ stages[activeStage()].line2 }}</em></h1>
+            <div class="stage-card">
+              <p>{{ stages[activeStage()].caption }}</p>
+              <span class="card-tag">{{ stages[activeStage()].tag }}</span>
+            </div>
             <div class="stage-rail">
               @for (stage of stages; track stage.index; let i = $index) {
                 <span class="rail-tick" [class.done]="i <= activeStage()"></span>
               }
+              <span class="rail-count">[{{ stages[activeStage()].index }} / 05]</span>
             </div>
             @if (activeStage() === stages.length - 1) {
               <a class="cta" routerLink="/shop">Shop the look</a>
             }
           </div>
-          <a class="skip-link" href="#drops">Skip to shop ↓</a>
+          <a class="skip-link" href="#drops">Explore ↓</a>
         </div>
       </section>
     } @else {
@@ -85,7 +102,7 @@ interface Particle {
         @for (stage of stages; track stage.image) {
           <figure>
             <img [src]="'assets/' + stage.image" [alt]="stage.caption" loading="lazy" />
-            <figcaption><span>{{ stage.index }}</span> {{ stage.caption }}</figcaption>
+            <figcaption><span>{{ stage.act }}</span> {{ stage.caption }}</figcaption>
           </figure>
         }
         <a class="cta" routerLink="/shop">Shop the look</a>
@@ -127,10 +144,21 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('particleCanvas') canvasRef?: ElementRef<HTMLCanvasElement>;
 
   readonly stages: Stage[] = [
-    { image: 'stage-1-empty.jpg', index: '01', label: 'The blank form.', caption: 'One mannequin. Nothing to prove yet.' },
-    { image: 'stage-2-shirt.jpg', index: '02', label: 'The shirt.', caption: 'Oversized Seentair tee — cut and sewn in our own factory.' },
-    { image: 'stage-3-joggers.jpg', index: '03', label: 'The joggers.', caption: 'Heavyweight cargo joggers. The silhouette takes shape.' },
-    { image: 'stage-4-complete.jpg', index: '04', label: 'The look.', caption: 'Sneakers on. Complete. Now make it yours.' },
+    { image: 'act-1.jpg', index: '01', act: '[ACT 01: ORIGIN FORM]', metaRight: 'DROP 004 SPECIMEN',
+      line1: 'Built to', line2: 'Be worn.',
+      caption: 'Architectural silhouettes. Raw luxury calibrated for the continental vanguard.', tag: '₦ CURATED' },
+    { image: 'act-2.jpg', index: '02', act: '[ACT 02: FOUNDATION LAYER]', metaRight: 'PIECE SPEC 01',
+      line1: 'Start with', line2: 'The tee.',
+      caption: 'Architectural silhouette cut from 280GSM Lagos loomed cotton. Dropped shoulder, boxy construct.', tag: 'BOX FIT — 280 GSM' },
+    { image: 'shop-3.jpg', index: '03', act: '[ACT 03: LOWER STRUCTURE]', metaRight: 'PIECE SPEC 02',
+      line1: 'Anchor the', line2: 'Silhouette.',
+      caption: 'Utility jogger in charcoal. Heavyweight French terry, dust-resistant tailoring.', tag: 'TAPERED — 30-36' },
+    { image: 'shop-4.jpg', index: '04', act: '[ACT 04: GROUND CONTACT]', metaRight: 'PIECE SPEC 03',
+      line1: 'Finish on', line2: 'The street.',
+      caption: 'Street Runner 01 in chalk. Engineered for Lagos heat and industrial durability.', tag: 'RUNNER — 40-45' },
+    { image: 'act-5.jpg', index: '05', act: '[STAGE 05 / 05 — CURATED REVEAL]', metaRight: 'LAGOS STUDIO',
+      line1: 'The complete', line2: 'Look.',
+      caption: 'Drop 04 archival assembly · edition of 180 pieces. Every silhouette constructed in Yaba, Lagos.', tag: '3 ITEMS' },
   ];
 
   readonly activeStage = signal(0);
@@ -139,7 +167,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-  private readonly fallbacks = ['product-tee.jpg', 'product-joggers.jpg', 'product-sneakers.jpg', 'product-bag.jpg'];
+  private readonly fallbacks = ['shop-1.jpg', 'shop-2.jpg', 'shop-3.jpg', 'shop-4.jpg', 'shop-5.jpg', 'shop-6.jpg'];
 
   // --- particle engine state ---
   private ctx: CanvasRenderingContext2D | null = null;

@@ -10,8 +10,13 @@ import { ApiService, Product } from '../api.service';
   selector: 'app-shop',
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <p class="page-kicker">Seentair Atelier // Catalogue</p>
-    <h1 class="page-title">Product discovery</h1>
+    <div class="shop-hero" style="background-image:url('assets/shop-0.jpg')">
+      <div class="hero-body">
+        <p class="page-kicker">Collection 04 / Lagos</p>
+        <h1>Harmattan Drop</h1>
+        <p>Heavyweight French terry, raw-edge seams, and dust-resistant tailoring engineered for dry season winds.</p>
+      </div>
+    </div>
 
     <input
       class="search-bar"
@@ -89,7 +94,7 @@ export class ShopPage implements OnInit {
     });
   });
 
-  private readonly fallbacks = ['product-tee.jpg', 'product-joggers.jpg', 'product-sneakers.jpg', 'product-bag.jpg'];
+  private readonly fallbacks = ['shop-1.jpg', 'shop-2.jpg', 'shop-3.jpg', 'shop-4.jpg', 'shop-5.jpg', 'shop-6.jpg'];
 
   ngOnInit(): void {
     this.api.products().subscribe({
