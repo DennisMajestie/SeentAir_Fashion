@@ -60,10 +60,13 @@ interface FabricPiece {
       <section class="dressing-scroll" #scrollRoot>
         <div class="dressing-stage">
           <div class="stage-frame">
+            <!-- One persistent scene: the bare mannequin never swaps; garments
+                 are layered onto it by the canvas. The stack below only
+                 crossfades if the panel engine cannot start. -->
             @for (stage of stages; track stage.image; let i = $index) {
               <img
                 class="stage-image"
-                [class.active]="i <= activeStage()"
+                [class.active]="i === 0 || (engineBroken() && i <= activeStage())"
                 [src]="'assets/' + stage.image"
                 [alt]="stage.caption"
                 [loading]="i === 0 ? 'eager' : 'lazy'"
@@ -168,6 +171,8 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   ];
 
   readonly activeStage = signal(0);
+  /** Engine failure flips the base <img> stack back to plain crossfades. */
+  readonly engineBroken = signal(false);
   readonly products = signal<Product[]>([]);
   readonly reducedMotion =
     typeof window !== 'undefined' &&
@@ -252,6 +257,12 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     this.drawPieces(seg, t);
   }
 
+  /**
+   * Persistent dressing: completed garments stay on the mannequin at full
+   * opacity; only the CURRENT act's garment is mid-flight as cut panels.
+   * Nothing ever crossfades — it is one scene being dressed layer by layer
+   * (and undressed in reverse on scroll-up).
+   */
   private drawPieces(seg: number, t: number): void {
     if (!this.ctx) return;
     const key = `${seg}:${t.toFixed(3)}:${this.engineReady}`;
@@ -262,13 +273,32 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     ctx.clearRect(0, 0, this.canvasW, this.canvasH);
     if (!this.engineReady || this.engineFailed) return;
 
-    const pieces = this.piecesByPair[seg];
+    // 1. Garments from completed acts sit fully assembled.
+    for (let k = 0; k < seg; k++) {
+      const done = this.garments[k];
+      if (done) ctx.drawImage(done, 0, 0);
+    }
+
     const garment = this.garments[seg];
-    if (!pieces || pieces.length === 0 || !garment || t <= 0.001 || t >= 0.999) return;
+    const pieces = this.piecesByPair[seg];
+    if (!garment || !pieces || pieces.length === 0) return;
 
-    // Panel layer fades out as the real photograph resolves (0.85 → 1).
-    const layerAlpha = t < 0.85 ? 1 : Math.max(0, 1 - (t - 0.85) / 0.15);
+    // 2. Fully scrolled past this act → its garment is seated too.
+    if (t >= 0.999) {
+      ctx.drawImage(garment, 0, 0);
+      return;
+    }
+    if (t <= 0.001) return;
 
+    // 3. Under the seating panels, ease in the complete garment so panel
+    //    seams and rejected slivers resolve without any pop.
+    if (t > 0.8) {
+      ctx.globalAlpha = (t - 0.8) / 0.2;
+      ctx.drawImage(garment, 0, 0);
+      ctx.globalAlpha = 1;
+    }
+
+    // 4. The current act's cut panels, mid-flight.
     ctx.save();
     for (const p of pieces) {
       const tp = Math.min(1, Math.max(0, (t - p.delay) / (1 - p.delay)));
@@ -278,9 +308,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       const rot = p.srot * (1 - e);
 
       ctx.save();
-      // Pieces materialize quickly, then stay solid — it's fabric, not dust.
-      ctx.globalAlpha = layerAlpha * Math.min(1, 0.25 + tp * 2.5);
-      // Airborne pieces cast a soft shadow that dies as they seat flush.
+      ctx.globalAlpha = Math.min(1, 0.25 + tp * 2.5);
       ctx.shadowColor = `rgba(28, 27, 27, ${0.35 * (1 - e)})`;
       ctx.shadowBlur = 22 * (1 - e);
       ctx.shadowOffsetY = 14 * (1 - e);
@@ -334,12 +362,22 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
         this.coverSample(img, sampleW, sampleH, this.stages[i].posY ?? 0.2),
       );
 
+      // Register every frame to frame 1: the generated series drifts a few
+      // pixels per frame, so we anchor on the FEET (bare in all frames) and
+      // the body centroid, and align before diffing. Garments then land
+      // exactly on the persistent base mannequin.
+      const anchors = frames.map((f) => this.bodyAnchor(f, sampleW, sampleH));
+      const shifts = anchors.map((a) => ({
+        dx: Math.round(anchors[0].cx - a.cx),
+        dy: Math.round(anchors[0].feetY - a.feetY),
+      }));
+
       this.garments = [];
       this.piecesByPair = [];
       for (let i = 0; i < frames.length - 1; i++) {
         const built = this.buildGarmentPanels(
           frames[i], frames[i + 1], images[i + 1], sampleW, sampleH,
-          this.stages[i + 1].posY ?? 0.2,
+          this.stages[i + 1].posY ?? 0.2, shifts[i], shifts[i + 1],
         );
         this.garments.push(built.garment);
         this.piecesByPair.push(built.pieces);
@@ -350,7 +388,41 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     } catch {
       // Fallback: plain crossfade keeps working; shopping never blocks.
       this.engineFailed = true;
+      this.engineBroken.set(true);
     }
+  }
+
+  /**
+   * Locate the mannequin in a sampled frame: background color is read from
+   * the corners; the body is everything that differs from it. Returns the
+   * body centroid x and the lowest body row (the feet — bare in every
+   * frame, hence a stable registration anchor).
+   */
+  private bodyAnchor(f: Uint8ClampedArray, w: number, h: number): { cx: number; feetY: number } {
+    const corner = (x: number, y: number) => {
+      const i = (y * w + x) * 4;
+      return [f[i], f[i + 1], f[i + 2]];
+    };
+    const cs = [corner(2, 2), corner(w - 3, 2), corner(2, h - 3), corner(w - 3, h - 3)];
+    const bg = [0, 1, 2].map((c) => cs.reduce((s2, v) => s2 + v[c], 0) / 4);
+    let sumX = 0;
+    let count = 0;
+    let feetY = 0;
+    for (let y = 0; y < h; y++) {
+      let rowHits = 0;
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const d =
+          Math.abs(f[i] - bg[0]) + Math.abs(f[i + 1] - bg[1]) + Math.abs(f[i + 2] - bg[2]);
+        if (d > 45) {
+          sumX += x;
+          count++;
+          rowHits++;
+        }
+      }
+      if (rowHits >= 3) feetY = y;
+    }
+    return { cx: count ? sumX / count : w / 2, feetY };
   }
 
   /** Draw an image with CSS-cover semantics into a small sampling canvas. */
@@ -382,17 +454,25 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     w: number,
     h: number,
     posY = 0.2,
+    prevShift: { dx: number; dy: number } = { dx: 0, dy: 0 },
+    nextShift: { dx: number; dy: number } = { dx: 0, dy: 0 },
   ): { garment: HTMLCanvasElement | null; pieces: FabricPiece[] } {
     // -- 1. binary diff mask at sample resolution --
     const mask = new Uint8Array(w * h);
     const scored: Array<{ x: number; y: number; score: number }> = [];
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        const i = (y * w + x) * 4;
+        // Reference-space diff: read each frame at its registered offset.
+        const xp = x - prevShift.dx, yp = y - prevShift.dy;
+        const xn = x - nextShift.dx, yn = y - nextShift.dy;
+        if (xp < 0 || xp >= w || yp < 0 || yp >= h) continue;
+        if (xn < 0 || xn >= w || yn < 0 || yn >= h) continue;
+        const ip = (yp * w + xp) * 4;
+        const im = (yn * w + xn) * 4;
         const score =
-          Math.abs(next[i] - prev[i]) +
-          Math.abs(next[i + 1] - prev[i + 1]) +
-          Math.abs(next[i + 2] - prev[i + 2]);
+          Math.abs(next[im] - prev[ip]) +
+          Math.abs(next[im + 1] - prev[ip + 1]) +
+          Math.abs(next[im + 2] - prev[ip + 2]);
         if (score > 80) scored.push({ x, y, score });
       }
     }
@@ -427,7 +507,15 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     const scale = Math.max(this.canvasW / nextImg.naturalWidth, this.canvasH / nextImg.naturalHeight);
     const dw = nextImg.naturalWidth * scale;
     const dh = nextImg.naturalHeight * scale;
-    gctx.drawImage(nextImg, (this.canvasW - dw) * 0.5, (this.canvasH - dh) * posY, dw, dh);
+    // Draw the source frame at its registered offset so its garment sits
+    // exactly on the base mannequin (reference space = frame 1).
+    gctx.drawImage(
+      nextImg,
+      (this.canvasW - dw) * 0.5 + nextShift.dx * (this.canvasW / w),
+      (this.canvasH - dh) * posY + nextShift.dy * (this.canvasH / h),
+      dw,
+      dh,
+    );
     const maskCanvas = document.createElement('canvas');
     maskCanvas.width = w;
     maskCanvas.height = h;
