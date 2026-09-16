@@ -67,7 +67,7 @@ interface FabricPiece {
               <img
                 class="stage-image"
                 [class.active]="i === 0 || (engineBroken() && i <= activeStage())"
-                [src]="'assets/' + stage.image"
+                [src]="'assets/' + (i === 0 ? baseImage() : stage.image)"
                 [alt]="stage.caption"
                 [loading]="i === 0 ? 'eager' : 'lazy'"
                 [style.object-position]="'center ' + (stage.posY ?? 0.2) * 100 + '%'"
@@ -173,6 +173,17 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   readonly activeStage = signal(0);
   /** Engine failure flips the base <img> stack back to plain crossfades. */
   readonly engineBroken = signal(false);
+  /** Prologue: the mannequin walks in, scrubbed by scroll. */
+  readonly baseImage = signal('series-1.jpg');
+  private readonly walkFrames = [
+    'walk-1.jpg', 'walk-2.jpg', 'walk-3.jpg', 'walk-4.jpg',
+    'walk-5.jpg', 'walk-6.jpg', 'walk-7.jpg', 'walk-8.jpg',
+  ];
+  private walkReady = false;
+  /** Fraction of the scroll spent walking in (0 when frames unavailable). */
+  private get walkEnd(): number {
+    return this.walkReady ? 0.22 : 0;
+  }
   readonly products = signal<Product[]>([]);
   readonly reducedMotion =
     typeof window !== 'undefined' &&
@@ -188,6 +199,12 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private garments: Array<HTMLCanvasElement | null> = [];
   /** piecesByPair[i] = the cut fabric panels for that transition */
   private piecesByPair: FabricPiece[][] = [];
+  /** Full stage photographs + their registration shifts (sample space).
+      Settled scenes draw the real photo — composites only ever fly. */
+  private stageImgs: HTMLImageElement[] = [];
+  private frameShifts: Array<{ dx: number; dy: number }> = [];
+  private sampleW = 0;
+  private sampleH = 0;
   private engineReady = false;
   private engineFailed = false;
   private ticking = false;
@@ -244,13 +261,29 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     if (scrollable <= 0) return;
     const progress = Math.min(1, Math.max(0, -rect.top / scrollable));
 
-    const segments = this.stages.length - 1; // 3 transitions
-    const stageFloat = progress * segments;
-    const seg = Math.min(segments - 1, Math.floor(stageFloat));
-    const t = stageFloat - seg;
+    // --- Prologue: the mannequin walks in; the tee's cut pieces take to
+    //     the air during the final strides and seat once it stops. ---
+    const walkEnd = this.walkEnd;
+    if (walkEnd > 0 && progress < walkEnd) {
+      const wp = progress / walkEnd;
+      const idx = Math.min(this.walkFrames.length - 1, Math.floor(wp * this.walkFrames.length));
+      if (this.baseImage() !== this.walkFrames[idx]) this.baseImage.set(this.walkFrames[idx]);
+      if (this.activeStage() !== 0) this.activeStage.set(0);
+      // Pieces launch halfway through the walk, hovering at ≤35% flight.
+      const hover = wp > 0.5 ? ((wp - 0.5) / 0.5) * 0.35 : 0;
+      this.drawPieces(0, hover);
+      return;
+    }
+    if (this.baseImage() !== 'series-1.jpg') this.baseImage.set('series-1.jpg');
 
-    // Real photograph takes over at 88% assembly (its 0.7s CSS fade
-    // overlaps the particle fade-out for a seamless hand-off).
+    const dressed = walkEnd > 0 ? (progress - walkEnd) / (1 - walkEnd) : progress;
+    const segments = this.stages.length - 1; // 4 transitions
+    const stageFloat = Math.min(0.9999, dressed) * segments;
+    const seg = Math.min(segments - 1, Math.floor(stageFloat));
+    let t = stageFloat - seg;
+    // Act 1 resumes from the hover the walk left behind — no jump back.
+    if (seg === 0 && walkEnd > 0) t = 0.35 + t * 0.65;
+
     const settled = t >= 0.88 ? seg + 1 : seg;
     if (settled !== this.activeStage()) this.activeStage.set(settled);
 
@@ -273,28 +306,27 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     ctx.clearRect(0, 0, this.canvasW, this.canvasH);
     if (!this.engineReady || this.engineFailed) return;
 
-    // 1. Garments from completed acts sit fully assembled.
-    for (let k = 0; k < seg; k++) {
-      const done = this.garments[k];
-      if (done) ctx.drawImage(done, 0, 0);
-    }
+    // 1. Completed acts: draw the real photograph of that dressed state
+    //    (registered onto the base mannequin). No stacked diff composites —
+    //    settled cloth is always solid, true fabric.
+    if (seg > 0) this.drawFullFrame(ctx, seg);
 
     const garment = this.garments[seg];
     const pieces = this.piecesByPair[seg];
     if (!garment || !pieces || pieces.length === 0) return;
 
-    // 2. Fully scrolled past this act → its garment is seated too.
+    // 2. Fully scrolled past this act → its dressed photo is the scene.
     if (t >= 0.999) {
-      ctx.drawImage(garment, 0, 0);
+      this.drawFullFrame(ctx, seg + 1);
       return;
     }
     if (t <= 0.001) return;
 
-    // 3. Under the seating panels, ease in the complete garment so panel
-    //    seams and rejected slivers resolve without any pop.
+    // 3. Under the seating panels, crossfade to the next dressed photo so
+    //    panel seams and rejected slivers resolve into real cloth, no pop.
     if (t > 0.8) {
       ctx.globalAlpha = (t - 0.8) / 0.2;
-      ctx.drawImage(garment, 0, 0);
+      this.drawFullFrame(ctx, seg + 1);
       ctx.globalAlpha = 1;
     }
 
@@ -323,6 +355,27 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       ctx.restore();
     }
     ctx.restore();
+  }
+
+  /**
+   * Cover-draw a full stage photograph at its registered offset — identical
+   * math to the garment canvases, so seated overlays and full frames align.
+   */
+  private drawFullFrame(ctx: CanvasRenderingContext2D, idx: number): void {
+    const img = this.stageImgs[idx];
+    if (!img) return;
+    const posY = this.stages[idx].posY ?? 0.2;
+    const shift = this.frameShifts[idx] ?? { dx: 0, dy: 0 };
+    const scale = Math.max(this.canvasW / img.naturalWidth, this.canvasH / img.naturalHeight);
+    const dw = img.naturalWidth * scale;
+    const dh = img.naturalHeight * scale;
+    ctx.drawImage(
+      img,
+      (this.canvasW - dw) * 0.5 + shift.dx * (this.canvasW / this.sampleW),
+      (this.canvasH - dh) * posY + shift.dy * (this.canvasH / this.sampleH),
+      dw,
+      dh,
+    );
   }
 
   // ------------------------------------------------------------------
@@ -371,6 +424,10 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
         dx: Math.round(anchors[0].cx - a.cx),
         dy: Math.round(anchors[0].feetY - a.feetY),
       }));
+      this.stageImgs = images;
+      this.frameShifts = shifts;
+      this.sampleW = sampleW;
+      this.sampleH = sampleH;
 
       this.garments = [];
       this.piecesByPair = [];
@@ -384,6 +441,23 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       }
       this.engineReady = true;
       this.lastDrawnKey = '';
+      // Walk-in prologue frames (optional: prologue is skipped if missing).
+      try {
+        await Promise.all(
+          this.walkFrames.map(
+            (f) =>
+              new Promise<void>((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve();
+                img.onerror = () => reject(new Error(f));
+                img.src = `assets/${f}`;
+              }),
+          ),
+        );
+        this.walkReady = true;
+      } catch {
+        this.walkReady = false;
+      }
       this.tick();
     } catch {
       // Fallback: plain crossfade keeps working; shopping never blocks.
@@ -498,6 +572,39 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       }
     });
     if (maxX - minX < 6 || maxY - minY < 6) return { garment: null, pieces: [] };
+
+    // --- Solidify the garment: fill enclosed holes so seated cloth never
+    //     shows the body through it (flood-fill the outside; whatever the
+    //     outside cannot reach is interior garment), then one dilation. ---
+    {
+      const outside = new Uint8Array(w * h);
+      const stack: number[] = [];
+      const push = (x: number, y: number) => {
+        const i = y * w + x;
+        if (!outside[i] && !mask[i]) { outside[i] = 1; stack.push(i); }
+      };
+      for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
+      for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+      while (stack.length) {
+        const i = stack.pop()!;
+        const x = i % w, y = (i / w) | 0;
+        if (x > 0) push(x - 1, y);
+        if (x < w - 1) push(x + 1, y);
+        if (y > 0) push(x, y - 1);
+        if (y < h - 1) push(x, y + 1);
+      }
+      for (let i = 0; i < mask.length; i++) {
+        if (!mask[i] && !outside[i]) mask[i] = 1; // enclosed hole → garment
+      }
+      const dilated = new Uint8Array(mask);
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const i = y * w + x;
+          if (!mask[i] && (mask[i - 1] || mask[i + 1] || mask[i - w] || mask[i + w])) dilated[i] = 1;
+        }
+      }
+      mask.set(dilated);
+    }
 
     // -- 2. garment-only image: full-res cover draw, masked by the diff --
     const garment = document.createElement('canvas');
