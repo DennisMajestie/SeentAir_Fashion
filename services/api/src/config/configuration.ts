@@ -21,6 +21,8 @@ export default () => ({
     resetTtlMinutes: parseInt(process.env.RESET_TTL_MINUTES ?? '30', 10),
   },
   security: {
+    // Secure cookies require HTTPS — on in production, off for local dev.
+    cookieSecure: (process.env.COOKIE_SECURE ?? 'false') === 'true',
     // Brute-force protection (client requirement): lock after N failures.
     maxFailedLogins: parseInt(process.env.MAX_FAILED_LOGINS ?? '5', 10),
     lockoutMinutes: parseInt(process.env.LOCKOUT_MINUTES ?? '15', 10),

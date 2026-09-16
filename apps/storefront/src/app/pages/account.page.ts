@@ -68,10 +68,7 @@ export class AccountPage implements OnInit {
 
   signIn(): void {
     this.api.login(this.email, this.password).subscribe({
-      next: (tokens) => {
-        this.api.storeTokens(tokens);
-        this.loadOrders();
-      },
+      next: () => this.loadOrders(),
       error: () => this.error.set('Sign-in failed.'),
     });
   }

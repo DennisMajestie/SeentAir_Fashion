@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
@@ -9,6 +10,9 @@ async function bootstrap(): Promise<void> {
   // rawBody powers webhook signature verification (Paystack HMAC).
   const app = await NestFactory.create(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
+
+  // Cookies carry the httpOnly refresh token (never readable by page JS).
+  app.use(cookieParser());
 
   // Security headers (CSP relaxed only for Swagger UI's inline assets).
   app.use(

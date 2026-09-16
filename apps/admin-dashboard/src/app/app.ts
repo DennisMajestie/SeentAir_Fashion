@@ -65,9 +65,8 @@ export class App {
       next: (res) => {
         if (res.requires2fa && res.challengeToken) {
           this.challengeToken.set(res.challengeToken);
-        } else if (res.accessToken) {
-          this.api.storeToken(res.accessToken);
         }
+        // Token storage is handled by ApiService (in memory + httpOnly cookie).
       },
       error: () => this.error.set('Sign-in failed — staff accounts only.'),
     });
@@ -78,8 +77,7 @@ export class App {
     if (!token) return;
     this.error.set(null);
     this.api.verify2fa(token, this.code).subscribe({
-      next: (res) => {
-        this.api.storeToken(res.accessToken);
+      next: () => {
         this.challengeToken.set(null);
         this.code = '';
       },

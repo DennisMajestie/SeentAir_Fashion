@@ -42,10 +42,7 @@ export class App {
 
   signIn(): void {
     this.api.login(this.email, this.password).subscribe({
-      next: (tokens) => {
-        this.api.storeToken(tokens.accessToken);
-        this.error.set(null);
-      },
+      next: () => this.error.set(null),
       error: () => this.error.set('Sign-in failed — check your credentials.'),
     });
   }

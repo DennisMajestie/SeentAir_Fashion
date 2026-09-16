@@ -84,17 +84,13 @@ export class CheckoutPage {
 
   signIn(): void {
     this.error.set(null);
-    const done = (tokens: { accessToken: string; refreshToken: string }) => {
-      this.api.storeTokens(tokens);
-    };
+    // Tokens are stored by ApiService (in memory) + the httpOnly cookie.
     if (this.mode() === 'login') {
       this.api.login(this.email, this.password).subscribe({
-        next: done,
         error: () => this.error.set('Sign-in failed — check your email and password.'),
       });
     } else {
       this.api.register(this.name, this.email, this.phone, this.password).subscribe({
-        next: done,
         error: (err) =>
           this.error.set(err?.error?.message ?? 'Registration failed — try a different email.'),
       });

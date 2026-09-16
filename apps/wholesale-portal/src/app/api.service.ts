@@ -1,22 +1,9 @@
-import { HttpClient, HttpInterceptorFn } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
+import { API_BASE, TokenStore } from './auth-token.store';
 
-export const API_BASE = 'http://localhost:3000/api/v1';
-const TOKEN_KEY = 'seentair.wholesale.accessToken';
-
-export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  let token: string | null = null;
-  try {
-    token = localStorage.getItem(TOKEN_KEY);
-  } catch {
-    /* storage unavailable */
-  }
-  if (token && req.url.startsWith(API_BASE)) {
-    req = req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
-  }
-  return next(req);
-};
+export { API_BASE, authInterceptor } from './auth-token.store';
 
 export interface PricingVariant {
   id: string;
@@ -67,33 +54,23 @@ export interface CustomOrder {
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
+  private readonly store = inject(TokenStore);
 
   login(email: string, password: string): Observable<{ accessToken: string }> {
-    return this.http.post<{ accessToken: string }>(`${API_BASE}/auth/login`, { email, password });
-  }
-
-  storeToken(accessToken: string): void {
-    try {
-      localStorage.setItem(TOKEN_KEY, accessToken);
-    } catch {
-      /* storage unavailable */
-    }
+    return this.http
+      .post<{ accessToken: string }>(`${API_BASE}/auth/login`, { email, password })
+      .pipe(tap((res) => this.store.set(res.accessToken)));
   }
 
   logout(): void {
-    try {
-      localStorage.removeItem(TOKEN_KEY);
-    } catch {
-      /* storage unavailable */
-    }
+    this.http.post(`${API_BASE}/auth/logout`, {}).subscribe({
+      complete: () => this.store.set(null),
+      error: () => this.store.set(null),
+    });
   }
 
   get isLoggedIn(): boolean {
-    try {
-      return !!localStorage.getItem(TOKEN_KEY);
-    } catch {
-      return false;
-    }
+    return !!this.store.token();
   }
 
   pricing(): Observable<Pricing> {
