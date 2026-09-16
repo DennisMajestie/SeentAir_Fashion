@@ -183,7 +183,8 @@ code { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; color: var(-
 }
 
 /* ---------- scroll-dressing landing ---------- */
-.dressing-scroll { height: 400vh; margin: 0 -16px; }
+/* Full-bleed breakout from the centered main column — the stage owns the whole viewport width, per the Stitch landing. */
+.dressing-scroll { height: 400vh; width: 100vw; margin-left: calc(50% - 50vw); }
 .dressing-stage {
   position: sticky; top: 0; height: 100vh; height: 100dvh;
   display: flex; align-items: stretch; overflow: hidden;
