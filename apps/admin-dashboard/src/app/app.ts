@@ -40,7 +40,10 @@ import { ApiService } from './api.service';
             <a routerLink="/orders" routerLinkActive="active">Orders</a>
             <a routerLink="/returns" routerLinkActive="active">Returns</a>
             <a routerLink="/catalogue" routerLinkActive="active">Catalogue</a>
+            <a routerLink="/inventory" routerLinkActive="active">Inventory</a>
             <a routerLink="/materials" routerLinkActive="active">Materials</a>
+            <a routerLink="/reviews" routerLinkActive="active">Reviews</a>
+            <a routerLink="/partners" routerLinkActive="active">Partners</a>
             <a routerLink="/wholesale" routerLinkActive="active">Wholesale</a>
             <a routerLink="/custom-orders" routerLinkActive="active">Custom orders</a>
             <a routerLink="/accounting" routerLinkActive="active">Accounting</a>

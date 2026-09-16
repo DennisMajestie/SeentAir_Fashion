@@ -5,6 +5,9 @@ import { AuditPage } from './pages/audit.page';
 import { CatalogueAdminPage } from './pages/catalogue.page';
 import { CustomAdminPage } from './pages/custom-orders.page';
 import { DashboardPage } from './pages/dashboard.page';
+import { InventoryAdminPage } from './pages/inventory.page';
+import { PartnersAdminPage } from './pages/partners.page';
+import { ReviewsAdminPage } from './pages/reviews.page';
 import { LogisticsAdminPage } from './pages/logistics.page';
 import { MarketingAdminPage } from './pages/marketing.page';
 import { MaterialsAdminPage } from './pages/materials.page';
@@ -22,6 +25,9 @@ export const routes: Routes = [
   { path: 'orders', component: OrdersPage, title: 'Seentair Ops — Orders' },
   { path: 'returns', component: ReturnsPage, title: 'Seentair Ops — Returns' },
   { path: 'catalogue', component: CatalogueAdminPage, title: 'Seentair Ops — Catalogue' },
+  { path: 'inventory', component: InventoryAdminPage, title: 'Seentair Ops — Inventory' },
+  { path: 'reviews', component: ReviewsAdminPage, title: 'Seentair Ops — Reviews' },
+  { path: 'partners', component: PartnersAdminPage, title: 'Seentair Ops — Partners' },
   { path: 'materials', component: MaterialsAdminPage, title: 'Seentair Ops — Materials' },
   { path: 'wholesale', component: WholesaleAdminPage, title: 'Seentair Ops — Wholesale' },
   { path: 'custom-orders', component: CustomAdminPage, title: 'Seentair Ops — Custom orders' },

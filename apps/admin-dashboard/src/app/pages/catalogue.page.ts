@@ -22,9 +22,19 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
           <label class="wide">Name <input [(ngModel)]="np.name" name="pname" required /></label>
           <label>Category <input [(ngModel)]="np.category" name="pcat" placeholder="tees" /></label>
           <label>Base price ₦ <input type="number" min="0" [(ngModel)]="np.basePrice" name="pprice" required /></label>
+          <label>Collection
+            <select [(ngModel)]="np.collectionId" name="pcoll">
+              <option value="">—</option>
+              @for (c of collectionRows(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+            </select>
+          </label>
           <label class="wide">Description <textarea [(ngModel)]="np.description" name="pdesc" rows="2"></textarea></label>
           <div class="wide"><button class="cta small" type="submit">Create product</button></div>
         </form>
+        <div class="actions">
+          <input [(ngModel)]="newCollection" name="ncoll" placeholder="New collection name" />
+          <button class="cta small ghost" (click)="createCollection()">Add collection</button>
+        </div>
       </section>
       <section class="panel">
         <p class="section-label" style="margin-top:0">Add variant</p>
@@ -78,14 +88,25 @@ export class CatalogueAdminPage implements OnInit {
   readonly products = signal<ProductRow[]>([]);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
+  readonly collectionRows = signal<Array<{ id: string; name: string }>>([]);
   newPrices: Record<string, number> = {};
   approvals: Record<string, string> = {};
-  np = { name: '', category: '', basePrice: 0, description: '' };
+  newCollection = '';
+  np = { name: '', category: '', basePrice: 0, description: '', collectionId: '' };
   nv = { productId: '', sku: '', size: '', colour: '', priceOverride: null as number | null };
 
   ngOnInit(): void { this.load(); }
   private load(): void {
     this.api.products().subscribe((res) => this.products.set(res.data as unknown as ProductRow[]));
+    this.api.collections().subscribe((res) => this.collectionRows.set(res));
+  }
+
+  createCollection(): void {
+    if (!this.newCollection.trim()) return;
+    this.api.createCollection(this.newCollection.trim()).subscribe({
+      next: () => { this.newCollection = ''; this.ok('Collection created.'); },
+      error: (e) => this.fail(e, 'Collection failed.'),
+    });
   }
   private ok(msg: string): void { this.message.set(msg); this.error.set(null); this.load(); }
   private fail(err: { error?: { message?: string } }, fallback: string): void {
@@ -96,6 +117,7 @@ export class CatalogueAdminPage implements OnInit {
     this.api.createProduct({
       name: this.np.name, category: this.np.category || undefined,
       basePrice: Number(this.np.basePrice), description: this.np.description || undefined,
+      collectionId: this.np.collectionId || undefined,
     }).subscribe({ next: () => this.ok('Product created.'), error: (e) => this.fail(e, 'Create failed.') });
   }
 

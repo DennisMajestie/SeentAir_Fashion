@@ -25,6 +25,18 @@ import { ApiService, Order } from '../api.service';
       </form>
     } @else {
       <button class="link" (click)="logout()">Sign out</button>
+
+      @if (notifications().length > 0) {
+        <h2>Notifications</h2>
+        @for (n of notifications(); track n.id) {
+          <div class="event">
+            <strong>{{ n.type.replaceAll('_', ' ') }}</strong>
+            <span class="muted small">{{ n.sentAt | date: 'medium' }}</span>
+            <p class="small" style="margin:0.2rem 0 0">{{ n.message }}</p>
+          </div>
+        }
+      }
+
       <h2>Your orders</h2>
       @if (orders().length === 0) {
         <p class="muted">No orders yet. <a routerLink="/">Start shopping</a></p>
@@ -45,6 +57,7 @@ import { ApiService, Order } from '../api.service';
 export class AccountPage implements OnInit {
   readonly api = inject(ApiService);
   readonly orders = signal<Order[]>([]);
+  readonly notifications = signal<Array<{ id: string; type: string; message: string; sentAt: string }>>([]);
   readonly error = signal<string | null>(null);
   readonly info = signal<string | null>(null);
   email = '';
@@ -80,5 +93,6 @@ export class AccountPage implements OnInit {
 
   private loadOrders(): void {
     this.api.myOrders().subscribe((res) => this.orders.set(res.data));
+    this.api.notifications().subscribe((res) => this.notifications.set(res.data));
   }
 }

@@ -43,7 +43,7 @@ export interface AdminOrder {
   paymentStatus: string;
   totalAmount: number;
   createdAt: string;
-  customer: { name: string } | null;
+  customer: { id: string; name: string } | null;
 }
 
 export interface ReturnRequest {
@@ -286,6 +286,67 @@ export class ApiService {
   }
   quote(weightKg: number, zone: string): Observable<{ cost: number }> {
     return this.http.get<{ cost: number }>(`${API_BASE}/logistics/quote?weightKg=${weightKg}&zone=${encodeURIComponent(zone)}`);
+  }
+
+  // --- Production (create/cost/QC) ---
+  createBatch(body: Record<string, unknown>): Observable<unknown> {
+    return this.http.post(`${API_BASE}/production-batches`, body);
+  }
+  recordBatchCost(id: string, body: Record<string, unknown>): Observable<unknown> {
+    return this.http.post(`${API_BASE}/production-batches/${id}/cost`, body);
+  }
+  batchCost(id: string): Observable<Record<string, unknown> | null> {
+    return this.http.get<Record<string, unknown> | null>(`${API_BASE}/production-batches/${id}/cost`);
+  }
+  recordQcRejection(id: string, body: Record<string, unknown>): Observable<unknown> {
+    return this.http.post(`${API_BASE}/production-batches/${id}/qc-rejection`, body);
+  }
+  qcRejections(id: string): Observable<Array<Record<string, unknown>>> {
+    return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/production-batches/${id}/qc-rejections`);
+  }
+
+  // --- Reviews moderation ---
+  pendingReviews(): Observable<Array<Record<string, unknown>>> {
+    return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/reviews/pending`);
+  }
+  moderateReview(id: string, status: 'published' | 'rejected'): Observable<unknown> {
+    return this.http.patch(`${API_BASE}/reviews/${id}/status`, { status });
+  }
+
+  // --- Inventory ledger ---
+  inventorySummary(): Observable<Array<{ itemType: string; itemId: string; currentQuantity: number; byMovementType: Record<string, number> }>> {
+    return this.http.get<Array<{ itemType: string; itemId: string; currentQuantity: number; byMovementType: Record<string, number> }>>(`${API_BASE}/inventory/summary`);
+  }
+  movements(itemId: string, itemType: 'variant' | 'material'): Observable<{ data: Array<Record<string, unknown>>; total: number; currentQuantity: number }> {
+    return this.http.get<{ data: Array<Record<string, unknown>>; total: number; currentQuantity: number }>(`${API_BASE}/inventory/${itemId}/movements?itemType=${itemType}`);
+  }
+  recordMovement(itemId: string, itemType: 'variant' | 'material', body: Record<string, unknown>): Observable<unknown> {
+    return this.http.post(`${API_BASE}/inventory/${itemId}/movements?itemType=${itemType}`, body);
+  }
+
+  // --- Partners administration ---
+  partners(): Observable<Array<Record<string, unknown>>> {
+    return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/partners`);
+  }
+  createPartner(body: Record<string, unknown>): Observable<unknown> {
+    return this.http.post(`${API_BASE}/partners`, body);
+  }
+  partnerDistributions(partnerId: string): Observable<Array<Record<string, unknown>>> {
+    return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/partners/${partnerId}/profit-distributions`);
+  }
+  createDistribution(body: Record<string, unknown>): Observable<Record<string, unknown>> {
+    return this.http.post<Record<string, unknown>>(`${API_BASE}/profit-distributions`, body);
+  }
+
+  // --- Notifications ---
+  sendNotification(body: Record<string, unknown>): Observable<unknown> {
+    return this.http.post(`${API_BASE}/notifications/send`, body);
+  }
+
+  // --- Approvals history ---
+  approvalsHistory(status?: string): Observable<{ data: Approval[]; total: number }> {
+    const q = status ? `?status=${status}` : '';
+    return this.http.get<{ data: Approval[]; total: number }>(`${API_BASE}/approvals${q}`);
   }
 
   // --- Marketing ---

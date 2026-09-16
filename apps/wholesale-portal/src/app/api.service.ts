@@ -73,6 +73,16 @@ export class ApiService {
     return !!this.store.token();
   }
 
+  notifications(): Observable<{
+    data: Array<{ id: string; type: string; message: string; sentAt: string }>;
+    total: number;
+  }> {
+    return this.http.get<{
+      data: Array<{ id: string; type: string; message: string; sentAt: string }>;
+      total: number;
+    }>(`${API_BASE}/notifications`);
+  }
+
   pricing(): Observable<Pricing> {
     return this.http.get<Pricing>(`${API_BASE}/wholesale/pricing?limit=50`);
   }

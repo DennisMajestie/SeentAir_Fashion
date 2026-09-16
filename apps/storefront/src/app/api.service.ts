@@ -131,6 +131,16 @@ export class ApiService {
     });
   }
 
+  notifications(): Observable<{
+    data: Array<{ id: string; type: string; message: string; sentAt: string; relatedOrderId: string | null }>;
+    total: number;
+  }> {
+    return this.http.get<{
+      data: Array<{ id: string; type: string; message: string; sentAt: string; relatedOrderId: string | null }>;
+      total: number;
+    }>(`${API_BASE}/notifications`);
+  }
+
   requestReturn(
     orderId: string,
     variantId: string,

@@ -37,9 +37,14 @@ const NEXT_STATUS: Record<string, string> = {
             <td>{{ order.paymentStatus }}</td>
             <td>₦{{ order.totalAmount | number: '1.0-2' }}</td>
             <td>
-              @if (next(order); as n) {
-                <button class="cta small" (click)="advance(order.id, n)">→ {{ n }}</button>
-              }
+              <div class="actions" style="margin:0">
+                @if (next(order); as n) {
+                  <button class="cta small" (click)="advance(order.id, n)">→ {{ n }}</button>
+                }
+                @if (order.customer) {
+                  <button class="cta small ghost" (click)="notify(order)">Notify</button>
+                }
+              </div>
             </td>
           </tr>
         }
@@ -72,6 +77,24 @@ export class OrdersPage implements OnInit {
     this.api.advanceOrder(id, status).subscribe({
       next: () => this.load(),
       error: (err) => this.error.set(err?.error?.message ?? 'Status change failed.'),
+    });
+  }
+
+  /** Manual in-platform message to the customer about this order. */
+  notify(order: AdminOrder & { customer: { id?: string; name: string } | null }): void {
+    const message = window.prompt(`Message to ${order.customer?.name} about ${order.id.slice(0, 8)}:`);
+    if (!message) return;
+    const customerId = (order.customer as { id?: string } | null)?.id;
+    if (!customerId) return;
+    this.api.sendNotification({
+      recipientId: customerId,
+      channel: 'in_platform',
+      type: 'order_update',
+      message,
+      relatedOrderId: order.id,
+    }).subscribe({
+      next: () => this.error.set(null),
+      error: (err) => this.error.set(err?.error?.message ?? 'Notify failed.'),
     });
   }
 }
