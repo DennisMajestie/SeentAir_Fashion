@@ -8,6 +8,8 @@ import { RoleName, UserStatus } from '../../common/enums';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
+import { MailAdapter } from './mail.adapter';
+import { PasswordResetToken } from './password-reset-token.entity';
 import { RefreshToken } from './refresh-token.entity';
 
 describe('AuthService — brute-force lockout & refresh rotation', () => {
@@ -16,6 +18,17 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
   let refreshRecord: Record<string, unknown> | null;
 
   const userRepo = { update: jest.fn() };
+  let resetRecord: Record<string, unknown> | null;
+  const resetRepo = {
+    findOne: jest.fn(async () => resetRecord),
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => v),
+    update: jest.fn(async () => ({ affected: 1 })),
+  };
+  const mailAdapter = {
+    send: jest.fn(async (_to: string, _subject: string, _body: string) => undefined),
+    configured: false,
+  };
   const refreshRepo = {
     findOne: jest.fn(async () => refreshRecord),
     create: jest.fn((v) => ({ id: 'jti-new', ...v })),
@@ -46,6 +59,8 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
         'jwt.refreshTtlMs': 1000000,
         'security.maxFailedLogins': 3,
         'security.lockoutMinutes': 15,
+        'mail.resetTtlMinutes': 30,
+        'mail.resetUrlBase': 'http://localhost:4200/reset-password',
       };
       return values[key];
     }),
@@ -55,6 +70,7 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
     jest.clearAllMocks();
     jwtPayloads.clear();
     refreshRecord = null;
+    resetRecord = null;
     user = {
       id: 'u1',
       email: 'c@x.test',
@@ -72,6 +88,8 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
         { provide: ConfigService, useValue: config },
         { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: getRepositoryToken(RefreshToken), useValue: refreshRepo },
+        { provide: getRepositoryToken(PasswordResetToken), useValue: resetRepo },
+        { provide: MailAdapter, useValue: mailAdapter },
       ],
     }).compile();
     service = moduleRef.get(AuthService);
@@ -152,5 +170,47 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
     refreshRepo.update.mockResolvedValue({ affected: 3 });
     const result = await service.logout('u1');
     expect(result.revoked).toBe(3);
+  });
+
+  describe('password reset', () => {
+    it('answers identically for unknown emails (no enumeration) and sends nothing', async () => {
+      usersService.findByEmailWithPassword.mockResolvedValueOnce(null as never);
+      const res = await service.forgotPassword('ghost@x.test');
+      expect(res.message).toContain('If that email is registered');
+      expect(mailAdapter.send).not.toHaveBeenCalled();
+      expect(resetRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('known email: stores only the token HASH, emails the raw link', async () => {
+      await service.forgotPassword('c@x.test');
+      const saved = resetRepo.save.mock.calls[0][0] as { tokenHash: string };
+      expect(saved.tokenHash).toMatch(/^[0-9a-f]{64}$/);
+      const mailBody = mailAdapter.send.mock.calls[0][2] as string;
+      expect(mailBody).toContain('reset-password?token=');
+      expect(mailBody).not.toContain(saved.tokenHash); // raw != stored hash
+    });
+
+    it('rejects expired, used, or unknown tokens', async () => {
+      resetRecord = null;
+      await expect(service.resetPassword('a'.repeat(64), 'NewPass123!')).rejects.toThrow('invalid or has expired');
+      resetRecord = { id: 'r1', userId: 'u1', usedAt: new Date(), expiresAt: new Date(Date.now() + 1000) };
+      await expect(service.resetPassword('a'.repeat(64), 'NewPass123!')).rejects.toThrow('invalid or has expired');
+      resetRecord = { id: 'r1', userId: 'u1', usedAt: null, expiresAt: new Date(Date.now() - 1000) };
+      await expect(service.resetPassword('a'.repeat(64), 'NewPass123!')).rejects.toThrow('invalid or has expired');
+    });
+
+    it('a valid reset updates the hash, clears lockout, and revokes all sessions', async () => {
+      resetRecord = { id: 'r1', userId: 'u1', usedAt: null, expiresAt: new Date(Date.now() + 60000) };
+      await service.resetPassword('b'.repeat(64), 'NewPass123!');
+      expect(resetRepo.update).toHaveBeenCalledWith('r1', { usedAt: expect.any(Date) });
+      const update = userRepo.update.mock.calls[0][1];
+      expect(update.passwordHash).toBeTruthy();
+      expect(update.failedLoginAttempts).toBe(0);
+      expect(update.lockedUntil).toBeNull();
+      expect(refreshRepo.update).toHaveBeenCalledWith(
+        { userId: 'u1', revokedAt: expect.anything() },
+        { revokedAt: expect.any(Date) },
+      );
+    });
   });
 });

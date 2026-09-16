@@ -1,13 +1,16 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
+import { createHash, randomBytes } from 'crypto';
 import { IsNull, Repository } from 'typeorm';
 import { RoleName, UserStatus } from '../../common/enums';
 import { JwtPayload } from '../../common/interfaces';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import { MailAdapter } from './mail.adapter';
+import { PasswordResetToken } from './password-reset-token.entity';
 import { RefreshToken } from './refresh-token.entity';
 
 export interface TokenPair {
@@ -24,6 +27,9 @@ export class AuthService {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(RefreshToken)
     private readonly refreshRepo: Repository<RefreshToken>,
+    @InjectRepository(PasswordResetToken)
+    private readonly resetRepo: Repository<PasswordResetToken>,
+    private readonly mailAdapter: MailAdapter,
   ) {}
 
   /**
@@ -112,6 +118,57 @@ export class AuthService {
     const newJti = this.extractJti(pair.refreshToken);
     await this.refreshRepo.update(record.id, { revokedAt: new Date(), replacedBy: newJti });
     return pair;
+  }
+
+  /**
+   * Always answers identically whether or not the email exists — no user
+   * enumeration. The raw token travels only in the email; the DB stores its hash.
+   */
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const generic = {
+      message: 'If that email is registered, a password reset link has been sent.',
+    };
+    const user = await this.usersService.findByEmailWithPassword(email);
+    if (!user || user.status !== UserStatus.ACTIVE) return generic;
+
+    // New request invalidates previous unused tokens.
+    await this.resetRepo.update({ userId: user.id, usedAt: IsNull() }, { usedAt: new Date() });
+
+    const rawToken = randomBytes(32).toString('hex');
+    const ttlMinutes = this.config.get<number>('mail.resetTtlMinutes') ?? 30;
+    await this.resetRepo.save(
+      this.resetRepo.create({
+        userId: user.id,
+        tokenHash: createHash('sha256').update(rawToken).digest('hex'),
+        expiresAt: new Date(Date.now() + ttlMinutes * 60_000),
+      }),
+    );
+
+    const link = `${this.config.get<string>('mail.resetUrlBase')}?token=${rawToken}`;
+    await this.mailAdapter.send(
+      user.email,
+      'Reset your Seentair password',
+      `Someone requested a password reset for this account. This link expires in ${ttlMinutes} minutes: ${link}\nIf this wasn't you, ignore this email.`,
+    );
+    return generic;
+  }
+
+  /** Single-use, expiring token → new password; all sessions are revoked. */
+  async resetPassword(rawToken: string, newPassword: string): Promise<{ message: string }> {
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const record = await this.resetRepo.findOne({ where: { tokenHash } });
+    if (!record || record.usedAt || record.expiresAt.getTime() < Date.now()) {
+      throw new BadRequestException('Reset link is invalid or has expired — request a new one.');
+    }
+    await this.resetRepo.update(record.id, { usedAt: new Date() });
+    await this.userRepo.update(record.userId, {
+      passwordHash: await bcrypt.hash(newPassword, 10),
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    });
+    // A password change kills every existing session.
+    await this.revokeAllForUser(record.userId);
+    return { message: 'Password updated — sign in with your new password.' };
   }
 
   /** Real server-side logout: every active refresh token for the user dies. */

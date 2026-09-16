@@ -14,6 +14,12 @@ export default () => ({
     refreshTtl: process.env.JWT_REFRESH_TTL ?? '7d',
     refreshTtlMs: parseInt(process.env.JWT_REFRESH_TTL_MS ?? String(7 * 24 * 3_600_000), 10),
   },
+  mail: {
+    smtpHost: process.env.SMTP_HOST ?? '',
+    fromAddress: process.env.MAIL_FROM ?? 'no-reply@seentair.com',
+    resetUrlBase: process.env.RESET_URL_BASE ?? 'http://localhost:4200/reset-password',
+    resetTtlMinutes: parseInt(process.env.RESET_TTL_MINUTES ?? '30', 10),
+  },
   security: {
     // Brute-force protection (client requirement): lock after N failures.
     maxFailedLogins: parseInt(process.env.MAX_FAILED_LOGINS ?? '5', 10),

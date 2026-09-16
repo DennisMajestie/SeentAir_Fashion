@@ -86,6 +86,17 @@ export class ApiService {
     });
   }
 
+  forgotPassword(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${API_BASE}/auth/forgot-password`, { email });
+  }
+
+  resetPassword(token: string, newPassword: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${API_BASE}/auth/reset-password`, {
+      token,
+      newPassword,
+    });
+  }
+
   storeTokens(tokens: TokenPair): void {
     try {
       localStorage.setItem(TOKEN_KEY, tokens.accessToken);

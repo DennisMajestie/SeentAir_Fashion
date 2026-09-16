@@ -13,8 +13,12 @@ import { ApiService, Order } from '../api.service';
       <form class="auth-box" (ngSubmit)="signIn()">
         <h2>Sign in</h2>
         <label>Email <input type="email" [(ngModel)]="email" name="email" required /></label>
-        <label>Password <input type="password" [(ngModel)]="password" name="password" required /></label>
+        <label>Password <input type="password" [(ngModel)]="password" name="password" required autocomplete="current-password" /></label>
         <button class="cta" type="submit">Sign in</button>
+        <button class="link" type="button" (click)="forgot()">Forgot password?</button>
+        @if (info()) {
+          <p class="success">{{ info() }}</p>
+        }
         @if (error()) {
           <p class="error">{{ error() }}</p>
         }
@@ -42,8 +46,21 @@ export class AccountPage implements OnInit {
   readonly api = inject(ApiService);
   readonly orders = signal<Order[]>([]);
   readonly error = signal<string | null>(null);
+  readonly info = signal<string | null>(null);
   email = '';
   password = '';
+
+  forgot(): void {
+    this.error.set(null);
+    if (!this.email) {
+      this.error.set('Enter your email above first, then tap Forgot password.');
+      return;
+    }
+    this.api.forgotPassword(this.email).subscribe({
+      next: (res) => this.info.set(res.message),
+      error: () => this.info.set('If that email is registered, a reset link has been sent.'),
+    });
+  }
 
   ngOnInit(): void {
     if (this.api.isLoggedIn) this.loadOrders();
