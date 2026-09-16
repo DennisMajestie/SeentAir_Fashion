@@ -175,9 +175,11 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   readonly engineBroken = signal(false);
   /** Prologue: the mannequin walks in, scrubbed by scroll. */
   readonly baseImage = signal('series-1.jpg');
+  /** Approach: far away → alternating mid strides → close heel-strike;
+      the standing series-1 frame is the final "she stops" beat. */
   private readonly walkFrames = [
-    'walk-1.jpg', 'walk-2.jpg', 'walk-3.jpg', 'walk-4.jpg',
-    'walk-5.jpg', 'walk-6.jpg', 'walk-7.jpg', 'walk-8.jpg',
+    'walk-1.jpg', 'walk-2.jpg', 'walk-3.jpg',
+    'walk-2.jpg', 'walk-3.jpg', 'walk-4.jpg',
   ];
   private walkReady = false;
   /** Fraction of the scroll spent walking in (0 when frames unavailable). */
