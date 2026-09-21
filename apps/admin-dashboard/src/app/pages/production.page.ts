@@ -89,6 +89,22 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
             <div class="card">
               <code>{{ batch.variant.sku }}</code>
               <p>{{ batch.quantity }} units</p>
+              @if (costOf(batch.id); as cost) {
+                <p class="small">Cost <span class="naira">₦{{ totalCost(batch.id) | number: '1.0-2' }}</span>
+                  <span class="muted"> · ₦{{ perUnit(batch) | number: '1.0-2' }}/unit</span></p>
+              } @else {
+                <p class="small muted">No cost recorded</p>
+              }
+              @if (rejectsOf(batch.id); as rejects) {
+                @if (rejects.length) {
+                  <p class="small">
+                    <span class="chip bad">{{ rejectedUnits(batch.id) }} rejected</span>
+                    @for (r of rejects; track $index) {
+                      <span class="muted"> {{ r['quantity'] }}× {{ r['disposition'] }} — {{ r['reason'] }}</span>
+                    }
+                  </p>
+                }
+              }
               @if (nextStage(stage); as next) {
                 <button class="cta small" (click)="move(batch.id, next)">→ {{ next }}</button>
               }
@@ -109,6 +125,9 @@ export class ProductionPage implements OnInit {
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   readonly lastCostTotal = signal<number | null>(null);
+  /** Read-back caches keyed by batch id (cost + QC rejections). */
+  readonly costs = signal<Map<string, Record<string, unknown>>>(new Map());
+  readonly rejections = signal<Map<string, Array<Record<string, unknown>>>>(new Map());
   nb = { variantId: '', quantity: 0, plannedDate: '', approvalRequestId: '' };
   nc = { batchId: '', materialCost: 0, sewingCost: 0, brandingCost: 0, packagingCost: 0 };
   nq = { batchId: '', quantity: 1, disposition: 'burned', reason: '' };
@@ -122,7 +141,41 @@ export class ProductionPage implements OnInit {
     this.api.batches().subscribe((res) => {
       this.stages.set(res.stages);
       this.batches.set(res.data);
+      this.loadCostsAndRejections(res.data);
     });
+  }
+
+  /** Read back what was written: recorded cost and QC history per batch. */
+  private loadCostsAndRejections(batches: Batch[]): void {
+    const costs = new Map<string, Record<string, unknown>>();
+    const rejects = new Map<string, Array<Record<string, unknown>>>();
+    for (const b of batches) {
+      this.api.batchCost(b.id).subscribe({
+        next: (c) => { if (c) { costs.set(b.id, c); this.costs.set(new Map(costs)); } },
+        error: () => undefined, // no cost recorded yet
+      });
+      this.api.qcRejections(b.id).subscribe({
+        next: (r) => { if (r?.length) { rejects.set(b.id, r); this.rejections.set(new Map(rejects)); } },
+        error: () => undefined,
+      });
+    }
+  }
+
+  costOf(batchId: string): Record<string, unknown> | null {
+    return this.costs().get(batchId) ?? null;
+  }
+  rejectsOf(batchId: string): Array<Record<string, unknown>> | null {
+    return this.rejections().get(batchId) ?? null;
+  }
+  rejectedUnits(batchId: string): number {
+    return (this.rejections().get(batchId) ?? []).reduce((sum, r) => sum + Number(r['quantity'] ?? 0), 0);
+  }
+  totalCost(batchId: string): number {
+    return Number(this.costs().get(batchId)?.['totalCost'] ?? 0);
+  }
+  perUnit(batch: Batch): number {
+    const total = this.totalCost(batch.id);
+    return batch.quantity > 0 ? total / batch.quantity : 0;
   }
   private ok(m: string): void { this.message.set(m); this.error.set(null); this.load(); }
   private fail(e: { error?: { message?: string } }, fb: string): void { this.error.set(e?.error?.message ?? fb); this.message.set(null); }

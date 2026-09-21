@@ -149,7 +149,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   letter-spacing: 0.1em; text-transform: uppercase;
   padding: 0.5rem 0.95rem; cursor: pointer; border-radius: 2px;
   &:hover { border-color: var(--ink); }
-  &.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+  &.active { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 }
 .search-bar {
   width: 100%; max-width: 460px; background: var(--card);
