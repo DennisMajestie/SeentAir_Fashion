@@ -1,16 +1,18 @@
-/* SEENTAIR Partners — Brutalist Atelier system (Stitch), calm and read-mostly. */
+/* SEENTAIR Partners — unified platform system: near-black canvas,
+   gold primary, pill buttons (matches the storefront). Calm, read-mostly. */
 
 :root {
-  --obsidian: #fcf9f8;
-  --panel: #ffffff;
-  --panel-2: #f6f3f2;
-  --hairline: #e5e2e1;
-  --hairline-2: #dcd9d9;
-  --ink: #1c1b1b;
-  --ink-dim: #6f6a67;
-  --acid: #ad2c00;
-  --danger: #ba1a1a;
-  --ok: #1b7f3b;
+  --obsidian: #0b0b0b;
+  --panel: #141414;
+  --panel-2: #1f1f1f;
+  --hairline: #2a2a2a;
+  --hairline-2: #3a3a3a;
+  --ink: #ffffff;
+  --ink-dim: #a9a9a9;
+  --acid: #c9a24b;
+  --on-acid: #0b0b0b;
+  --danger: #ef7b7b;
+  --ok: #66bb6a;
 }
 
 * { box-sizing: border-box; }
@@ -25,7 +27,7 @@ body {
 
 main { max-width: 920px; margin: 0 auto; padding: 1rem 16px 4rem; }
 
-h1 { font-family: 'Oswald', sans-serif; font-weight: 400; text-transform: uppercase; letter-spacing: 0.03em; }
+h1 { font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
 .page-title { font-size: clamp(1.8rem, 5vw, 3rem); margin: 0 0 1rem; }
 .page-kicker { font-family: 'Inter', sans-serif; font-size: 0.7rem; letter-spacing: 0.25em;
   color: var(--acid); text-transform: uppercase; margin: 1.6rem 0 0.3rem; }
@@ -69,8 +71,17 @@ label { display: block; margin: 0.7rem 0; font-size: 0.72rem; color: var(--ink-d
     font-family: 'Inter', sans-serif;
     &:focus { outline: 1px solid var(--acid); border-color: var(--acid); } } }
 
-.cta { background: var(--acid); color: #ffffff; border: none; padding: 0.7rem 1.5rem;
-  font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.82rem; }
+.cta {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; background: var(--acid); color: var(--on-acid, #0b0b0b);
+  border: 1px solid transparent; padding: 0 1.5rem; border-radius: 999px;
+  font-family: 'Inter', sans-serif; font-weight: 700; cursor: pointer;
+  text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.82rem;
+  transition: background-color 0.15s ease;
+  &:hover { background: color-mix(in srgb, var(--acid) 82%, #000); }
+  &:focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
+  &:disabled { opacity: 0.4; cursor: default; }
+}
 .link { background: none; border: none; color: var(--ink-dim); text-decoration: underline; cursor: pointer;
   &:hover { color: var(--acid); } }
 
