@@ -10,7 +10,7 @@ import { CartService } from './cart.service';
     <header class="site-header" [class.scrolled]="scrolled()">
       <div class="wrap-col header-inner">
         <a routerLink="/" class="logo" aria-label="SEENTAIR home">
-          <img src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
+          <img src="assets/logo.jpeg" alt="SEENTAIR" width="160" height="32" />
         </a>
         <nav [class.open]="menuOpen()">
           <a routerLink="/shop" (click)="menuOpen.set(false)">Shop</a>
@@ -36,7 +36,7 @@ import { CartService } from './cart.service';
     <footer class="site-footer">
       <div class="wrap-col">
         <div class="footer-grid">
-          <span class="logo-footer"><img src="assets/logo.png" alt="SEENTAIR" width="180" height="36" /></span>
+          <span class="logo-footer"><img src="assets/logo.jpeg" alt="SEENTAIR" width="180" height="36" /></span>
           <span>Streetwear manufactured in-house — one factory, no middlemen.</span>
           <span class="mono">© 2026 SEENTAIR LIMITED // ATELIER SPEC 01</span>
         </div>

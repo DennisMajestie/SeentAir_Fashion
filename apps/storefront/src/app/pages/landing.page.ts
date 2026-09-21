@@ -18,6 +18,7 @@ interface Stage {
   act: string;      // "[ACT 01: ORIGIN FORM]"
   line1: string;    // black headline line
   line2: string;    // vermilion headline line
+  caption: string;  // short description under the title
   tag: string;      // small card tag, e.g. "₦ CURATED"
   /** Vertical cover anchor (0=top … 1=bottom). Per-frame headroom trim. */
   posY?: number;
@@ -68,7 +69,7 @@ interface FabricPiece {
                 [src]="'assets/' + (i === 0 ? baseImage() : stage.image)"
                 [alt]="stage.line1"
                 [loading]="i === 0 ? 'eager' : 'lazy'"
-                [style.object-position]="'center ' + (stage.posY ?? 0.2) * 100 + '%'"
+                [style.object-position]="'center ' + (stage.posY ?? 0.45) * 100 + '%'"
               />
             }
           </div>
@@ -77,9 +78,9 @@ interface FabricPiece {
             <div class="hero-grid">
               <div class="hero-main">
                 <h1 class="stage-label rise">{{ stages[activeStage()].line1 }}@if (stages[activeStage()].line2) { <em>{{ stages[activeStage()].line2 }}</em> }</h1>
+                <p class="stage-lede rise">{{ stages[activeStage()].caption }}</p>
                 <div class="hero-actions rise">
                   <a class="btn btn-primary" routerLink="/shop">Shop the drop</a>
-                  <a class="btn btn-outline" (click)="showLookbook()">View lookbook</a>
                 </div>
                 <div class="trust-row rise">
                   <span>Full payment</span>
@@ -90,6 +91,9 @@ interface FabricPiece {
               <aside class="hero-card rise">
                 <p class="card-kicker">Series Archive</p>
                 <p class="card-tag">{{ stages[activeStage()].tag }}</p>
+                <span class="card-rule"></span>
+                <p class="card-title">{{ stages[activeStage()].line1 }}@if (stages[activeStage()].line2) { {{ stages[activeStage()].line2 }} }</p>
+                <p class="card-desc">{{ stages[activeStage()].caption }}</p>
               </aside>
             </div>
             <div
@@ -124,7 +128,7 @@ interface FabricPiece {
         @for (stage of stages; track stage.image) {
           <figure>
             <img [src]="'assets/' + stage.image" [alt]="stage.line1" loading="lazy" />
-            <figcaption><span>{{ stage.act }}</span> {{ stage.tag }}</figcaption>
+            <figcaption><span>{{ stage.line1 }}</span> {{ stage.caption }}</figcaption>
           </figure>
         }
         <a class="cta" routerLink="/shop">Shop the look</a>
@@ -172,15 +176,25 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
 
   readonly stages: Stage[] = [
     { image: 'series-1.jpg', index: '01', act: '[ACT 01: ORIGIN FORM]',
-      line1: 'BE WORN.', line2: '', tag: '₦ CURATED' },
+      line1: 'BE WORN.', line2: '',
+      caption: 'Architectural silhouettes. Raw luxury calibrated for the continental vanguard.',
+      tag: '₦ CURATED' },
     { image: 'series-2.jpg', index: '02', act: '[ACT 02: FOUNDATION LAYER]',
-      line1: 'THE TEE.', line2: '', tag: 'BOX FIT — 280 GSM' },
+      line1: 'THE TEE.', line2: '',
+      caption: '280GSM Lagos loomed cotton. Dropped shoulder, boxy construct.',
+      tag: 'BOX FIT — 280 GSM' },
     { image: 'series-3.jpg', index: '03', act: '[ACT 03: LOWER STRUCTURE]',
-      line1: 'THE JOGGER.', line2: '', tag: 'TAPERED — 30-36' },
+      line1: 'THE JOGGER.', line2: '',
+      caption: 'Heavyweight French terry. Tapered, dust-resistant.',
+      tag: 'TAPERED — 30-36' },
     { image: 'series-4.jpg', index: '04', act: '[ACT 04: OUTER SHELL]',
-      line1: 'THE HOOD.', line2: '', tag: 'HOOD — S-XXL' },
+      line1: 'THE HOOD.', line2: '',
+      caption: 'Lagos Proto Hood. Raw edges, heavyweight terry.',
+      tag: 'HOOD — S-XXL' },
     { image: 'series-5.jpg', index: '05', act: '[STAGE 05 / 05 — CURATED REVEAL]',
-      line1: 'THE LOOK.', line2: '', tag: '3 ITEMS' },
+      line1: 'THE LOOK.', line2: '',
+      caption: 'Drop 04 archival assembly. Edition of 180 pieces.',
+      tag: '3 ITEMS' },
   ];
 
   readonly activeStage = signal(0);
@@ -317,10 +331,6 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     this.goTo((this.activeStage() + 1) % this.stages.length);
   }
 
-  showLookbook(): void {
-    document.querySelector<HTMLElement>('#drops')?.scrollIntoView({ behavior: this.reducedMotion ? 'auto' : 'smooth' });
-  }
-
   // ------------------------------------------------------------------
   // Scroll → stage/segment mapping. Position is a pure function of
   // scroll, so scrolling up takes the garment apart panel by panel.
@@ -436,7 +446,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private drawFullFrame(ctx: CanvasRenderingContext2D, idx: number): void {
     const img = this.stageImgs[idx];
     if (!img) return;
-    const posY = this.stages[idx].posY ?? 0.2;
+    const posY = this.stages[idx].posY ?? 0.45;
     const shift = this.frameShifts[idx] ?? { dx: 0, dy: 0 };
     const scale = Math.max(this.canvasW / img.naturalWidth, this.canvasH / img.naturalHeight);
     const dw = img.naturalWidth * scale;
@@ -484,7 +494,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       const sampleW = this.isMobile ? 240 : 400;
       const sampleH = Math.round((sampleW * this.canvasH) / this.canvasW);
       const frames = images.map((img, i) =>
-        this.coverSample(img, sampleW, sampleH, this.stages[i].posY ?? 0.2),
+        this.coverSample(img, sampleW, sampleH, this.stages[i].posY ?? 0.45),
       );
 
       // Register every frame to frame 1: the generated series drifts a few
@@ -506,7 +516,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       for (let i = 0; i < frames.length - 1; i++) {
         const built = this.buildGarmentPanels(
           frames[i], frames[i + 1], images[i + 1], sampleW, sampleH,
-          this.stages[i + 1].posY ?? 0.2, shifts[i], shifts[i + 1],
+          this.stages[i + 1].posY ?? 0.45, shifts[i], shifts[i + 1],
         );
         this.garments.push(built.garment);
         this.piecesByPair.push(built.pieces);
@@ -572,7 +582,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /** Draw an image with CSS-cover semantics into a small sampling canvas. */
-  private coverSample(img: HTMLImageElement, w: number, h: number, posY = 0.2): Uint8ClampedArray {
+  private coverSample(img: HTMLImageElement, w: number, h: number, posY = 0.45): Uint8ClampedArray {
     const off = document.createElement('canvas');
     off.width = w;
     off.height = h;
@@ -599,7 +609,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     nextImg: HTMLImageElement,
     w: number,
     h: number,
-    posY = 0.2,
+    posY = 0.45,
     prevShift: { dx: number; dy: number } = { dx: 0, dy: 0 },
     nextShift: { dx: number; dy: number } = { dx: 0, dy: 0 },
   ): { garment: HTMLCanvasElement | null; pieces: FabricPiece[] } {
