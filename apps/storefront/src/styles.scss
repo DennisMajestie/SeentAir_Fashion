@@ -314,6 +314,106 @@ select, input, textarea {
   th, td { text-align: left; padding: 0.7rem 0.4rem; border-bottom: 1px solid var(--line); }
   input { width: 4.5rem; padding: 0.35rem; } }
 
+/* ---------- customer sign-in / create account ---------- */
+.auth-screen {
+  display: flex; justify-content: center;
+  padding-block: clamp(2rem, 6vw, 4.5rem);
+}
+.auth-card {
+  width: 100%; max-width: 440px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 24px; padding: clamp(1.4rem, 4vw, 2.2rem);
+}
+.auth-eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--primary); margin: 0 0 0.5rem;
+}
+.auth-title {
+  font-family: 'Oswald', sans-serif; font-weight: 700; text-transform: uppercase;
+  font-size: clamp(1.9rem, 6vw, 2.5rem); line-height: 0.92;
+  margin: 0; color: var(--ink);
+}
+.auth-lede {
+  font-size: 0.92rem; line-height: 1.55; color: var(--muted);
+  margin: 0.7rem 0 0; max-width: 34ch;
+}
+
+.auth-tabs {
+  display: flex; gap: 4px; margin: 1.5rem 0 1.2rem;
+  background: var(--container); border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px;
+}
+.auth-tab {
+  flex: 1; min-height: 40px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--muted); cursor: pointer;
+  font-family: 'Inter', sans-serif; font-size: 0.76rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  &:hover { color: var(--ink); }
+  &.active { background: var(--primary); color: var(--on-primary); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.auth-form .field { margin-bottom: 1rem; }
+.auth-form label,
+.auth-form .label-row label {
+  display: block; margin: 0 0 0.4rem;
+  font-size: 0.7rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.14em;
+}
+.auth-form .label-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+}
+.auth-form .optional { color: var(--line-2); font-weight: 600; letter-spacing: 0.1em; }
+.auth-form input {
+  display: block; width: 100%; max-width: none; min-height: 52px;
+  margin: 0; padding: 0 0.9rem;
+  background: var(--container); color: var(--ink);
+  border: 1px solid var(--line-2); border-radius: 12px;
+  font-family: 'Inter', sans-serif; font-size: 1rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  &::placeholder { color: var(--line-2); }
+  &:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-tint);
+  }
+  &[aria-invalid='true'] { border-color: var(--danger); }
+}
+.input-affix {
+  position: relative;
+  input { padding-right: 4.6rem; }
+}
+.affix-btn {
+  position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  min-height: 40px; padding: 0 0.8rem; border-radius: 999px;
+  background: transparent; border: 1px solid var(--line-2); color: var(--muted);
+  cursor: pointer; font-family: 'Inter', sans-serif;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  &:hover { color: var(--primary); border-color: var(--primary); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+.link-inline {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  color: var(--primary); text-decoration: underline;
+  font-family: 'Inter', sans-serif; font-size: 0.7rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+.field-hint { margin: 0.35rem 0 0; font-size: 0.75rem; color: var(--muted); }
+.field-error { margin: 0.35rem 0 0; font-size: 0.78rem; color: var(--danger); }
+
+.auth-submit { width: 100%; margin-top: 0.3rem; }
+.auth-error, .auth-info {
+  margin: 0.9rem 0 0; padding: 0.7rem 0.9rem; border-radius: 12px;
+  font-size: 0.85rem; line-height: 1.45;
+}
+.auth-error { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
+.auth-info { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); }
+
+.auth-trust { margin-top: 1.6rem; }
+
 .auth-box, .success-box, .review-box {
   background: var(--card); border: 1px solid var(--line); border-radius: 2px;
   padding: 1.4rem; margin: 1.2rem 0; max-width: 500px;
