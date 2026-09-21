@@ -69,7 +69,7 @@ interface FabricPiece {
                 [src]="'assets/' + (i === 0 ? baseImage() : stage.image)"
                 [alt]="stage.line1"
                 [loading]="i === 0 ? 'eager' : 'lazy'"
-                [style.object-position]="'center ' + (stage.posY ?? 0.1) * 100 + '%'"
+                [style.object-position]="'center ' + (i === 0 ? basePosY() : (stage.posY ?? 0.1)) * 100 + '%'"
               />
             }
           </div>
@@ -202,11 +202,19 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   readonly engineBroken = signal(false);
   /** Prologue: the mannequin walks in, scrubbed by scroll. */
   readonly baseImage = signal('series-1.jpg');
+  /** Vertical anchor of the base frame. The walk shots are framed very
+      differently (distant figure low, close strides tall), so each walk
+      beat carries its own anchor, easing down to the standing 0.1. */
+  readonly basePosY = signal(0.1);
   /** Approach: far away → alternating mid strides → close heel-strike;
       the standing series-1 frame is the final "she stops" beat. */
-  private readonly walkFrames = [
-    'walk-1.jpg', 'walk-2.jpg', 'walk-3.jpg',
-    'walk-2.jpg', 'walk-3.jpg', 'walk-4.jpg',
+  private readonly walkFrames: Array<{ img: string; posY: number }> = [
+    { img: 'walk-1.jpg', posY: 0.22 },
+    { img: 'walk-2.jpg', posY: 0.14 },
+    { img: 'walk-3.jpg', posY: 0.14 },
+    { img: 'walk-2.jpg', posY: 0.14 },
+    { img: 'walk-3.jpg', posY: 0.14 },
+    { img: 'walk-4.jpg', posY: 0.1 },
   ];
   private walkReady = false;
   /** Fraction of the scroll spent walking in (0 when frames unavailable). */
@@ -349,7 +357,9 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     if (walkEnd > 0 && progress < walkEnd) {
       const wp = progress / walkEnd;
       const idx = Math.min(this.walkFrames.length - 1, Math.floor(wp * this.walkFrames.length));
-      if (this.baseImage() !== this.walkFrames[idx]) this.baseImage.set(this.walkFrames[idx]);
+      const frame = this.walkFrames[idx];
+      if (this.baseImage() !== frame.img) this.baseImage.set(frame.img);
+      if (this.basePosY() !== frame.posY) this.basePosY.set(frame.posY);
       if (this.activeStage() !== 0) this.activeStage.set(0);
       // Pieces launch halfway through the walk, hovering at ≤35% flight.
       const hover = wp > 0.5 ? ((wp - 0.5) / 0.5) * 0.35 : 0;
@@ -357,6 +367,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     if (this.baseImage() !== 'series-1.jpg') this.baseImage.set('series-1.jpg');
+    if (this.basePosY() !== (this.stages[0].posY ?? 0.1)) this.basePosY.set(this.stages[0].posY ?? 0.1);
 
     const dressed = walkEnd > 0 ? (progress - walkEnd) / (1 - walkEnd) : progress;
     const segments = this.stages.length - 1; // 4 transitions
@@ -531,8 +542,8 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
               new Promise<void>((resolve, reject) => {
                 const img = new Image();
                 img.onload = () => resolve();
-                img.onerror = () => reject(new Error(f));
-                img.src = `assets/${f}`;
+                img.onerror = () => reject(new Error(f.img));
+                img.src = `assets/${f.img}`;
               }),
           ),
         );
