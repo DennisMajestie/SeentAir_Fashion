@@ -446,7 +446,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private drawFullFrame(ctx: CanvasRenderingContext2D, idx: number): void {
     const img = this.stageImgs[idx];
     if (!img) return;
-    const posY = this.stages[idx].posY ?? 0.45;
+    const posY = this.stages[idx].posY ?? 0.2;
     const shift = this.frameShifts[idx] ?? { dx: 0, dy: 0 };
     const scale = Math.max(this.canvasW / img.naturalWidth, this.canvasH / img.naturalHeight);
     const dw = img.naturalWidth * scale;
@@ -494,7 +494,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       const sampleW = this.isMobile ? 240 : 400;
       const sampleH = Math.round((sampleW * this.canvasH) / this.canvasW);
       const frames = images.map((img, i) =>
-        this.coverSample(img, sampleW, sampleH, this.stages[i].posY ?? 0.45),
+        this.coverSample(img, sampleW, sampleH, this.stages[i].posY ?? 0.2),
       );
 
       // Register every frame to frame 1: the generated series drifts a few
@@ -516,7 +516,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       for (let i = 0; i < frames.length - 1; i++) {
         const built = this.buildGarmentPanels(
           frames[i], frames[i + 1], images[i + 1], sampleW, sampleH,
-          this.stages[i + 1].posY ?? 0.45, shifts[i], shifts[i + 1],
+          this.stages[i + 1].posY ?? 0.2, shifts[i], shifts[i + 1],
         );
         this.garments.push(built.garment);
         this.piecesByPair.push(built.pieces);
@@ -582,7 +582,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /** Draw an image with CSS-cover semantics into a small sampling canvas. */
-  private coverSample(img: HTMLImageElement, w: number, h: number, posY = 0.45): Uint8ClampedArray {
+  private coverSample(img: HTMLImageElement, w: number, h: number, posY = 0.2): Uint8ClampedArray {
     const off = document.createElement('canvas');
     off.width = w;
     off.height = h;
@@ -609,7 +609,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     nextImg: HTMLImageElement,
     w: number,
     h: number,
-    posY = 0.45,
+    posY = 0.2,
     prevShift: { dx: number; dy: number } = { dx: 0, dy: 0 },
     nextShift: { dx: number; dy: number } = { dx: 0, dy: 0 },
   ): { garment: HTMLCanvasElement | null; pieces: FabricPiece[] } {
