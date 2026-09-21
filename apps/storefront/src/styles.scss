@@ -18,6 +18,7 @@
   --warn: #e0a93b;
   --danger: #e56b6b;
   --header-h: 3.6rem;
+  --wrap-max: 1280px;
   --wrap-x: clamp(20px, 4vw, 56px);
   --radius: 16px;
 }
@@ -51,21 +52,34 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-main { max-width: 1160px; margin: 0 auto; padding: 0 16px 5rem; }
+/* ONE container for the whole site: header, hero, page content and footer
+   all share --wrap-max + --wrap-x, so every section starts on the same
+   left edge at every width. */
+main {
+  max-width: var(--wrap-max);
+  margin: 0 auto;
+  padding-inline: var(--wrap-x);
+  padding-bottom: 5rem;
+}
+/* A .wrap-col nested inside main must not indent a second time. */
+main .wrap-col { max-width: none; padding-inline: 0; }
 a { color: inherit; }
 h1, h2 { font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 0.01em; }
 h2 { font-size: clamp(1.3rem, 3vw, 1.8rem); border-bottom: 1px solid var(--line); padding-bottom: 0.5rem; }
 code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary); font-weight: 600; }
 
 /* ---------- shell ---------- */
-.wrap-col { max-width: 1280px; margin-inline: auto; padding-inline: clamp(20px, 4vw, 56px); }
+.wrap-col { max-width: var(--wrap-max); margin-inline: auto; padding-inline: var(--wrap-x); }
 .site-header {
   position: sticky; top: 0; z-index: 20;
   display: block;
   background: transparent;
   border-bottom: 1px solid transparent;
   transition: background 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease, box-shadow 0.3s ease;
-  .header-inner { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; align-items: center; justify-content: space-between; padding: 0.8rem 0; width: 100%; }
+  /* padding-block only — the inline padding comes from .wrap-col, which
+     this element also carries. A `padding` shorthand here would zero it
+     and pull the logo out of alignment with every section below. */
+  .header-inner { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; align-items: center; justify-content: space-between; padding-block: 0.8rem; width: 100%; }
   &.scrolled {
     background: color-mix(in srgb, var(--canvas) 88%, transparent);
     backdrop-filter: blur(12px);
@@ -114,7 +128,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 2px;
 }
 .site-footer {
-  padding: 2.5rem 16px; border-top: 1px solid var(--line);
+  padding-block: 2.5rem; border-top: 1px solid var(--line);
   color: var(--muted); text-align: center; font-size: 0.8rem;
 }
 .footer-grid { display: flex; flex-direction: column; gap: 0.4rem; align-items: center;
@@ -503,16 +517,6 @@ select, input, textarea {
 .hero-card { animation-delay: 400ms; }
 .hero-slider { animation-delay: 480ms; }
 
-.skip-link {
-  position: absolute;
-  top: calc(env(safe-area-inset-top) + var(--header-h, 3.6rem) + 1rem);
-  right: max(clamp(20px, 4vw, 56px), env(safe-area-inset-right));
-  z-index: 3;
-  font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--ink); text-decoration: none;
-  border-bottom: 2px solid var(--primary); padding-bottom: 0.2rem;
-  &:hover { color: var(--primary); }
-}
 
 /* reduced-motion: the same acts, static */
 .dressing-static {

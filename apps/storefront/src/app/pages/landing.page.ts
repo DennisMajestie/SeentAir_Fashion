@@ -118,7 +118,6 @@ interface FabricPiece {
               <button type="button" class="slider-arrow" (click)="next()" aria-label="Next act">→</button>
             </div>
           </div>
-          <a class="skip-link" href="#drops">Explore ↓</a>
         </div>
       </section>
     } @else {
