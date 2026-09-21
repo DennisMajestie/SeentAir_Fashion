@@ -37,9 +37,25 @@ const ROLES = [
                       @for (r of roles; track r) { <option [value]="r">{{ r.replaceAll('_', ' ') }}</option> }
                     </select>
                     <button class="cta small ghost" (click)="changeRole(u)">Apply</button>
+                    <button class="link" type="button" (click)="inspect(u.id)">
+                      {{ detail()?.['id'] === u.id ? 'hide' : 'details' }}
+                    </button>
                   </div>
                 </td>
               </tr>
+              @if (detail(); as d) {
+                @if (d['id'] === u.id) {
+                  <tr>
+                    <td colspan="5" class="small">
+                      <span class="chip acid">account</span>
+                      <code>{{ d['id'] }}</code> ·
+                      created {{ dt(d['createdAt']) | date: 'medium' }} ·
+                      last login {{ d['lastLoginAt'] ? (dt(d['lastLoginAt']) | date: 'medium') : 'never' }}
+                      <span class="muted"> — copy the id when adding a partner record.</span>
+                    </td>
+                  </tr>
+                }
+              }
             }
           </tbody>
         </table>
@@ -75,6 +91,18 @@ export class StaffAdminPage implements OnInit {
   nu = { name: '', email: '', phone: '', password: '', role: 'sales' };
 
   ngOnInit(): void { this.load(); }
+  /** One staff record, read on demand (GET /users/:id). */
+  readonly detail = signal<Record<string, unknown> | null>(null);
+  dt(v: unknown): string | null { return v ? String(v) : null; }
+
+  inspect(id: string): void {
+    if (this.detail()?.['id'] === id) { this.detail.set(null); return; }
+    this.api.user(id).subscribe({
+      next: (u) => this.detail.set(u),
+      error: (e) => this.error.set(e?.error?.message ?? 'Could not load that account.'),
+    });
+  }
+
   private load(): void {
     this.api.users().subscribe((res) => {
       const rows = res.data as unknown as UserRow[];

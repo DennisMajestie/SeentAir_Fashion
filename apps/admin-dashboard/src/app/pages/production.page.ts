@@ -108,6 +108,17 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
               @if (nextStage(stage); as next) {
                 <button class="cta small" (click)="move(batch.id, next)">→ {{ next }}</button>
               }
+              <button class="link" type="button" (click)="inspect(batch.id)">
+                {{ detail()?.['id'] === batch.id ? 'hide' : 'details' }}
+              </button>
+              @if (detail(); as d) {
+                @if (d['id'] === batch.id) {
+                  <p class="small muted">
+                    Stage {{ d['stage'] }} · planned {{ d['plannedDate'] || '—' }} ·
+                    started {{ d['startedAt'] || '—' }} · completed {{ d['completedAt'] || '—' }}
+                  </p>
+                }
+              }
             </div>
           }
         </div>
@@ -159,6 +170,16 @@ export class ProductionPage implements OnInit {
         error: () => undefined,
       });
     }
+  }
+
+  /** Full record for one batch (dates the board summary omits). */
+  readonly detail = signal<Record<string, unknown> | null>(null);
+  inspect(batchId: string): void {
+    if (this.detail()?.['id'] === batchId) { this.detail.set(null); return; }
+    this.api.batch(batchId).subscribe({
+      next: (b) => this.detail.set(b),
+      error: (e) => this.fail(e, 'Could not load that batch.'),
+    });
   }
 
   costOf(batchId: string): Record<string, unknown> | null {

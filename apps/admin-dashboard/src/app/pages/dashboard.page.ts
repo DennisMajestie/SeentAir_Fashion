@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ApiService, Dashboard } from '../api.service';
+import { ApiService, Dashboard, LowStock } from '../api.service';
 
 /** The owner's one-glance home (UX requirement #5): sales today, profit/loss,
     low stock, production status, pending approvals. */
@@ -63,6 +63,27 @@ import { ApiService, Dashboard } from '../api.service';
             <p class="error">{{ m.name }}: {{ m.currentQuantity }} left (reorder at {{ m.reorderThreshold }})</p>
           }
         </section>
+
+        <section class="panel">
+          <h2>Reorder list</h2>
+          @if (lowStock(); as ls) {
+            <p class="muted small">Materials under their reorder level, and finished
+              variants at or below {{ ls.variantThreshold }} units.</p>
+            @if (ls.materials.length === 0 && ls.variants.length === 0) {
+              <p class="success">Nothing needs reordering.</p>
+            }
+            @for (m of ls.materials; track m.id) {
+              <p><span class="chip bad">material</span> {{ m.name }} —
+                {{ m.currentQuantity }} {{ m.unit }} left, reorder at {{ m.reorderThreshold }}</p>
+            }
+            @for (v of ls.variants; track v.variantId) {
+              <p><span class="chip warn">finished</span>
+                <code>{{ skuFor(v.variantId) }}</code> — {{ v.currentQuantity }} units left</p>
+            }
+          } @else {
+            <p class="muted">Loading reorder list…</p>
+          }
+        </section>
       </div>
     } @else {
       <p class="muted">Loading dashboard…</p>
@@ -73,9 +94,26 @@ export class DashboardPage implements OnInit {
   private readonly api = inject(ApiService);
   readonly dashboard = signal<Dashboard | null>(null);
   readonly bestSellers = signal<Array<{ sku: string; productName: string; unitsSold: number; revenue: number }>>([]);
+  readonly lowStock = signal<LowStock | null>(null);
+  /** variantId → SKU, so the reorder list names pieces instead of UUIDs. */
+  private readonly skus = signal<Map<string, string>>(new Map());
 
   ngOnInit(): void {
     this.api.dashboard().subscribe((d) => this.dashboard.set(d));
     this.api.bestSellers().subscribe((b) => this.bestSellers.set(b));
+    this.api.lowStock().subscribe((ls) => this.lowStock.set(ls));
+    this.api.products().subscribe((res) => {
+      const map = new Map<string, string>();
+      for (const p of res.data) {
+        for (const v of (p['variants'] as Array<Record<string, unknown>>) ?? []) {
+          map.set(String(v['id']), String(v['sku']));
+        }
+      }
+      this.skus.set(map);
+    });
+  }
+
+  skuFor(variantId: string): string {
+    return this.skus().get(variantId) ?? variantId.slice(0, 8);
   }
 }

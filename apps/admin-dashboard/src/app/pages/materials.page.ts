@@ -71,12 +71,25 @@ interface MaterialRow { id: string; name: string; unit: string; currentQuantity:
       <tbody>
         @for (m of materials(); track m.id) {
           <tr>
-            <td><strong>{{ m.name }}</strong></td>
+            <td><button class="link" type="button" (click)="inspect(m.id)"><strong>{{ m.name }}</strong></button></td>
             <td class="mono">{{ m.unit }}</td>
             <td class="mono">{{ m.currentQuantity }}</td>
             <td class="mono">{{ m.reorderThreshold }}</td>
             <td><span class="chip" [class.bad]="m.lowStock" [class.ok]="!m.lowStock">{{ m.lowStock ? 'LOW STOCK' : 'OK' }}</span></td>
           </tr>
+          @if (detail(); as d) {
+            @if (d.id === m.id) {
+              <tr>
+                <td colspan="5">
+                  <span class="chip acid">live ledger</span>
+                  {{ d.name }} — {{ d.currentQuantity }} {{ d.unit }} on hand,
+                  reorder at {{ d.reorderThreshold }}.
+                  {{ d.lowStock ? 'Below threshold: reorder now.' : 'Above threshold.' }}
+                  <button class="link" type="button" (click)="detail.set(null)">close</button>
+                </td>
+              </tr>
+            }
+          }
         }
       </tbody>
     </table>
@@ -89,15 +102,32 @@ export class MaterialsAdminPage implements OnInit {
   readonly materials = signal<MaterialRow[]>([]);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
-  readonly lowStock = computed(() => this.materials().filter((m) => m.lowStock));
-  readonly lowStockNames = computed(() => this.lowStock().map((m) => `${m.name} (${m.currentQuantity} ${m.unit})`).join(' · '));
+  /** Server-authoritative reorder list (GET /materials/low-stock). */
+  readonly lowStock = signal<MaterialRow[]>([]);
+  readonly lowStockNames = computed(() =>
+    this.lowStock().map((m) => `${m.name} (${m.currentQuantity} ${m.unit})`).join(' · '),
+  );
+  /** Row drill-down: a fresh read of one material's derived quantity. */
+  readonly detail = signal<MaterialRow | null>(null);
 
   nm = { name: '', unit: '', reorderThreshold: 0 };
   pu = { materialId: '', quantity: 0, cost: 0, note: '', approvalRequestId: '' };
   us = { materialId: '', quantityUsed: 0, batchId: '' };
 
   ngOnInit(): void { this.load(); }
-  private load(): void { this.api.materials().subscribe((res) => this.materials.set(res as unknown as MaterialRow[])); }
+  private load(): void {
+    this.api.materials().subscribe((res) => this.materials.set(res as unknown as MaterialRow[]));
+    this.api.lowStockMaterials().subscribe((res) => this.lowStock.set(res as unknown as MaterialRow[]));
+  }
+
+  /** Re-read one material so the row shows the ledger as it stands now. */
+  inspect(id: string): void {
+    if (this.detail()?.id === id) { this.detail.set(null); return; }
+    this.api.material(id).subscribe({
+      next: (m) => this.detail.set(m as unknown as MaterialRow),
+      error: (e) => this.fail(e, 'Could not load that material.'),
+    });
+  }
   private ok(msg: string): void { this.message.set(msg); this.error.set(null); this.load(); }
   private fail(err: { error?: { message?: string } }, fb: string): void { this.error.set(err?.error?.message ?? fb); this.message.set(null); }
 

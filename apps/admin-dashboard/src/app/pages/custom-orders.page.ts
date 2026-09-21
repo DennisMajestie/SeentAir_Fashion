@@ -62,7 +62,29 @@ const NEXT: Record<string, string | null> = {
           @if (r.status === 'sample_in_production') {
             <span class="chip warn">WAITING FOR BUYER SAMPLE DECISION</span>
           }
+          <button class="link" type="button" (click)="inspect(r.id)">
+            {{ detailId() === r.id ? 'hide details' : 'full request & quotation' }}
+          </button>
         </div>
+
+        @if (detailId() === r.id) {
+          <div class="panel" style="margin-bottom:0">
+            @if (detail(); as d) {
+              <p class="small"><strong>Full request</strong> — submitted {{ d['createdAt'] }},
+                last updated {{ d['updatedAt'] }}. Status {{ d['status'] }}.</p>
+              <p class="small muted">{{ d['description'] }}</p>
+            }
+            @if (quotation(); as q) {
+              <p class="small">Quotation on file:
+                <span class="naira">₦{{ num(q['amount']) | number: '1.0-2' }}</span>
+                — issued {{ q['createdAt'] }}
+                @if (q['note']) { · {{ q['note'] }} }
+              </p>
+            } @else {
+              <p class="small muted">No quotation issued yet.</p>
+            }
+          </div>
+        }
       </section>
     }
     @if (requests().length === 0) { <p class="muted">No custom design requests yet.</p> }
@@ -75,6 +97,10 @@ export class CustomAdminPage implements OnInit {
   readonly requests = signal<CustomRow[]>([]);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
+  /** Drill-down: the full request record plus the quotation on file. */
+  readonly detailId = signal<string | null>(null);
+  readonly detail = signal<Record<string, unknown> | null>(null);
+  readonly quotation = signal<Record<string, unknown> | null>(null);
   quoteAmounts: Record<string, number> = {};
   payAmounts: Record<string, number> = {};
   payMethods: Record<string, string> = {};
@@ -87,6 +113,23 @@ export class CustomAdminPage implements OnInit {
       for (const r of rows) this.payMethods[r.id] ??= 'bank_transfer';
     });
   }
+  num(v: unknown): number { return Number(v ?? 0); }
+
+  inspect(id: string): void {
+    if (this.detailId() === id) { this.detailId.set(null); return; }
+    this.detailId.set(id);
+    this.detail.set(null);
+    this.quotation.set(null);
+    this.api.customOrder(id).subscribe({
+      next: (d) => this.detail.set(d),
+      error: (e) => this.fail(e, 'Could not load that request.'),
+    });
+    this.api.customQuotation(id).subscribe({
+      next: (q) => this.quotation.set(q),
+      error: () => this.quotation.set(null), // none issued yet
+    });
+  }
+
   private ok(m: string): void { this.message.set(m); this.error.set(null); this.load(); }
   private fail(e: { error?: { message?: string } }, fb: string): void { this.error.set(e?.error?.message ?? fb); this.message.set(null); }
 

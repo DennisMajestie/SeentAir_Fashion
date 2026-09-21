@@ -64,6 +64,9 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
             <td class="mono">₦{{ p.basePrice | number: '1.0-2' }}</td>
             <td>
               @for (v of p.variants; track v.id) { <span class="chip" style="margin:0 2px 2px 0">{{ v.sku }}</span> }
+              <button class="link" type="button" (click)="toggleVariants(p.id)">
+                {{ expanded() === p.id ? 'hide' : 'details' }}
+              </button>
             </td>
             <td>
               <div class="actions" style="margin:0">
@@ -76,6 +79,26 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
               </div>
             </td>
           </tr>
+          @if (expanded() === p.id) {
+            <tr>
+              <td colspan="5">
+                <table class="table compact">
+                  <thead><tr><th>SKU</th><th>Size</th><th>Colour</th><th>Price</th><th>Availability</th></tr></thead>
+                  <tbody>
+                    @for (v of variantRows(); track v['id']) {
+                      <tr>
+                        <td><code>{{ v['sku'] }}</code></td>
+                        <td class="mono">{{ v['size'] || '—' }}</td>
+                        <td>{{ v['colour'] || '—' }}</td>
+                        <td class="mono">₦{{ variantPrice(v, p.basePrice) | number: '1.0-2' }}</td>
+                        <td><span class="chip" [class.ok]="v['availabilityStatus'] === 'in_stock'">{{ v['availabilityStatus'] }}</span></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          }
         }
       </tbody>
     </table>
@@ -89,6 +112,9 @@ export class CatalogueAdminPage implements OnInit {
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   readonly collectionRows = signal<Array<{ id: string; name: string }>>([]);
+  /** Expanded product id + its variant rows, read fresh from the API. */
+  readonly expanded = signal<string | null>(null);
+  readonly variantRows = signal<Array<Record<string, unknown>>>([]);
   newPrices: Record<string, number> = {};
   approvals: Record<string, string> = {};
   newCollection = '';
@@ -99,6 +125,19 @@ export class CatalogueAdminPage implements OnInit {
   private load(): void {
     this.api.products().subscribe((res) => this.products.set(res.data as unknown as ProductRow[]));
     this.api.collections().subscribe((res) => this.collectionRows.set(res));
+  }
+
+  variantPrice(variant: Record<string, unknown>, basePrice: number): number {
+    const override = variant['priceOverride'];
+    return override === null || override === undefined ? basePrice : Number(override);
+  }
+
+  toggleVariants(productId: string): void {
+    if (this.expanded() === productId) { this.expanded.set(null); return; }
+    this.api.productVariants(productId).subscribe({
+      next: (rows) => { this.variantRows.set(rows); this.expanded.set(productId); },
+      error: () => this.error.set('Could not load variants.'),
+    });
   }
 
   createCollection(): void {

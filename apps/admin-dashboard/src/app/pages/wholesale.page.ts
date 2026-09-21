@@ -33,9 +33,25 @@ interface TierRow { id: string; name: string; discountPercent: number; ruleDescr
               <div class="actions" style="margin:0">
                 <button class="cta small" (click)="decide(a, 'approved')">Approve</button>
                 <button class="danger" (click)="decide(a, 'rejected')">Reject</button>
+                <button class="link" type="button" (click)="inspect(a.id)">
+                  {{ detail()?.['id'] === a.id ? 'hide' : 'details' }}
+                </button>
               </div>
             </td>
           </tr>
+          @if (detail(); as d) {
+            @if (d['id'] === a.id) {
+              <tr>
+                <td colspan="5" class="small">
+                  <span class="chip acid">account on file</span>
+                  Status {{ d['status'] }} ·
+                  tier {{ tierName(d) }} ·
+                  applied {{ dt(d['createdAt']) | date: 'medium' }}
+                  @if (d['reviewedAt']) { · reviewed {{ dt(d['reviewedAt']) | date: 'medium' }} }
+                </td>
+              </tr>
+            }
+          }
         }
       </tbody>
     </table>
@@ -84,6 +100,8 @@ export class WholesaleAdminPage implements OnInit {
   private readonly api = inject(ApiService);
   readonly accounts = signal<AccountRow[]>([]);
   readonly tiers = signal<TierRow[]>([]);
+  /** One account's full record, read on demand. */
+  readonly detail = signal<Record<string, unknown> | null>(null);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   tierChoice: Record<string, string> = {};
@@ -100,6 +118,21 @@ export class WholesaleAdminPage implements OnInit {
     });
     this.api.tiers().subscribe((res) => this.tiers.set(res as unknown as TierRow[]));
   }
+  /** Read one account back (GET /wholesale/accounts/:id). */
+  dt(v: unknown): string | null { return v ? String(v) : null; }
+
+  inspect(id: string): void {
+    if (this.detail()?.['id'] === id) { this.detail.set(null); return; }
+    this.api.wholesaleAccount(id).subscribe({
+      next: (a) => this.detail.set(a),
+      error: (e) => this.fail(e, 'Could not load that account.'),
+    });
+  }
+  tierName(account: Record<string, unknown>): string {
+    const tier = account['tier'] as { name?: string } | null;
+    return tier?.name ?? 'none';
+  }
+
   private ok(m: string): void { this.message.set(m); this.error.set(null); this.load(); }
   private fail(e: { error?: { message?: string } }, fb: string): void { this.error.set(e?.error?.message ?? fb); this.message.set(null); }
 

@@ -93,9 +93,27 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
                   @for (s of legStatuses; track s) { <option [value]="s">{{ s.replaceAll('_', ' ') }}</option> }
                 </select>
                 <button class="cta small ghost" (click)="setStatus(l)">Set</button>
+                <button class="link" type="button" (click)="track(l.id)">
+                  {{ trackingId() === l.id ? 'hide' : 'track' }}
+                </button>
               </div>
             </td>
           </tr>
+          @if (trackingId() === l.id) {
+            <tr>
+              <td colspan="7">
+                @if (tracking(); as t) {
+                  <span class="chip acid">carrier {{ t['carrier'] }}</span>
+                  <span class="mono small"> {{ t['trackingRef'] }}</span> ·
+                  {{ t['status'] }}
+                  @if (t['dispatchedAt']) { · dispatched {{ t['dispatchedAt'] }} }
+                  @if (t['deliveredAt']) { · delivered {{ t['deliveredAt'] }} }
+                } @else {
+                  <span class="muted small">Fetching tracking…</span>
+                }
+              </td>
+            </tr>
+          }
         }
       </tbody>
     </table>
@@ -107,6 +125,9 @@ export class LogisticsAdminPage implements OnInit {
   private readonly api = inject(ApiService);
   readonly legs = signal<LegRow[]>([]);
   readonly zones = signal<ZoneRow[]>([]);
+  /** Per-leg carrier tracking, read on demand. */
+  readonly trackingId = signal<string | null>(null);
+  readonly tracking = signal<Record<string, unknown> | null>(null);
   readonly quoteResult = signal<number | null>(null);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
@@ -125,6 +146,17 @@ export class LogisticsAdminPage implements OnInit {
     });
     this.api.deliveryPricing().subscribe((res) => this.zones.set(res as unknown as ZoneRow[]));
   }
+  /** Carrier-side tracking for one leg (GET /deliveries/:id/tracking). */
+  track(legId: string): void {
+    if (this.trackingId() === legId) { this.trackingId.set(null); return; }
+    this.trackingId.set(legId);
+    this.tracking.set(null);
+    this.api.deliveryTracking(legId).subscribe({
+      next: (t) => this.tracking.set(t),
+      error: (e) => { this.trackingId.set(null); this.fail(e, 'Tracking unavailable for that leg.'); },
+    });
+  }
+
   private ok(m: string): void { this.message.set(m); this.error.set(null); this.load(); }
   private fail(e: { error?: { message?: string } }, fb: string): void { this.error.set(e?.error?.message ?? fb); this.message.set(null); }
 

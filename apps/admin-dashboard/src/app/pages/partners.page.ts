@@ -19,7 +19,7 @@ interface DistRow { period: string; totalProfit: number; reinvestmentAmount: num
       <section class="panel" style="grid-column: span 2; min-width: 0">
         <p class="section-label" style="margin-top:0">Partners <span class="count">[{{ partners().length | number: '2.0' }}] · {{ allocated() }}% of 40% allocated</span></p>
         <table class="table">
-          <thead><tr><th>Partner</th><th>Equity</th><th>Shares</th><th>Invested</th></tr></thead>
+          <thead><tr><th>Partner</th><th>Equity</th><th>Shares</th><th>Invested</th><th></th></tr></thead>
           <tbody>
             @for (p of partners(); track p.id) {
               <tr>
@@ -27,7 +27,28 @@ interface DistRow { period: string; totalProfit: number; reinvestmentAmount: num
                 <td class="mono">{{ p.equityPercentage }}%</td>
                 <td class="mono">{{ (p.equityPercentage * 10000) | number }}</td>
                 <td class="mono">₦{{ p.investedAmount | number: '1.0-0' }}</td>
+                <td>
+                  <button class="link" type="button" (click)="viewAs(p.id)">
+                    {{ viewingId() === p.id ? 'hide' : 'view their dashboard' }}
+                  </button>
+                </td>
               </tr>
+              @if (viewingId() === p.id) {
+                <tr>
+                  <td colspan="5">
+                    @if (partnerView(); as v) {
+                      <p class="small"><span class="chip acid">as the partner sees it</span>
+                        Equity {{ v['equityPercentage'] }}% ·
+                        invested <span class="naira">₦{{ num(v['investedAmount']) | number: '1.0-0' }}</span> ·
+                        total received <span class="naira">₦{{ num(v['totalReceived']) | number: '1.0-2' }}</span></p>
+                      <p class="small muted">Partners never see customer data — this is the same
+                        read-only view served to their portal.</p>
+                    } @else {
+                      <p class="small muted">Loading partner view…</p>
+                    }
+                  </td>
+                </tr>
+              }
             }
           </tbody>
         </table>
@@ -84,6 +105,9 @@ export class PartnersAdminPage implements OnInit {
   private readonly api = inject(ApiService);
   readonly partners = signal<PartnerRow[]>([]);
   readonly distributions = signal<DistRow[]>([]);
+  /** Partner-side dashboard, viewed by staff. */
+  readonly viewingId = signal<string | null>(null);
+  readonly partnerView = signal<Record<string, unknown> | null>(null);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   np = { userId: '', equityPercentage: 0, investedAmount: 0 };
@@ -100,6 +124,19 @@ export class PartnersAdminPage implements OnInit {
     });
   }
   allocated(): number { return this.partners().reduce((s, p) => s + Number(p.equityPercentage), 0); }
+  /** The owner checking a partner's own dashboard (GET /partners/:id/dashboard). */
+  num(v: unknown): number { return Number(v ?? 0); }
+
+  viewAs(partnerId: string): void {
+    if (this.viewingId() === partnerId) { this.viewingId.set(null); return; }
+    this.viewingId.set(partnerId);
+    this.partnerView.set(null);
+    this.api.partnerDashboard(partnerId).subscribe({
+      next: (v) => this.partnerView.set(v),
+      error: (e) => { this.viewingId.set(null); this.fail(e, 'Could not load that partner view.'); },
+    });
+  }
+
   private ok(m: string): void { this.message.set(m); this.error.set(null); this.load(); }
   private fail(e: { error?: { message?: string } }, fb: string): void { this.error.set(e?.error?.message ?? fb); this.message.set(null); }
 
