@@ -358,7 +358,7 @@ select, input, textarea {
   img.stage-image.active { opacity: 1; transform: scale(1); }
 }
 @media (min-width: 821px) {
-  .stage-frame img.stage-image { object-fit: cover; object-position: center 45%; }
+  .stage-frame img.stage-image { object-fit: cover; object-position: center 10%; }
 }
 .stage-canvas {
   position: absolute; inset: 0; z-index: 2; pointer-events: none;
