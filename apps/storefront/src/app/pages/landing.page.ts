@@ -16,10 +16,8 @@ interface Stage {
   image: string;
   index: string;
   act: string;      // "[ACT 01: ORIGIN FORM]"
-  metaRight: string; // "DROP 004 SPECIMEN"
   line1: string;    // black headline line
   line2: string;    // vermilion headline line
-  caption: string;
   tag: string;      // small card tag, e.g. "₦ CURATED"
   /** Vertical cover anchor (0=top … 1=bottom). Per-frame headroom trim. */
   posY?: number;
@@ -68,38 +66,53 @@ interface FabricPiece {
                 class="stage-image"
                 [class.active]="i === 0 || (engineBroken() && i <= activeStage())"
                 [src]="'assets/' + (i === 0 ? baseImage() : stage.image)"
-                [alt]="stage.caption"
+                [alt]="stage.line1"
                 [loading]="i === 0 ? 'eager' : 'lazy'"
                 [style.object-position]="'center ' + (stage.posY ?? 0.2) * 100 + '%'"
               />
             }
           </div>
           <canvas class="stage-canvas" #particleCanvas></canvas>
-          <div class="stage-meta">
-            <div class="meta-left">
-              <span>{{ stages[activeStage()].act }}</span>
-              <span>LAGOS / EDN. 2025</span>
+          <div class="hero-wrap">
+            <div class="hero-grid">
+              <div class="hero-main">
+                <h1 class="stage-label rise">{{ stages[activeStage()].line1 }}@if (stages[activeStage()].line2) { <em>{{ stages[activeStage()].line2 }}</em> }</h1>
+                <div class="hero-actions rise">
+                  <a class="btn btn-primary" routerLink="/shop">Shop the drop</a>
+                  <a class="btn btn-outline" (click)="showLookbook()">View lookbook</a>
+                </div>
+                <div class="trust-row rise">
+                  <span>Full payment</span>
+                  <span>Tracked dispatch</span>
+                  <span>12h returns</span>
+                </div>
+              </div>
+              <aside class="hero-card rise">
+                <p class="card-kicker">Series Archive</p>
+                <p class="card-tag">{{ stages[activeStage()].tag }}</p>
+              </aside>
             </div>
-            <div class="meta-right">
-              <span>{{ stages[activeStage()].metaRight }}</span>
-              <span>SERIES ARCHIVE</span>
+            <div
+              class="hero-slider rise"
+              [class.paused]="paused()"
+              (mouseenter)="pauseAuto()"
+              (mouseleave)="resumeAuto()"
+            >
+              <button type="button" class="slider-arrow" (click)="prev()" aria-label="Previous act">←</button>
+              <div class="slider-track">
+                @for (stage of stages; track stage.index; let i = $index) {
+                  <button
+                    type="button"
+                    class="slider-seg"
+                    [class.active]="i === activeStage()"
+                    [attr.aria-label]="'Go to act ' + (i + 1)"
+                    (click)="goTo(i)"
+                  ><span class="fill"></span></button>
+                }
+              </div>
+              <span class="slider-count">[{{ stages[activeStage()].index }} / 05]</span>
+              <button type="button" class="slider-arrow" (click)="next()" aria-label="Next act">→</button>
             </div>
-          </div>
-          <div class="stage-copy">
-            <h1 class="stage-label">{{ stages[activeStage()].line1 }} <em>{{ stages[activeStage()].line2 }}</em></h1>
-            <div class="stage-card">
-              <p>{{ stages[activeStage()].caption }}</p>
-              <span class="card-tag">{{ stages[activeStage()].tag }}</span>
-            </div>
-            <div class="stage-rail">
-              @for (stage of stages; track stage.index; let i = $index) {
-                <span class="rail-tick" [class.done]="i <= activeStage()"></span>
-              }
-              <span class="rail-count">[{{ stages[activeStage()].index }} / 05]</span>
-            </div>
-            @if (activeStage() === stages.length - 1) {
-              <a class="cta" routerLink="/shop">Shop the look</a>
-            }
           </div>
           <a class="skip-link" href="#drops">Explore ↓</a>
         </div>
@@ -110,8 +123,8 @@ interface FabricPiece {
         <h1 class="stage-label">The look, assembled.</h1>
         @for (stage of stages; track stage.image) {
           <figure>
-            <img [src]="'assets/' + stage.image" [alt]="stage.caption" loading="lazy" />
-            <figcaption><span>{{ stage.act }}</span> {{ stage.caption }}</figcaption>
+            <img [src]="'assets/' + stage.image" [alt]="stage.line1" loading="lazy" />
+            <figcaption><span>{{ stage.act }}</span> {{ stage.tag }}</figcaption>
           </figure>
         }
         <a class="cta" routerLink="/shop">Shop the look</a>
@@ -119,7 +132,8 @@ interface FabricPiece {
     }
 
     <section id="drops" class="grid-wrap">
-      <h2>Latest drops</h2>
+      <div class="wrap-col">
+        <h2>Latest drops</h2>
       @if (products().length === 0) {
         <p class="muted">New pieces landing soon.</p>
       } @else {
@@ -144,6 +158,7 @@ interface FabricPiece {
         </div>
         <p class="center"><a class="cta ghost" routerLink="/shop">View all products</a></p>
       }
+      </div>
     </section>
   `,
 })
@@ -152,22 +167,20 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
 
   @ViewChild('particleCanvas') canvasRef?: ElementRef<HTMLCanvasElement>;
 
+  readonly paused = signal(false);
+  private autoInterval: ReturnType<typeof setInterval> | undefined;
+
   readonly stages: Stage[] = [
-    { image: 'series-1.jpg', index: '01', act: '[ACT 01: ORIGIN FORM]', metaRight: 'DROP 004 SPECIMEN',
-      line1: 'Built to', line2: 'Be worn.',
-      caption: 'Architectural silhouettes. Raw luxury calibrated for the continental vanguard.', tag: '₦ CURATED' },
-    { image: 'series-2.jpg', index: '02', act: '[ACT 02: FOUNDATION LAYER]', metaRight: 'PIECE SPEC 01',
-      line1: 'Start with', line2: 'The tee.',
-      caption: 'Architectural silhouette cut from 280GSM Lagos loomed cotton. Dropped shoulder, boxy construct.', tag: 'BOX FIT — 280 GSM' },
-    { image: 'series-3.jpg', index: '03', act: '[ACT 03: LOWER STRUCTURE]', metaRight: 'PIECE SPEC 02',
-      line1: 'Anchor the', line2: 'Silhouette.',
-      caption: 'Utility jogger in charcoal. Heavyweight French terry, dust-resistant tailoring.', tag: 'TAPERED — 30-36' },
-    { image: 'series-4.jpg', index: '04', act: '[ACT 04: OUTER SHELL]', metaRight: 'PIECE SPEC 03',
-      line1: 'Layer the', line2: 'Hood.',
-      caption: 'Lagos Proto Hood. Heavyweight French terry, raw-edge seams, dust-resistant tailoring.', tag: 'HOOD — S-XXL' },
-    { image: 'series-5.jpg', index: '05', act: '[STAGE 05 / 05 — CURATED REVEAL]', metaRight: 'LAGOS STUDIO',
-      line1: 'The complete', line2: 'Look.',
-      caption: 'Drop 04 archival assembly · edition of 180 pieces. Every silhouette constructed in Yaba, Lagos.', tag: '3 ITEMS' },
+    { image: 'series-1.jpg', index: '01', act: '[ACT 01: ORIGIN FORM]',
+      line1: 'BE WORN.', line2: '', tag: '₦ CURATED' },
+    { image: 'series-2.jpg', index: '02', act: '[ACT 02: FOUNDATION LAYER]',
+      line1: 'THE TEE.', line2: '', tag: 'BOX FIT — 280 GSM' },
+    { image: 'series-3.jpg', index: '03', act: '[ACT 03: LOWER STRUCTURE]',
+      line1: 'THE JOGGER.', line2: '', tag: 'TAPERED — 30-36' },
+    { image: 'series-4.jpg', index: '04', act: '[ACT 04: OUTER SHELL]',
+      line1: 'THE HOOD.', line2: '', tag: 'HOOD — S-XXL' },
+    { image: 'series-5.jpg', index: '05', act: '[STAGE 05 / 05 — CURATED REVEAL]',
+      line1: 'THE LOOK.', line2: '', tag: '3 ITEMS' },
   ];
 
   readonly activeStage = signal(0);
@@ -234,6 +247,8 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     if (!this.reducedMotion) {
       window.addEventListener('scroll', this.onScroll, { passive: true });
       window.addEventListener('resize', this.onResize);
+      window.addEventListener('keydown', this.onKeydown);
+      this.startAutoAdvance();
     }
   }
 
@@ -244,11 +259,66 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     window.removeEventListener('scroll', this.onScroll);
     window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('keydown', this.onKeydown);
     clearTimeout(this.resizeTimer);
+    this.stopAutoAdvance();
   }
 
   fallbackImage(index: number): string {
     return this.fallbacks[index % this.fallbacks.length];
+  }
+
+  // ------------------------------------------------------------------
+  // Hero slider control: prev/next, segmented progress, keyboard arrows.
+  // Auto-advances every 6s; pauses on hover and under reduced motion.
+  // ------------------------------------------------------------------
+  private readonly onKeydown = (e: KeyboardEvent) => {
+    const hero = document.querySelector<HTMLElement>('.dressing-stage');
+    if (!hero) return;
+    const rect = hero.getBoundingClientRect();
+    if (rect.top > window.innerHeight || rect.bottom < 0) return;
+    if (e.key === 'ArrowRight') { this.next(); e.preventDefault(); }
+    if (e.key === 'ArrowLeft') { this.prev(); e.preventDefault(); }
+  };
+
+  private startAutoAdvance(): void {
+    this.stopAutoAdvance();
+    this.autoInterval = setInterval(() => this.next(), 6000);
+  }
+
+  private stopAutoAdvance(): void {
+    if (this.autoInterval) {
+      clearInterval(this.autoInterval);
+      this.autoInterval = undefined;
+    }
+  }
+
+  pauseAuto(): void {
+    this.paused.set(true);
+    this.stopAutoAdvance();
+  }
+
+  resumeAuto(): void {
+    this.paused.set(false);
+    if (!this.reducedMotion) this.startAutoAdvance();
+  }
+
+  goTo(i: number): void {
+    const idx = Math.max(0, Math.min(this.stages.length - 1, i));
+    this.activeStage.set(idx);
+    this.lastDrawnKey = '';
+  }
+
+  prev(): void {
+    this.goTo(this.activeStage() - 1);
+  }
+
+  next(): void {
+    this.goTo((this.activeStage() + 1) % this.stages.length);
+  }
+
+  showLookbook(): void {
+    document.querySelector<HTMLElement>('#drops')?.scrollIntoView({ behavior: this.reducedMotion ? 'auto' : 'smooth' });
   }
 
   // ------------------------------------------------------------------
