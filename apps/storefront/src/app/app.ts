@@ -18,19 +18,34 @@ import { CartService } from './cart.service';
         <nav [class.open]="menuOpen()">
           <a routerLink="/shop" (click)="menuOpen.set(false)">Shop</a>
           <a routerLink="/account" (click)="menuOpen.set(false)">Account</a>
-          <a routerLink="/cart" class="cart-chip" (click)="menuOpen.set(false)">
-            Cart
-            <span class="cart-count">{{ cart.count | number:'2.0' }}</span>
-          </a>
         </nav>
-        <button
-          class="menu-toggle"
-          [attr.aria-expanded]="menuOpen()"
-          aria-label="Toggle menu"
-          (click)="toggleMenu()"
-        >
-          <span></span><span></span><span></span>
-        </button>
+        <!-- Cart lives outside <nav> so it stays reachable at every width,
+             next to the menu toggle rather than hidden inside the menu. -->
+        <div class="header-actions">
+          <a
+            routerLink="/cart"
+            class="cart-btn"
+            [attr.aria-label]="cart.count === 1 ? 'Cart, 1 item' : 'Cart, ' + cart.count + ' items'"
+            (click)="menuOpen.set(false)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M6 8h12l-1 11.2A2 2 0 0 1 15 21H9a2 2 0 0 1-2-1.8L6 8Z" />
+              <path d="M9 8V6.2a3 3 0 0 1 6 0V8" />
+            </svg>
+            @if (cart.count > 0) {
+              <span class="cart-count">{{ cart.count }}</span>
+            }
+          </a>
+          <button
+            class="menu-toggle"
+            [attr.aria-expanded]="menuOpen()"
+            aria-label="Toggle menu"
+            (click)="toggleMenu()"
+          >
+            <span></span><span></span><span></span>
+          </button>
+        </div>
       </div>
     </header>
     <main>
