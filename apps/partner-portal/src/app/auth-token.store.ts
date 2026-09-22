@@ -2,8 +2,10 @@ import { HttpBackend, HttpClient, HttpInterceptorFn } from '@angular/common/http
 import { Injectable, inject, signal } from '@angular/core';
 import { catchError, from, switchMap, throwError } from 'rxjs';
 import { firstValueFrom } from 'rxjs';
+import { environment } from '../environments/environment';
 
-export const API_BASE = 'http://localhost:3000/api/v1';
+/** Swapped for the deployed API URL by the production build. */
+export const API_BASE = environment.apiBase;
 
 /**
  * XSS-hardened session state: the access token lives ONLY in memory (never
