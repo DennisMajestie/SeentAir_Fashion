@@ -1,6 +1,6 @@
 /* SEENTAIR — approved design system (client's Stitch project
    "Seentair Streetwear Storefront", projects/4978034307012465281).
-   Warm editorial light canvas, vermilion primary, Oswald + Inter. */
+   Warm editorial light canvas, gold accent, Oswald + Inter. */
 
 :root {
   --canvas: #fcf9f8;
@@ -11,9 +11,13 @@
   --line-2: #d6d1cf;
   --ink: #1c1b1b;
   --muted: #6f6a67;
-  --primary: #ad2c00;
-  --primary-tint: #ffdad6;
-  --on-primary: #ffffff;
+  /* Gold accent on a light canvas needs two weights: the brand gold is
+     gorgeous as a FILL (7.2:1 with ink on top) but fails as text on cream
+     (2.3:1), so type and borders use a deeper gold that passes AA (4.8:1). */
+  --primary: #8a6a18;
+  --primary-fill: #c9a24b;
+  --primary-tint: #f7efdc;
+  --on-primary: #1c1b1b;
   --ok: #1b7f3b;
   --warn: #b26a00;
   --danger: #ba1a1a;
@@ -89,7 +93,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 1.25rem; height: 1.25rem; padding-inline: 0.3rem;
     font-size: 0.62rem; font-weight: 700; color: var(--on-primary);
-    background: var(--primary); border-radius: 999px;
+    background: var(--primary-fill); border-radius: 999px;
   }
 }
 .menu-toggle {
@@ -110,7 +114,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
 }
 .announce-bar {
   margin: 0; padding: 0.45rem var(--wrap-x); text-align: center;
-  background: var(--primary); color: var(--on-primary);
+  background: var(--primary-fill); color: var(--on-primary);
   font-family: 'Inter', sans-serif; font-size: 0.68rem; font-weight: 700;
   letter-spacing: 0.14em; text-transform: uppercase;
 }
@@ -178,7 +182,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   letter-spacing: 0.1em; text-transform: uppercase;
   padding: 0.5rem 0.95rem; cursor: pointer; border-radius: 2px;
   &:hover { border-color: var(--ink); }
-  &.active { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+  &.active { background: var(--primary-fill); border-color: var(--primary-fill); color: var(--on-primary); }
 }
 .search-bar {
   width: 100%; max-width: 460px; background: var(--card);
@@ -260,7 +264,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
 .cta {
   /* Same recipe as the hero .btn: gold pill, dark text. */
   display: inline-flex; align-items: center; justify-content: center;
-  min-height: 44px; background: var(--primary); color: var(--on-primary);
+  min-height: 44px; background: var(--primary-fill); color: var(--on-primary);
   border: 1px solid transparent; padding: 0 1.8rem; cursor: pointer; border-radius: 999px;
   font-family: 'Inter', sans-serif; font-weight: 700;
   font-size: 0.82rem; letter-spacing: 0.14em; text-transform: uppercase;
@@ -369,7 +373,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   padding: 0.28rem 0.6rem; border-radius: 999px;
   font-family: 'Inter', sans-serif; font-size: 0.62rem; font-weight: 700;
   letter-spacing: 0.14em; text-transform: uppercase;
-  background: var(--primary); color: var(--on-primary);
+  background: var(--primary-fill); color: var(--on-primary);
   &.badge-out { background: var(--container-2); color: var(--muted); border: 1px solid var(--line-2); }
 }
 .quickadd-btn {
@@ -461,7 +465,7 @@ select, input, textarea {
   letter-spacing: 0.12em; text-transform: uppercase;
   transition: background-color 0.15s ease, color 0.15s ease;
   &:hover { color: var(--ink); }
-  &.active { background: var(--primary); color: var(--on-primary); }
+  &.active { background: var(--primary-fill); color: var(--on-primary); }
   &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 }
 
@@ -645,7 +649,7 @@ select, input, textarea {
   &:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
   &:hover { transform: translateY(-1px); }
 }
-.btn-primary { background: var(--primary); color: var(--on-primary);
+.btn-primary { background: var(--primary-fill); color: var(--on-primary);
   &:hover { background: color-mix(in srgb, var(--primary) 85%, #000); } }
 .btn-outline { background: color-mix(in srgb, var(--canvas) 70%, transparent);
   color: var(--ink); border-color: var(--ink);
@@ -702,7 +706,7 @@ select, input, textarea {
 .slider-seg {
   flex: 1; height: 4px; padding: 0; border: 0; border-radius: 999px;
   background: var(--line-2); cursor: pointer; overflow: hidden;
-  .fill { display: block; height: 100%; width: 0; background: var(--primary); border-radius: inherit; }
+  .fill { display: block; height: 100%; width: 0; background: var(--primary-fill); border-radius: inherit; }
   &.active .fill { animation: seg-fill 6s linear forwards; }
   @keyframes seg-fill { from { width: 0%; } to { width: 100%; } }
 }
