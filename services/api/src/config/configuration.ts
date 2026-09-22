@@ -1,13 +1,10 @@
+import { databaseConnection } from './database-connection';
+
 // Currency and locale are configuration, never hardcoded (Open Question #6).
 export default () => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
-  database: {
-    host: process.env.DB_HOST ?? 'localhost',
-    port: parseInt(process.env.DB_PORT ?? '5432', 10),
-    user: process.env.DB_USER ?? 'postgres',
-    password: process.env.DB_PASSWORD ?? '',
-    name: process.env.DB_NAME ?? 'seentair_dev',
-  },
+  // Managed DATABASE_URL or discrete DB_* vars, with SSL where required.
+  database: databaseConnection(),
   jwt: {
     secret: process.env.JWT_SECRET ?? 'dev-only-secret',
     accessTtl: process.env.JWT_ACCESS_TTL ?? '900s',

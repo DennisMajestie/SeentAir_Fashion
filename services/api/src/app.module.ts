@@ -4,6 +4,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import configuration from './config/configuration';
+import type { DatabaseConnection } from './config/database-connection';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { AccessGuard } from './common/guards/access.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -35,12 +36,9 @@ import { PartnersModule } from './modules/partners/partners.module';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('database.host'),
-        port: config.get<number>('database.port'),
-        username: config.get<string>('database.user'),
-        password: config.get<string>('database.password'),
-        database: config.get<string>('database.name'),
+        type: 'postgres' as const,
+        // DATABASE_URL (managed hosts) or discrete DB_* vars, plus SSL.
+        ...config.get<DatabaseConnection>('database')!,
         autoLoadEntities: true,
         // Schema changes go through migrations only — never synchronize.
         synchronize: false,
