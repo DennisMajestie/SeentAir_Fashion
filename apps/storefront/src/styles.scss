@@ -773,7 +773,16 @@ select, input, textarea {
   .hero-wrap { max-height: 62%; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
   .hero-grid { grid-template-columns: 1fr; gap: 0; }
   .hero-main { grid-column: 1; padding: 14px 16px 12px; }
-  .hero-card { display: none; }
+  /* The archive card survives on phones as a slim tag strip above the
+     headline — kicker + "₦ CURATED"-style tag only; its title and
+     caption duplicate the headline, so they stay hidden here. */
+  .hero-card {
+    grid-column: 1; order: -1; align-self: flex-start;
+    flex-direction: row; align-items: baseline; gap: 0.6rem;
+    width: fit-content; padding: 6px 14px; margin: 0 0 8px 16px;
+    .card-rule, .card-title, .card-desc { display: none; }
+    .card-tag { font-size: 0.95rem; }
+  }
   .stage-label { font-size: clamp(30px, 9vw, 44px); }
   .stage-lede { font-size: 13px; margin-top: 8px;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
