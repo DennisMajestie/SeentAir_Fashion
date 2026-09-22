@@ -7,6 +7,9 @@ import { CartService } from './cart.service';
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, DecimalPipe],
   template: `
+    <p class="announce-bar">
+      Drop 04 — Harmattan is live · Lagos dispatch within 24h · Full payment, 12-hour returns
+    </p>
     <header class="site-header" [class.scrolled]="scrolled()">
       <div class="wrap-col header-inner">
         <a routerLink="/" class="logo" aria-label="SEENTAIR home">
@@ -35,10 +38,34 @@ import { CartService } from './cart.service';
     </main>
     <footer class="site-footer">
       <div class="wrap-col">
-        <div class="footer-grid">
-          <span class="logo-footer"><img src="assets/logo.jpeg" alt="SEENTAIR" width="180" height="36" /></span>
-          <span>Streetwear manufactured in-house — one factory, no middlemen.</span>
+        <div class="footer-cols">
+          <div class="footer-col footer-brand">
+            <span class="logo-footer"><img src="assets/logo.jpeg" alt="SEENTAIR" width="180" height="36" /></span>
+            <p>Streetwear manufactured in-house at our Yaba, Lagos factory — one atelier, no middlemen.</p>
+          </div>
+          <nav class="footer-col" aria-label="Shop">
+            <h4>Shop</h4>
+            <a routerLink="/shop">All products</a>
+            <a routerLink="/shop">Drop 04 — Harmattan</a>
+            <a routerLink="/shop">Studio Essentials</a>
+          </nav>
+          <nav class="footer-col" aria-label="Help">
+            <h4>Help</h4>
+            <a routerLink="/policies" fragment="shipping">Shipping &amp; dispatch</a>
+            <a routerLink="/policies" fragment="returns">Returns — 12h window</a>
+            <a routerLink="/policies" fragment="payments">Payments</a>
+            <a routerLink="/policies" fragment="contact">Contact us</a>
+          </nav>
+          <nav class="footer-col" aria-label="Account">
+            <h4>Account</h4>
+            <a routerLink="/account">Sign in / register</a>
+            <a routerLink="/account">Your orders</a>
+            <a routerLink="/cart">Cart</a>
+          </nav>
+        </div>
+        <div class="footer-legal">
           <span class="mono">© 2026 SEENTAIR LIMITED // ATELIER SPEC 01</span>
+          <span class="mono">Secure payments via Paystack · Delivery by GIGL</span>
         </div>
       </div>
     </footer>

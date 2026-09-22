@@ -21,6 +21,8 @@ export interface Product {
   description: string | null;
   category: string | null;
   basePrice: number;
+  collection: { id: string; name: string } | null;
+  createdAt: string;
   variants: ProductVariant[];
 }
 

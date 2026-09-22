@@ -24,6 +24,12 @@ import { CartService } from '../cart.service';
         <div class="detail-body">
           <p class="sku-line">{{ selected()?.sku || '—' }} // {{ p.category }}</p>
           <h1>{{ p.name }}</h1>
+          @if (reviews().length > 0) {
+            <p class="stars-line">
+              <span class="stars">{{ starString(avgRating()) }}</span>
+              <span class="muted small">{{ avgRating() | number: '1.1-1' }} · {{ reviews().length }} review(s)</span>
+            </p>
+          }
           <p class="price" style="font-size:1.5rem">₦{{ currentPrice() | number: '1.0-2' }}</p>
           <p class="muted">{{ p.description }}</p>
 
@@ -31,7 +37,10 @@ import { CartService } from '../cart.service';
             <p class="section-label">Select size <span class="count">// {{ sizes().length }}</span></p>
             <div class="spec-chips">
               @for (s of sizes(); track s) {
-                <button class="spec-chip" [class.active]="size() === s" (click)="size.set(s)">{{ s }}</button>
+                <button class="spec-chip" [class.active]="size() === s"
+                  [disabled]="sizeSoldOut(s)" (click)="size.set(s)">
+                  {{ s }}@if (sizeSoldOut(s)) { <span class="chip-out">×</span> }
+                </button>
               }
             </div>
           }
@@ -39,7 +48,8 @@ import { CartService } from '../cart.service';
             <p class="section-label">Select colour <span class="count">// {{ colours().length }}</span></p>
             <div class="spec-chips">
               @for (c of colours(); track c) {
-                <button class="spec-chip" [class.active]="colour() === c" (click)="colour.set(c)">{{ c }}</button>
+                <button class="spec-chip" [class.active]="colour() === c"
+                  [disabled]="colourSoldOut(c)" (click)="colour.set(c)">{{ c }}</button>
               }
             </div>
           }
@@ -52,10 +62,18 @@ import { CartService } from '../cart.service';
           </span>
 
           <p style="margin-top:1.4rem">
-            <button class="cta" style="width:100%" (click)="addToCart()" [disabled]="!selected()">
-              {{ selected() ? 'Add to cart — ₦' + (currentPrice() * quantity | number: '1.0-2') : 'This size/colour combination is unavailable' }}
+            <button class="cta" style="width:100%" (click)="addToCart()"
+              [disabled]="!selected() || selectedSoldOut()">
+              @if (!selected()) { This size/colour combination is unavailable }
+              @else if (selectedSoldOut()) { Sold out — {{ selected()!.size }} / {{ selected()!.colour }} }
+              @else if (selectedMadeToOrder()) { Order — made to your measurements }
+              @else { Add to cart — ₦{{ currentPrice() * quantity | number: '1.0-2' }} }
             </button>
           </p>
+          @if (selectedMadeToOrder()) {
+            <p class="muted small">Cut in the Yaba atelier after your order — allow a 3-week lead time.
+              Custom pieces are excluded from the 12-hour returns window.</p>
+          }
           @if (added()) {
             <p class="success">Added — <a routerLink="/cart">view cart</a> or keep browsing.</p>
           }
@@ -123,6 +141,31 @@ export class ProductPage implements OnInit {
     const p = this.product();
     if (!p) return 0;
     return this.selected()?.priceOverride ?? p.basePrice;
+  }
+
+  avgRating(): number {
+    const rows = this.reviews();
+    return rows.length ? rows.reduce((s, r) => s + r.rating, 0) / rows.length : 0;
+  }
+  starString(avg: number): string {
+    const full = Math.round(avg);
+    return '★'.repeat(full) + '☆'.repeat(5 - full);
+  }
+
+  /** A size is offered but gone when every variant carrying it is out of stock. */
+  sizeSoldOut(size: string): boolean {
+    const rows = (this.product()?.variants ?? []).filter((v) => v.size === size);
+    return rows.length > 0 && rows.every((v) => v.availabilityStatus === 'out_of_stock');
+  }
+  colourSoldOut(colour: string): boolean {
+    const rows = (this.product()?.variants ?? []).filter((v) => v.colour === colour);
+    return rows.length > 0 && rows.every((v) => v.availabilityStatus === 'out_of_stock');
+  }
+  selectedSoldOut(): boolean {
+    return this.selected()?.availabilityStatus === 'out_of_stock';
+  }
+  selectedMadeToOrder(): boolean {
+    return this.selected()?.availabilityStatus === 'made_to_order';
   }
 
   bump(delta: number): void {

@@ -4,6 +4,7 @@ import { CartPage } from './pages/cart.page';
 import { CheckoutPage } from './pages/checkout.page';
 import { LandingPage } from './pages/landing.page';
 import { OrderPage } from './pages/order.page';
+import { PoliciesPage } from './pages/policies.page';
 import { ProductPage } from './pages/product.page';
 import { ResetPasswordPage } from './pages/reset-password.page';
 import { ShopPage } from './pages/shop.page';
@@ -17,5 +18,6 @@ export const routes: Routes = [
   { path: 'account', component: AccountPage, title: 'Seentair — Account' },
   { path: 'reset-password', component: ResetPasswordPage, title: 'Seentair — Reset password' },
   { path: 'orders/:id', component: OrderPage, title: 'Seentair — Order tracking' },
+  { path: 'policies', component: PoliciesPage, title: 'Seentair — Store policies' },
   { path: '**', redirectTo: '' },
 ];
