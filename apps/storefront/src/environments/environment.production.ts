@@ -5,5 +5,5 @@
  */
 export const environment = {
   production: true,
-  apiBase: 'https://seentair-api.onrender.com/api/v1',
+  apiBase: 'https://seentair-backend.onrender.com/api/v1',
 };

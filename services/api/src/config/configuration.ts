@@ -23,12 +23,17 @@ export default () => ({
     // Brute-force protection (client requirement): lock after N failures.
     maxFailedLogins: parseInt(process.env.MAX_FAILED_LOGINS ?? '5', 10),
     lockoutMinutes: parseInt(process.env.LOCKOUT_MINUTES ?? '15', 10),
-    corsOrigins: (
-      process.env.CORS_ORIGINS ??
-      'http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4203,https://seent-air-fashion.vercel.app'
-    )
-      .split(',')
-      .map((o) => o.trim()),
+    // Explicit allowlist, never '*'. The built-in origins (dev + the
+    // deployed storefront) are always permitted; CORS_ORIGINS can only ADD
+    // more (e.g. wholesale/admin/partner URLs) — an override can never
+    // silently break the storefront.
+    corsOrigins: (() => {
+      const builtIn =
+        'http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4203,https://seent-air-fashion.vercel.app';
+      const configured = process.env.CORS_ORIGINS ?? builtIn;
+      const origins = [...configured.split(','), ...builtIn.split(',')].map((o) => o.trim());
+      return Array.from(new Set(origins));
+    })(),
   },
   business: {
     currencyCode: process.env.CURRENCY_CODE ?? 'NGN',
