@@ -7,3 +7,6 @@ coverage/
 .DS_Store
 .angular/
 .claude/settings.local.json
+
+.vercel
+.env*

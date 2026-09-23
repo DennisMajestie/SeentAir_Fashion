@@ -16,6 +16,8 @@ import { environment } from '../environments/environment';
           <a routerLink="/shop" (click)="menuOpen.set(false)">Shop</a>
           <a routerLink="/account" (click)="menuOpen.set(false)">Account</a>
           <a [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Wholesale</a>
+          <a [href]="environment.adminUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Admin</a>
+          <a [href]="environment.partnerUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Partners</a>
         </nav>
         <!-- Cart lives outside <nav> so it stays reachable at every width,
              next to the menu toggle rather than hidden inside the menu. -->
@@ -78,6 +80,8 @@ import { environment } from '../environments/environment';
           <nav class="footer-col" aria-label="Business">
             <h4>Business</h4>
             <a [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer">Wholesale portal</a>
+            <a [href]="environment.adminUrl" target="_blank" rel="noopener noreferrer">Admin dashboard</a>
+            <a [href]="environment.partnerUrl" target="_blank" rel="noopener noreferrer">Partner portal</a>
           </nav>
         </div>
         <div class="footer-legal">
