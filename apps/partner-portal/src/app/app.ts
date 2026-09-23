@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, PartnerDashboard } from './api.service';
 
@@ -13,11 +13,27 @@ import { ApiService, PartnerDashboard } from './api.service';
   selector: 'app-root',
   imports: [CommonModule, FormsModule],
   template: `
-    <header class="site-header">
-      <span class="logo">SEENTAIR <em>PARTNERS</em></span>
-      @if (api.isLoggedIn) {
-        <button class="link" (click)="logout()">Sign out</button>
-      }
+    <header class="site-header" [class.scrolled]="scrolled()">
+      <div class="wrap-col header-inner">
+        <a href="/" class="logo" aria-label="SEENTAIR Partners">
+          <img src="assets/logo.jpeg" alt="SEENTAIR" width="160" height="32" />
+        </a>
+        @if (api.isLoggedIn) {
+          <nav [class.open]="menuOpen()">
+            <button class="link" (click)="menuOpen.set(false); logout()">Sign out</button>
+          </nav>
+          <div class="header-actions">
+            <button
+              class="menu-toggle"
+              [attr.aria-expanded]="menuOpen()"
+              aria-label="Toggle menu"
+              (click)="toggleMenu()"
+            >
+              <span></span><span></span><span></span>
+            </button>
+          </div>
+        }
+      </div>
     </header>
     <main>
       @if (!api.isLoggedIn) {
@@ -99,8 +115,29 @@ import { ApiService, PartnerDashboard } from './api.service';
     <footer class="site-footer">© 2026 SEENTAIR LIMITED // INVESTOR RELATIONS</footer>
   `,
 })
-export class App implements OnInit {
+export class App implements OnInit, OnDestroy {
   readonly api = inject(ApiService);
+  private readonly onScroll = () => {
+    this.scrolled.set((window.scrollY ?? 0) > 10);
+  };
+  readonly scrolled = signal(false);
+  readonly menuOpen = signal(false);
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      this.onScroll();
+      window.addEventListener('scroll', this.onScroll, { passive: true });
+    }
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('scroll', this.onScroll);
+  }
+
+  toggleMenu(): void {
+    this.menuOpen.update((v) => !v);
+  }
+
   readonly dash = signal<PartnerDashboard | null>(null);
   readonly error = signal<string | null>(null);
   readonly loadError = signal<string | null>(null);

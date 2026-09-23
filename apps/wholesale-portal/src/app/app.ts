@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ApiService } from './api.service';
@@ -12,16 +12,30 @@ import { ApiService } from './api.service';
   selector: 'app-root',
   imports: [FormsModule, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
-    <header class="site-header">
-      <span class="logo">SEENTAIR <em>Wholesale</em></span>
-      @if (api.isLoggedIn) {
-        <nav>
-          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Catalogue</a>
-          <a routerLink="/invoices" routerLinkActive="active">Invoices</a>
-          <a routerLink="/custom" routerLinkActive="active">Custom</a>
-          <button class="link" (click)="logout()">Sign out</button>
-        </nav>
-      }
+    <header class="site-header" [class.scrolled]="scrolled()">
+      <div class="wrap-col header-inner">
+        <a routerLink="/" class="logo" aria-label="SEENTAIR Wholesale">
+          <img src="assets/logo.jpeg" alt="SEENTAIR" width="160" height="32" />
+        </a>
+        @if (api.isLoggedIn) {
+          <nav [class.open]="menuOpen()">
+            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="menuOpen.set(false)">Catalogue</a>
+            <a routerLink="/invoices" routerLinkActive="active" (click)="menuOpen.set(false)">Invoices</a>
+            <a routerLink="/custom" routerLinkActive="active" (click)="menuOpen.set(false)">Custom</a>
+            <button class="link" (click)="menuOpen.set(false); logout()">Sign out</button>
+          </nav>
+          <div class="header-actions">
+            <button
+              class="menu-toggle"
+              [attr.aria-expanded]="menuOpen()"
+              aria-label="Toggle menu"
+              (click)="toggleMenu()"
+            >
+              <span></span><span></span><span></span>
+            </button>
+          </div>
+        }
+      </div>
     </header>
     <main>
       @if (!api.isLoggedIn) {
@@ -29,7 +43,7 @@ import { ApiService } from './api.service';
           <header class="ws-header">
             <div class="wordmark-row">
               <div class="wordmark">
-                <strong>SEENTAIR</strong>
+                <img src="assets/logo.jpeg" alt="SEENTAIR" width="160" height="32" />
                 <span class="chip">WHOLESALE PORTAL</span>
               </div>
               <div class="secure">
@@ -142,8 +156,29 @@ import { ApiService } from './api.service';
     </main>
   `,
 })
-export class App {
+export class App implements OnDestroy {
   readonly api = inject(ApiService);
+  private readonly onScroll = () => {
+    this.scrolled.set((window.scrollY ?? 0) > 10);
+  };
+  readonly scrolled = signal(false);
+  readonly menuOpen = signal(false);
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      this.onScroll();
+      window.addEventListener('scroll', this.onScroll, { passive: true });
+    }
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('scroll', this.onScroll);
+  }
+
+  toggleMenu(): void {
+    this.menuOpen.update((v) => !v);
+  }
+
   readonly error = signal<string | null>(null);
   readonly info = signal<string | null>(null);
   readonly showPassword = signal(false);

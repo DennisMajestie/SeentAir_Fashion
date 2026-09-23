@@ -3,6 +3,7 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ApiService } from './api.service';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -14,7 +15,7 @@ import { ApiService } from './api.service';
           <span class="brand-grid" aria-hidden="true"></span>
           <span class="brand-glow" aria-hidden="true"></span>
           <div class="brand-content">
-            <p class="eyebrow">Seentair Operations</p>
+            <img class="brand-logo" src="assets/logo.jpeg" alt="SEENTAIR Operations" width="160" height="32" />
             <h1 class="brand-headline">Run<br /><span>The drop.</span></h1>
           </div>
           <footer class="brand-foot">
@@ -118,40 +119,69 @@ import { ApiService } from './api.service';
         </section>
       </main>
     } @else {
-      <div class="layout">
-        <aside class="sidebar">
-          <span class="logo">SEENTAIR<br /><em>Operations</em></span>
-          <nav>
-            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Dashboard</a>
-            <a routerLink="/approvals" routerLinkActive="active">Approvals</a>
-            <a routerLink="/production" routerLinkActive="active">Production</a>
-            <a routerLink="/orders" routerLinkActive="active">Orders</a>
-            <a routerLink="/returns" routerLinkActive="active">Returns</a>
-            <a routerLink="/catalogue" routerLinkActive="active">Catalogue</a>
-            <a routerLink="/inventory" routerLinkActive="active">Inventory</a>
-            <a routerLink="/materials" routerLinkActive="active">Materials</a>
-            <a routerLink="/reviews" routerLinkActive="active">Reviews</a>
-            <a routerLink="/partners" routerLinkActive="active">Partners</a>
-            <a routerLink="/wholesale" routerLinkActive="active">Wholesale</a>
-            <a routerLink="/custom-orders" routerLinkActive="active">Custom orders</a>
-            <a routerLink="/accounting" routerLinkActive="active">Accounting</a>
-            <a routerLink="/staff" routerLinkActive="active">Staff</a>
-            <a routerLink="/logistics" routerLinkActive="active">Logistics</a>
-            <a routerLink="/marketing" routerLinkActive="active">Marketing</a>
-            <a routerLink="/audit" routerLinkActive="active">Audit log</a>
-            <a routerLink="/security" routerLinkActive="active">Security</a>
-          </nav>
-          <button class="link" (click)="logout()">Sign out</button>
-        </aside>
-        <main>
-          <router-outlet />
-        </main>
+      <div class="app-shell">
+        <header class="site-header" [class.scrolled]="scrolled()">
+          <div class="header-inner">
+            <a routerLink="/" class="logo" aria-label="SEENTAIR Operations">
+              <img src="assets/logo.jpeg" alt="SEENTAIR" width="160" height="32" />
+            </a>
+            <nav [class.open]="menuOpen()">
+              <a [href]="environment.storefrontUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Store</a>
+              <a [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Wholesale</a>
+              <a [href]="environment.partnerUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Partners</a>
+            </nav>
+            <div class="header-actions">
+              <button
+                class="menu-toggle"
+                [attr.aria-expanded]="menuOpen()"
+                aria-label="Toggle menu"
+                (click)="toggleMenu()"
+              >
+                <span></span><span></span><span></span>
+              </button>
+            </div>
+          </div>
+        </header>
+        <div class="layout">
+          <aside class="sidebar">
+            <nav>
+              <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="menuOpen.set(false)">Dashboard</a>
+              <a routerLink="/approvals" routerLinkActive="active" (click)="menuOpen.set(false)">Approvals</a>
+              <a routerLink="/production" routerLinkActive="active" (click)="menuOpen.set(false)">Production</a>
+              <a routerLink="/orders" routerLinkActive="active" (click)="menuOpen.set(false)">Orders</a>
+              <a routerLink="/returns" routerLinkActive="active" (click)="menuOpen.set(false)">Returns</a>
+              <a routerLink="/catalogue" routerLinkActive="active" (click)="menuOpen.set(false)">Catalogue</a>
+              <a routerLink="/inventory" routerLinkActive="active" (click)="menuOpen.set(false)">Inventory</a>
+              <a routerLink="/materials" routerLinkActive="active" (click)="menuOpen.set(false)">Materials</a>
+              <a routerLink="/reviews" routerLinkActive="active" (click)="menuOpen.set(false)">Reviews</a>
+              <a routerLink="/partners" routerLinkActive="active" (click)="menuOpen.set(false)">Partners</a>
+              <a routerLink="/wholesale" routerLinkActive="active" (click)="menuOpen.set(false)">Wholesale</a>
+              <a routerLink="/custom-orders" routerLinkActive="active" (click)="menuOpen.set(false)">Custom orders</a>
+              <a routerLink="/accounting" routerLinkActive="active" (click)="menuOpen.set(false)">Accounting</a>
+              <a routerLink="/staff" routerLinkActive="active" (click)="menuOpen.set(false)">Staff</a>
+              <a routerLink="/logistics" routerLinkActive="active" (click)="menuOpen.set(false)">Logistics</a>
+              <a routerLink="/marketing" routerLinkActive="active" (click)="menuOpen.set(false)">Marketing</a>
+              <a routerLink="/audit" routerLinkActive="active" (click)="menuOpen.set(false)">Audit log</a>
+              <a routerLink="/security" routerLinkActive="active" (click)="menuOpen.set(false)">Security</a>
+            </nav>
+            <button class="link" (click)="logout()">Sign out</button>
+          </aside>
+          <main>
+            <router-outlet />
+          </main>
+        </div>
       </div>
     }
   `,
 })
 export class App implements OnInit, OnDestroy {
   readonly api = inject(ApiService);
+  readonly environment = environment;
+  private readonly onScroll = () => {
+    this.scrolled.set((window.scrollY ?? 0) > 10);
+  };
+  readonly scrolled = signal(false);
+  readonly menuOpen = signal(false);
   readonly error = signal<string | null>(null);
   readonly challengeToken = signal<string | null>(null);
 
@@ -175,10 +205,19 @@ export class App implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.tickClock();
     this.clockTimer = setInterval(() => this.tickClock(), 1000);
+    if (typeof window !== 'undefined') {
+      this.onScroll();
+      window.addEventListener('scroll', this.onScroll, { passive: true });
+    }
   }
 
   ngOnDestroy(): void {
     if (this.clockTimer) clearInterval(this.clockTimer);
+    window.removeEventListener('scroll', this.onScroll);
+  }
+
+  toggleMenu(): void {
+    this.menuOpen.update((v) => !v);
   }
 
   private tickClock(): void {
