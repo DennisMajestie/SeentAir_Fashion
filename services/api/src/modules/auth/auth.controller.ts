@@ -43,10 +43,14 @@ export class AuthController {
   ) {}
 
   private cookieOptions() {
+    const secure = this.config.get<boolean>('security.cookieSecure') ?? false;
     return {
       httpOnly: true,
-      sameSite: 'strict' as const,
-      secure: this.config.get<boolean>('security.cookieSecure') ?? false,
+      // Cross-origin production (storefront on Vercel, API on Render) needs
+      // SameSite=None + Secure so the browser sends the refresh cookie.
+      // Local dev shares the site, so Lax is fine and safer there.
+      sameSite: secure ? ('none' as const) : ('lax' as const),
+      secure,
       path: '/api/v1/auth',
       maxAge: this.config.get<number>('jwt.refreshTtlMs') ?? 7 * 24 * 3_600_000,
     };
@@ -146,7 +150,7 @@ export class AuthController {
     @CurrentUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) res: Response,
   ) {
-    res.clearCookie(REFRESH_COOKIE, { path: '/api/v1/auth' });
+    res.clearCookie(REFRESH_COOKIE, this.cookieOptions());
     return this.authService.logout(user.id);
   }
 
