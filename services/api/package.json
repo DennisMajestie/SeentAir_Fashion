@@ -4,18 +4,18 @@
   "private": true,
   "description": "Seentair core backend API (NestJS + PostgreSQL)",
   "scripts": {
-    "build": "nest build",
+    "build": "node ../../node_modules/@nestjs/cli/bin/nest.js build",
     "start": "node dist/main.js",
-    "start:dev": "nest start --watch",
+    "start:dev": "node ../../node_modules/@nestjs/cli/bin/nest.js start --watch",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "jest",
     "test:e2e": "jest --config test/jest-e2e.json",
-    "typeorm": "typeorm-ts-node-commonjs -d src/database/data-source.ts",
+    "typeorm": "node -r ts-node/register ../../node_modules/typeorm/cli.js -d src/database/data-source.ts",
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
-    "seed": "ts-node src/database/seeds/seed.ts",
-    "seed:catalogue": "ts-node src/database/seeds/seed-catalogue.ts"
+    "seed": "node -r ts-node/register ../../node_modules/ts-node/dist/bin.js src/database/seeds/seed.ts",
+    "seed:catalogue": "node -r ts-node/register ../../node_modules/ts-node/dist/bin.js src/database/seeds/seed-catalogue.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
