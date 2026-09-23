@@ -22,24 +22,25 @@ import { ApiService, Pricing } from '../api.service';
       </section>
     } @else if (pricing(); as p) {
       <div class="tier-banner">
-        Tier: <strong>{{ p.tier?.name ?? 'Standard' }}</strong>
-        @if (p.tier) { ({{ p.tier.discountPercent }}% off retail) }
-        · MOQ: <strong>{{ p.moq }} units</strong> per order
+        <span class="dot"></span>
+        <span>Tier <strong>{{ p.tier?.name ?? 'Standard' }}</strong>
+          @if (p.tier) { ({{ p.tier.discountPercent }}% off retail) }</span>
+        <span style="margin-left: auto;">MOQ <strong>{{ p.moq }}</strong> units</span>
       </div>
 
       <table class="table">
         <thead>
-          <tr><th>Product</th><th>SKU</th><th>Retail</th><th>Your price</th><th>Qty</th></tr>
+          <tr><th>Product</th><th>SKU</th><th class="num">Retail</th><th class="num">Your price</th><th class="num">Qty</th></tr>
         </thead>
         <tbody>
           @for (product of p.data; track product.id) {
             @for (v of product.variants; track v.id) {
               <tr>
-                <td>{{ product.name }} <span class="muted">{{ v.size }}/{{ v.colour }}</span></td>
+                <td>{{ product.name }} <span class="muted small">{{ v.size }}/{{ v.colour }}</span></td>
                 <td><code>{{ v.sku }}</code></td>
-                <td class="muted">₦{{ v.retailPrice | number: '1.0-2' }}</td>
-                <td><strong>₦{{ v.wholesalePrice | number: '1.0-2' }}</strong></td>
-                <td>
+                <td class="num muted">₦{{ v.retailPrice | number: '1.0-2' }}</td>
+                <td class="num"><strong>₦{{ v.wholesalePrice | number: '1.0-2' }}</strong></td>
+                <td class="num">
                   <input type="number" min="0" [(ngModel)]="quantities[v.id]" (ngModelChange)="recalc(p)" />
                 </td>
               </tr>
@@ -49,7 +50,7 @@ import { ApiService, Pricing } from '../api.service';
       </table>
 
       <div class="order-bar">
-        <span>{{ totalUnits() }} units · <strong>₦{{ totalAmount() | number: '1.0-2' }}</strong></span>
+        <span class="totals">{{ totalUnits() }} units · <strong>₦{{ totalAmount() | number: '1.0-2' }}</strong></span>
         <button class="cta" (click)="placeOrder()" [disabled]="totalUnits() === 0 || placing()">
           {{ placing() ? 'Placing…' : 'Place bulk order' }}
         </button>

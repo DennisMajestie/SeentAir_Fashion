@@ -23,9 +23,12 @@ import { ApiService, Invoice } from '../api.service';
     @for (invoice of invoices(); track invoice.orderId) {
       <section class="panel">
         <header class="invoice-head">
-          <span><code>{{ invoice.orderId.slice(0, 8) }}</code> · {{ invoice.createdAt | date: 'mediumDate' }}</span>
-          <span class="status">{{ invoice.status.replaceAll('_', ' ') }} · {{ invoice.paymentStatus }}</span>
-          <strong>₦{{ invoice.totalAmount | number: '1.0-2' }}</strong>
+          <span style="font-size: var(--type-body-sm); text-transform: uppercase; letter-spacing: 0.06em;">
+            <code>{{ invoice.orderId.slice(0, 8) }}</code> · {{ invoice.createdAt | date: 'mediumDate' }}
+          </span>
+          <span class="status" [class]="'status ' + pill(invoice.status)">{{ invoice.status.replaceAll('_', ' ') }}</span>
+          <span class="status" [class]="'status ' + pill(invoice.paymentStatus)">{{ invoice.paymentStatus.replaceAll('_', ' ') }}</span>
+          <strong style="font-variant-numeric: tabular-nums;">₦{{ invoice.totalAmount | number: '1.0-2' }}</strong>
         </header>
         <table class="table compact">
           <tbody>
@@ -33,7 +36,7 @@ import { ApiService, Invoice } from '../api.service';
               <tr>
                 <td><code>{{ item.sku }}</code></td>
                 <td>{{ item.quantity }} × ₦{{ item.unitPrice | number: '1.0-2' }}</td>
-                <td>₦{{ item.lineTotal | number: '1.0-2' }}</td>
+                <td class="num">₦{{ item.lineTotal | number: '1.0-2' }}</td>
               </tr>
             }
           </tbody>
@@ -72,6 +75,14 @@ export class InvoicesPage implements OnInit {
   private load(): void {
     this.api.invoices().subscribe((res) => this.invoices.set(res.data));
     this.api.notifications().subscribe((res) => this.notifications.set(res.data));
+  }
+
+  pill(status?: string): string {
+    const s = (status ?? '').toLowerCase();
+    if (s.includes('paid') || s.includes('delivered') || s.includes('complete') || s.includes('approved')) return 'ok';
+    if (s.includes('pending') || s.includes('processing') || s.includes('shipped')) return 'warn';
+    if (s.includes('cancelled') || s.includes('failed') || s.includes('rejected')) return 'bad';
+    return '';
   }
 
   reorder(orderId: string): void {

@@ -22,10 +22,13 @@ import { ApiService, PartnerDashboard } from './api.service';
     <main>
       @if (!api.isLoggedIn) {
         <form class="panel auth" (ngSubmit)="signIn()">
-          <h1>Investor sign in</h1>
+          <p class="page-kicker">Account Authentication</p>
+          <h1>Partner sign in</h1>
           <label>Email <input type="email" [(ngModel)]="email" name="email" required /></label>
           <label>Password <input type="password" [(ngModel)]="password" name="password" required autocomplete="current-password" /></label>
-          <button class="cta" type="submit">Sign in</button>
+          <button class="cta" type="submit" [disabled]="busy()">
+            @if (busy()) { Signing in… } @else { Sign in }
+          </button>
           @if (error()) { <p class="error">{{ error() }}</p> }
         </form>
       } @else if (dash(); as d) {
@@ -63,6 +66,12 @@ import { ApiService, PartnerDashboard } from './api.service';
           <div class="tile"><span class="label">Finished goods in stock</span><strong>{{ d.inventoryVisibility.finishedGoodsUnits | number }}</strong><span class="sub">units — aggregates only</span></div>
         </div>
 
+        <p class="section-label">Accounts &amp; reports</p>
+        <div class="tiles">
+          <div class="tile"><span class="label">Income</span><strong>₦{{ d.accountsReports.income.total | number: '1.0-0' }}</strong></div>
+          <div class="tile" [class.negative]="d.accountsReports.profit.net < 0"><span class="label">Net profit</span><strong>₦{{ d.accountsReports.profit.net | number: '1.0-0' }}</strong></div>
+        </div>
+
         <p class="section-label">Profit sharing <span class="count">// 40% reinvest · 40% dividends · 20% reserve</span></p>
         @if (d.profitSharing.length === 0) {
           <p class="muted">No distributions yet — dividends are declared quarterly.</p>
@@ -95,6 +104,7 @@ export class App implements OnInit {
   readonly dash = signal<PartnerDashboard | null>(null);
   readonly error = signal<string | null>(null);
   readonly loadError = signal<string | null>(null);
+  readonly busy = signal(false);
   email = '';
   password = '';
 
@@ -104,9 +114,10 @@ export class App implements OnInit {
 
   signIn(): void {
     this.error.set(null);
+    this.busy.set(true);
     this.api.login(this.email, this.password).subscribe({
-      next: () => this.load(),
-      error: () => this.error.set('Sign-in failed — investor accounts only.'),
+      next: () => { this.busy.set(false); this.load(); },
+      error: () => { this.busy.set(false); this.error.set('Sign-in failed — investor accounts only.'); },
     });
   }
 

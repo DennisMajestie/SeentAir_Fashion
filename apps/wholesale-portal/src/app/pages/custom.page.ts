@@ -31,7 +31,7 @@ import { ApiService, CustomOrder } from '../api.service';
       <section class="panel">
         <header class="invoice-head">
           <span><code>{{ request.id.slice(0, 8) }}</code> · {{ request.quantity }} pcs · due {{ request.desiredDate }}</span>
-          <span class="status">{{ request.status.replaceAll('_', ' ') }}</span>
+          <span class="status" [class]="'status ' + pill(request.status)">{{ request.status.replaceAll('_', ' ') }}</span>
         </header>
         <p class="muted small">{{ request.description }}</p>
 
@@ -78,6 +78,14 @@ export class CustomPage implements OnInit {
 
   private load(): void {
     this.api.customOrders().subscribe((res) => this.requests.set(res.data));
+  }
+
+  pill(status?: string): string {
+    const s = (status ?? '').toLowerCase();
+    if (s.includes('approved') || s.includes('complete') || s.includes('sample_approved')) return 'ok';
+    if (s.includes('pending') || s.includes('quoted') || s.includes('sample_in_production')) return 'warn';
+    if (s.includes('rejected') || s.includes('cancelled')) return 'bad';
+    return '';
   }
 
   submit(): void {
