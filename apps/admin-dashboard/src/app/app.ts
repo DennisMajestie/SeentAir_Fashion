@@ -144,12 +144,18 @@ import { environment } from '../environments/environment';
         <header class="site-header" [class.scrolled]="scrolled()">
           <div class="header-inner">
             <a routerLink="/" class="logo" aria-label="SEENTAIR Operations">
-              <img src="assets/logo.jpeg" alt="SEENTAIR" width="160" height="32" />
+              <img src="assets/logo.jpeg" alt="SEENTAIR" width="200" height="40" />
             </a>
-            <nav [class.open]="menuOpen()">
-              <a [href]="environment.storefrontUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Store</a>
-              <a [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Wholesale</a>
-              <a [href]="environment.partnerUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Partners</a>
+            <nav class="top-tabs" aria-label="Other Seentair apps">
+              <a class="preview-tab" [href]="environment.storefrontUrl" target="_blank" rel="noopener noreferrer">
+                Store<span class="tab-note">Preview</span>
+              </a>
+              <a class="preview-tab" [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer">
+                Wholesale<span class="tab-note">Preview</span>
+              </a>
+              <a class="preview-tab" [href]="environment.partnerUrl" target="_blank" rel="noopener noreferrer">
+                Partners<span class="tab-note">Preview</span>
+              </a>
             </nav>
             <div class="header-actions">
               <button
@@ -174,8 +180,10 @@ import { environment } from '../environments/environment';
               </button>
               <button
                 class="menu-toggle"
+                type="button"
                 [attr.aria-expanded]="menuOpen()"
-                aria-label="Toggle menu"
+                [attr.aria-controls]="'sidebar'"
+                aria-label="Toggle navigation menu"
                 (click)="toggleMenu()"
               >
                 <span></span><span></span><span></span>
@@ -184,28 +192,56 @@ import { environment } from '../environments/environment';
           </div>
         </header>
         <div class="layout">
-          <aside class="sidebar">
+          <button
+            class="scrim"
+            type="button"
+            [class.open]="menuOpen()"
+            (click)="menuOpen.set(false)"
+            aria-hidden="true"
+            tabindex="-1"
+          ></button>
+          <aside id="sidebar" class="sidebar" [class.open]="menuOpen()" aria-label="Operations navigation">
             <nav>
+              <span class="nav-group">Overview</span>
               <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="menuOpen.set(false)">Dashboard</a>
               <a routerLink="/approvals" routerLinkActive="active" (click)="menuOpen.set(false)">Approvals</a>
-              <a routerLink="/production" routerLinkActive="active" (click)="menuOpen.set(false)">Production</a>
+
+              <span class="nav-group">Commerce</span>
               <a routerLink="/orders" routerLinkActive="active" (click)="menuOpen.set(false)">Orders</a>
               <a routerLink="/returns" routerLinkActive="active" (click)="menuOpen.set(false)">Returns</a>
+              <a routerLink="/custom-orders" routerLinkActive="active" (click)="menuOpen.set(false)">Custom orders</a>
+              <a routerLink="/wholesale" routerLinkActive="active" (click)="menuOpen.set(false)">Wholesale</a>
+
+              <span class="nav-group">Product</span>
               <a routerLink="/catalogue" routerLinkActive="active" (click)="menuOpen.set(false)">Catalogue</a>
               <a routerLink="/inventory" routerLinkActive="active" (click)="menuOpen.set(false)">Inventory</a>
               <a routerLink="/materials" routerLinkActive="active" (click)="menuOpen.set(false)">Materials</a>
-              <a routerLink="/reviews" routerLinkActive="active" (click)="menuOpen.set(false)">Reviews</a>
-              <a routerLink="/partners" routerLinkActive="active" (click)="menuOpen.set(false)">Partners</a>
-              <a routerLink="/wholesale" routerLinkActive="active" (click)="menuOpen.set(false)">Wholesale</a>
-              <a routerLink="/custom-orders" routerLinkActive="active" (click)="menuOpen.set(false)">Custom orders</a>
+              <a routerLink="/production" routerLinkActive="active" (click)="menuOpen.set(false)">Production</a>
+
+              <span class="nav-group">Business</span>
               <a routerLink="/accounting" routerLinkActive="active" (click)="menuOpen.set(false)">Accounting</a>
-              <a routerLink="/staff" routerLinkActive="active" (click)="menuOpen.set(false)">Staff</a>
               <a routerLink="/logistics" routerLinkActive="active" (click)="menuOpen.set(false)">Logistics</a>
               <a routerLink="/marketing" routerLinkActive="active" (click)="menuOpen.set(false)">Marketing</a>
+              <a routerLink="/reviews" routerLinkActive="active" (click)="menuOpen.set(false)">Reviews</a>
+              <a routerLink="/partners" routerLinkActive="active" (click)="menuOpen.set(false)">Partners</a>
+
+              <span class="nav-group">Admin</span>
+              <a routerLink="/staff" routerLinkActive="active" (click)="menuOpen.set(false)">Staff</a>
               <a routerLink="/audit" routerLinkActive="active" (click)="menuOpen.set(false)">Audit log</a>
               <a routerLink="/security" routerLinkActive="active" (click)="menuOpen.set(false)">Security</a>
             </nav>
-            <button class="link" (click)="logout()">Sign out</button>
+            <div class="sidebar-foot">
+              @if (me(); as profile) {
+                <span class="avatar" aria-hidden="true">{{ initials(profile.name) }}</span>
+                <span class="who">
+                  <strong>{{ profile.name }}</strong>
+                  <span>{{ profile.role }}</span>
+                </span>
+                <button class="link sign-out" type="button" (click)="logout()">Sign out</button>
+              } @else {
+                <button class="link sign-out" type="button" (click)="logout()">Sign out</button>
+              }
+            </div>
           </aside>
           <main>
             <router-outlet />
@@ -224,6 +260,7 @@ export class App implements OnInit, OnDestroy {
   };
   readonly scrolled = signal(false);
   readonly menuOpen = signal(false);
+  readonly me = signal<{ name: string; email: string; role: string; totpEnabled: boolean } | null>(null);
   readonly error = signal<string | null>(null);
   readonly challengeToken = signal<string | null>(null);
 
@@ -251,6 +288,7 @@ export class App implements OnInit, OnDestroy {
       this.onScroll();
       window.addEventListener('scroll', this.onScroll, { passive: true });
     }
+    if (this.api.isLoggedIn) this.loadMe();
   }
 
   ngOnDestroy(): void {
@@ -298,6 +336,7 @@ export class App implements OnInit, OnDestroy {
         this.loading.set(false);
         this.success.set(true);
         // Token storage is handled by ApiService (in memory + httpOnly cookie).
+        if (!res.requires2fa) this.loadMe();
         if (res.requires2fa && res.challengeToken) {
           this.challengeToken.set(res.challengeToken);
           this.password = '';
@@ -320,6 +359,7 @@ export class App implements OnInit, OnDestroy {
       next: () => {
         this.challengeToken.set(null);
         this.code = '';
+        this.loadMe();
       },
       error: () => {
         this.error.set('Incorrect or expired code.');
@@ -329,7 +369,24 @@ export class App implements OnInit, OnDestroy {
   }
 
   logout(): void {
+    this.me.set(null);
     this.api.logout();
+  }
+
+  /** Real name/role for the sidebar account footer — from the auth session. */
+  private loadMe(): void {
+    this.me.set(null);
+    this.api.me().subscribe({
+      next: (profile) => this.me.set(profile),
+      error: () => this.me.set(null),
+    });
+  }
+
+  initials(name: string): string {
+    const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean);
+    const a = parts[0]?.[0] ?? '';
+    const b = parts.length > 1 ? parts[parts.length - 1][0] : '';
+    return (`${a}${b}` || 'SE').toUpperCase();
   }
 
   forgot(): void {

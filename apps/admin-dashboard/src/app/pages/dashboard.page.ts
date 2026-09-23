@@ -1,14 +1,35 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ApiService, Dashboard, LowStock } from '../api.service';
+import { ApiService, AuditEntry, Dashboard, LowStock } from '../api.service';
+
+type RangeKey = 'today' | '7d' | '30d' | 'custom';
 
 /** The owner's one-glance home (UX requirement #5): sales today, profit/loss,
-    low stock, production status, pending approvals. */
+    low stock, production status, pending approvals — plus sales-by-channel,
+    marketing sources and recent audit activity. Shows shimmer skeletons in the
+    shape of the real content while the dashboard loads. */
 @Component({
   selector: 'app-dashboard',
   imports: [CommonModule, RouterLink],
   template: `
+    <div class="dash-head">
+      <p class="eyebrow">Operations overview</p>
+      <h1>Dashboard</h1>
+      <div class="range" role="group" aria-label="Date range">
+        @for (r of ranges; track r.key) {
+          <button type="button" [class.on]="range() === r.key" (click)="setRange(r.key)">
+            {{ r.label }}
+          </button>
+        }
+      </div>
+      @if (range() === 'custom') {
+        <p class="range-note">
+          Custom ranges aren't wired to the Analytics API yet — showing the live overview for now.
+        </p>
+      }
+    </div>
+
     @if (dashboard(); as d) {
       <div class="tiles">
         <div class="tile">
@@ -34,22 +55,46 @@ import { ApiService, Dashboard, LowStock } from '../api.service';
       </div>
 
       <div class="cols">
+        <section class="panel lead">
+          <h2>Sales by channel</h2>
+          @if (d.salesByChannel.length === 0) { <p class="muted">No sales recorded yet.</p> }
+          @for (row of d.salesByChannel; track row.channel) {
+            <div class="bar-row">
+              <span class="bar-name">{{ row.channel }}</span>
+              <span class="bar-track"><i [style.width]="barWidth(d.salesByChannel, row.revenue)"></i></span>
+              <span class="bar-val">{{ row.orders }} orders · ₦{{ row.revenue | number: '1.0-2' }}</span>
+            </div>
+          }
+          <h2>Marketing sources</h2>
+          @for (row of d.marketingSourcePerformance; track row.source) {
+            <div class="bar-row">
+              <span class="bar-name">{{ row.source }}</span>
+              <span class="bar-track"><i [style.width]="barWidth(d.marketingSourcePerformance, row.revenue)"></i></span>
+              <span class="bar-val">{{ row.orders }} orders · ₦{{ row.revenue | number: '1.0-2' }}</span>
+            </div>
+          }
+        </section>
+
+        <section class="panel">
+          <h2>Recent activity</h2>
+          @if (activity().length === 0) {
+            <p class="muted">No recent activity.</p>
+          }
+          <ul class="activity">
+            @for (entry of activity(); track entry.id) {
+              <li>
+                <time [attr.datetime]="entry.timestamp">{{ formatTime(entry.timestamp) }}</time>
+                <span class="act-action">{{ entry.action }}</span>
+              </li>
+            }
+          </ul>
+        </section>
+
         <section class="panel">
           <h2>Production</h2>
           @if (d.production.length === 0) { <p class="muted">No active batches.</p> }
           @for (row of d.production; track row.stage) {
             <p>{{ row.stage }} — <strong>{{ row.batches }}</strong> batch(es)</p>
-          }
-        </section>
-
-        <section class="panel">
-          <h2>Sales by channel</h2>
-          @for (row of d.salesByChannel; track row.channel) {
-            <p>{{ row.channel }} — {{ row.orders }} orders · ₦{{ row.revenue | number: '1.0-2' }}</p>
-          }
-          <h2>Marketing sources</h2>
-          @for (row of d.marketingSourcePerformance; track row.source) {
-            <p>{{ row.source }} — {{ row.orders }} orders · ₦{{ row.revenue | number: '1.0-2' }}</p>
           }
         </section>
 
@@ -86,7 +131,41 @@ import { ApiService, Dashboard, LowStock } from '../api.service';
         </section>
       </div>
     } @else {
-      <p class="muted">Loading dashboard…</p>
+      <div class="tiles" aria-hidden="true">
+        @for (k of skeletonKpis; track k) {
+          <div class="tile">
+            <span class="skeleton line" [style.width]="k % 2 === 0 ? '55%' : '40%'"></span>
+            <span class="skeleton stat" [style.width]="k % 3 === 0 ? '34%' : '28%'"></span>
+            <span class="skeleton line" [style.width]="k % 2 === 0 ? '40%' : '55%'"></span>
+          </div>
+        }
+      </div>
+      <div class="cols" aria-hidden="true">
+        <section class="panel lead">
+          <span class="skeleton line" [style.width]="'42%'"></span>
+          @for (w of skeletonBars; track w) {
+            <span class="skeleton track" [style.width]="w"></span>
+          }
+        </section>
+        <section class="panel">
+          <span class="skeleton line" [style.width]="'46%'"></span>
+          @for (row of skeletonRows; track row) {
+            <span class="skeleton line" [style.width]="(90 - row * 7) + '%'"></span>
+          }
+        </section>
+        <section class="panel">
+          <span class="skeleton line" [style.width]="'34%'"></span>
+          @for (row of skeletonRows; track row) {
+            <span class="skeleton line" [style.width]="(86 - row * 6) + '%'"></span>
+          }
+        </section>
+        <section class="panel">
+          <span class="skeleton line" [style.width]="'38%'"></span>
+          @for (row of skeletonRows; track row) {
+            <span class="skeleton line" [style.width]="(88 - row * 8) + '%'"></span>
+          }
+        </section>
+      </div>
     }
   `,
 })
@@ -95,13 +174,26 @@ export class DashboardPage implements OnInit {
   readonly dashboard = signal<Dashboard | null>(null);
   readonly bestSellers = signal<Array<{ sku: string; productName: string; unitsSold: number; revenue: number }>>([]);
   readonly lowStock = signal<LowStock | null>(null);
+  readonly activity = signal<AuditEntry[]>([]);
+  readonly range = signal<RangeKey>('today');
   /** variantId → SKU, so the reorder list names pieces instead of UUIDs. */
   private readonly skus = signal<Map<string, string>>(new Map());
+
+  readonly ranges: Array<{ key: RangeKey; label: string }> = [
+    { key: 'today', label: 'Today' },
+    { key: '7d', label: '7 days' },
+    { key: '30d', label: '30 days' },
+    { key: 'custom', label: 'Custom' },
+  ];
+  readonly skeletonKpis = [0, 1, 2, 3];
+  readonly skeletonBars = ['94%', '78%', '62%', '41%'];
+  readonly skeletonRows = [0, 1, 2, 3];
 
   ngOnInit(): void {
     this.api.dashboard().subscribe((d) => this.dashboard.set(d));
     this.api.bestSellers().subscribe((b) => this.bestSellers.set(b));
     this.api.lowStock().subscribe((ls) => this.lowStock.set(ls));
+    this.api.auditLog().subscribe((log) => this.activity.set(log.data.slice(0, 5)));
     this.api.products().subscribe((res) => {
       const map = new Map<string, string>();
       for (const p of res.data) {
@@ -113,7 +205,36 @@ export class DashboardPage implements OnInit {
     });
   }
 
+  setRange(key: RangeKey): void {
+    if (this.range() === key) return;
+    this.range.set(key);
+    if (key === 'custom') return;
+    // The Analytics API has no range parameter yet, so this re-pulls the same
+    // live dashboard — the control exists so a real backend range lands cleanly.
+    const current = this.dashboard();
+    if (!current) return;
+    this.dashboard.set(null);
+    this.api.dashboard().subscribe((d) => this.dashboard.set(d));
+  }
+
   skuFor(variantId: string): string {
     return this.skus().get(variantId) ?? variantId.slice(0, 8);
+  }
+
+  barWidth(rows: Array<{ revenue: number }>, revenue: number): string {
+    const max = Math.max(...rows.map((r) => r.revenue), 1);
+    const pct = max > 0 ? Math.max(3, Math.round((revenue / max) * 100)) : 0;
+    return `${pct}%`;
+  }
+
+  formatTime(ts: string): string {
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return ts;
+    return new Intl.DateTimeFormat('en-GB', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(d);
   }
 }
