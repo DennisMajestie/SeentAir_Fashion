@@ -55,8 +55,7 @@ interface FabricPiece {
   selector: 'app-landing',
   imports: [CommonModule, RouterLink],
   template: `
-    @if (!reducedMotion) {
-      <section class="dressing-scroll" #scrollRoot>
+    <section class="dressing-scroll" #scrollRoot>
         <div class="dressing-stage">
           <div class="stage-frame">
             <!-- One persistent scene: the bare mannequin never swaps; garments
@@ -120,19 +119,6 @@ interface FabricPiece {
           </div>
         </div>
       </section>
-    } @else {
-      <!-- prefers-reduced-motion: the same story, told statically. -->
-      <section class="dressing-static">
-        <h1 class="stage-label">The look, assembled.</h1>
-        @for (stage of stages; track stage.image) {
-          <figure>
-            <img [src]="'assets/' + stage.image" [alt]="stage.line1" loading="lazy" />
-            <figcaption><span>{{ stage.line1 }}</span> {{ stage.caption }}</figcaption>
-          </figure>
-        }
-        <a class="cta" routerLink="/shop">Shop the look</a>
-      </section>
-    }
 
     <section id="drops" class="grid-wrap">
       <div class="wrap-col">
@@ -221,9 +207,6 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     return this.walkReady ? 0.22 : 0;
   }
   readonly products = signal<Product[]>([]);
-  readonly reducedMotion =
-    typeof window !== 'undefined' &&
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
   private readonly fallbacks = ['shop-1.jpg', 'shop-2.jpg', 'shop-3.jpg', 'shop-5.jpg', 'shop-6.jpg'];
 
@@ -265,16 +248,14 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.api.products().subscribe((res) => this.products.set(res.data.slice(0, 8)));
-    if (!this.reducedMotion) {
-      window.addEventListener('scroll', this.onScroll, { passive: true });
-      window.addEventListener('resize', this.onResize);
-      window.addEventListener('keydown', this.onKeydown);
-      this.startAutoAdvance();
-    }
+    window.addEventListener('scroll', this.onScroll, { passive: true });
+    window.addEventListener('resize', this.onResize);
+    window.addEventListener('keydown', this.onKeydown);
+    this.startAutoAdvance();
   }
 
   ngAfterViewInit(): void {
-    if (!this.reducedMotion) void this.setupEngine();
+    void this.setupEngine();
   }
 
   ngOnDestroy(): void {
@@ -321,7 +302,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
 
   resumeAuto(): void {
     this.paused.set(false);
-    if (!this.reducedMotion) this.startAutoAdvance();
+    this.startAutoAdvance();
   }
 
   goTo(i: number): void {
