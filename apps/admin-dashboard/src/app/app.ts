@@ -211,16 +211,20 @@ import { environment } from '../environments/environment';
               <a routerLink="/returns" routerLinkActive="active" (click)="menuOpen.set(false)">Returns</a>
               <a routerLink="/custom-orders" routerLinkActive="active" (click)="menuOpen.set(false)">Custom orders</a>
               <a routerLink="/wholesale" routerLinkActive="active" (click)="menuOpen.set(false)">Wholesale</a>
+              <a routerLink="/messages" routerLinkActive="active" (click)="menuOpen.set(false)">Messages</a>
 
               <span class="nav-group">Product</span>
               <a routerLink="/catalogue" routerLinkActive="active" (click)="menuOpen.set(false)">Catalogue</a>
               <a routerLink="/inventory" routerLinkActive="active" (click)="menuOpen.set(false)">Inventory</a>
               <a routerLink="/materials" routerLinkActive="active" (click)="menuOpen.set(false)">Materials</a>
               <a routerLink="/production" routerLinkActive="active" (click)="menuOpen.set(false)">Production</a>
+              <a routerLink="/tech-pack" routerLinkActive="active" (click)="menuOpen.set(false)">Tech pack</a>
+              <a routerLink="/floor-kiosk" routerLinkActive="active" (click)="menuOpen.set(false)">Floor kiosk</a>
 
               <span class="nav-group">Business</span>
               <a routerLink="/accounting" routerLinkActive="active" (click)="menuOpen.set(false)">Accounting</a>
               <a routerLink="/logistics" routerLinkActive="active" (click)="menuOpen.set(false)">Logistics</a>
+              <a routerLink="/vendors" routerLinkActive="active" (click)="menuOpen.set(false)">Procurement</a>
               <a routerLink="/marketing" routerLinkActive="active" (click)="menuOpen.set(false)">Marketing</a>
               <a routerLink="/reviews" routerLinkActive="active" (click)="menuOpen.set(false)">Reviews</a>
               <a routerLink="/partners" routerLinkActive="active" (click)="menuOpen.set(false)">Partners</a>

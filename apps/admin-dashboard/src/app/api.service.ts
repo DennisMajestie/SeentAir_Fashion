@@ -56,7 +56,10 @@ export interface AdminOrder {
   paymentStatus: string;
   totalAmount: number;
   createdAt: string;
+  source?: string | null;
+  deliveredAt?: string | null;
   customer: { id: string; name: string } | null;
+  items?: Array<{ id: string; quantity: number; unitPrice: number; variant: { id: string; sku: string; size?: string | null; colour?: string | null } }>;
 }
 
 export interface ReturnRequest {
@@ -75,6 +78,8 @@ export interface AuditEntry {
   actorId: string | null;
   action: string;
   timestamp: string;
+  beforeState?: unknown;
+  afterState?: unknown;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -138,9 +143,9 @@ export class ApiService {
     return this.http.get<Dashboard>(`${API_BASE}/analytics/dashboard`);
   }
 
-  bestSellers(): Observable<Array<{ sku: string; productName: string; unitsSold: number; revenue: number }>> {
+  bestSellers(direction: 'best' | 'slow' = 'best', limit = 5): Observable<Array<{ sku: string; productName: string; unitsSold: number; revenue: number }>> {
     return this.http.get<Array<{ sku: string; productName: string; unitsSold: number; revenue: number }>>(
-      `${API_BASE}/analytics/best-sellers?limit=5`,
+      `${API_BASE}/analytics/best-sellers?limit=${limit}&direction=${direction}`,
     );
   }
 
@@ -164,9 +169,17 @@ export class ApiService {
     return this.http.patch(`${API_BASE}/production-batches/${id}/stage`, { stage });
   }
 
-  orders(channel?: string): Observable<{ data: AdminOrder[]; total: number }> {
+  orders(channel?: string, limit = 50): Observable<{ data: AdminOrder[]; total: number }> {
     const query = channel ? `&channel=${channel}` : '';
-    return this.http.get<{ data: AdminOrder[]; total: number }>(`${API_BASE}/orders?limit=50${query}`);
+    return this.http.get<{ data: AdminOrder[]; total: number }>(`${API_BASE}/orders?limit=${limit}${query}`);
+  }
+
+  order(id: string): Observable<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(`${API_BASE}/orders/${id}`);
+  }
+
+  orderTracking(id: string): Observable<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(`${API_BASE}/orders/${id}/tracking`);
   }
 
   advanceOrder(id: string, status: string): Observable<unknown> {
@@ -190,8 +203,15 @@ export class ApiService {
     });
   }
 
-  auditLog(): Observable<{ data: AuditEntry[]; total: number }> {
-    return this.http.get<{ data: AuditEntry[]; total: number }>(`${API_BASE}/audit-log?limit=50`);
+  auditLog(filters?: { action?: string; actorId?: string; from?: string; to?: string; page?: number; limit?: number }): Observable<{ data: AuditEntry[]; total: number }> {
+    const p = new URLSearchParams();
+    p.set('limit', String(filters?.limit ?? 50));
+    if (filters?.page) p.set('page', String(filters.page));
+    if (filters?.action) p.set('action', filters.action);
+    if (filters?.actorId) p.set('actorId', filters.actorId);
+    if (filters?.from) p.set('from', filters.from);
+    if (filters?.to) p.set('to', filters.to);
+    return this.http.get<{ data: AuditEntry[]; total: number }>(`${API_BASE}/audit-log?${p.toString()}`);
   }
 
   // --- Approvals helper: gated forms request an approval, management decides in the queue ---

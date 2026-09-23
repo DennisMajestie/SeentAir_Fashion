@@ -1,35 +1,123 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, ReturnRequest } from '../api.service';
 
+/** A11 — Customer returns quarantine & inspection desk. Approved Stitch
+    layout: intake KPIs, live intake registry with SLA countdowns, and a
+    grading inspector that resolves each RMA (restock vs damaged — the
+    existing disposition flow). 12h request / 24h completion windows are
+    enforced server-side. */
 @Component({
   selector: 'app-returns',
   imports: [CommonModule, FormsModule],
   template: `
-    <h1>Returns queue</h1>
-    <p class="muted">12h request window enforced by the system; physical return due within 24h of the request.</p>
-    @if (returns().length === 0) { <p class="success">No returns waiting.</p> }
-    @for (request of returns(); track request.id) {
-      <section class="panel">
-        <p>
-          <code>{{ request.variant.sku }}</code> × {{ request.quantity }}
-          · order <code>{{ request.order.id.slice(0, 8) }}</code>
-          · <span class="status">{{ request.status }}</span>
-        </p>
-        <p class="muted small">
-          "{{ request.reason }}" — requested {{ request.requestedAt | date: 'medium' }},
-          return due {{ request.returnDeadline | date: 'medium' }}
-        </p>
-        @if (request.status === 'requested') {
-          <div class="actions">
-            <input [(ngModel)]="resolutions[request.id]" placeholder="Resolution (e.g. refund issued)" />
-            <button class="cta small" (click)="resolve(request.id, 'restocked')">Resolve — restock</button>
-            <button class="danger small" (click)="resolve(request.id, 'damaged')">Resolve — damaged</button>
-          </div>
+    <div class="ops-head">
+      <div class="ops-id">
+        <p class="eyebrow">Operations · Returns & inspection</p>
+        <h1>Customer returns & inspection queue</h1>
+        <p class="ops-sub">Omnichannel return triage, garment inspection, condition grading and restock authorisation.</p>
+      </div>
+      <div class="ops-actions">
+        <span class="live-chip">Intake live</span>
+      </div>
+    </div>
+
+    <div class="kpi-bar">
+      <div class="kpi" [class.kpi-action]="pendingCount() > 0">
+        <span class="kpi-label">Pending inspections</span>
+        <span class="kpi-value">{{ pendingCount() }}</span>
+        <span class="kpi-sub">awaiting grading & disposition</span>
+      </div>
+      <div class="kpi"><span class="kpi-label">Units in quarantine</span><span class="kpi-value">{{ pendingUnits() }}</span><span class="kpi-sub">across open requests</span></div>
+      <div class="kpi"><span class="kpi-label">Overdue returns</span><span class="kpi-value" [class.error]="overdueCount() > 0">{{ overdueCount() }}</span><span class="kpi-sub">past the 24h physical-return deadline</span></div>
+      <div class="kpi"><span class="kpi-label">Total requests</span><span class="kpi-value">{{ returns().length }}</span><span class="kpi-sub">in the current window</span></div>
+      <!-- GAP: refund-exposure ₦ needs the returned line's unit price; the returns API
+           carries sku + quantity only. -->
+    </div>
+
+    <p class="rule-strip">RETURN WINDOWS // request within 12h of receipt · complete within 24h · custom orders excluded — enforced by the API.</p>
+
+    <div class="ops-toolbar">
+      <div class="seg" role="group" aria-label="Status filter">
+        <button type="button" [class.on]="statusFilter() === ''" (click)="statusFilter.set('')">All returns <span class="seg-n">{{ returns().length }}</span></button>
+        @for (g of statusGroups(); track g.status) {
+          <button type="button" [class.on]="statusFilter() === g.status" (click)="statusFilter.set(g.status)">
+            {{ g.status.replaceAll('_', ' ') }} <span class="seg-n">{{ g.count }}</span>
+          </button>
         }
-      </section>
-    }
+      </div>
+    </div>
+
+    <div class="side-split">
+      <div class="table-scroll">
+        <table class="table">
+          <thead><tr><th>RMA</th><th>Item</th><th>Reason</th><th>Requested</th><th>Return deadline</th><th>Status</th></tr></thead>
+          <tbody>
+            @for (r of visible(); track r.id) {
+              <tr class="clickable" [class.sel]="selected()?.id === r.id" (click)="select(r)">
+                <td><code>RMA-{{ r.id.slice(0, 6) }}</code><br /><span class="mini-note">order {{ r.order.id.slice(0, 8) }}</span></td>
+                <td><strong>{{ r.variant.sku }}</strong> × {{ r.quantity }}</td>
+                <td class="small">“{{ r.reason }}”</td>
+                <td class="mono small">{{ r.requestedAt | date: 'MMM d, HH:mm' }}</td>
+                <td>
+                  @if (r.status === 'requested') {
+                    <span class="chip" [class.bad]="isOverdue(r)" [class.warn]="!isOverdue(r)">{{ deadlineLabel(r) }}</span>
+                  } @else {
+                    <span class="mono small muted">{{ r.returnDeadline | date: 'MMM d, HH:mm' }}</span>
+                  }
+                </td>
+                <td><span class="chip" [class.warn]="r.status === 'requested'" [class.ok]="r.status !== 'requested'">{{ r.status.replaceAll('_', ' ') }}</span></td>
+              </tr>
+            }
+            @if (visible().length === 0) { <tr><td colspan="6" class="muted small">No returns in this view.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+
+      <aside class="inspector">
+        @if (selected(); as r) {
+          <div class="insp-head">
+            <h2>RMA-{{ r.id.slice(0, 6) }}</h2>
+            <span class="chip" [class.warn]="r.status === 'requested'" [class.ok]="r.status !== 'requested'">{{ r.status.replaceAll('_', ' ') }}</span>
+          </div>
+          <dl class="kv">
+            <dt>Item</dt><dd>{{ r.variant.sku }} × {{ r.quantity }}</dd>
+            <dt>Order</dt><dd><code>{{ r.order.id.slice(0, 8) }}</code></dd>
+            <dt>Reason</dt><dd>“{{ r.reason }}”</dd>
+            <dt>Requested</dt><dd>{{ r.requestedAt | date: 'medium' }}</dd>
+            <dt>Return due</dt><dd [class.error]="isOverdue(r)">{{ r.returnDeadline | date: 'medium' }} ({{ deadlineLabel(r) }})</dd>
+          </dl>
+          <!-- GAP: intake garment photos and the QR quarantine-bay tag need media/storage
+               fields the returns API doesn't carry. -->
+
+          @if (r.status === 'requested') {
+            <div class="gap-sep"></div>
+            <div class="panel-head"><h2>Condition grading & disposition</h2></div>
+            <label>Inspection note (required)
+              <input [(ngModel)]="resolutions[r.id]" name="res" placeholder="e.g. tags intact, refund issued / seam damage" />
+            </label>
+            <div class="attention">
+              <div class="att-item">
+                <span class="att-tag">Grade A/B · Pristine or mint-grade</span>
+                <p class="att-body">Original packaging & tags intact — return to sellable stock (ledger movement: return in).</p>
+                <span class="att-act"><button class="cta small" (click)="resolve(r.id, 'restocked')">✓ Approve & restock</button></span>
+              </div>
+              <div class="att-item crit">
+                <span class="att-tag">Grade C · Irreparable / compromised</span>
+                <p class="att-body">Damaged, worn or contaminated — quarantine as damaged; excluded from stock.</p>
+                <span class="att-act"><button class="danger" (click)="resolve(r.id, 'damaged')">✕ Resolve as damaged</button></span>
+              </div>
+            </div>
+          } @else {
+            <p class="success small">This RMA has been resolved — disposition is recorded on the inventory ledger and audit log.</p>
+          }
+        } @else {
+          <p class="muted small">Select an RMA to open the inspection & grading desk.</p>
+        }
+      </aside>
+    </div>
+
     @if (error()) { <p class="error">{{ error() }}</p> }
   `,
 })
@@ -37,6 +125,8 @@ export class ReturnsPage implements OnInit {
   private readonly api = inject(ApiService);
   readonly returns = signal<ReturnRequest[]>([]);
   readonly error = signal<string | null>(null);
+  readonly selected = signal<ReturnRequest | null>(null);
+  readonly statusFilter = signal('');
   resolutions: Record<string, string> = {};
 
   ngOnInit(): void {
@@ -44,13 +134,48 @@ export class ReturnsPage implements OnInit {
   }
 
   private load(): void {
-    this.api.returns().subscribe((res) => this.returns.set(res.data));
+    this.api.returns().subscribe((res) => {
+      this.returns.set(res.data);
+      const sel = this.selected();
+      if (sel) this.selected.set(res.data.find((r) => r.id === sel.id) ?? null);
+    });
+  }
+
+  readonly pendingCount = computed(() => this.returns().filter((r) => r.status === 'requested').length);
+  readonly pendingUnits = computed(() => this.returns().filter((r) => r.status === 'requested').reduce((s, r) => s + r.quantity, 0));
+  readonly overdueCount = computed(() => this.returns().filter((r) => r.status === 'requested' && this.isOverdue(r)).length);
+  readonly statusGroups = computed(() => {
+    const counts = new Map<string, number>();
+    for (const r of this.returns()) counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
+    return [...counts.entries()].map(([status, count]) => ({ status, count }));
+  });
+
+  visible(): ReturnRequest[] {
+    const s = this.statusFilter();
+    return s ? this.returns().filter((r) => r.status === s) : this.returns();
+  }
+
+  select(r: ReturnRequest): void {
+    this.selected.set(this.selected()?.id === r.id ? null : r);
+  }
+
+  isOverdue(r: ReturnRequest): boolean {
+    return new Date(r.returnDeadline).getTime() < Date.now();
+  }
+
+  /** SLA countdown chip, derived from the real 24h deadline. */
+  deadlineLabel(r: ReturnRequest): string {
+    const ms = new Date(r.returnDeadline).getTime() - Date.now();
+    if (Number.isNaN(ms)) return '—';
+    const h = Math.floor(Math.abs(ms) / 3_600_000);
+    const m = Math.floor((Math.abs(ms) % 3_600_000) / 60_000);
+    return ms < 0 ? `overdue ${h}h ${m}m` : `${h}h ${m}m left`;
   }
 
   resolve(id: string, disposition: 'restocked' | 'damaged'): void {
     const resolution = this.resolutions[id]?.trim();
     if (!resolution) {
-      this.error.set('Enter a resolution note first.');
+      this.error.set('Enter an inspection note first.');
       return;
     }
     this.error.set(null);

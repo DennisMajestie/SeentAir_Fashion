@@ -16,6 +16,10 @@ import { ProductionPage } from './pages/production.page';
 import { ReturnsPage } from './pages/returns.page';
 import { SecurityPage } from './pages/security.page';
 import { StaffAdminPage } from './pages/staff.page';
+import { TechPackPage } from './pages/tech-pack.page';
+import { VendorsAdminPage } from './pages/vendors.page';
+import { FloorKioskPage } from './pages/floor-kiosk.page';
+import { MessagesPage } from './pages/messages.page';
 import { WholesaleAdminPage } from './pages/wholesale.page';
 
 export const routes: Routes = [
@@ -35,6 +39,10 @@ export const routes: Routes = [
   { path: 'staff', component: StaffAdminPage, title: 'Seentair Ops — Staff' },
   { path: 'logistics', component: LogisticsAdminPage, title: 'Seentair Ops — Logistics' },
   { path: 'marketing', component: MarketingAdminPage, title: 'Seentair Ops — Marketing' },
+  { path: 'tech-pack', component: TechPackPage, title: 'Seentair Ops — Tech pack' },
+  { path: 'vendors', component: VendorsAdminPage, title: 'Seentair Ops — Procurement' },
+  { path: 'floor-kiosk', component: FloorKioskPage, title: 'Seentair Ops — Floor kiosk' },
+  { path: 'messages', component: MessagesPage, title: 'Seentair Ops — Messages' },
   { path: 'audit', component: AuditPage, title: 'Seentair Ops — Audit log' },
   { path: 'security', component: SecurityPage, title: 'Seentair Ops — Security' },
   { path: '**', redirectTo: '' },

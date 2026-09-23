@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../api.service';
 
@@ -8,19 +8,39 @@ interface ZoneRow { id: string; zone: string; baseFee: number; pricePerKg: numbe
 
 const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
 
-/** Logistics management — Stitch layout: legs table, create-delivery panel,
-    zone pricing (weight + location), quote calculator. */
+/** A12 — Inter-facility haulage & delivery logistics. Approved Stitch layout:
+    transit KPIs, status-filtered haulage runs, a master-waybill inspector per
+    leg (carrier tracking read), plus the zone-pricing engine and quote
+    calculator. GIGL sits behind the pluggable carrier adapter. */
 @Component({
   selector: 'app-logistics-admin',
   imports: [CommonModule, FormsModule],
   template: `
-    <h1>Logistics</h1>
+    <div class="ops-head">
+      <div class="ops-id">
+        <p class="eyebrow">Operations · Deliveries & haulage</p>
+        <h1>Inter-facility haulage & delivery logistics</h1>
+        <p class="ops-sub">Real-time tracking of finished goods legs between factory, depots and customers.</p>
+      </div>
+      <div class="ops-actions">
+        <span class="live-chip">Tracking live</span>
+        <button class="cta small" type="button" (click)="showCreate.set(!showCreate())">{{ showCreate() ? 'Close' : '⚡ Schedule haulage dispatch' }}</button>
+      </div>
+    </div>
 
-    <div class="cols">
+    <div class="kpi-bar">
+      <div class="kpi"><span class="kpi-label">Haulage runs</span><span class="kpi-value">{{ legs().length }}</span><span class="kpi-sub">delivery legs on record</span></div>
+      <div class="kpi"><span class="kpi-label">Active transit</span><span class="kpi-value">{{ countStatus('in_transit') }}</span><span class="kpi-sub">{{ countStatus('pending') }} awaiting gate pass</span></div>
+      <div class="kpi"><span class="kpi-label">Delivered & signed</span><span class="kpi-value">{{ countStatus('delivered') }}</span><span class="kpi-sub">{{ countStatus('failed') }} failed leg(s)</span></div>
+      <div class="kpi"><span class="kpi-label">Freight spend</span><span class="kpi-value">₦{{ totalCost() | number: '1.0-0' }}</span><span class="kpi-sub">recorded leg costs</span></div>
+      <!-- GAP: unit volumes per run (pcs) need consignment contents the delivery leg doesn't store. -->
+    </div>
+
+    @if (showCreate()) {
       <section class="panel">
-        <p class="section-label">Create delivery</p>
+        <div class="panel-head"><h2>Schedule haulage dispatch</h2><span class="ph-sub">creates a delivery leg</span></div>
         <form class="form-grid" (ngSubmit)="create()">
-          <label class="wide">Order id <input [(ngModel)]="nd.orderId" name="doid" required placeholder="paste order uuid" /></label>
+          <label class="wide">Order id <input [(ngModel)]="nd.orderId" name="doid" required placeholder="paste manifest ref (order uuid)" /></label>
           <label>Carrier
             <select [(ngModel)]="nd.carrier" name="dcar">
               <option value="gigl">GIGL (API)</option>
@@ -39,9 +59,80 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
           <div class="wide"><button class="cta small" type="submit">Create leg</button></div>
         </form>
       </section>
+    }
 
-      <section class="panel">
-        <p class="section-label">Zone pricing <span class="count">// weight + location</span></p>
+    <div class="ops-toolbar">
+      <div class="seg" role="group" aria-label="Leg status">
+        <button type="button" [class.on]="statusFilter() === ''" (click)="statusFilter.set('')">All runs <span class="seg-n">{{ legs().length }}</span></button>
+        @for (s of legStatuses; track s) {
+          <button type="button" [class.on]="statusFilter() === s" (click)="statusFilter.set(s)">
+            {{ s.replaceAll('_', ' ') }} <span class="seg-n">{{ countStatus(s) }}</span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="side-split">
+      <div class="table-scroll">
+        <table class="table">
+          <thead><tr><th>Waybill / run</th><th>Carrier</th><th>Leg</th><th>Tracking</th><th>Cost</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            @for (l of visible(); track l.id) {
+              <tr class="clickable" [class.sel]="selected()?.id === l.id" (click)="select(l)">
+                <td><code>WB-{{ l.id.slice(0, 6) }}</code><br /><span class="mini-note">order {{ l.order.id.slice(0, 8) }}</span></td>
+                <td><span class="chip" [class.acid]="l.carrier === 'gigl'">{{ l.carrier.replaceAll('_', ' ') }}</span></td>
+                <td class="mono">{{ l.legNumber }}</td>
+                <td class="mono small">{{ l.trackingRef || '—' }}</td>
+                <td class="mono">{{ l.cost !== null ? '₦' + (l.cost | number) : '—' }}</td>
+                <td><span class="chip" [class.ok]="l.status === 'delivered'" [class.warn]="l.status === 'in_transit'" [class.bad]="l.status === 'failed'">{{ l.status.replaceAll('_', ' ') }}</span></td>
+                <td>
+                  <div class="actions flat">
+                    <select [(ngModel)]="statusChoice[l.id]" [name]="'s' + l.id" (click)="$event.stopPropagation()">
+                      @for (s of legStatuses; track s) { <option [value]="s">{{ s.replaceAll('_', ' ') }}</option> }
+                    </select>
+                    <button class="cta small ghost" (click)="setStatus(l); $event.stopPropagation()">Set</button>
+                  </div>
+                </td>
+              </tr>
+            }
+            @if (visible().length === 0) { <tr><td colspan="7" class="muted small">No haulage runs in this view.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+
+      <aside class="inspector">
+        @if (selected(); as l) {
+          <div class="insp-head">
+            <h2>Master waybill WB-{{ l.id.slice(0, 6) }}</h2>
+            <span class="chip" [class.ok]="l.status === 'delivered'" [class.warn]="l.status === 'in_transit'" [class.bad]="l.status === 'failed'">{{ l.status.replaceAll('_', ' ') }}</span>
+          </div>
+          <dl class="kv">
+            <dt>Order manifest</dt><dd><code class="wrap-anywhere">{{ l.order.id }}</code></dd>
+            <dt>Carrier</dt><dd>{{ l.carrier.replaceAll('_', ' ') }}</dd>
+            <dt>Leg number</dt><dd>{{ l.legNumber }}</dd>
+            <dt>Freight cost</dt><dd>{{ l.cost !== null ? '₦' + (l.cost | number) : 'not recorded' }}</dd>
+          </dl>
+
+          <div class="panel-head"><h2>Carrier telemetry</h2><span class="ph-sub">live tracking read</span></div>
+          @if (tracking(); as t) {
+            <dl class="kv">
+              <dt>Tracking ref</dt><dd class="wrap-anywhere">{{ t['trackingRef'] || '—' }}</dd>
+              <dt>Carrier status</dt><dd>{{ t['status'] }}</dd>
+              @if (t['dispatchedAt']) { <dt>Dispatched</dt><dd>{{ str(t['dispatchedAt']) | date: 'medium' }}</dd> }
+              @if (t['deliveredAt']) { <dt>Delivered</dt><dd>{{ str(t['deliveredAt']) | date: 'medium' }}</dd> }
+            </dl>
+          } @else {
+            <p class="muted small">Fetching tracking…</p>
+          }
+          <!-- GAP: the reference's live corridor map, torque-seal checkpoints and driver
+               PIN handshake need GPS/telematics feeds no carrier integration provides yet
+               (GIGL adapter awaits production keys). -->
+        } @else {
+          <p class="muted small">Select a haulage run to open its master waybill and carrier telemetry.</p>
+        }
+
+        <div class="gap-sep"></div>
+        <div class="panel-head"><h2>Zone pricing engine</h2><span class="ph-sub">weight + location</span></div>
         <table class="table">
           <thead><tr><th>Zone</th><th>Base ₦</th><th>Per kg ₦</th></tr></thead>
           <tbody>
@@ -56,10 +147,8 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
           <label>Per kg ₦ <input type="number" min="0" [(ngModel)]="nz.pricePerKg" name="zp" required /></label>
           <div class="wide"><button class="cta small ghost" type="submit">Save zone</button></div>
         </form>
-      </section>
 
-      <section class="panel">
-        <p class="section-label">Quote calculator</p>
+        <div class="panel-head"><h2>Quote calculator</h2></div>
         <form class="form-grid" (ngSubmit)="getQuote()">
           <label>Weight kg <input type="number" min="0" step="0.1" [(ngModel)]="qc.weightKg" name="qw" required /></label>
           <label>Zone
@@ -72,51 +161,9 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
             @if (quoteResult() !== null) { <span class="naira stat-md">₦{{ quoteResult() | number: '1.0-2' }}</span> }
           </div>
         </form>
-      </section>
+      </aside>
     </div>
 
-    <p class="section-label">Delivery legs <span class="count">[{{ legs().length | number: '2.0' }}]</span></p>
-    <table class="table">
-      <thead><tr><th>Order</th><th>Carrier</th><th>Leg</th><th>Tracking</th><th>Cost</th><th>Status</th><th></th></tr></thead>
-      <tbody>
-        @for (l of legs(); track l.id) {
-          <tr>
-            <td class="mono small">{{ l.order.id.slice(0, 8) }}</td>
-            <td>{{ l.carrier }}</td>
-            <td class="mono">{{ l.legNumber }}</td>
-            <td class="mono small">{{ l.trackingRef }}</td>
-            <td class="mono">{{ l.cost !== null ? '₦' + (l.cost | number) : '—' }}</td>
-            <td><span class="chip" [class.ok]="l.status === 'delivered'" [class.warn]="l.status === 'in_transit'" [class.bad]="l.status === 'failed'">{{ l.status.replaceAll('_', ' ') }}</span></td>
-            <td>
-              <div class="actions flat">
-                <select [(ngModel)]="statusChoice[l.id]" [name]="'s' + l.id">
-                  @for (s of legStatuses; track s) { <option [value]="s">{{ s.replaceAll('_', ' ') }}</option> }
-                </select>
-                <button class="cta small ghost" (click)="setStatus(l)">Set</button>
-                <button class="link" type="button" (click)="track(l.id)">
-                  {{ trackingId() === l.id ? 'hide' : 'track' }}
-                </button>
-              </div>
-            </td>
-          </tr>
-          @if (trackingId() === l.id) {
-            <tr>
-              <td colspan="7">
-                @if (tracking(); as t) {
-                  <span class="chip acid">carrier {{ t['carrier'] }}</span>
-                  <span class="mono small"> {{ t['trackingRef'] }}</span> ·
-                  {{ t['status'] }}
-                  @if (t['dispatchedAt']) { · dispatched {{ t['dispatchedAt'] }} }
-                  @if (t['deliveredAt']) { · delivered {{ t['deliveredAt'] }} }
-                } @else {
-                  <span class="muted small">Fetching tracking…</span>
-                }
-              </td>
-            </tr>
-          }
-        }
-      </tbody>
-    </table>
     @if (message()) { <p class="success">{{ message() }}</p> }
     @if (error()) { <p class="error">{{ error() }}</p> }
   `,
@@ -125,12 +172,13 @@ export class LogisticsAdminPage implements OnInit {
   private readonly api = inject(ApiService);
   readonly legs = signal<LegRow[]>([]);
   readonly zones = signal<ZoneRow[]>([]);
-  /** Per-leg carrier tracking, read on demand. */
-  readonly trackingId = signal<string | null>(null);
+  readonly selected = signal<LegRow | null>(null);
   readonly tracking = signal<Record<string, unknown> | null>(null);
   readonly quoteResult = signal<number | null>(null);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
+  readonly showCreate = signal(false);
+  readonly statusFilter = signal('');
   readonly legStatuses = LEG_STATUSES;
   statusChoice: Record<string, string> = {};
   nd = { orderId: '', carrier: 'dispatch_rider', legNumber: 1, weightKg: 0, zone: '' };
@@ -143,17 +191,30 @@ export class LogisticsAdminPage implements OnInit {
       const rows = res.data as unknown as LegRow[];
       this.legs.set(rows);
       for (const l of rows) this.statusChoice[l.id] ??= l.status;
+      const sel = this.selected();
+      if (sel) this.selected.set(rows.find((l) => l.id === sel.id) ?? null);
     });
     this.api.deliveryPricing().subscribe((res) => this.zones.set(res as unknown as ZoneRow[]));
   }
-  /** Carrier-side tracking for one leg (GET /deliveries/:id/tracking). */
-  track(legId: string): void {
-    if (this.trackingId() === legId) { this.trackingId.set(null); return; }
-    this.trackingId.set(legId);
+
+  countStatus(s: string): number { return this.legs().filter((l) => l.status === s).length; }
+  readonly totalCost = computed(() => this.legs().reduce((sum, l) => sum + (Number(l.cost) || 0), 0));
+
+  visible(): LegRow[] {
+    const s = this.statusFilter();
+    return s ? this.legs().filter((l) => l.status === s) : this.legs();
+  }
+
+  str(v: unknown): string { return v == null ? '' : String(v); }
+
+  /** Waybill inspector: carrier-side tracking for one leg. */
+  select(l: LegRow): void {
+    if (this.selected()?.id === l.id) { this.selected.set(null); this.tracking.set(null); return; }
+    this.selected.set(l);
     this.tracking.set(null);
-    this.api.deliveryTracking(legId).subscribe({
+    this.api.deliveryTracking(l.id).subscribe({
       next: (t) => this.tracking.set(t),
-      error: (e) => { this.trackingId.set(null); this.fail(e, 'Tracking unavailable for that leg.'); },
+      error: (e) => { this.tracking.set(null); this.fail(e, 'Tracking unavailable for that leg.'); },
     });
   }
 
@@ -164,7 +225,7 @@ export class LogisticsAdminPage implements OnInit {
     this.api.createDelivery({
       orderId: this.nd.orderId, carrier: this.nd.carrier, legNumber: Number(this.nd.legNumber),
       weightKg: this.nd.weightKg ? Number(this.nd.weightKg) : undefined, zone: this.nd.zone || undefined,
-    }).subscribe({ next: () => this.ok('Delivery leg created.'), error: (e) => this.fail(e, 'Create failed — GIGL needs API keys; use a manual carrier meanwhile.') });
+    }).subscribe({ next: () => { this.showCreate.set(false); this.ok('Delivery leg created.'); }, error: (e) => this.fail(e, 'Create failed — GIGL needs API keys; use a manual carrier meanwhile.') });
   }
 
   upsertZone(): void {
