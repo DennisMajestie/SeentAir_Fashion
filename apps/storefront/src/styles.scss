@@ -962,18 +962,20 @@ select, input, textarea {
 @media (max-width: 820px) {
   .dressing-stage { height: min(calc(100svh - var(--header-h, 3.6rem)), 820px); }
   /* Phones: a compact caption at the bottom, not a wall over the scene.
-     The archive card repeats the headline/copy, so it goes entirely. */
+     The full archive card still shows, above the headline. */
   .hero-wrap { max-height: 62%; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
   .hero-grid { grid-template-columns: 1fr; gap: 0; }
   .hero-main { grid-column: 1; padding: 14px 16px 12px; }
-  /* The archive card survives on phones as a slim tag strip above the
-     headline — kicker + "₦ CURATED"-style tag only; its title and
-     caption duplicate the headline, so they stay hidden here. */
+  /* The full archive card sits above the headline on phones — kicker,
+     tag, rule, title and caption. */
   .hero-card {
     grid-column: 1; order: -1; align-self: flex-start;
-    flex-direction: row; align-items: baseline; gap: 0.6rem;
-    width: fit-content; padding: 6px 14px; margin: 0 0 8px 16px;
-    .card-rule, .card-title, .card-desc { display: none; }
+    flex-direction: column; align-items: flex-start; gap: 3px;
+    width: fit-content; max-width: calc(100% - 32px);
+    padding: 10px 14px; margin: 0 0 10px 16px;
+    .card-rule { display: block; margin: 2px 0 6px; }
+    .card-title { display: block; font-size: clamp(1rem, 4vw, 1.1rem); }
+    .card-desc { display: block; font-size: 11px; }
     .card-tag { font-size: 0.95rem; }
   }
   .stage-label { font-size: clamp(30px, 9vw, 44px); }
