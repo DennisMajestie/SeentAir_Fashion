@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, CustomOrder } from '../api.service';
+import { pill } from '../status-pill';
 
 /** Custom/special design requests — quote, full payment, sample gate, production. */
 @Component({
@@ -56,6 +57,7 @@ import { ApiService, CustomOrder } from '../api.service';
 })
 export class CustomPage implements OnInit {
   private readonly api = inject(ApiService);
+  readonly pill = pill;
   readonly requests = signal<CustomOrder[]>([]);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
@@ -78,14 +80,6 @@ export class CustomPage implements OnInit {
 
   private load(): void {
     this.api.customOrders().subscribe((res) => this.requests.set(res.data));
-  }
-
-  pill(status?: string): string {
-    const s = (status ?? '').toLowerCase();
-    if (s.includes('approved') || s.includes('complete') || s.includes('sample_approved')) return 'ok';
-    if (s.includes('pending') || s.includes('quoted') || s.includes('sample_in_production')) return 'warn';
-    if (s.includes('rejected') || s.includes('cancelled')) return 'bad';
-    return '';
   }
 
   submit(): void {

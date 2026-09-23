@@ -25,7 +25,7 @@ import { ApiService, Pricing } from '../api.service';
         <span class="dot"></span>
         <span>Tier <strong>{{ p.tier?.name ?? 'Standard' }}</strong>
           @if (p.tier) { ({{ p.tier.discountPercent }}% off retail) }</span>
-        <span style="margin-left: auto;">MOQ <strong>{{ p.moq }}</strong> units</span>
+        <span class="push">MOQ <strong>{{ p.moq }}</strong> units</span>
       </div>
 
       <table class="table">

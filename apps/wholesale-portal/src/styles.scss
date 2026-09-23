@@ -419,7 +419,8 @@ label { display: block; margin: var(--space-md) 0; font-size: var(--type-label-m
 .apply-panel {
   background: var(--ilow); border: 1px solid var(--ihair); padding: var(--space-lg);
   display: flex; flex-direction: column; gap: var(--space-md);
-  .apply-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); flex-wrap: wrap; }
+  .apply-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); flex-wrap: wrap;
+    h2 { font-size: var(--type-label-md); letter-spacing: 0.08em; } }
   .criteria { display: grid; gap: var(--space-xs);
     .crit { background: var(--icard); border: 1px solid var(--ihair);
       padding: var(--space-sm); display: flex; align-items: flex-start; gap: var(--space-sm);
@@ -443,6 +444,15 @@ label { display: block; margin: var(--space-md) 0; font-size: var(--type-label-m
   p { margin: 0; }
   .legal { font-size: var(--type-label-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--iter); }
   .sub { font-size: var(--type-body-sm); color: var(--muted); } }
+
+/* ---------- Utilities ---------- */
+
+.meta-line { font-size: var(--type-body-sm); text-transform: uppercase; letter-spacing: 0.06em; }
+.tabular { font-variant-numeric: tabular-nums; }
+.push { margin-left: auto; }
+.apply-copy { font-size: var(--type-body-md); line-height: 1.55; }
+.apply-note { text-align: center; }
+.status-line { display: flex; align-items: center; gap: var(--space-sm); }
 
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal;
