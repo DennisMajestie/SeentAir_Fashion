@@ -49,9 +49,9 @@ interface FabricPiece {
   delay: number; // per-piece stagger — panels seat one after another
 }
 
-interface Testimonial {
-  productId: string;
-  productName: string;
+interface DemoReview {
+  name: string;
+  product: string;
   rating: number;
   comment: string;
 }
@@ -186,45 +186,6 @@ interface Testimonial {
       </div>
     </section>
 
-    <section id="promo" class="grid-wrap">
-      <div class="wrap-col">
-        <div class="promo-card">
-          <div class="promo-media">
-            <img src="assets/series-5.jpg" alt="Drop 04 — the look, edition of 180 pieces" loading="lazy" />
-            <span class="promo-spec">[ 04 / DROP 04 ]</span>
-          </div>
-          <div class="promo-body">
-            <p class="card-kicker">Drop 04 — Harmattan</p>
-            <h2>Made to order</h2>
-            <p>Bespoke tailoring and limited runs, built in the Yaba atelier: sample approved, then production. Nothing off-the-rack.</p>
-            <p class="mono small promo-edition">EDITION OF 180 PIECES</p>
-            <a class="btn btn-primary" routerLink="/shop">Shop the drop</a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="lookbook" class="grid-wrap">
-      <div class="wrap-col">
-        <div class="section-head">
-          <h2>The lookbook</h2>
-          <span class="muted small">Act by act</span>
-        </div>
-        <div class="look-grid">
-          @for (look of lookbook; track look.title) {
-            <a class="look-tile" [routerLink]="['/shop']" [queryParams]="{ category: look.category }">
-              <img [src]="'assets/' + look.image" [alt]="look.title" loading="lazy" />
-              <span class="look-scrim"></span>
-              <span class="look-caption">
-                <span class="look-index">{{ look.index }}</span>
-                <span class="look-title">{{ look.title }}</span>
-              </span>
-            </a>
-          }
-        </div>
-      </div>
-    </section>
-
     <section id="suggested" class="grid-wrap">
       <div class="wrap-col">
         <div class="section-head">
@@ -251,27 +212,33 @@ interface Testimonial {
     <section id="proof" class="grid-wrap">
       <div class="wrap-col">
         <div class="section-head">
-          <h2>From the atelier</h2>
-          <span class="muted small">Verified customer reviews</span>
+          <h2>What they're saying</h2>
+          <span class="muted small">Loved by our people</span>
         </div>
-        @if (testimonials().length === 0) {
-          <p class="muted">Reviews are on their way.</p>
-        } @else {
-          <div class="review-rail">
-            @for (t of testimonials(); track $index) {
+        <div class="review-marquee">
+          <div class="marquee-track">
+            @for (r of demoReviews; track $index) {
               <figure class="review-card">
-                <div class="stars">{{ starString(t.rating) }}</div>
-                <blockquote>“{{ t.comment }}”</blockquote>
+                <div class="stars">{{ starString(r.rating) }}</div>
+                <blockquote>“{{ r.comment }}”</blockquote>
                 <figcaption>
-                  <span class="muted small">Verified buyer</span>
-                  @if (t.productName) {
-                    <span class="muted small"> · {{ t.productName }}</span>
-                  }
+                  <span class="review-name">{{ r.name }}</span>
+                  <span class="muted small"> · {{ r.product }}</span>
+                </figcaption>
+              </figure>
+            }
+            @for (r of demoReviews; track $index) {
+              <figure class="review-card" aria-hidden="true">
+                <div class="stars">{{ starString(r.rating) }}</div>
+                <blockquote>“{{ r.comment }}”</blockquote>
+                <figcaption>
+                  <span class="review-name">{{ r.name }}</span>
+                  <span class="muted small"> · {{ r.product }}</span>
                 </figcaption>
               </figure>
             }
           </div>
-        }
+        </div>
       </div>
     </section>
 
@@ -395,14 +362,18 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
         image: c.image,
       }));
   });
-  /** Curated campaign tiles for the lookbook strip. */
-  readonly lookbook = [
-    { title: 'The Tee', index: '01', image: 'series-2.jpg', category: 'tops' },
-    { title: 'The Jogger', index: '02', image: 'series-3.jpg', category: 'bottoms' },
-    { title: 'The Hood', index: '03', image: 'series-4.jpg', category: 'outerwear' },
+  /** Demo review cards for the auto-playing marquee (shown until the API
+      starts returning real review comments). */
+  readonly demoReviews: DemoReview[] = [
+    { name: 'Chidi O.', product: 'The Tee', rating: 5, comment: 'The drop shoulder sits perfectly. Received in Lagos in two days, straight from the atelier.' },
+    { name: 'Amara E.', product: 'The Jogger', rating: 5, comment: 'Heavyweight terry that actually holds its shape. Bought two, wearing the first now.' },
+    { name: 'Tunde A.', product: 'The Hood', rating: 4, comment: 'Raw edges done right. Sizing guide was spot on — same one I got in store.' },
+    { name: 'Zainab K.', product: 'The Tee', rating: 5, comment: 'Quality like the showroom pieces. Full payment upfront, no regrets at all.' },
+    { name: 'Femi B.', product: 'The Jogger', rating: 5, comment: 'Fits the way the lookbook showed it. Edges are clean, seams are straight.' },
+    { name: 'Ngozi U.', product: 'The Hood', rating: 4, comment: 'Dust-resistant claim is real — wore it fieldside. Restocking colours soon, I hope.' },
+    { name: 'Ibrahim S.', product: 'The Tee', rating: 5, comment: '280GSM feels substantial without being stiff. My new everyday piece.' },
+    { name: 'Tobi D.', product: 'The Jogger', rating: 5, comment: 'Easy returns process too — I sized up and swapped within a day of delivery.' },
   ];
-  /** Review quotes sourced from the public reviews endpoint. */
-  readonly testimonials = signal<Testimonial[]>([]);
   readonly subscribed = signal(false);
   readonly emailError = signal(false);
   /** productId → average rating + review count (public reviews endpoint). */
@@ -478,30 +449,21 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   // ------------------------------------------------------------------
   private loadRatings(products: Product[]): void {
     if (products.length === 0) return;
-    type Row = { rating: number; comment: string | null };
     forkJoin(
       products.map((p) =>
         this.api.reviews(p.id).pipe(
-          map((r) => ({ id: p.id, name: p.name, rows: r.data as Row[] })),
-          catchError(() => of({ id: p.id, name: p.name, rows: [] as Row[] })),
+          map((r) => ({ id: p.id, rows: r.data })),
+          catchError(() => of({ id: p.id, rows: [] as Array<{ rating: number; comment: string | null }> })),
         ),
       ),
     ).subscribe((results) => {
       const map = new Map<string, { avg: number; count: number }>();
-      const samples: Testimonial[] = [];
       for (const r of results) {
         if (r.rows.length === 0) continue;
         const avg = r.rows.reduce((s, x) => s + x.rating, 0) / r.rows.length;
         map.set(r.id, { avg, count: r.rows.length });
-        for (const row of r.rows) {
-          if (samples.length >= 8) break;
-          if (row.comment) {
-            samples.push({ productId: r.id, productName: r.name, rating: row.rating, comment: row.comment });
-          }
-        }
       }
       this.ratings.set(map);
-      this.testimonials.set(samples);
     });
   }
 

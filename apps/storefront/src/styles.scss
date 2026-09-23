@@ -208,6 +208,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
 }
 .site-footer {
   padding-block: 2.5rem; border-top: 1px solid var(--line);
+  background: var(--container-2);
   color: var(--muted); font-size: 0.8rem;
 }
 .footer-cols {
@@ -518,61 +519,27 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   }
 }
 
-/* ---------- promo / ad card ---------- */
-.promo-card {
-  display: grid; grid-template-columns: 1.15fr 1fr; overflow: hidden;
-  border: 1px solid var(--line); border-radius: var(--radius); background: var(--container);
-  .promo-media {
-    position: relative; min-height: 100%;
-    img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .promo-spec {
-      position: absolute; top: 12px; left: 14px; padding: 0.35rem 0.7rem;
-      font-family: 'Inter', monospace; font-size: 0.66rem; letter-spacing: 0.12em;
-      color: var(--primary-tint);
-      background: color-mix(in srgb, var(--ink) 45%, transparent);
-      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-      border-radius: var(--radius-pill);
-    }
-  }
-  .promo-body {
-    display: flex; flex-direction: column; align-items: flex-start; gap: 0.7rem;
-    padding: clamp(1.4rem, 3vw, 2.6rem); align-self: center;
-    h2 { font-size: clamp(1.7rem, 3.5vw, 2.5rem); margin: 0; border: none; padding: 0; }
-    p { margin: 0; max-width: 52ch; line-height: 1.6; }
-    .promo-edition { color: var(--primary); letter-spacing: 0.18em; text-transform: uppercase; }
-  }
+/* ---------- review marquee (autoplay) ---------- */
+.review-marquee {
+  overflow: hidden;
+  margin-block: 0.25rem 0.25rem;
 }
-
-/* ---------- lookbook ---------- */
-.look-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.look-tile {
-  position: relative; display: block; aspect-ratio: 4 / 5;
-  border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line);
-  text-decoration: none; background: var(--container);
-  img { width: 100%; height: 100%; object-fit: cover; display: block;
-    transition: transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1); }
-  &:hover img { transform: scale(1.045); }
-  .look-scrim {
-    position: absolute; inset: 0;
-    background: linear-gradient(180deg, rgba(28, 27, 27, 0) 45%, rgba(28, 27, 27, 0.66) 100%);
-  }
-  .look-caption {
-    position: absolute; left: 1rem; bottom: 1rem; right: 1rem;
-    display: flex; flex-direction: column; gap: 0.15rem;
-    .look-index { font-family: 'Inter', monospace; font-size: 0.68rem; letter-spacing: 0.18em; color: var(--primary-tint); }
-    .look-title { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 1.35rem; letter-spacing: 0.06em; text-transform: uppercase; color: #fff; }
-  }
+.marquee-track {
+  display: flex; width: max-content;
+  animation: marquee 36s linear infinite;
 }
-
-/* ---------- reviews rail ---------- */
-.review-rail { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.review-marquee:hover .marquee-track,
+.review-marquee:focus-within .marquee-track { animation-play-state: paused; }
+@keyframes marquee { to { transform: translateX(-50%); } }
 .review-card {
   display: flex; flex-direction: column; gap: 0.5rem; margin: 0;
   padding: 1.1rem 1.2rem; background: var(--card); border: 1px solid var(--line);
   border-radius: var(--radius);
+  width: min(340px, 78vw); flex: none; margin-inline-end: 14px;
   blockquote { margin: 0; font-size: 0.9rem; line-height: 1.6; quotes: none;
     color: var(--ink); }
   figcaption { font-size: 0.78rem; }
+  .review-name { font-weight: 700; color: var(--ink); }
 }
 
 /* ---------- newsletter ---------- */
@@ -809,19 +776,6 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   }
   .cat-grid::-webkit-scrollbar { display: none; }
   .cat-tile { scroll-snap-align: start; min-height: 180px; }
-  .look-grid, .review-rail {
-    grid-auto-flow: column; grid-template-columns: none;
-    grid-auto-columns: min(78vw, 17rem);
-    overflow-x: auto; scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch; scrollbar-width: none;
-    margin-inline: calc(var(--wrap-x) * -1);
-    padding: 0.25rem var(--wrap-x) 0.75rem;
-  }
-  .look-grid::-webkit-scrollbar, .review-rail::-webkit-scrollbar { display: none; }
-  .look-tile, .review-card { scroll-snap-align: start; }
-  .promo-card { grid-template-columns: 1fr;
-    .promo-media { aspect-ratio: 4 / 3; min-height: 0; }
-    .promo-spec { top: 10px; left: 10px; } }
 }
 
 /* ---------- detail / forms / panels ---------- */
