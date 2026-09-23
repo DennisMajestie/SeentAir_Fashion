@@ -1,8 +1,8 @@
 /* SEENTAIR — approved design system (client's Stitch project
    "Seentair Streetwear Storefront", projects/4978034307012465281).
-   Customer-facing: rust accent on warm ivory; dark mode = bright rust on
-   near-black. Ops surfaces keep gold (see wholesale/styles.scss).
-   The scroll-dressing hero is EXEMPT and keeps gold-on-ivory in both themes
+   Customer-facing: brand gold on warm ivory; dark mode = champagne gold on
+   near-black. The brand gold matches the scroll-dressing hero's frozen
+   palette. The hero is EXEMPT and keeps gold-on-ivory in both themes
    (see the .hero-* exemption block below) — client: don't touch the hero. */
 
 :root {
@@ -14,13 +14,13 @@
   --line-2: #d6d1cf;
   --ink: #1c1b1b;
   --muted: #6f6a67;
-  /* Rust accent (brief 15.5): #b32d00 on cream light, #ff6a3d on
-     #141311 dark. One depth serves type AND fill — #a52a04 is 6.9:1 on
-     cream (AA body), #b32d00 with ivory-on-top is 5.6:1 (AA buttons). */
-  --primary: #a52a04;
-  --primary-fill: #b32d00;
-  --primary-tint: #f7e3db;
-  --on-primary: #fffdf9;
+  /* Brand gold accent (shared with the ops surfaces; equals the frozen
+     hero palette): #8a6a18 gold text on cream is ~4.8–5.1:1 (AA body),
+     #c9a24b buttons with ink-on-gold 6.9:1. */
+  --primary: #8a6a18;
+  --primary-fill: #c9a24b;
+  --primary-tint: #f7efdc;
+  --on-primary: #1c1b1b;
   --ok: #1b7f3b;
   --warn: #b26a00;
   --danger: #ba1a1a;
@@ -64,10 +64,10 @@
   --line-2: #4a453d;
   --ink: #f0ece4;
   --muted: #a49e94;
-  --primary: #ff6a3d;
-  --primary-fill: #ff6a3d;
-  --primary-tint: #3d2118;
-  --on-primary: #160f0a;
+  --primary: #e6cf8d;
+  --primary-fill: #c9a24a;
+  --primary-tint: #3d2f14;
+  --on-primary: #16130d;
   --ok: #55c97e;
   --warn: #f5b04c;
   --danger: #ff7a70;
@@ -76,8 +76,9 @@
 /* ---------- hero exemption ----------
    The scroll-dressing landing is officially frozen. In light OR dark it
    keeps its approved golden headline, gold slider and ivory veil, so
-   swapping --primary to rust or the canvas to near-black never bleeds
-   into the hero. Foreground-content edits only, per client instruction. */
+   swapping --primary (even back to rust) or the canvas to near-black never
+   bleeds into the hero. Foreground-content edits only, per client
+   instruction. */
 .hero-wrap, .hero-card, .hero-grid, .hero-main, .hero-actions,
 .dressing-scroll, .dressing-stage, .stage-frame, .dressing-static,
 .hero-slider, .slider-track, .trust-row {
@@ -470,7 +471,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   font-size: 0.82rem; letter-spacing: 0.14em; text-transform: uppercase;
   text-decoration: none;
   transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-  &:hover { background: color-mix(in srgb, var(--primary) 82%, #000); transform: translateY(-1px); }
+  &:hover { background: color-mix(in srgb, var(--primary-fill) 84%, #000); transform: translateY(-1px); }
   &:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
   &:disabled { opacity: 0.4; cursor: default; transform: none; }
   &.small { min-height: 36px; padding: 0 1.1rem; font-size: 0.72rem; }

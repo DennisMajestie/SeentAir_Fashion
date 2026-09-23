@@ -9,9 +9,9 @@ deploys standalone. Source brief: `docs/project/15-Design-Specification.md` §15
 
 | Surface            | Customer (storefront)                    | Ops (wholesale / admin / partner)        |
 | ------------------ | ---------------------------------------- | ---------------------------------------- |
-| Accent             | **Rust**                                 | **Gold**                                 |
-| Light mode         | `#b32d00` on cream `#faf7f2`             | `#b8862f` gold on `#faf7f2`              |
-| Dark mode          | `#ff6a3d` on near-black `#141311`        | `#c9a24a` on near-black `#0f0e0c`        |
+| Accent             | **Brand gold** (matches the hero)        | **Gold**                                 |
+| Light mode         | `#8a6a18` gold on cream `#faf7f2`        | `#b8862f` gold on `#faf7f2`              |
+| Dark mode          | `#e6cf8d` on near-black `#141311`        | `#c9a24a` on near-black `#0f0e0c`        |
 | Display type       | Oswald 600/700 uppercase, lh 0.92–1      | Inter 600/700 uppercase                  |
 | Body type          | Inter 400–600                            | Inter 400–600                            |
 
@@ -107,7 +107,7 @@ four apps. Resolution order: saved → `prefers-color-scheme`.
 
 | File | Responsibility |
 | --- | --- |
-| `storefront/src/styles.scss` | rust tokens, type/spacing/radius/motion, hero exemption, `.notice .stage-bar .sticky-cta .skeleton` |
+| `storefront/src/styles.scss` | gold tokens, type/spacing/radius/motion, hero exemption, `.notice .stage-bar .sticky-cta .skeleton` |
 | `storefront/src/app/{theme,cart}.service.ts` | theme toggle; cart MOQ/made-to-order signals |
 | `storefront/src/…/pages/{cart,checkout,order}.page.ts` | approved Cart & Checkout spec; manifest thumbnails; legacy `--acid`/`Anton` removed |
 | `wholesale-portal/src/styles.scss` | gold tokens + dark, `$ops-*`-free login |
