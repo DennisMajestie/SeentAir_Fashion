@@ -1,4 +1,5 @@
 import { Component, OnDestroy, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { CartService } from './cart.service';
 import { ThemeService } from './theme.service';
@@ -6,7 +7,7 @@ import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink],
+  imports: [CommonModule, RouterOutlet, RouterLink],
   template: `
     <header class="site-header" [class.scrolled]="scrolled()">
       <div class="wrap-col header-inner">
@@ -43,21 +44,49 @@ import { environment } from '../environments/environment';
               </svg>
             }
           </button>
-          <a
-            routerLink="/cart"
-            class="cart-btn"
-            [attr.aria-label]="cart.count === 1 ? 'Cart, 1 item' : 'Cart, ' + cart.count + ' items'"
-            (click)="menuOpen.set(false)"
+          <div
+            class="mini-cart"
+            (mouseenter)="cartOpen.set(true)"
+            (mouseleave)="cartOpen.set(false)"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-              <path d="M6 8h12l-1 11.2A2 2 0 0 1 15 21H9a2 2 0 0 1-2-1.8L6 8Z" />
-              <path d="M9 8V6.2a3 3 0 0 1 6 0V8" />
-            </svg>
-            @if (cart.count > 0) {
-              <span class="cart-count">{{ cart.count }}</span>
+            <a
+              routerLink="/cart"
+              class="cart-btn"
+              [attr.aria-label]="cart.count === 1 ? 'Cart, 1 item' : 'Cart, ' + cart.count + ' items'"
+              (click)="menuOpen.set(false)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M6 8h12l-1 11.2A2 2 0 0 1 15 21H9a2 2 0 0 1-2-1.8L6 8Z" />
+                <path d="M9 8V6.2a3 3 0 0 1 6 0V8" />
+              </svg>
+              @if (cart.count > 0) {
+                <span class="cart-count">{{ cart.count }}</span>
+              }
+            </a>
+            @if (cart.items().length > 0) {
+              <div class="mini-panel" [class.open]="cartOpen()">
+                <h4 class="mini-head">Your cart <span class="count">[{{ cart.count }}]</span></h4>
+                <ul class="mini-items">
+                  @for (item of cart.items(); track item.variantId) {
+                    <li>
+                      <img [src]="item.imageUrl || 'assets/shop-1.jpg'" [alt]="item.productName" />
+                      <span class="mini-info">
+                        <span class="mini-name">{{ item.productName }}</span>
+                        <span class="muted small">{{ item.size || 'OS' }} · {{ item.colour || '—' }} · ×{{ item.quantity }}</span>
+                      </span>
+                      <span class="mini-price">₦{{ item.unitPrice * item.quantity | number: '1.0-0' }}</span>
+                    </li>
+                  }
+                </ul>
+                <div class="mini-foot">
+                  <span class="muted small">Subtotal</span>
+                  <span class="mini-total">₦{{ cart.total | number: '1.0-0' }}</span>
+                </div>
+                <a class="btn btn-primary mini-cta" routerLink="/cart" (click)="cartOpen.set(false)">View cart &amp; checkout</a>
+              </div>
             }
-          </a>
+          </div>
           <button
             class="menu-toggle"
             [attr.aria-expanded]="menuOpen()"
@@ -122,6 +151,7 @@ export class App implements OnDestroy {
   readonly theme = inject(ThemeService);
   readonly scrolled = signal(false);
   readonly menuOpen = signal(false);
+  readonly cartOpen = signal(false);
 
   constructor() {
     if (typeof window !== 'undefined') {

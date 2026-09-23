@@ -49,6 +49,13 @@ interface FabricPiece {
   delay: number; // per-piece stagger — panels seat one after another
 }
 
+interface Testimonial {
+  productId: string;
+  productName: string;
+  rating: number;
+  comment: string;
+}
+
 /**
  * The cinematic scroll-dressing landing (Design Spec §15.2) with the
  * client-requested EXPLODED GARMENT-CONSTRUCTION assembly:
@@ -134,6 +141,13 @@ interface FabricPiece {
         </div>
       </section>
 
+    <div class="trust-strip" aria-label="Store promises">
+      <span class="trust-item">Full payment</span>
+      <span class="trust-item">Tracked dispatch — 24h</span>
+      <span class="trust-item">12h returns</span>
+      <span class="trust-item">One atelier, Lagos</span>
+    </div>
+
     <section id="hot" class="grid-wrap">
       <div class="wrap-col">
         <div class="section-head">
@@ -148,7 +162,7 @@ interface FabricPiece {
               <app-product-card [product]="p" [index]="i" [rating]="ratingOf(p.id)" />
             }
           </div>
-          <p class="center"><a class="cta ghost" routerLink="/shop">View all products</a></p>
+          <p class="center"><a class="view-all" routerLink="/shop">View all products <span class="arrow" aria-hidden="true">→</span></a></p>
         }
       </div>
     </section>
@@ -167,8 +181,47 @@ interface FabricPiece {
               <app-product-card [product]="p" [index]="i" [rating]="ratingOf(p.id)" />
             }
           </div>
-          <p class="center"><a class="cta ghost" routerLink="/shop">View all products</a></p>
+          <p class="center"><a class="view-all" routerLink="/shop">View all products <span class="arrow" aria-hidden="true">→</span></a></p>
         }
+      </div>
+    </section>
+
+    <section id="promo" class="grid-wrap">
+      <div class="wrap-col">
+        <div class="promo-card">
+          <div class="promo-media">
+            <img src="assets/series-5.jpg" alt="Drop 04 — the look, edition of 180 pieces" loading="lazy" />
+            <span class="promo-spec">[ 04 / DROP 04 ]</span>
+          </div>
+          <div class="promo-body">
+            <p class="card-kicker">Drop 04 — Harmattan</p>
+            <h2>Made to order</h2>
+            <p>Bespoke tailoring and limited runs, built in the Yaba atelier: sample approved, then production. Nothing off-the-rack.</p>
+            <p class="mono small promo-edition">EDITION OF 180 PIECES</p>
+            <a class="btn btn-primary" routerLink="/shop">Shop the drop</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="lookbook" class="grid-wrap">
+      <div class="wrap-col">
+        <div class="section-head">
+          <h2>The lookbook</h2>
+          <span class="muted small">Act by act</span>
+        </div>
+        <div class="look-grid">
+          @for (look of lookbook; track look.title) {
+            <a class="look-tile" [routerLink]="['/shop']" [queryParams]="{ category: look.category }">
+              <img [src]="'assets/' + look.image" [alt]="look.title" loading="lazy" />
+              <span class="look-scrim"></span>
+              <span class="look-caption">
+                <span class="look-index">{{ look.index }}</span>
+                <span class="look-title">{{ look.title }}</span>
+              </span>
+            </a>
+          }
+        </div>
       </div>
     </section>
 
@@ -191,6 +244,51 @@ interface FabricPiece {
               </a>
             }
           </div>
+        }
+      </div>
+    </section>
+
+    <section id="proof" class="grid-wrap">
+      <div class="wrap-col">
+        <div class="section-head">
+          <h2>From the atelier</h2>
+          <span class="muted small">Verified customer reviews</span>
+        </div>
+        @if (testimonials().length === 0) {
+          <p class="muted">Reviews are on their way.</p>
+        } @else {
+          <div class="review-rail">
+            @for (t of testimonials(); track $index) {
+              <figure class="review-card">
+                <div class="stars">{{ starString(t.rating) }}</div>
+                <blockquote>“{{ t.comment }}”</blockquote>
+                <figcaption>
+                  <span class="muted small">Verified buyer</span>
+                  @if (t.productName) {
+                    <span class="muted small"> · {{ t.productName }}</span>
+                  }
+                </figcaption>
+              </figure>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <section id="newsletter" class="newsletter">
+      <div class="newsletter-inner">
+        <div class="nl-copy">
+          <h2>First reads &amp; early drops</h2>
+          <p class="muted">Private lookbooks and drop alerts before they go public.</p>
+        </div>
+        <form class="newsletter-form" (submit)="subscribe(mailInput.value); mailInput.value = ''">
+          <input #mailInput type="email" required placeholder="you@example.com" aria-label="Email address" />
+          <button class="btn btn-primary" type="submit">Subscribe</button>
+        </form>
+        @if (subscribed()) {
+          <p class="nl-note ok">You're on the list ✓</p>
+        } @else if (emailError()) {
+          <p class="nl-note">Enter a valid email to subscribe.</p>
         }
       </div>
     </section>
@@ -297,6 +395,16 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
         image: c.image,
       }));
   });
+  /** Curated campaign tiles for the lookbook strip. */
+  readonly lookbook = [
+    { title: 'The Tee', index: '01', image: 'series-2.jpg', category: 'tops' },
+    { title: 'The Jogger', index: '02', image: 'series-3.jpg', category: 'bottoms' },
+    { title: 'The Hood', index: '03', image: 'series-4.jpg', category: 'outerwear' },
+  ];
+  /** Review quotes sourced from the public reviews endpoint. */
+  readonly testimonials = signal<Testimonial[]>([]);
+  readonly subscribed = signal(false);
+  readonly emailError = signal(false);
   /** productId → average rating + review count (public reviews endpoint). */
   readonly ratings = signal<Map<string, { avg: number; count: number }>>(new Map());
 
@@ -370,26 +478,52 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   // ------------------------------------------------------------------
   private loadRatings(products: Product[]): void {
     if (products.length === 0) return;
+    type Row = { rating: number; comment: string | null };
     forkJoin(
       products.map((p) =>
         this.api.reviews(p.id).pipe(
-          map((r) => ({ id: p.id, rows: r.data })),
-          catchError(() => of({ id: p.id, rows: [] as Array<{ rating: number }> })),
+          map((r) => ({ id: p.id, name: p.name, rows: r.data as Row[] })),
+          catchError(() => of({ id: p.id, name: p.name, rows: [] as Row[] })),
         ),
       ),
     ).subscribe((results) => {
       const map = new Map<string, { avg: number; count: number }>();
+      const samples: Testimonial[] = [];
       for (const r of results) {
         if (r.rows.length === 0) continue;
         const avg = r.rows.reduce((s, x) => s + x.rating, 0) / r.rows.length;
         map.set(r.id, { avg, count: r.rows.length });
+        for (const row of r.rows) {
+          if (samples.length >= 8) break;
+          if (row.comment) {
+            samples.push({ productId: r.id, productName: r.name, rating: row.rating, comment: row.comment });
+          }
+        }
       }
       this.ratings.set(map);
+      this.testimonials.set(samples);
     });
   }
 
   ratingOf(productId: string): { avg: number; count: number } | null {
     return this.ratings().get(productId) ?? null;
+  }
+  starString(avg: number): string {
+    const full = Math.round(avg);
+    return '★'.repeat(full) + '☆'.repeat(5 - full);
+  }
+
+  subscribe(value: string): void {
+    const email = value.trim();
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    this.emailError.set(!ok);
+    if (!ok) return;
+    this.subscribed.set(true);
+    try {
+      localStorage.setItem('seentair.newsletter', email);
+    } catch {
+      /* storage unavailable — in-memory confirmation only */
+    }
   }
 
   // ------------------------------------------------------------------
