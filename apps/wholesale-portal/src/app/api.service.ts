@@ -46,8 +46,12 @@ export interface CustomOrder {
   sizes: string;
   colours: string;
   quantity: number;
+  location: string;
+  fabricQuality: string;
   description: string;
   desiredDate: string;
+  reviewNote: string | null;
+  paidAt: string | null;
   createdAt: string;
 }
 
@@ -75,6 +79,13 @@ export class ApiService {
 
   get isLoggedIn(): boolean {
     return !!this.store.token();
+  }
+
+  /** Signed-in buyer profile (name drives the W2 identity card). */
+  me(): Observable<{ id: string; email: string; role: string; name: string }> {
+    return this.http.get<{ id: string; email: string; role: string; name: string }>(
+      `${API_BASE}/auth/me`,
+    );
   }
 
   notifications(): Observable<{

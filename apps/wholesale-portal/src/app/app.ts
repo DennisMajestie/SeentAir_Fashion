@@ -2,6 +2,7 @@ import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ApiService } from './api.service';
+import { CartService } from './cart.service';
 import { ThemeService } from './theme.service';
 
 /**
@@ -20,13 +21,27 @@ import { ThemeService } from './theme.service';
         </a>
         @if (api.isLoggedIn) {
           <nav [class.open]="menuOpen()">
-            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="menuOpen.set(false)">Catalogue</a>
-            <a routerLink="/invoices" routerLinkActive="active" (click)="menuOpen.set(false)">Invoices</a>
+            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="menuOpen.set(false)">Home</a>
+            <a routerLink="/catalogue" routerLinkActive="active" (click)="menuOpen.set(false)">Catalogue</a>
+            <a routerLink="/orders" routerLinkActive="active" (click)="menuOpen.set(false)">Orders</a>
             <a routerLink="/custom" routerLinkActive="active" (click)="menuOpen.set(false)">Custom</a>
             <button class="link" (click)="menuOpen.set(false); logout()">Sign out</button>
           </nav>
         }
         <div class="header-actions">
+          @if (api.isLoggedIn) {
+            <a class="theme-toggle" routerLink="/cart" aria-label="Bulk cart" title="Bulk cart"
+              style="position: relative; text-decoration: none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M6 6h15l-1.5 8.5a2 2 0 0 1-2 1.5H8.7a2 2 0 0 1-2-1.6L5 3H2" />
+                <circle cx="9" cy="20" r="1.4" /><circle cx="17" cy="20" r="1.4" />
+              </svg>
+              @if (cart.units() > 0) {
+                <span class="cart-badge">{{ cart.units() }}</span>
+              }
+            </a>
+          }
           <button
             class="theme-toggle"
             type="button"
@@ -177,10 +192,26 @@ import { ThemeService } from './theme.service';
         <router-outlet />
       }
     </main>
+    @if (api.isLoggedIn) {
+      <!-- Mobile footer nav mirrors the approved reference tab bar (W2/W3/W6).
+           GAP: the reference's ACCOUNT tab awaits a buyer account/profile module;
+           Custom takes its slot so every live surface stays reachable. -->
+      <nav class="tabbar" aria-label="Primary">
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <span class="material-symbols-outlined" aria-hidden="true">grid_view</span>Home</a>
+        <a routerLink="/catalogue" routerLinkActive="active">
+          <span class="material-symbols-outlined" aria-hidden="true">storefront</span>Catalogue</a>
+        <a routerLink="/orders" routerLinkActive="active">
+          <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>Orders</a>
+        <a routerLink="/custom" routerLinkActive="active">
+          <span class="material-symbols-outlined" aria-hidden="true">design_services</span>Custom</a>
+      </nav>
+    }
   `,
 })
 export class App implements OnDestroy {
   readonly api = inject(ApiService);
+  readonly cart = inject(CartService);
   readonly theme = inject(ThemeService);
   private readonly onScroll = () => {
     this.scrolled.set((window.scrollY ?? 0) > 10);
