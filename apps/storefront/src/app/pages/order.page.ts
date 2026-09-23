@@ -23,7 +23,7 @@ const RETURN_WINDOW_MS = 12 * 3_600_000;
       <h1 class="page-title">Order tracking</h1>
 
       <div class="exec-header">
-        <p class="section-label" style="margin:0; border:none">
+        <p class="section-label plain">
           Progress <span class="count">// {{ percent() }}% complete</span>
         </p>
         <span class="exec-count">{{ stepIndex() + 1 | number: '2.0' }}/04</span>

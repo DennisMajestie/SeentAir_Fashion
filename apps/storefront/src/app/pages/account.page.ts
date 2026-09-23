@@ -113,7 +113,7 @@ import { ApiService, Order } from '../api.service';
           <div class="event">
             <strong>{{ n.type.replaceAll('_', ' ') }}</strong>
             <span class="muted small">{{ n.sentAt | date: 'medium' }}</span>
-            <p class="small" style="margin:0.2rem 0 0">{{ n.message }}</p>
+            <p class="small">{{ n.message }}</p>
           </div>
         }
       }

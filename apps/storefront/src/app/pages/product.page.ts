@@ -30,7 +30,7 @@ import { CartService } from '../cart.service';
               <span class="muted small">{{ avgRating() | number: '1.1-1' }} · {{ reviews().length }} review(s)</span>
             </p>
           }
-          <p class="price" style="font-size:1.5rem">₦{{ currentPrice() | number: '1.0-2' }}</p>
+          <p class="price lg">₦{{ currentPrice() | number: '1.0-2' }}</p>
           <p class="muted">{{ p.description }}</p>
 
           @if (sizes().length > 0) {
@@ -61,8 +61,8 @@ import { CartService } from '../cart.service';
             <button type="button" (click)="bump(1)">+</button>
           </span>
 
-          <p style="margin-top:1.4rem">
-            <button class="cta" style="width:100%" (click)="addToCart()"
+          <p class="cta-wrap">
+            <button class="cta block" (click)="addToCart()"
               [disabled]="!selected() || selectedSoldOut()">
               @if (!selected()) { This size/colour combination is unavailable }
               @else if (selectedSoldOut()) { Sold out — {{ selected()!.size }} / {{ selected()!.colour }} }
@@ -90,6 +90,8 @@ import { CartService } from '../cart.service';
           }
         </div>
       </article>
+    } @else if (loadError()) {
+      <p class="muted">That piece could not be loaded — it may have sold out. <a routerLink="/shop">Back to the shop</a></p>
     } @else {
       <p class="muted">Loading…</p>
     }
@@ -103,6 +105,7 @@ export class ProductPage implements OnInit {
   readonly product = signal<Product | null>(null);
   readonly reviews = signal<Array<{ rating: number; comment: string | null }>>([]);
   readonly added = signal(false);
+  readonly loadError = signal(false);
   readonly size = signal<string | null>(null);
   readonly colour = signal<string | null>(null);
   quantity = 1;
@@ -128,11 +131,14 @@ export class ProductPage implements OnInit {
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id')!;
-    this.api.product(id).subscribe((p) => {
-      this.product.set(p);
-      const first = p.variants[0];
-      this.size.set(first?.size ?? null);
-      this.colour.set(first?.colour ?? null);
+    this.api.product(id).subscribe({
+      next: (p) => {
+        this.product.set(p);
+        const first = p.variants[0];
+        this.size.set(first?.size ?? null);
+        this.colour.set(first?.colour ?? null);
+      },
+      error: () => this.loadError.set(true),
     });
     this.api.reviews(id).subscribe((r) => this.reviews.set(r.data));
   }

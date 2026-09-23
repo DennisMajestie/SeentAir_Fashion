@@ -27,7 +27,7 @@ import { CartService } from '../cart.service';
     <h1 class="page-title">Cart & checkout</h1>
 
     @if (orderId()) {
-      <section class="success-box u-rise" style="max-width:520px">
+      <section class="success-box u-rise box-narrow">
         <h2>Order placed</h2>
         <p class="sku-line">Reference // {{ orderId() }}</p>
         @if (paystackUrl()) {
@@ -44,7 +44,7 @@ import { CartService } from '../cart.service';
       </section>
     } @else if (cart.items().length === 0) {
       <div class="cart-empty u-rise">
-        <p class="muted" style="margin:0">Nothing to check out.</p>
+        <p class="muted flush">Nothing to check out.</p>
         <a class="cta" routerLink="/shop">Back to the shop</a>
       </div>
     } @else {
@@ -134,7 +134,7 @@ import { CartService } from '../cart.service';
         </div>
 
         <aside class="matrix-panel u-rise-1" aria-label="Order summary">
-          <p class="section-label" style="margin-top:0">Order summary</p>
+          <p class="section-label flush-top">Order summary</p>
           <div class="matrix-row"><span>Subtotal</span><span>₦{{ cart.total | number: '1.0-2' }}</span></div>
           <div class="matrix-row"><span>Payment policy</span><span>full &amp; upfront</span></div>
           <div class="matrix-row"><span>Delivery</span><span>quoted at dispatch</span></div>

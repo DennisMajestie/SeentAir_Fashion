@@ -16,7 +16,7 @@ import { environment } from '../../environments/environment';
 
     @if (cart.items().length === 0) {
       <div class="cart-empty u-rise">
-        <p class="muted" style="margin:0">Your cart is empty.</p>
+        <p class="muted flush">Your cart is empty.</p>
         <a class="cta" routerLink="/shop">Back to the shop</a>
       </div>
     } @else {
@@ -84,7 +84,7 @@ import { environment } from '../../environments/environment';
         </section>
 
         <aside class="matrix-panel u-rise-1" aria-label="Order summary">
-          <p class="section-label" style="margin-top:0">Order summary</p>
+          <p class="section-label flush-top">Order summary</p>
           <div class="matrix-row"><span>Subtotal</span><span>₦{{ cart.total | number: '1.0-2' }}</span></div>
           <div class="matrix-row"><span>Delivery</span><span>quoted at dispatch</span></div>
           <div class="matrix-row"><span>Payment policy</span><span>full &amp; upfront</span></div>

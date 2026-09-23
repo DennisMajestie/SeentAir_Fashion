@@ -260,6 +260,8 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   border-bottom: 1px solid var(--line); padding-bottom: 0.5rem; margin: 2.2rem 0 1rem;
   &::before { content: '■'; color: var(--primary); font-size: 0.55rem; }
   .count { color: var(--muted); margin-left: auto; }
+  &.flush-top { margin-top: 0; }
+  &.plain { margin: 0; border: none; }
 }
 
 .pill-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0 1.4rem; }
@@ -750,13 +752,20 @@ select, input, textarea {
   .stars { color: var(--primary); letter-spacing: 0.2em; } }
 
 .event { padding: 0.6rem 0; border-bottom: 1px solid var(--line);
-  strong { text-transform: capitalize; margin-right: 0.6rem; } }
+  strong { text-transform: capitalize; margin-right: 0.6rem; }
+  p { margin: 0.2rem 0 0; } }
 
 .muted { color: var(--muted); }
 .small { font-size: 0.85rem; }
 .success { color: var(--ok); }
 .error { color: var(--danger); }
 .total { font-size: 1.15rem; }
+.flush { margin: 0; }
+.flush-top { margin-top: 0; }
+.box-narrow { max-width: 520px; }
+.cta.block { width: 100%; }
+.cta-wrap { margin-top: 1.4rem; }
+.price.lg { font-size: 1.5rem; }
 
 /* ---------- scroll-dressing landing (approved acts) ---------- */
 /* BACKGROUND LAYER — do not modify image source/size/position/cropping,
