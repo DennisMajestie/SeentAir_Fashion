@@ -23,10 +23,10 @@ interface LedgerRow { id: string; type: string; amount: number; category: string
     </div>
 
     <div class="cols">
-      <section class="panel" style="grid-column: span 2; min-width: 0">
-        <p class="section-label" style="margin-top:0">General ledger
+      <section class="panel lead">
+        <p class="section-label">General ledger
           <span class="count">
-            <select [(ngModel)]="typeFilter" name="tf" (ngModelChange)="loadLedger()" style="background:var(--obsidian); color:var(--ink); border:1px solid var(--hairline-2); padding:0.2rem">
+            <select class="table-filter" [(ngModel)]="typeFilter" name="tf" (ngModelChange)="loadLedger()">
               <option value="">all types</option>
               @for (t of types; track t) { <option [value]="t">{{ t }}</option> }
             </select>
@@ -49,7 +49,7 @@ interface LedgerRow { id: string; type: string; amount: number; category: string
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Record manual entry</p>
+        <p class="section-label">Record manual entry</p>
         <p class="muted small">Manual entries move funds — approval-gated. Sales and material purchases are booked automatically.</p>
         <form (ngSubmit)="record()">
           <label>Type
@@ -62,7 +62,7 @@ interface LedgerRow { id: string; type: string; amount: number; category: string
           </label>
           <label>Amount ₦ <input type="number" min="1" [(ngModel)]="ne.amount" name="eamt" required /></label>
           <label>Category <input [(ngModel)]="ne.category" name="ecat" required placeholder="september_payroll" /></label>
-          <div class="actions" style="margin-top:0.8rem">
+          <div class="form-actions">
             @if (!ne.approvalRequestId) {
               <button class="cta small ghost" type="button" (click)="requestApproval()">Request fund-movement approval</button>
             } @else {

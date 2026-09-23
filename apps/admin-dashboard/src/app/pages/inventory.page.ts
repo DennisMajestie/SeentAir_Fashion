@@ -16,17 +16,17 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
     <p class="rule-strip">STOCK IS A LEDGER, NOT A NUMBER // every unit in or out is a logged movement; removals require approval.</p>
 
     <div class="cols">
-      <section class="panel" style="grid-column: span 2; min-width: 0">
-        <p class="section-label" style="margin-top:0">Movement history
+      <section class="panel lead">
+        <p class="section-label">Movement history
           <span class="count">
-            <select [(ngModel)]="selectedKey" name="item" (ngModelChange)="loadMovements()" style="background:var(--obsidian); color:var(--ink); border:1px solid var(--hairline-2); padding:0.25rem; max-width:20rem">
+            <select class="table-filter" [(ngModel)]="selectedKey" name="item" (ngModelChange)="loadMovements()">
               <option value="">— pick a variant or material —</option>
               @for (i of items(); track i.type + i.id) { <option [value]="i.type + ':' + i.id">{{ i.label }}</option> }
             </select>
           </span>
         </p>
         @if (currentQty() !== null) {
-          <p>Current quantity (derived): <span class="naira" style="font-size:1.5rem">{{ currentQty() }}</span></p>
+          <p>Current quantity (derived): <span class="naira stat-lg">{{ currentQty() }}</span></p>
         }
         <table class="table">
           <thead><tr><th>When</th><th>Type</th><th>Δ</th><th>Reference</th></tr></thead>
@@ -35,7 +35,7 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
               <tr>
                 <td class="mono small">{{ m.timestamp | date: 'MMM d, HH:mm' }}</td>
                 <td><span class="chip" [class.acid]="m.quantityDelta > 0" [class.warn]="m.quantityDelta < 0">{{ m.movementType }}</span></td>
-                <td class="mono" [style.color]="m.quantityDelta > 0 ? 'var(--ok)' : 'var(--danger)'">{{ m.quantityDelta > 0 ? '+' : '' }}{{ m.quantityDelta }}</td>
+                <td class="mono delta" [class.plus]="m.quantityDelta > 0" [class.minus]="m.quantityDelta < 0">{{ m.quantityDelta > 0 ? '+' : '' }}{{ m.quantityDelta }}</td>
                 <td class="mono small muted">{{ m.referenceId?.slice(0, 12) }}</td>
               </tr>
             }
@@ -44,7 +44,7 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Manual adjustment</p>
+        <p class="section-label">Manual adjustment</p>
         <p class="muted small">Positive = correction in. Negative = removal/disposal — approval required, per the no-unauthorized-removal rule.</p>
         <form (ngSubmit)="adjust()">
           <label>Delta (±) <input type="number" [(ngModel)]="adj.delta" name="adelta" required /></label>

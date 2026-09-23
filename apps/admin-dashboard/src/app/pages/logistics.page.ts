@@ -18,7 +18,7 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
 
     <div class="cols">
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Create delivery</p>
+        <p class="section-label">Create delivery</p>
         <form class="form-grid" (ngSubmit)="create()">
           <label class="wide">Order id <input [(ngModel)]="nd.orderId" name="doid" required placeholder="paste order uuid" /></label>
           <label>Carrier
@@ -41,7 +41,7 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Zone pricing <span class="count">// weight + location</span></p>
+        <p class="section-label">Zone pricing <span class="count">// weight + location</span></p>
         <table class="table">
           <thead><tr><th>Zone</th><th>Base ₦</th><th>Per kg ₦</th></tr></thead>
           <tbody>
@@ -59,7 +59,7 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Quote calculator</p>
+        <p class="section-label">Quote calculator</p>
         <form class="form-grid" (ngSubmit)="getQuote()">
           <label>Weight kg <input type="number" min="0" step="0.1" [(ngModel)]="qc.weightKg" name="qw" required /></label>
           <label>Zone
@@ -67,9 +67,9 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
               @for (z of zones(); track z.id) { <option [value]="z.zone">{{ z.zone }}</option> }
             </select>
           </label>
-          <div class="wide actions" style="margin:0">
+          <div class="wide actions flat">
             <button class="cta small ghost" type="submit">Quote</button>
-            @if (quoteResult() !== null) { <span class="naira" style="font-size:1.4rem">₦{{ quoteResult() | number: '1.0-2' }}</span> }
+            @if (quoteResult() !== null) { <span class="naira stat-md">₦{{ quoteResult() | number: '1.0-2' }}</span> }
           </div>
         </form>
       </section>
@@ -88,7 +88,7 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
             <td class="mono">{{ l.cost !== null ? '₦' + (l.cost | number) : '—' }}</td>
             <td><span class="chip" [class.ok]="l.status === 'delivered'" [class.warn]="l.status === 'in_transit'" [class.bad]="l.status === 'failed'">{{ l.status.replaceAll('_', ' ') }}</span></td>
             <td>
-              <div class="actions" style="margin:0">
+              <div class="actions flat">
                 <select [(ngModel)]="statusChoice[l.id]" [name]="'s' + l.id">
                   @for (s of legStatuses; track s) { <option [value]="s">{{ s.replaceAll('_', ' ') }}</option> }
                 </select>

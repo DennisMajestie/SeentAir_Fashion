@@ -172,7 +172,12 @@ main { flex: 1; padding: 1.4rem 22px 4rem; max-width: 1180px; min-width: 0; }
   background: var(--panel); border: 1px solid var(--hairline);
   padding: 1rem 1.1rem; margin: 0.8rem 0;
   &.row { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  &.row-flat { border: none; padding: 0; margin: 0; }
+  &.flat { margin-bottom: 0; }
 }
+.acid-text { color: var(--acid); }
+.num-input-w { max-width: 11rem; }
+.num-input-n { max-width: 10rem; }
 
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1px; }
 .tile {
@@ -187,6 +192,15 @@ main { flex: 1; padding: 1.4rem 22px 4rem; max-width: 1180px; min-width: 0; }
 }
 
 .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.cols .panel.lead { grid-column: span 2; min-width: 0; }
+.panel > .section-label { margin-top: 0; }
+.table-filter {
+  background: var(--panel); color: var(--ink);
+  border: 1px solid var(--hairline-2); border-radius: 2px;
+  padding: 0.25rem 0.4rem; font-size: var(--type-body-sm);
+  font-family: 'Inter', sans-serif;
+}
+.form-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-top: 0.8rem; }
 
 label { display: block; margin: 0.7rem 0; font-size: var(--type-label-md); color: var(--ink-dim);
   font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;
@@ -253,6 +267,7 @@ label { display: block; margin: 0.7rem 0; font-size: var(--type-label-md); color
 .payload { background: var(--panel); border: 1px solid var(--hairline); padding: 0.5rem;
   font-size: var(--type-body-sm); overflow-x: auto; max-width: 520px; color: var(--ink-dim); }
 .actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem;
+  &.flat { margin-top: 0; }
   input { flex: 1 1 200px; padding: 0.45rem; background: var(--panel); border: 1px solid var(--hairline); color: var(--ink); } }
 .status { text-transform: uppercase; font-weight: 600; color: var(--acid-ink); font-size: var(--type-label-md); letter-spacing: 0.08em; }
 .muted { color: var(--ink-dim); }
@@ -261,6 +276,10 @@ label { display: block; margin: 0.7rem 0; font-size: var(--type-label-md); color
 .error { color: var(--danger); }
 .mono { font-family: 'Inter', sans-serif; }
 .naira { font-family: 'Inter', sans-serif; font-weight: 600; color: var(--acid-ink); }
+.stat-lg { font-size: 1.5rem; }
+.stat-md { font-size: 1.4rem; }
+.delta.plus { color: var(--ok); }
+.delta.minus { color: var(--danger); }
 
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0 1rem;
   .wide { grid-column: 1 / -1; } }

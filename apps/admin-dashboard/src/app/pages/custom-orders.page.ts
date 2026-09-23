@@ -28,9 +28,9 @@ const NEXT: Record<string, string | null> = {
 
     @for (r of requests(); track r.id) {
       <section class="panel">
-        <div class="panel row" style="border:none; padding:0; margin:0">
+        <div class="panel row row-flat">
           <div>
-            <p class="mono small" style="color:var(--acid)">{{ r.id.slice(0, 8) }} // {{ r.buyer.name }} ({{ r.buyer.email }})</p>
+            <p class="mono small acid-text">{{ r.id.slice(0, 8) }} // {{ r.buyer.name }} ({{ r.buyer.email }})</p>
             <p><strong>{{ r.quantity }} pcs</strong> · {{ r.sizes }} · {{ r.colours }} · {{ r.fabricQuality }} · due {{ r.desiredDate }} · {{ r.location }}</p>
             <p class="muted small">{{ r.description }}</p>
           </div>
@@ -39,7 +39,7 @@ const NEXT: Record<string, string | null> = {
 
         <div class="actions">
           @if (r.status === 'submitted' || r.status === 'under_review') {
-            <input type="number" min="1" placeholder="Quote ₦ (Manager only)" [(ngModel)]="quoteAmounts[r.id]" [name]="'q' + r.id" style="max-width:11rem" />
+            <input type="number" min="1" placeholder="Quote ₦ (Manager only)" [(ngModel)]="quoteAmounts[r.id]" [name]="'q' + r.id" class="num-input-w" />
             <button class="cta small" (click)="quote(r)">Issue quotation</button>
             @if (r.status === 'submitted') {
               <button class="cta small ghost" (click)="advance(r.id, 'under_review')">Mark under review</button>
@@ -51,7 +51,7 @@ const NEXT: Record<string, string | null> = {
               <option value="cash">cash</option>
               <option value="pos">POS</option>
             </select>
-            <input type="number" min="1" placeholder="Full amount ₦" [(ngModel)]="payAmounts[r.id]" [name]="'pa' + r.id" style="max-width:10rem" />
+            <input type="number" min="1" placeholder="Full amount ₦" [(ngModel)]="payAmounts[r.id]" [name]="'pa' + r.id" class="num-input-n" />
             <button class="cta small" (click)="recordPayment(r)">Record full payment</button>
           }
           @if (next(r.status); as n) {
@@ -68,7 +68,7 @@ const NEXT: Record<string, string | null> = {
         </div>
 
         @if (detailId() === r.id) {
-          <div class="panel" style="margin-bottom:0">
+          <div class="panel flat">
             @if (detail(); as d) {
               <p class="small"><strong>Full request</strong> — submitted {{ d['createdAt'] }},
                 last updated {{ d['updatedAt'] }}. Status {{ d['status'] }}.</p>
