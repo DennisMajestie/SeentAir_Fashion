@@ -13,7 +13,8 @@
     "test": "npm run test --workspaces --if-present",
     "api:dev": "npm run start:dev --workspace services/api",
     "api:migrate": "npm run migration:run --workspace services/api",
-    "api:seed": "npm run seed --workspace services/api"
+    "api:seed": "npm run seed --workspace services/api",
+    "start": "npm run migration:run --workspace services/api && npm start --workspace services/api"
   },
   "engines": {
     "node": ">=22"
