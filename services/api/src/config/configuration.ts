@@ -25,7 +25,7 @@ export default () => ({
     lockoutMinutes: parseInt(process.env.LOCKOUT_MINUTES ?? '15', 10),
     corsOrigins: (
       process.env.CORS_ORIGINS ??
-      'http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4203'
+      'http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4203,https://seent-air-fashion.vercel.app'
     )
       .split(',')
       .map((o) => o.trim()),
