@@ -30,12 +30,41 @@ if (!entry) {
   process.exit(2);
 }
 
+function pathExists(full) {
+  const fs = require('node:fs');
+  try {
+    fs.realpathSync(full);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function showDiagnostics(pkg) {
+  const path = require('node:path');
+  const parts = pkg.split('/');
+  const scoped = parts[0].startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
+  console.error(`failed to resolve ${pkg} — searched:`);
+  for (const dir of module.paths) {
+    const pkgPath = path.join(dir, scoped);
+    const full = path.join(dir, ...parts);
+    const state = pathExists(full) ? 'PRESENT' : pathExists(pkgPath) ? 'pkg-dir-present' : 'absent';
+    console.error(`  ${dir} -> ${state}`);
+  }
+}
+
 function resolve(pkg) {
   try {
     return require.resolve(pkg);
   } catch {
-    return require.resolve(pkg, { paths: [process.cwd()] });
+    try {
+      return require.resolve(pkg, { paths: [process.cwd()] });
+    } catch {
+      showDiagnostics(pkg);
+    }
   }
+  console.error(`could not resolve ${pkg}; build cannot continue`);
+  process.exit(1);
 }
 
 const cli = resolve(entry);
