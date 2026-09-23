@@ -1,6 +1,7 @@
-import { Component, OnDestroy, signal, inject } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { CartService } from './cart.service';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -14,6 +15,7 @@ import { CartService } from './cart.service';
         <nav [class.open]="menuOpen()">
           <a routerLink="/shop" (click)="menuOpen.set(false)">Shop</a>
           <a routerLink="/account" (click)="menuOpen.set(false)">Account</a>
+          <a [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Wholesale</a>
         </nav>
         <!-- Cart lives outside <nav> so it stays reachable at every width,
              next to the menu toggle rather than hidden inside the menu. -->
@@ -73,6 +75,10 @@ import { CartService } from './cart.service';
             <a routerLink="/account">Your orders</a>
             <a routerLink="/cart">Cart</a>
           </nav>
+          <nav class="footer-col" aria-label="Business">
+            <h4>Business</h4>
+            <a [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer">Wholesale portal</a>
+          </nav>
         </div>
         <div class="footer-legal">
           <span class="mono">© 2026 SEENTAIR LIMITED // ATELIER SPEC 01</span>
@@ -86,6 +92,7 @@ export class App implements OnDestroy {
   private readonly onScroll = () => {
     this.scrolled.set((window.scrollY ?? 0) > 10);
   };
+  readonly environment = environment;
   readonly cart = inject(CartService);
   readonly scrolled = signal(false);
   readonly menuOpen = signal(false);
