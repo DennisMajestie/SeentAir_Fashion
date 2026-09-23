@@ -133,10 +133,10 @@ import { ThemeService } from './theme.service';
 
           <div class="apply-panel">
             <div class="apply-head">
-              <h2 class="muted" style="font-size: var(--type-label-md); letter-spacing: 0.08em;">Not a wholesale buyer yet?</h2>
+              <h2 class="muted">Not a wholesale buyer yet?</h2>
               <span class="chip">B2B Criteria</span>
             </div>
-            <p class="small muted" style="font-size: var(--type-body-md); line-height: 1.55;">
+            <p class="small muted apply-copy">
               Access is strictly reserved for fashion retailers, streetwear boutiques and verified
               merchandise operators procuring in bulk quantities direct from our Lagos factory floor.
             </p>
@@ -158,11 +158,11 @@ import { ThemeService } from './theme.service';
               <span>Apply for Wholesale Access</span>
               <span class="material-symbols-outlined" aria-hidden="true">assignment_ind</span>
             </button>
-            <span class="small muted" style="text-align: center;">Applications typically vetted within 24 operational hours</span>
+            <span class="small muted apply-note">Applications typically vetted within 24 operational hours</span>
           </div>
 
           <div class="status-strip">
-            <div style="display: flex; align-items: center; gap: var(--space-sm);">
+            <div class="status-line">
               <span class="dot"></span><span>Yaba Mill Status: Online</span>
             </div>
             <span class="run">RUN 04 // 420GSM FLEECE READY</span>
