@@ -121,6 +121,29 @@ describe('OrdersService — wholesale rules', () => {
     expect(order.channel).toBe('retail');
   });
 
+  it('a wholesaler-role account ordering from the retail storefront gets a retail order', async () => {
+    const order = await service.create(
+      { items: [{ variantId: 'v1', quantity: 1 }], source: 'storefront' },
+      wholesaler,
+    );
+    expect(wholesaleService.assertApprovedAccount).not.toHaveBeenCalled();
+    expect(order.channel).toBe('retail');
+    expect(order.items[0].unitPrice).toBe(9000);
+    expect(order.totalAmount).toBe(9000);
+  });
+
+  it('the wholesale portal still gates a wholesaler-role account', async () => {
+    wholesaleService.assertApprovedAccount.mockRejectedValueOnce(
+      new ForbiddenException('approved wholesale account required'),
+    );
+    await expect(
+      service.create(
+        { items: [{ variantId: 'v1', quantity: 25 }], source: 'wholesale_portal' },
+        wholesaler,
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
   it(BadRequestException.name + ': over-stock wholesale orders still fail the stock check', async () => {
     inventoryService.currentQuantity.mockResolvedValueOnce(10);
     await expect(
