@@ -34,7 +34,7 @@ export default () => ({
     // silently break the storefront.
     corsOrigins: (() => {
       const builtIn =
-        'http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4203,https://seent-air-fashion.vercel.app';
+        'http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4203,https://seent-air-fashion.vercel.app,https://seentair-wholesale.vercel.app';
       const configured = process.env.CORS_ORIGINS ?? builtIn;
       const origins = [...configured.split(','), ...builtIn.split(',')].map((o) => o.trim());
       return Array.from(new Set(origins));
