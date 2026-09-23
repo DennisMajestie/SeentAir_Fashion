@@ -30,7 +30,7 @@ interface TierRow { id: string; name: string; discountPercent: number; ruleDescr
               </select>
             </td>
             <td>
-              <div class="actions" style="margin:0">
+              <div class="actions flat">
                 <button class="cta small" (click)="decide(a, 'approved')">Approve</button>
                 <button class="danger" (click)="decide(a, 'rejected')">Reject</button>
                 <button class="link" type="button" (click)="inspect(a.id)">
@@ -58,7 +58,7 @@ interface TierRow { id: string; name: string; discountPercent: number; ruleDescr
 
     <div class="cols">
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Price tiers <span class="count">// criteria pending Open Question #2</span></p>
+        <p class="section-label">Price tiers <span class="count">// criteria pending Open Question #2</span></p>
         <table class="table">
           <thead><tr><th>Tier</th><th>Discount</th><th>Change discount</th></tr></thead>
           <tbody>
@@ -67,8 +67,8 @@ interface TierRow { id: string; name: string; discountPercent: number; ruleDescr
                 <td><strong>{{ t.name }}</strong><br /><span class="muted small">{{ t.ruleDescription }}</span></td>
                 <td class="mono">{{ t.discountPercent }}%</td>
                 <td>
-                  <div class="actions" style="margin:0">
-                    <input type="number" min="0" max="100" placeholder="%" [(ngModel)]="newDiscounts[t.id]" [name]="'d' + t.id" style="max-width:5rem" />
+                  <div class="actions flat">
+                    <input type="number" min="0" max="100" placeholder="%" [(ngModel)]="newDiscounts[t.id]" [name]="'d' + t.id" class="num-input-xs" />
                     @if (!tierApprovals[t.id]) {
                       <button class="cta small ghost" (click)="requestTierApproval(t)">Request approval</button>
                     } @else {
@@ -83,7 +83,7 @@ interface TierRow { id: string; name: string; discountPercent: number; ruleDescr
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Create tier</p>
+        <p class="section-label">Create tier</p>
         <form class="form-grid" (ngSubmit)="createTier()">
           <label>Name <input [(ngModel)]="nt.name" name="tname" required placeholder="Tier A" /></label>
           <label>Discount % <input type="number" min="0" max="100" [(ngModel)]="nt.discountPercent" name="tdisc" required /></label>

@@ -17,7 +17,7 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
 
     <div class="cols">
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Add product</p>
+        <p class="section-label">Add product</p>
         <form class="form-grid" (ngSubmit)="createProduct()">
           <label class="wide">Name <input [(ngModel)]="np.name" name="pname" required /></label>
           <label>Category <input [(ngModel)]="np.category" name="pcat" placeholder="tees" /></label>
@@ -37,7 +37,7 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
         </div>
       </section>
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Add variant</p>
+        <p class="section-label">Add variant</p>
         <form class="form-grid" (ngSubmit)="createVariant()">
           <label class="wide">Product
             <select [(ngModel)]="nv.productId" name="vprod" required>
@@ -63,14 +63,14 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
             <td><span class="chip">{{ p.category || '—' }}</span></td>
             <td class="mono">₦{{ p.basePrice | number: '1.0-2' }}</td>
             <td>
-              @for (v of p.variants; track v.id) { <span class="chip" style="margin:0 2px 2px 0">{{ v.sku }}</span> }
+              @for (v of p.variants; track v.id) { <span class="chip gap-end">{{ v.sku }}</span> }
               <button class="link" type="button" (click)="toggleVariants(p.id)">
                 {{ expanded() === p.id ? 'hide' : 'details' }}
               </button>
             </td>
             <td>
-              <div class="actions" style="margin:0">
-                <input type="number" placeholder="New ₦" [(ngModel)]="newPrices[p.id]" style="max-width:7rem" />
+              <div class="actions flat">
+                <input type="number" placeholder="New ₦" [(ngModel)]="newPrices[p.id]" class="num-input-sm" />
                 @if (!approvals[p.id]) {
                   <button class="cta small ghost" (click)="requestPriceApproval(p)">Request approval</button>
                 } @else {

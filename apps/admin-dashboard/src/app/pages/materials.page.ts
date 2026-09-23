@@ -18,7 +18,7 @@ interface MaterialRow { id: string; name: string; unit: string; currentQuantity:
 
     <div class="cols">
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Add material</p>
+        <p class="section-label">Add material</p>
         <form class="form-grid" (ngSubmit)="create()">
           <label>Name <input [(ngModel)]="nm.name" name="mname" required placeholder="Cotton fabric" /></label>
           <label>Unit <input [(ngModel)]="nm.unit" name="munit" required placeholder="yards" /></label>
@@ -28,7 +28,7 @@ interface MaterialRow { id: string; name: string; unit: string; currentQuantity:
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Record purchase</p>
+        <p class="section-label">Record purchase</p>
         <p class="muted small">Purchasing is approval-gated. Request → Management approves → record.</p>
         <form class="form-grid" (ngSubmit)="purchase()">
           <label class="wide">Material
@@ -39,7 +39,7 @@ interface MaterialRow { id: string; name: string; unit: string; currentQuantity:
           <label>Quantity <input type="number" min="1" [(ngModel)]="pu.quantity" name="puqty" required /></label>
           <label>Cost ₦ <input type="number" min="0" [(ngModel)]="pu.cost" name="pucost" required /></label>
           <label class="wide">Note (who from — free text) <input [(ngModel)]="pu.note" name="punote" /></label>
-          <div class="wide actions" style="margin:0">
+          <div class="wide actions flat">
             @if (!pu.approvalRequestId) {
               <button class="cta small ghost" type="button" (click)="requestPurchaseApproval()">Request approval</button>
             } @else {
@@ -51,7 +51,7 @@ interface MaterialRow { id: string; name: string; unit: string; currentQuantity:
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Record usage</p>
+        <p class="section-label">Record usage</p>
         <form class="form-grid" (ngSubmit)="usage()">
           <label class="wide">Material
             <select [(ngModel)]="us.materialId" name="usmat" required>

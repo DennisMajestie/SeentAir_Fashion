@@ -14,8 +14,8 @@ interface CampaignRow { id: string; name: string; type: string; channel: string 
     <h1>Marketing</h1>
 
     <div class="cols">
-      <section class="panel" style="grid-column: span 2; min-width: 0">
-        <p class="section-label" style="margin-top:0">Campaigns <span class="count">[{{ campaigns().length | number: '2.0' }}]</span></p>
+      <section class="panel lead">
+        <p class="section-label">Campaigns <span class="count">[{{ campaigns().length | number: '2.0' }}]</span></p>
         <table class="table">
           <thead><tr><th>Name</th><th>Type</th><th>Channel</th><th>Discount</th><th>Runs</th><th>Live</th></tr></thead>
           <tbody>
@@ -34,7 +34,7 @@ interface CampaignRow { id: string; name: string; type: string; channel: string 
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Create campaign</p>
+        <p class="section-label">Create campaign</p>
         <form (ngSubmit)="create()">
           <label>Name <input [(ngModel)]="nc.name" name="cname" required /></label>
           <label>Type

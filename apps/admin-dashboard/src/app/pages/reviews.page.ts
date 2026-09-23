@@ -16,11 +16,11 @@ interface ReviewRow { id: string; rating: number; comment: string | null; create
     @for (r of reviews(); track r.id) {
       <section class="panel row">
         <div>
-          <p class="mono small" style="color:var(--acid)">{{ r.variant.sku }} · {{ r.createdAt | date: 'medium' }}</p>
-          <p><span style="color:var(--acid); letter-spacing:0.2em">{{ '★'.repeat(r.rating) }}{{ '☆'.repeat(5 - r.rating) }}</span></p>
+          <p class="mono small acid-text">{{ r.variant.sku }} · {{ r.createdAt | date: 'medium' }}</p>
+          <p><span class="stars-acid">{{ '★'.repeat(r.rating) }}{{ '☆'.repeat(5 - r.rating) }}</span></p>
           <p class="muted">{{ r.comment || '(no comment)' }}</p>
         </div>
-        <div class="actions" style="margin:0">
+        <div class="actions flat">
           <button class="cta small" (click)="decide(r.id, 'published')">Publish</button>
           <button class="danger" (click)="decide(r.id, 'rejected')">Reject</button>
         </div>

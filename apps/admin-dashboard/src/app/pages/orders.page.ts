@@ -37,7 +37,7 @@ const NEXT_STATUS: Record<string, string> = {
             <td>{{ order.paymentStatus }}</td>
             <td>₦{{ order.totalAmount | number: '1.0-2' }}</td>
             <td>
-              <div class="actions" style="margin:0">
+              <div class="actions flat">
                 @if (next(order); as n) {
                   <button class="cta small" (click)="advance(order.id, n)">→ {{ n }}</button>
                 }

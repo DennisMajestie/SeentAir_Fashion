@@ -176,6 +176,11 @@ main { flex: 1; padding: 1.4rem 22px 4rem; max-width: 1180px; min-width: 0; }
   &.flat { margin-bottom: 0; }
 }
 .acid-text { color: var(--acid); }
+.stars-acid { color: var(--acid); letter-spacing: 0.2em; }
+.num-input-xs { max-width: 5rem; }
+.num-input-sm { max-width: 7rem; }
+.panel.tight { margin: 0 0 2px; }
+.chip.gap-end { margin: 0 2px 2px 0; }
 .num-input-w { max-width: 11rem; }
 .num-input-n { max-width: 10rem; }
 

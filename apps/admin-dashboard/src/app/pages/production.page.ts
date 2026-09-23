@@ -16,7 +16,7 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
 
     <div class="cols">
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Start a batch</p>
+        <p class="section-label">Start a batch</p>
         <form class="form-grid" (ngSubmit)="createBatch()">
           <label class="wide">Variant (SKU)
             <select [(ngModel)]="nb.variantId" name="bvar" required>
@@ -29,7 +29,7 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
           </label>
           <label>Quantity <input type="number" min="1" [(ngModel)]="nb.quantity" name="bqty" required /></label>
           <label>Planned date <input type="date" [(ngModel)]="nb.plannedDate" name="bdate" /></label>
-          <div class="wide actions" style="margin:0">
+          <div class="wide actions flat">
             @if (!nb.approvalRequestId) {
               <button class="cta small ghost" type="button" (click)="requestBatchApproval()">Request approval</button>
             } @else {
@@ -41,7 +41,7 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Record batch cost</p>
+        <p class="section-label">Record batch cost</p>
         <p class="muted small">Production cost = material + sewing + branding + packaging.</p>
         <form class="form-grid" (ngSubmit)="recordCost()">
           <label class="wide">Batch
@@ -59,7 +59,7 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">QC rejection</p>
+        <p class="section-label">QC rejection</p>
         <p class="muted small">Reason drives disposition: defective → burned (write-off); factory error → repaired & restocked.</p>
         <form class="form-grid" (ngSubmit)="recordQc()">
           <label class="wide">Batch

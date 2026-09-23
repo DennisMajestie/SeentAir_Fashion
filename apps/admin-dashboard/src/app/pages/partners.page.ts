@@ -16,8 +16,8 @@ interface DistRow { period: string; totalProfit: number; reinvestmentAmount: num
     <p class="rule-strip">CONFIRMED MODEL // 1,000,000 shares: 60% founder, 40% partners by equity. Profit splits 40% reinvest / 40% dividends / 20% reserve, quarterly.</p>
 
     <div class="cols">
-      <section class="panel" style="grid-column: span 2; min-width: 0">
-        <p class="section-label" style="margin-top:0">Partners <span class="count">[{{ partners().length | number: '2.0' }}] · {{ allocated() }}% of 40% allocated</span></p>
+      <section class="panel lead">
+        <p class="section-label">Partners <span class="count">[{{ partners().length | number: '2.0' }}] · {{ allocated() }}% of 40% allocated</span></p>
         <table class="table">
           <thead><tr><th>Partner</th><th>Equity</th><th>Shares</th><th>Invested</th><th></th></tr></thead>
           <tbody>
@@ -55,7 +55,7 @@ interface DistRow { period: string; totalProfit: number; reinvestmentAmount: num
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Add partner</p>
+        <p class="section-label">Add partner</p>
         <p class="muted small">The user must already exist with the partner_investor role (Staff page). The investment lands in the ledger automatically.</p>
         <form (ngSubmit)="createPartner()">
           <label>Partner user id <input [(ngModel)]="np.userId" name="puid" required placeholder="uuid from Staff page" /></label>
@@ -68,7 +68,7 @@ interface DistRow { period: string; totalProfit: number; reinvestmentAmount: num
 
     <div class="cols">
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Declare quarterly distribution</p>
+        <p class="section-label">Declare quarterly distribution</p>
         <form (ngSubmit)="distribute()">
           <label>Period <input [(ngModel)]="nd.period" name="dper" required placeholder="2026-Q4" /></label>
           <label>Total profit ₦ <input type="number" min="1" [(ngModel)]="nd.totalProfit" name="dprof" required /></label>
@@ -84,10 +84,10 @@ interface DistRow { period: string; totalProfit: number; reinvestmentAmount: num
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Distribution history</p>
+        <p class="section-label">Distribution history</p>
         @if (distributions().length === 0) { <p class="muted small">None yet.</p> }
         @for (d of distributions(); track d.period) {
-          <div class="panel" style="margin:0 0 2px">
+          <div class="panel tight">
             <p><strong class="mono">{{ d.period }}</strong> · profit ₦{{ d.totalProfit | number: '1.0-0' }}</p>
             <p class="muted small mono">reinvest ₦{{ d.reinvestmentAmount | number: '1.0-0' }} · dividends ₦{{ d.dividendPool | number: '1.0-0' }} · reserve ₦{{ d.reserveAmount | number: '1.0-0' }}</p>
             <p class="small">Founder/CEO: <span class="naira">₦{{ d.perPartnerBreakdown.founderCeo | number: '1.0-0' }}</span>

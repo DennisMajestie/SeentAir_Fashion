@@ -29,7 +29,7 @@ import { ApiService, Approval } from '../api.service';
 
     <p class="section-label">History
       <span class="count">
-        <select [(ngModel)]="historyFilter" name="hf" (ngModelChange)="loadHistory()" style="background:var(--obsidian); color:var(--ink); border:1px solid var(--hairline-2); padding:0.2rem">
+        <select class="table-filter" [(ngModel)]="historyFilter" name="hf" (ngModelChange)="loadHistory()">
           <option value="">all</option>
           <option value="approved">approved</option>
           <option value="rejected">rejected</option>

@@ -20,8 +20,8 @@ const ROLES = [
     <p class="rule-strip">LEAST PRIVILEGE // new accounts start view-only per the role matrix. Recommend 2FA for every staff account (Security page).</p>
 
     <div class="cols">
-      <section class="panel" style="grid-column: span 2; min-width: 0">
-        <p class="section-label" style="margin-top:0">Users <span class="count">[{{ users().length | number: '2.0' }}]</span></p>
+      <section class="panel lead">
+        <p class="section-label">Users <span class="count">[{{ users().length | number: '2.0' }}]</span></p>
         <table class="table">
           <thead><tr><th>Name</th><th>Role</th><th>Status</th><th>2FA</th><th>Change role</th></tr></thead>
           <tbody>
@@ -32,7 +32,7 @@ const ROLES = [
                 <td><span class="chip" [class.ok]="u.status === 'active'" [class.bad]="u.status !== 'active'">{{ u.status }}</span></td>
                 <td><span class="chip" [class.ok]="u.totpEnabled">{{ u.totpEnabled ? 'ON' : 'OFF' }}</span></td>
                 <td>
-                  <div class="actions" style="margin:0">
+                  <div class="actions flat">
                     <select [(ngModel)]="roleChoice[u.id]" [name]="'r' + u.id">
                       @for (r of roles; track r) { <option [value]="r">{{ r.replaceAll('_', ' ') }}</option> }
                     </select>
@@ -62,7 +62,7 @@ const ROLES = [
       </section>
 
       <section class="panel">
-        <p class="section-label" style="margin-top:0">Create staff account</p>
+        <p class="section-label">Create staff account</p>
         <form (ngSubmit)="create()">
           <label>Name <input [(ngModel)]="nu.name" name="uname" required /></label>
           <label>Email <input type="email" [(ngModel)]="nu.email" name="uemail" required /></label>
