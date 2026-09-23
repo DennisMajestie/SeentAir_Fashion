@@ -69,6 +69,10 @@ export class ApiService {
     });
   }
 
+  forgotPassword(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${API_BASE}/auth/forgot-password`, { email });
+  }
+
   get isLoggedIn(): boolean {
     return !!this.store.token();
   }
