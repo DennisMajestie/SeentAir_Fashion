@@ -6,28 +6,24 @@ import {
   OnDestroy,
   OnInit,
   ViewChild,
+  computed,
   inject,
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { ApiService, Product, ProductVariant } from '../api.service';
-import { CartService } from '../cart.service';
+import { ApiService, Product } from '../api.service';
+import { ProductCardComponent } from '../product-card.component';
 
-/** Colour-name → swatch hex for the dots on cards and quick-add. */
-const SWATCHES: Record<string, string> = {
-  black: '#1a1a1a',
-  bone: '#e8e2d5',
-  charcoal: '#3a3a3a',
-  clay: '#b46a4e',
-  ecru: '#e6ddc9',
-  sand: '#d8c6a3',
-  olive: '#6b6b47',
-  'grey melange': '#9a9a9a',
-  indigo: '#3f4a6b',
-  natural: '#ddd3c0',
-  white: '#f2f0eb',
+/** Curated category order for the home "Suggested" tiles — tailoring last. */
+const CATEGORY_ORDER = ['tops', 'bottoms', 'outerwear', 'accessories', 'tailoring'];
+const CATEGORY_LABELS: Record<string, string> = {
+  tops: 'Tops',
+  bottoms: 'Bottoms',
+  outerwear: 'Outerwear',
+  accessories: 'Accessories',
+  tailoring: 'Tailoring',
 };
 
 interface Stage {
@@ -71,7 +67,7 @@ interface FabricPiece {
  */
 @Component({
   selector: 'app-landing',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, ProductCardComponent],
   template: `
     <section class="dressing-scroll" #scrollRoot>
         <div class="dressing-stage">
@@ -138,85 +134,70 @@ interface FabricPiece {
         </div>
       </section>
 
+    <section id="hot" class="grid-wrap">
+      <div class="wrap-col">
+        <div class="section-head">
+          <h2>Hot right now</h2>
+          <span class="muted small">Most reviewed in the collection</span>
+        </div>
+        @if (hot().length === 0) {
+          <p class="muted">New pieces landing soon.</p>
+        } @else {
+          <div class="grid slide">
+            @for (p of hot(); track p.id; let i = $index) {
+              <app-product-card [product]="p" [index]="i" [rating]="ratingOf(p.id)" />
+            }
+          </div>
+          <p class="center"><a class="cta ghost" routerLink="/shop">View all products</a></p>
+        }
+      </div>
+    </section>
+
     <section id="drops" class="grid-wrap">
       <div class="wrap-col">
-        <h2>Latest drops</h2>
-      @if (products().length === 0) {
-        <p class="muted">New pieces landing soon.</p>
-      } @else {
-        <div class="grid">
-          @for (product of products(); track product.id; let i = $index) {
-            <div class="card product-card" [class.soldout]="isSoldOut(product)">
-              <a class="thumb" [routerLink]="['/product', product.id]">
-                <img
-                  [src]="product.variants[0]?.imageUrl || 'assets/' + fallbackImage(i)"
-                  [alt]="product.name"
-                  loading="lazy"
-                />
-                @if (badge(product); as b) { <span class="badge" [class.badge-out]="b === 'Sold out'">{{ b }}</span> }
-                @if (!isSoldOut(product)) {
-                  <button class="quickadd-btn" type="button"
-                    (click)="$event.preventDefault(); $event.stopPropagation(); toggleQuickAdd(product)">
-                    {{ quickAddId() === product.id ? 'Close' : '+ Quick add' }}
-                  </button>
-                }
-              </a>
-
-              @if (quickAddId() === product.id) {
-                <div class="quickadd-panel">
-                  @if (coloursOf(product).length > 1) {
-                    <div class="qa-row">
-                      @for (c of coloursOf(product); track c) {
-                        <button class="swatch-btn" [class.active]="qaColour() === c" [title]="c"
-                          (click)="qaColour.set(c)">
-                          <span class="swatch" [style.background]="swatch(c)"></span>
-                        </button>
-                      }
-                    </div>
-                  }
-                  <div class="qa-row">
-                    @for (s of sizesOf(product); track s) {
-                      <button class="size-chip"
-                        [disabled]="!isBuyable(product, s, qaColour())"
-                        (click)="quickAdd(product, s)">{{ s }}</button>
-                    }
-                  </div>
-                </div>
-              }
-              @if (addedId() === product.id) {
-                <p class="qa-added">Added to cart ✓</p>
-              }
-
-              <a class="card-body" [routerLink]="['/product', product.id]">
-                <h3>{{ product.name }}</h3>
-                <div class="card-meta">
-                  <span class="dots">
-                    @for (c of coloursOf(product).slice(0, 4); track c) {
-                      <span class="swatch small" [style.background]="swatch(c)" [title]="c"></span>
-                    }
-                  </span>
-                  <span class="muted small">{{ metaLine(product) }}</span>
-                </div>
-                <p class="price">₦{{ product.basePrice | number: '1.0-2' }}</p>
-                @if (ratingOf(product.id); as r) {
-                  <p class="stars-line" [attr.aria-label]="r.avg + ' out of 5 from ' + r.count + ' reviews'">
-                    <span class="stars">{{ starString(r.avg) }}</span>
-                    <span class="muted small">{{ r.avg | number: '1.1-1' }} ({{ r.count }})</span>
-                  </p>
-                }
-              </a>
-            </div>
-          }
+        <div class="section-head">
+          <h2>Latest drops</h2>
+          <span class="muted small">Newest first</span>
         </div>
-        <p class="center"><a class="cta ghost" routerLink="/shop">View all products</a></p>
-      }
+        @if (latest().length === 0) {
+          <p class="muted">New pieces landing soon.</p>
+        } @else {
+          <div class="grid slide">
+            @for (p of latest(); track p.id; let i = $index) {
+              <app-product-card [product]="p" [index]="i" [rating]="ratingOf(p.id)" />
+            }
+          </div>
+          <p class="center"><a class="cta ghost" routerLink="/shop">View all products</a></p>
+        }
+      </div>
+    </section>
+
+    <section id="suggested" class="grid-wrap">
+      <div class="wrap-col">
+        <div class="section-head">
+          <h2>Suggested for you</h2>
+          <span class="muted small">Browse by category</span>
+        </div>
+        @if (categories().length > 0) {
+          <div class="cat-grid">
+            @for (cat of categories(); track cat.name) {
+              <a class="cat-tile" [routerLink]="['/shop']" [queryParams]="{ category: cat.name }">
+                @if (cat.image) {
+                  <span class="cat-img" [style.background-image]="'url(' + cat.image + ')'"></span>
+                }
+                <span class="cat-scrim"></span>
+                <span class="cat-name">{{ cat.label }}</span>
+                <span class="cat-count">{{ cat.count | number: '2.0' }} piece(s)</span>
+              </a>
+            }
+          </div>
+        }
       </div>
     </section>
   `,
 })
 export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private readonly api = inject(ApiService);
-  private readonly cart = inject(CartService);
 
   @ViewChild('particleCanvas') canvasRef?: ElementRef<HTMLCanvasElement>;
 
@@ -270,14 +251,54 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private get walkEnd(): number {
     return this.walkReady ? 0.22 : 0;
   }
-  readonly products = signal<Product[]>([]);
+  /** Full catalogue (limit 50 from the API) — the home strips are projections. */
+  readonly all = signal<Product[]>([]);
+  /** Latest drops: newest first. */
+  readonly latest = computed(() =>
+    [...this.all()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 8),
+  );
+  /** Hot right now: most reviews, then best rated, then newest. */
+  readonly hot = computed(() => {
+    const r = this.ratings();
+    return [...this.all()]
+      .sort((a, b) => {
+        const ca = r.get(a.id)?.count ?? 0;
+        const cb = r.get(b.id)?.count ?? 0;
+        if (cb !== ca) return cb - ca;
+        const aa = r.get(a.id)?.avg ?? 0;
+        const ab = r.get(b.id)?.avg ?? 0;
+        if (ab !== aa) return ab - aa;
+        return b.createdAt.localeCompare(a.createdAt);
+      })
+      .slice(0, 8);
+  });
+  /** Suggested categories present in the catalogue, each with a sample image. */
+  readonly categories = computed(() => {
+    const counts = new Map<string, { count: number; image: string }>();
+    for (const p of this.all()) {
+      const c = p.category ?? 'other';
+      const cur = counts.get(c) ?? {
+        count: 0,
+        image: p.variants[0]?.imageUrl ?? 'assets/' + this.fallbackImage(0),
+      };
+      cur.count += 1;
+      counts.set(c, cur);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => {
+        const ia = CATEGORY_ORDER.indexOf(a[0]);
+        const ib = CATEGORY_ORDER.indexOf(b[0]);
+        return ((ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)) || a[0].localeCompare(b[0]);
+      })
+      .map(([name, c]) => ({
+        name,
+        count: c.count,
+        label: CATEGORY_LABELS[name] ?? name.replace(/^\w/, (ch) => ch.toUpperCase()),
+        image: c.image,
+      }));
+  });
   /** productId → average rating + review count (public reviews endpoint). */
   readonly ratings = signal<Map<string, { avg: number; count: number }>>(new Map());
-  /** Quick-add: which card's panel is open, its colour, and the "Added" flash. */
-  readonly quickAddId = signal<string | null>(null);
-  readonly qaColour = signal<string | null>(null);
-  readonly addedId = signal<string | null>(null);
-  private addedTimer: ReturnType<typeof setTimeout> | undefined;
 
   private readonly fallbacks = ['shop-1.jpg', 'shop-2.jpg', 'shop-3.jpg', 'shop-5.jpg', 'shop-6.jpg'];
 
@@ -319,9 +340,8 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.api.products().subscribe((res) => {
-      const list = res.data.slice(0, 8);
-      this.products.set(list);
-      this.loadRatings(list);
+      this.all.set(res.data);
+      this.loadRatings(res.data);
     });
     window.addEventListener('scroll', this.onScroll, { passive: true });
     window.addEventListener('resize', this.onResize);
@@ -338,7 +358,6 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('keydown', this.onKeydown);
     clearTimeout(this.resizeTimer);
-    clearTimeout(this.addedTimer);
     this.stopAutoAdvance();
   }
 
@@ -347,7 +366,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // ------------------------------------------------------------------
-  // Product card helpers (same card design as the shop page).
+  // Ratings: average + count per product (the "Hot right now" signal).
   // ------------------------------------------------------------------
   private loadRatings(products: Product[]): void {
     if (products.length === 0) return;
@@ -369,76 +388,8 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  swatch(colour: string): string {
-    return SWATCHES[colour.toLowerCase()] ?? '#8a8378';
-  }
-  coloursOf(p: Product): string[] {
-    return [...new Set(p.variants.map((v) => v.colour).filter((c): c is string => !!c))];
-  }
-  sizesOf(p: Product): string[] {
-    const order = ['S', 'M', 'L', 'XL', 'XXL', 'OS', 'Bespoke'];
-    return [...new Set(p.variants.map((v) => v.size).filter((s): s is string => !!s))].sort(
-      (a, b) => {
-        const ia = order.indexOf(a), ib = order.indexOf(b);
-        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
-      },
-    );
-  }
-  metaLine(p: Product): string {
-    const sizes = this.sizesOf(p);
-    const colours = this.coloursOf(p);
-    const sizePart =
-      sizes.length === 0 ? '' :
-      sizes.length === 1 && (sizes[0] === 'OS' || sizes[0] === 'Bespoke')
-        ? (sizes[0] === 'OS' ? 'One size' : 'Made to measure')
-        : `${sizes[0]}–${sizes[sizes.length - 1]}`;
-    const colourPart = colours.length > 1 ? `${colours.length} colours` : '';
-    return [sizePart, colourPart].filter(Boolean).join(' · ');
-  }
-  isSoldOut(p: Product): boolean {
-    return p.variants.length > 0 && p.variants.every((v) => v.availabilityStatus === 'out_of_stock');
-  }
-  badge(p: Product): string | null {
-    if (this.isSoldOut(p)) return 'Sold out';
-    if (p.variants.some((v) => v.availabilityStatus === 'made_to_order')) return 'Made to order';
-    const ageDays = (Date.now() - new Date(p.createdAt).getTime()) / 86_400_000;
-    return ageDays <= 30 ? 'New' : null;
-  }
   ratingOf(productId: string): { avg: number; count: number } | null {
     return this.ratings().get(productId) ?? null;
-  }
-  starString(avg: number): string {
-    const full = Math.round(avg);
-    return '★'.repeat(full) + '☆'.repeat(5 - full);
-  }
-
-  toggleQuickAdd(p: Product): void {
-    if (this.quickAddId() === p.id) {
-      this.quickAddId.set(null);
-      return;
-    }
-    this.quickAddId.set(p.id);
-    this.qaColour.set(this.coloursOf(p)[0] ?? null);
-  }
-  private variantFor(p: Product, size: string, colour: string | null): ProductVariant | null {
-    return (
-      p.variants.find(
-        (v) => v.size === size && (colour === null || v.colour === colour),
-      ) ?? null
-    );
-  }
-  isBuyable(p: Product, size: string, colour: string | null): boolean {
-    const v = this.variantFor(p, size, colour);
-    return !!v && v.availabilityStatus !== 'out_of_stock';
-  }
-  quickAdd(p: Product, size: string): void {
-    const v = this.variantFor(p, size, this.qaColour());
-    if (!v || v.availabilityStatus === 'out_of_stock') return;
-    this.cart.add(p, v, 1);
-    this.quickAddId.set(null);
-    this.addedId.set(p.id);
-    clearTimeout(this.addedTimer);
-    this.addedTimer = setTimeout(() => this.addedId.set(null), 1800);
   }
 
   // ------------------------------------------------------------------
