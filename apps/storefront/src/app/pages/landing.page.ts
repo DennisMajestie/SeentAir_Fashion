@@ -10,7 +10,25 @@ import {
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ApiService, Product } from '../api.service';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+import { ApiService, Product, ProductVariant } from '../api.service';
+import { CartService } from '../cart.service';
+
+/** Colour-name → swatch hex for the dots on cards and quick-add. */
+const SWATCHES: Record<string, string> = {
+  black: '#1a1a1a',
+  bone: '#e8e2d5',
+  charcoal: '#3a3a3a',
+  clay: '#b46a4e',
+  ecru: '#e6ddc9',
+  sand: '#d8c6a3',
+  olive: '#6b6b47',
+  'grey melange': '#9a9a9a',
+  indigo: '#3f4a6b',
+  natural: '#ddd3c0',
+  white: '#f2f0eb',
+};
 
 interface Stage {
   image: string;
@@ -128,21 +146,66 @@ interface FabricPiece {
       } @else {
         <div class="grid">
           @for (product of products(); track product.id; let i = $index) {
-            <a class="card" [routerLink]="['/product', product.id]">
-              <div class="thumb">
+            <div class="card product-card" [class.soldout]="isSoldOut(product)">
+              <a class="thumb" [routerLink]="['/product', product.id]">
                 <img
                   [src]="product.variants[0]?.imageUrl || 'assets/' + fallbackImage(i)"
                   [alt]="product.name"
                   loading="lazy"
                 />
-              </div>
-              <div class="card-body">
-                <p class="sku-line">{{ product.variants[0]?.sku || 'SPEC-' + (i + 1) }} // {{ product.variants.length }} variant(s)</p>
+                @if (badge(product); as b) { <span class="badge" [class.badge-out]="b === 'Sold out'">{{ b }}</span> }
+                @if (!isSoldOut(product)) {
+                  <button class="quickadd-btn" type="button"
+                    (click)="$event.preventDefault(); $event.stopPropagation(); toggleQuickAdd(product)">
+                    {{ quickAddId() === product.id ? 'Close' : '+ Quick add' }}
+                  </button>
+                }
+              </a>
+
+              @if (quickAddId() === product.id) {
+                <div class="quickadd-panel">
+                  @if (coloursOf(product).length > 1) {
+                    <div class="qa-row">
+                      @for (c of coloursOf(product); track c) {
+                        <button class="swatch-btn" [class.active]="qaColour() === c" [title]="c"
+                          (click)="qaColour.set(c)">
+                          <span class="swatch" [style.background]="swatch(c)"></span>
+                        </button>
+                      }
+                    </div>
+                  }
+                  <div class="qa-row">
+                    @for (s of sizesOf(product); track s) {
+                      <button class="size-chip"
+                        [disabled]="!isBuyable(product, s, qaColour())"
+                        (click)="quickAdd(product, s)">{{ s }}</button>
+                    }
+                  </div>
+                </div>
+              }
+              @if (addedId() === product.id) {
+                <p class="qa-added">Added to cart ✓</p>
+              }
+
+              <a class="card-body" [routerLink]="['/product', product.id]">
                 <h3>{{ product.name }}</h3>
-                <p class="category">{{ product.category }}</p>
+                <div class="card-meta">
+                  <span class="dots">
+                    @for (c of coloursOf(product).slice(0, 4); track c) {
+                      <span class="swatch small" [style.background]="swatch(c)" [title]="c"></span>
+                    }
+                  </span>
+                  <span class="muted small">{{ metaLine(product) }}</span>
+                </div>
                 <p class="price">₦{{ product.basePrice | number: '1.0-2' }}</p>
-              </div>
-            </a>
+                @if (ratingOf(product.id); as r) {
+                  <p class="stars-line" [attr.aria-label]="r.avg + ' out of 5 from ' + r.count + ' reviews'">
+                    <span class="stars">{{ starString(r.avg) }}</span>
+                    <span class="muted small">{{ r.avg | number: '1.1-1' }} ({{ r.count }})</span>
+                  </p>
+                }
+              </a>
+            </div>
           }
         </div>
         <p class="center"><a class="cta ghost" routerLink="/shop">View all products</a></p>
@@ -153,6 +216,7 @@ interface FabricPiece {
 })
 export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private readonly api = inject(ApiService);
+  private readonly cart = inject(CartService);
 
   @ViewChild('particleCanvas') canvasRef?: ElementRef<HTMLCanvasElement>;
 
@@ -207,6 +271,13 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     return this.walkReady ? 0.22 : 0;
   }
   readonly products = signal<Product[]>([]);
+  /** productId → average rating + review count (public reviews endpoint). */
+  readonly ratings = signal<Map<string, { avg: number; count: number }>>(new Map());
+  /** Quick-add: which card's panel is open, its colour, and the "Added" flash. */
+  readonly quickAddId = signal<string | null>(null);
+  readonly qaColour = signal<string | null>(null);
+  readonly addedId = signal<string | null>(null);
+  private addedTimer: ReturnType<typeof setTimeout> | undefined;
 
   private readonly fallbacks = ['shop-1.jpg', 'shop-2.jpg', 'shop-3.jpg', 'shop-5.jpg', 'shop-6.jpg'];
 
@@ -247,7 +318,11 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private resizeTimer: ReturnType<typeof setTimeout> | undefined;
 
   ngOnInit(): void {
-    this.api.products().subscribe((res) => this.products.set(res.data.slice(0, 8)));
+    this.api.products().subscribe((res) => {
+      const list = res.data.slice(0, 8);
+      this.products.set(list);
+      this.loadRatings(list);
+    });
     window.addEventListener('scroll', this.onScroll, { passive: true });
     window.addEventListener('resize', this.onResize);
     window.addEventListener('keydown', this.onKeydown);
@@ -263,11 +338,107 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('keydown', this.onKeydown);
     clearTimeout(this.resizeTimer);
+    clearTimeout(this.addedTimer);
     this.stopAutoAdvance();
   }
 
   fallbackImage(index: number): string {
     return this.fallbacks[index % this.fallbacks.length];
+  }
+
+  // ------------------------------------------------------------------
+  // Product card helpers (same card design as the shop page).
+  // ------------------------------------------------------------------
+  private loadRatings(products: Product[]): void {
+    if (products.length === 0) return;
+    forkJoin(
+      products.map((p) =>
+        this.api.reviews(p.id).pipe(
+          map((r) => ({ id: p.id, rows: r.data })),
+          catchError(() => of({ id: p.id, rows: [] as Array<{ rating: number }> })),
+        ),
+      ),
+    ).subscribe((results) => {
+      const map = new Map<string, { avg: number; count: number }>();
+      for (const r of results) {
+        if (r.rows.length === 0) continue;
+        const avg = r.rows.reduce((s, x) => s + x.rating, 0) / r.rows.length;
+        map.set(r.id, { avg, count: r.rows.length });
+      }
+      this.ratings.set(map);
+    });
+  }
+
+  swatch(colour: string): string {
+    return SWATCHES[colour.toLowerCase()] ?? '#8a8378';
+  }
+  coloursOf(p: Product): string[] {
+    return [...new Set(p.variants.map((v) => v.colour).filter((c): c is string => !!c))];
+  }
+  sizesOf(p: Product): string[] {
+    const order = ['S', 'M', 'L', 'XL', 'XXL', 'OS', 'Bespoke'];
+    return [...new Set(p.variants.map((v) => v.size).filter((s): s is string => !!s))].sort(
+      (a, b) => {
+        const ia = order.indexOf(a), ib = order.indexOf(b);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+      },
+    );
+  }
+  metaLine(p: Product): string {
+    const sizes = this.sizesOf(p);
+    const colours = this.coloursOf(p);
+    const sizePart =
+      sizes.length === 0 ? '' :
+      sizes.length === 1 && (sizes[0] === 'OS' || sizes[0] === 'Bespoke')
+        ? (sizes[0] === 'OS' ? 'One size' : 'Made to measure')
+        : `${sizes[0]}–${sizes[sizes.length - 1]}`;
+    const colourPart = colours.length > 1 ? `${colours.length} colours` : '';
+    return [sizePart, colourPart].filter(Boolean).join(' · ');
+  }
+  isSoldOut(p: Product): boolean {
+    return p.variants.length > 0 && p.variants.every((v) => v.availabilityStatus === 'out_of_stock');
+  }
+  badge(p: Product): string | null {
+    if (this.isSoldOut(p)) return 'Sold out';
+    if (p.variants.some((v) => v.availabilityStatus === 'made_to_order')) return 'Made to order';
+    const ageDays = (Date.now() - new Date(p.createdAt).getTime()) / 86_400_000;
+    return ageDays <= 30 ? 'New' : null;
+  }
+  ratingOf(productId: string): { avg: number; count: number } | null {
+    return this.ratings().get(productId) ?? null;
+  }
+  starString(avg: number): string {
+    const full = Math.round(avg);
+    return '★'.repeat(full) + '☆'.repeat(5 - full);
+  }
+
+  toggleQuickAdd(p: Product): void {
+    if (this.quickAddId() === p.id) {
+      this.quickAddId.set(null);
+      return;
+    }
+    this.quickAddId.set(p.id);
+    this.qaColour.set(this.coloursOf(p)[0] ?? null);
+  }
+  private variantFor(p: Product, size: string, colour: string | null): ProductVariant | null {
+    return (
+      p.variants.find(
+        (v) => v.size === size && (colour === null || v.colour === colour),
+      ) ?? null
+    );
+  }
+  isBuyable(p: Product, size: string, colour: string | null): boolean {
+    const v = this.variantFor(p, size, colour);
+    return !!v && v.availabilityStatus !== 'out_of_stock';
+  }
+  quickAdd(p: Product, size: string): void {
+    const v = this.variantFor(p, size, this.qaColour());
+    if (!v || v.availabilityStatus === 'out_of_stock') return;
+    this.cart.add(p, v, 1);
+    this.quickAddId.set(null);
+    this.addedId.set(p.id);
+    clearTimeout(this.addedTimer);
+    this.addedTimer = setTimeout(() => this.addedId.set(null), 1800);
   }
 
   // ------------------------------------------------------------------
