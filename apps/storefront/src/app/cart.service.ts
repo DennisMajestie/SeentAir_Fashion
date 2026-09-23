@@ -10,6 +10,8 @@ export interface CartItem {
   colour: string | null;
   unitPrice: number;
   quantity: number;
+  imageUrl: string | null;
+  availabilityStatus: string | null;
 }
 
 const CART_KEY = 'seentair.cart';
@@ -50,6 +52,8 @@ export class CartService {
         colour: variant.colour,
         unitPrice: variant.priceOverride ?? product.basePrice,
         quantity,
+        imageUrl: variant.imageUrl,
+        availabilityStatus: variant.availabilityStatus,
       });
     }
     this.persist(items);
@@ -76,5 +80,17 @@ export class CartService {
 
   get total(): number {
     return this.items().reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+  }
+
+  /** Wholesale MOQ (20 units) reached in the cart — the amber eligibility
+      notice only renders while this is true. */
+  get moqEligible(): boolean {
+    return this.items().reduce((sum, i) => sum + i.quantity, 0) >= 20;
+  }
+
+  /** Any made-to-order piece in the cart (sample approval + production run
+      before dispatch). */
+  get hasMadeToOrder(): boolean {
+    return this.items().some((i) => i.availabilityStatus === 'made_to_order');
   }
 }

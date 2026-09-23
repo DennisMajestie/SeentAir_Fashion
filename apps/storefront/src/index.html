@@ -4,13 +4,28 @@
   <meta charset="utf-8">
   <title>SEENTAIR — Streetwear</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0B0B0B">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#fcf9f8">
   <meta name="description" content="Seentair Limited — streetwear manufactured in-house. Shop the look.">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Apply the saved theme before first paint to avoid a light-flash.
+       The ThemeService keeps this key in sync. -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('seentair.theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+        document.documentElement.style.colorScheme = t;
+      } catch (e) { /* storage unavailable — defaults to light */ }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

@@ -98,6 +98,11 @@ const RETURN_WINDOW_MS = 12 * 3_600_000;
           <p class="section-label">Manifest <span class="count">[{{ o.items.length | number: '2.0' }}]</span></p>
           @for (item of o.items; track item.variant.id) {
             <div class="manifest-row">
+              @if (item.variant.imageUrl) {
+                <img class="m-thumb" [src]="item.variant.imageUrl" [alt]="item.variant.sku" loading="lazy" />
+              } @else {
+                <div class="m-thumb m-thumb-monogram" aria-hidden="true">•</div>
+              }
               <div class="m-body">
                 <p class="sku-line">{{ item.variant.sku }}</p>
                 <p class="muted small">× {{ item.quantity }}</p>
@@ -105,9 +110,9 @@ const RETURN_WINDOW_MS = 12 * 3_600_000;
               <span class="m-price">₦{{ item.unitPrice * item.quantity | number: '1.0-2' }}</span>
             </div>
           }
-          <div class="matrix-total" style="border:1px solid var(--acid); padding:0.9rem; display:flex; justify-content:space-between; align-items:baseline">
-            <span class="label mono" style="font-size:0.7rem; letter-spacing:0.2em; color:var(--ink-dim)">TOTAL PAID</span>
-            <span style="font-family:'Anton',sans-serif; font-size:1.6rem; color:var(--acid)">₦{{ o.totalAmount | number: '1.0-0' }}</span>
+          <div class="matrix-total">
+            <span class="label">Total paid</span>
+            <span class="value">₦{{ o.totalAmount | number: '1.0-0' }}</span>
           </div>
           <p class="muted small mono">PAYMENT // {{ o.paymentStatus.toUpperCase() }}</p>
         </aside>

@@ -1,6 +1,9 @@
 /* SEENTAIR — approved design system (client's Stitch project
    "Seentair Streetwear Storefront", projects/4978034307012465281).
-   Warm editorial light canvas, gold accent, Oswald + Inter. */
+   Customer-facing: rust accent on warm ivory; dark mode = bright rust on
+   near-black. Ops surfaces keep gold (see wholesale/styles.scss).
+   The scroll-dressing hero is EXEMPT and keeps gold-on-ivory in both themes
+   (see the .hero-* exemption block below) — client: don't touch the hero. */
 
 :root {
   --canvas: #fcf9f8;
@@ -11,13 +14,13 @@
   --line-2: #d6d1cf;
   --ink: #1c1b1b;
   --muted: #6f6a67;
-  /* Gold accent on a light canvas needs two weights: the brand gold is
-     gorgeous as a FILL (7.2:1 with ink on top) but fails as text on cream
-     (2.3:1), so type and borders use a deeper gold that passes AA (4.8:1). */
-  --primary: #8a6a18;
-  --primary-fill: #c9a24b;
-  --primary-tint: #f7efdc;
-  --on-primary: #1c1b1b;
+  /* Rust accent (brief 15.5): #b32d00 on cream light, #ff6a3d on
+     #141311 dark. One depth serves type AND fill — #a52a04 is 6.9:1 on
+     cream (AA body), #b32d00 with ivory-on-top is 5.6:1 (AA buttons). */
+  --primary: #a52a04;
+  --primary-fill: #b32d00;
+  --primary-tint: #f7e3db;
+  --on-primary: #fffdf9;
   --ok: #1b7f3b;
   --warn: #b26a00;
   --danger: #ba1a1a;
@@ -29,6 +32,67 @@
      anything you type into is a soft-cornered field. */
   --radius-pill: 999px;
   --radius-field: 12px;
+  /* type scale (11/12px uppercase labels, 15px body, Oswald display) */
+  --type-label-sm: 0.6875rem;
+  --type-label-md: 0.75rem;
+  --type-body-sm: 0.8rem;
+  --type-body-md: 0.95rem;
+  /* 8px spacing scale */
+  --space-4: 0.25rem;
+  --space-8: 0.5rem;
+  --space-12: 0.75rem;
+  --space-16: 1rem;
+  --space-24: 1.5rem;
+  --space-32: 2rem;
+  --space-40: 2.5rem;
+  --space-48: 3rem;
+  --space-64: 4rem;
+  /* motion */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-1: 0.15s;
+  --dur-2: 0.3s;
+  --dur-3: 0.7s;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --canvas: #141311;
+  --card: #1d1a17;
+  --container: #262320;
+  --container-2: #302c27;
+  --line: #35312b;
+  --line-2: #4a453d;
+  --ink: #f0ece4;
+  --muted: #a49e94;
+  --primary: #ff6a3d;
+  --primary-fill: #ff6a3d;
+  --primary-tint: #3d2118;
+  --on-primary: #160f0a;
+  --ok: #55c97e;
+  --warn: #f5b04c;
+  --danger: #ff7a70;
+}
+
+/* ---------- hero exemption ----------
+   The scroll-dressing landing is officially frozen. In light OR dark it
+   keeps its approved golden headline, gold slider and ivory veil, so
+   swapping --primary to rust or the canvas to near-black never bleeds
+   into the hero. Foreground-content edits only, per client instruction. */
+.hero-wrap, .hero-card, .hero-grid, .hero-main, .hero-actions,
+.dressing-scroll, .dressing-stage, .stage-frame, .dressing-static,
+.hero-slider, .slider-track, .trust-row {
+  --canvas: #fcf9f8;
+  --card: #ffffff;
+  --container: #f6f3f2;
+  --container-2: #efeae8;
+  --line: #e5e2e1;
+  --line-2: #d6d1cf;
+  --ink: #1c1b1b;
+  --muted: #6f6a67;
+  --primary: #8a6a18;
+  --primary-fill: #c9a24b;
+  --primary-tint: #f7efdc;
+  --on-primary: #1c1b1b;
 }
 
 * { box-sizing: border-box; }
@@ -62,6 +126,8 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
 .site-header {
   position: sticky; top: 0; z-index: 20;
   display: block;
+  /* Notch/status-bar clearance on notched devices. */
+  padding-top: env(safe-area-inset-top);
   background: transparent;
   border-bottom: 1px solid transparent;
   transition: background 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease, box-shadow 0.3s ease;
@@ -93,6 +159,16 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
 /* Cart + menu toggle: one group, always visible, right of the nav.
    On mobile the nav leaves the flow, so this group claims the space. */
 .header-actions { display: flex; align-items: center; gap: 0.25rem; }
+.theme-toggle {
+  width: 44px; height: 44px; flex: 0 0 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line-2); border-radius: var(--radius-pill);
+  background: var(--card); color: var(--ink); cursor: pointer;
+  transition: color var(--dur-1) ease, border-color var(--dur-1) ease, background-color var(--dur-1) ease;
+  svg { width: 19px; height: 19px; display: block; }
+  &:hover { color: var(--primary); border-color: var(--primary); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 2px; }
+}
 @media (max-width: 820px) { .header-actions { margin-left: auto; } }
 .cart-btn {
   position: relative;
@@ -222,33 +298,144 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
 .manifest-row {
   display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;
   background: var(--card); border: 1px solid var(--line);
-  padding: 0.85rem; margin-bottom: 6px; border-radius: 2px;
-  .m-thumb { width: 64px; height: 76px; object-fit: cover; background: var(--container); flex-shrink: 0; }
+  padding: 0.85rem; margin-bottom: 8px; border-radius: var(--radius-field);
+  .m-thumb {
+    width: 64px; height: 76px; object-fit: cover;
+    background: var(--container); flex-shrink: 0; border-radius: var(--radius-field);
+    border: 1px solid var(--line);
+  }
   .m-body { flex: 1 1 180px; min-width: 0; }
-  .m-name { font-weight: 600; }
+  .m-name { font-weight: 600; line-height: 1.35; }
   .m-price { font-family: 'Oswald', sans-serif; font-weight: 600; }
   .discard { color: var(--muted); font-size: 0.68rem; font-weight: 700;
     background: none; border: none; cursor: pointer; letter-spacing: 0.12em; text-transform: uppercase;
     &:hover { color: var(--danger); } }
 }
+.m-thumb-monogram {
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1.6rem;
+  color: var(--line-2); text-transform: uppercase;
+}
+.cart-empty { display: grid; gap: 0.5rem; justify-items: start;
+  border: 1px dashed var(--line-2); border-radius: var(--radius);
+  padding: var(--space-40) var(--space-24); margin: 1rem 0;
+  a { color: var(--primary); font-weight: 600; } }
 .checkout-cols { display: grid; grid-template-columns: 1fr; gap: 1.6rem;
   @media (min-width: 880px) { grid-template-columns: 1.5fr 1fr; align-items: start; } }
 .matrix-panel {
-  background: var(--card); border: 1px solid var(--line); padding: 1.2rem; border-radius: 2px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: var(--space-24);
   position: sticky; top: 4.5rem;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--line) 60%, transparent);
   .matrix-row { display: flex; justify-content: space-between; gap: 1rem;
-    font-size: 0.82rem; color: var(--muted);
-    padding: 0.45rem 0; border-bottom: 1px solid var(--line);
+    font-size: var(--type-body-sm); color: var(--muted);
+    padding: 0.45rem 0;
     span:last-child { color: var(--ink); font-weight: 600; } }
-  .matrix-total { border: 1px solid var(--primary); background: var(--primary-tint); margin: 1rem 0; padding: 0.9rem; border-radius: 2px;
+  /* dashed separator — then the gradient total as the focal point */
+  .matrix-divider { border-top: 1px dashed var(--line-2); margin: 0.6rem 0; }
+  .matrix-total { margin: 0.9rem 0 1rem; border-radius: var(--radius-field); overflow: hidden;
+    background: linear-gradient(135deg, var(--primary-fill),
+      color-mix(in srgb, var(--primary-fill) 72%, var(--primary)));
+    padding: 0.9rem 1rem;
     display: flex; justify-content: space-between; align-items: baseline;
-    .label { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.2em; color: var(--primary); text-transform: uppercase; }
-    .value { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1.9rem; color: var(--primary); } }
+    .label { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.2em;
+      color: var(--on-primary); opacity: 0.85; text-transform: uppercase; }
+    .value { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1.9rem;
+      color: var(--on-primary); } }
   .cta { width: 100%; text-align: center; }
 }
 .settlement-box { border: 1px dashed var(--line-2); padding: 0.9rem; margin-top: 1rem; border-radius: 2px;
   font-size: 0.85rem; color: var(--muted); background: var(--container);
   strong { color: var(--ink); } }
+
+/* ---------- system components (approved spec tokens) ---------- */
+/* Stage bar — segmented progress; label carries the real step name. */
+.stage-bar { margin: 1.6rem 0 1.2rem;
+  .stage-label-line { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+    font-size: var(--type-label-sm); font-weight: 700; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--muted);
+    b { color: var(--ink); font-weight: 700; } }
+  .stage-segs { display: flex; gap: 6px; margin-top: 8px;
+    .seg { flex: 1; height: 4px; border-radius: var(--radius-pill);
+      background: var(--line-2); transition: background-color var(--dur-2) var(--ease-out);
+      &.on { background: var(--primary-fill); } } } }
+
+/* Inline policy notices — amber for warnings (wholesale MOQ, made-to-order),
+   red for errors, green for success, accent for info. Only rendered when
+   the condition is actually true. */
+.notice {
+  display: flex; gap: 0.75rem; align-items: flex-start;
+  padding: 0.85rem 1rem; border-radius: 12px;
+  font-size: 0.86rem; line-height: 1.5; border: 1px solid transparent;
+  .notice-title { display: block; font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 0.2rem; }
+  .notice-icon { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 1px; color: var(--warn); }
+  &.notice-warn { color: var(--ink); background: color-mix(in srgb, var(--warn) 14%, var(--card));
+    border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+    .notice-title { color: var(--warn); } }
+  &.notice-error { color: var(--ink); background: color-mix(in srgb, var(--danger) 12%, var(--card));
+    border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+    .notice-title { color: var(--danger); } }
+  &.notice-success { color: var(--ink); background: color-mix(in srgb, var(--ok) 12%, var(--card));
+    border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+    .notice-title { color: var(--ok); } }
+  &.notice-accent { color: var(--ink); background: var(--primary-tint);
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+    .notice-title { color: var(--primary); } }
+  a { color: var(--primary); font-weight: 600; }
+}
+
+/* Sticky CTA footer — safe-area bottom, translucent canvas blur. */
+.sticky-cta {
+  position: sticky; bottom: 0; z-index: 12;
+  margin-inline: calc(var(--wrap-x) * -1);
+  padding: 0.7rem var(--wrap-x) calc(0.7rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--canvas) 90%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  .scta-inner { max-width: var(--wrap-max); margin-inline: auto;
+    display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; align-items: center; }
+  .scta-trust { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); }
+  .scta-amount { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1.5rem; line-height: 1; }
+  .cta { flex: 1 1 160px; }
+}
+
+/* Loading: skeleton shimmer + button spinner. Spinners tint to their
+   host's on-* color so they read on a filled or ghost button alike. */
+.skeleton {
+  position: relative; overflow: hidden;
+  background: var(--container); border-radius: var(--radius-field);
+  &::after { content: ''; position: absolute; inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent,
+      color-mix(in srgb, var(--card) 70%, transparent), transparent);
+    animation: skeleton-shimmer 1.4s infinite; }
+}
+@keyframes skeleton-shimmer { to { transform: translateX(100%); } }
+.spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--on-primary) 35%, transparent);
+  border-top-color: var(--on-primary);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-loading { display: inline-flex; align-items: center; gap: 0.55rem; }
+
+/* Entrance: opacity + 12px rise, staggered 80ms — always reduced-motion
+   safe. The frozen hero keeps its own .rise; this drives new screens. */
+@keyframes u-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.u-rise { animation: u-rise 0.7s var(--ease-out) both; }
+.u-rise-1 { animation-delay: 80ms; }
+.u-rise-2 { animation-delay: 160ms; }
+.u-rise-3 { animation-delay: 240ms; }
+.u-rise-4 { animation-delay: 320ms; }
+.u-rise-5 { animation-delay: 400ms; }
+@media (prefers-reduced-motion: reduce) {
+  .u-rise, .u-rise-1, .u-rise-2, .u-rise-3, .u-rise-4, .u-rise-5 { animation: none; }
+  .skeleton::after { animation: none; }
+  .spinner { animation-duration: 1.6s; }
+}
 
 /* tracking step cards */
 .exec-header { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap;
@@ -544,6 +731,8 @@ select, input, textarea {
   background: var(--card); border: 1px solid var(--line); border-radius: 2px;
   padding: 1.4rem; margin: 1.2rem 0; max-width: 500px;
   input { max-width: 100%; } }
+.checkout-auth { max-width: none; margin: 0; }
+.checkout-details { scroll-margin-top: 5rem; }
 .success-box { border-color: var(--primary); }
 
 .order-row {

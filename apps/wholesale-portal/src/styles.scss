@@ -74,6 +74,42 @@
   --radius-field: 0;
 }
 
+/* Dark ops theme — gold on near-black, per brief 15.5. Flips surfaces to
+   warm charcoal and keeps the gold commit colour across the portal. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: #0f0e0c;
+  --surface-bright: #14120f;
+  --surface-lowest: #0b0a08;
+  --surface-low: #171411;
+  --surface-container: #1d1a17;
+  --surface-high: #241f1b;
+  --surface-highest: #2b2621;
+  --surface-dim: #332d26;
+  --ink: #f0ece2;
+  --ink-variant: #b9a488;
+  --muted: #a89f92;
+  --muted-faint: #4f4a42;
+  --gold: #c9a24a;
+  --gold-strong: #d8b25c;
+  --gold-ink: #e6cf8d;
+  --primary: var(--gold-ink);
+  --primary-container: #3a2f1c;
+  --primary-action: var(--gold);
+  --primary-action-hover: var(--gold-strong);
+  --on-primary: #16130d;
+  --on-primary-container: #f0e6c8;
+  --primary-fixed: #3a2f1c;
+  --primary-soft: #e6cf8d;
+  --error: #ff9288;
+  --on-error: #2a0509;
+  --error-container: #5c1a1f;
+  --on-error-container: #ffdad6;
+  --ok: #6fd08a;
+  --hairline: #2b2621;
+  --hairline-strong: #f0ece2;
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -103,6 +139,7 @@ strong { font-weight: 600; }
 .wrap-col { max-width: var(--wrap-max); margin-inline: auto; padding-inline: var(--wrap-x); }
 .site-header {
   position: sticky; top: 0; z-index: 20; display: block;
+  padding-top: env(safe-area-inset-top);
   background: transparent;
   border-bottom: 1px solid transparent;
   transition: background 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease, box-shadow 0.3s ease;
@@ -136,6 +173,16 @@ strong { font-weight: 600; }
   a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 2px; }
 }
 .header-actions { display: flex; align-items: center; gap: 0.25rem; }
+.theme-toggle {
+  width: 44px; height: 44px; flex: 0 0 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--hairline); border-radius: var(--radius-pill);
+  background: var(--surface-lowest); color: var(--ink); cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+  svg { width: 19px; height: 19px; display: block; }
+  &:hover { color: var(--primary); border-color: var(--primary); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 2px; }
+}
 @media (max-width: 820px) {
   .header-actions { margin-left: auto; }
   .site-header .menu-toggle { display: flex; }
