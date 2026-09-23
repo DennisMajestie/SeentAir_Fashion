@@ -19,7 +19,12 @@ export default () => ({
   },
   security: {
     // Secure cookies require HTTPS — on in production, off for local dev.
-    cookieSecure: (process.env.COOKIE_SECURE ?? 'false') === 'true',
+    // Default flips with NODE_ENV so a deployed API never emits insecure
+    // refresh cookies even if COOKIE_SECURE is left unset.
+    cookieSecure:
+      process.env.COOKIE_SECURE === undefined
+        ? process.env.NODE_ENV === 'production'
+        : process.env.COOKIE_SECURE === 'true',
     // Brute-force protection (client requirement): lock after N failures.
     maxFailedLogins: parseInt(process.env.MAX_FAILED_LOGINS ?? '5', 10),
     lockoutMinutes: parseInt(process.env.LOCKOUT_MINUTES ?? '15', 10),
