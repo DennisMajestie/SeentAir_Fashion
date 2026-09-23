@@ -129,12 +129,6 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
 .hero-wrap button:focus-visible {
   outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 2px;
 }
-.announce-bar {
-  margin: 0; padding: 0.45rem var(--wrap-x); text-align: center;
-  background: var(--primary-fill); color: var(--on-primary);
-  font-family: 'Inter', sans-serif; font-size: 0.68rem; font-weight: 700;
-  letter-spacing: 0.14em; text-transform: uppercase;
-}
 .site-footer {
   padding-block: 2.5rem; border-top: 1px solid var(--line);
   color: var(--muted); font-size: 0.8rem;

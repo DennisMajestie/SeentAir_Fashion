@@ -1,15 +1,11 @@
-import { DecimalPipe } from '@angular/common';
 import { Component, OnDestroy, signal, inject } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { CartService } from './cart.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, DecimalPipe],
+  imports: [RouterOutlet, RouterLink],
   template: `
-    <p class="announce-bar">
-      Drop 04 — Harmattan is live · Lagos dispatch within 24h · Full payment, 12-hour returns
-    </p>
     <header class="site-header" [class.scrolled]="scrolled()">
       <div class="wrap-col header-inner">
         <a routerLink="/" class="logo" aria-label="SEENTAIR home">
