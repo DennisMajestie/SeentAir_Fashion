@@ -3,6 +3,7 @@ import { Component, OnDestroy, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Product, ProductVariant } from './api.service';
 import { CartService } from './cart.service';
+import { WishlistService } from './wishlist.service';
 
 /** Colour-name → swatch hex for the little dots on cards and quick-add. */
 export const SWATCHES: Record<string, string> = {
@@ -36,6 +37,17 @@ export const SWATCHES: Record<string, string> = {
           loading="lazy"
         />
         @if (badge(product()); as b) { <span class="badge" [class.badge-out]="b === 'Sold out'">{{ b }}</span> }
+        <button class="heart-btn" type="button"
+          [class.active]="wishlist.has(product().id)"
+          [attr.aria-pressed]="wishlist.has(product().id)"
+          [attr.aria-label]="(wishlist.has(product().id) ? 'Remove ' : 'Add ') + product().name + ' to wishlist'"
+          (click)="$event.preventDefault(); $event.stopPropagation(); wishlist.toggle(product())">
+          <svg viewBox="0 0 24 24" [attr.fill]="wishlist.has(product().id) ? 'currentColor' : 'none'"
+               stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+               aria-hidden="true" focusable="false">
+            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+          </svg>
+        </button>
         @if (!isSoldOut(product())) {
           <button class="quickadd-btn" type="button"
             (click)="$event.preventDefault(); $event.stopPropagation(); toggleQuickAdd(product())">
@@ -92,6 +104,7 @@ export const SWATCHES: Record<string, string> = {
 })
 export class ProductCardComponent implements OnDestroy {
   private readonly cart = inject(CartService);
+  readonly wishlist = inject(WishlistService);
   readonly product = input.required<Product>();
   readonly index = input(0);
   readonly rating = input<{ avg: number; count: number } | null>(null);

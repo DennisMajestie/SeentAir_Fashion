@@ -1,8 +1,10 @@
-import { Component, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterOutlet } from '@angular/router';
+import { ApiService, Product } from './api.service';
 import { CartService } from './cart.service';
 import { ThemeService } from './theme.service';
+import { WishlistService } from './wishlist.service';
 import { environment } from '../environments/environment';
 
 @Component({
@@ -44,6 +46,78 @@ import { environment } from '../environments/environment';
               </svg>
             }
           </button>
+          <div
+            class="mini-cart"
+            (mouseenter)="searchOpen.set(true)"
+            (mouseleave)="searchOpen.set(false)"
+          >
+            <button class="cart-btn" type="button" aria-label="Search products"
+              (click)="openSearch()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+            </button>
+            <div class="mini-panel search-panel" [class.open]="searchOpen()" role="search">
+              <input #si class="search-input" type="search" [value]="searchTerm()"
+                (input)="searchTerm.set(si.value)" autocomplete="off" spellcheck="false"
+                placeholder="Search tees, joggers, hoods…" aria-label="Search products" />
+              @if (searchResults().length > 0) {
+                <ul class="search-results">
+                  @for (r of searchResults(); track r.id) {
+                    <li>
+                      <a class="search-item" [routerLink]="['/product', r.id]" (click)="closeSearch()">
+                        <img [src]="r.variants[0]?.imageUrl || 'assets/shop-1.jpg'" [alt]="r.name" />
+                        <span class="si-info">
+                          <span class="si-name">{{ r.name }}</span>
+                          <span class="muted small">{{ r.category || 'Seentair' }} · ₦{{ r.basePrice | number: '1.0-0' }}</span>
+                        </span>
+                      </a>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="muted small search-empty">{{ searchTerm().trim().length ? 'No matches in the collection.' : 'Type to search the collection.' }}</p>
+              }
+            </div>
+          </div>
+          <div
+            class="mini-cart"
+            (mouseenter)="wishOpen.set(true)"
+            (mouseleave)="wishOpen.set(false)"
+          >
+            <button class="cart-btn" type="button" aria-label="Wishlist"
+              [attr.aria-label]="wish.count === 1 ? 'Wishlist, 1 item' : 'Wishlist, ' + wish.count + ' items'"
+              (click)="wishOpen.set(true)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+              </svg>
+              @if (wish.count > 0) {
+                <span class="cart-count">{{ wish.count }}</span>
+              }
+            </button>
+            @if (wish.items().length > 0) {
+              <div class="mini-panel" [class.open]="wishOpen()">
+                <h4 class="mini-head">Wishlist <span class="count">[{{ wish.count }}]</span></h4>
+                <ul class="mini-items">
+                  @for (item of wish.items(); track item.productId) {
+                    <li>
+                      <img [src]="item.imageUrl || 'assets/shop-1.jpg'" [alt]="item.productName" />
+                      <span class="mini-info">
+                        <span class="mini-name">{{ item.productName }}</span>
+                        <span class="muted small">₦{{ item.price | number: '1.0-0' }}</span>
+                      </span>
+                      <button class="mini-remove" type="button" title="Remove from wishlist"
+                        (click)="wish.remove(item.productId)">×</button>
+                    </li>
+                  }
+                </ul>
+                <a class="btn btn-primary mini-cta" routerLink="/shop" (click)="wishOpen.set(false)">Shop these pieces</a>
+              </div>
+            }
+          </div>
           <div
             class="mini-cart"
             (mouseenter)="cartOpen.set(true)"
@@ -147,11 +221,29 @@ export class App implements OnDestroy {
     this.scrolled.set((window.scrollY ?? 0) > 10);
   };
   readonly environment = environment;
+  private readonly api = inject(ApiService);
   readonly cart = inject(CartService);
+  readonly wish = inject(WishlistService);
   readonly theme = inject(ThemeService);
   readonly scrolled = signal(false);
   readonly menuOpen = signal(false);
   readonly cartOpen = signal(false);
+  readonly wishOpen = signal(false);
+  readonly searchOpen = signal(false);
+  readonly searchTerm = signal('');
+  readonly searchProducts = signal<Product[]>([]);
+  readonly searchResults = computed(() => {
+    const q = this.searchTerm().trim().toLowerCase();
+    if (!q) return [];
+    return this.searchProducts()
+      .filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.description ?? '').toLowerCase().includes(q) ||
+          (p.category ?? '').toLowerCase().includes(q),
+      )
+      .slice(0, 8);
+  });
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -166,5 +258,17 @@ export class App implements OnDestroy {
 
   toggleMenu(): void {
     this.menuOpen.update((v) => !v);
+  }
+
+  openSearch(): void {
+    this.searchOpen.set(true);
+    if (this.searchProducts().length === 0) {
+      this.api.products().subscribe((r) => this.searchProducts.set(r.data));
+    }
+  }
+
+  closeSearch(): void {
+    this.searchOpen.set(false);
+    this.searchTerm.set('');
   }
 }

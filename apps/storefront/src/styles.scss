@@ -591,7 +591,37 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
     padding: 0.7rem 0 0.8rem; border-top: 1px solid var(--line); margin-top: 0.4rem;
     .mini-total { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1.1rem; } }
   .mini-cta { width: 100%; }
+  .mini-remove {
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid var(--line-2); color: var(--muted);
+    font-size: 1rem; line-height: 1;
+    &:hover { color: var(--danger); border-color: var(--danger); }
+    &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  }
 }
+
+/* ---------- header search ---------- */
+.search-panel { width: min(360px, 92vw); padding: 0.95rem; }
+.search-input {
+  width: 100%; min-height: 44px; padding: 0 0.9rem;
+  border: 1px solid var(--line-2); border-radius: var(--radius-field);
+  background: var(--container); color: var(--ink); font-size: 0.9rem;
+  &:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: transparent; }
+}
+.search-results { list-style: none; margin: 0.6rem 0 0; padding: 0; max-height: 46vh; overflow-y: auto; }
+.search-item {
+  display: grid; grid-template-columns: 40px 1fr; gap: 0.6rem; align-items: center;
+  padding: 0.5rem 0.35rem; border-radius: 6px; text-decoration: none; color: inherit;
+  & + & { border-top: 1px solid var(--line); }
+  &:hover { background: var(--container); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+  img { width: 40px; height: 50px; object-fit: cover; border-radius: 4px; background: var(--container); }
+  .si-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0;
+    .si-name { font-weight: 600; font-size: 0.85rem; line-height: 1.3;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+}
+.search-empty { margin: 0.7rem 0.2rem 0.2rem; }
 
 /* ---------- product grid (shop) ---------- */
 .grid-wrap { padding-top: 2.5rem; }
@@ -687,6 +717,20 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   letter-spacing: 0.14em; text-transform: uppercase;
   background: var(--primary-fill); color: var(--on-primary);
   &.badge-out { background: var(--container-2); color: var(--muted); border: 1px solid var(--line-2); }
+}
+.heart-btn {
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  width: 34px; height: 34px; border-radius: var(--radius-pill); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--line-2); color: var(--muted);
+  svg { width: 17px; height: 17px; }
+  transition: color 0.15s ease, border-color 0.15s ease;
+  &:hover { color: var(--primary); border-color: var(--primary); }
+  &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  &:not(.active):hover { transform: scale(1.06); }
+  &.active { color: var(--danger); border-color: currentColor; }
 }
 .quickadd-btn {
   position: absolute; bottom: 10px; left: 10px; right: 10px;
