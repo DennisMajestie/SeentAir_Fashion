@@ -77,13 +77,21 @@ export class OrdersService {
       throw new ForbiddenException('No order access');
     }
 
-    // Channel and customer derive from the caller's role.
+    // Channel derives from where the order was placed (source tag), with a
+    // role fallback for programmatic/staff calls. Each portal tags its own
+    // source, so a wholesaler-role account buying on the retail storefront
+    // still gets a RETAIL (retail-priced) order instead of a wholesale order.
     let channel: OrderChannel;
     let customerId: string | null = user.id;
     let tierDiscountTier = null as import('../wholesale/entities/price-tier.entity').PriceTier | null;
-    if (user.role === RoleName.CUSTOMER) {
+    const shopFromRetail = user.role === RoleName.CUSTOMER || dto.source === 'storefront';
+    const shopFromWholesale =
+      !shopFromRetail &&
+      (user.role === RoleName.WHOLESALER || dto.source === 'wholesale_portal');
+
+    if (shopFromRetail) {
       channel = OrderChannel.RETAIL;
-    } else if (user.role === RoleName.WHOLESALER) {
+    } else if (shopFromWholesale) {
       channel = OrderChannel.WHOLESALE;
       // Wholesale gate: approved account + MOQ (appendix 06).
       const account = await this.wholesaleService.assertApprovedAccount(user.id);

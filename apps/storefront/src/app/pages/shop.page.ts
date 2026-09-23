@@ -9,6 +9,25 @@ import { CartService } from '../cart.service';
 
 type SortKey = 'featured' | 'newest' | 'price-asc' | 'price-desc';
 
+/** Curated category order for the shop pills — tailoring (custom-only) is
+    deliberately last. Unknown categories fall through after these. */
+const CATEGORY_ORDER = ['tops', 'bottoms', 'outerwear', 'accessories', 'tailoring'];
+const CATEGORY_LABELS: Record<string, string> = {
+  tops: 'Tops',
+  bottoms: 'Bottoms',
+  outerwear: 'Outerwear',
+  accessories: 'Accessories',
+  tailoring: 'Tailoring',
+};
+
+const COLLECTION_ORDER = ['drop04harmattan', 'studioessentials', 'ateliercommission'];
+
+/** Normalise a collection name for deterministic ordering regardless of
+    dash/space/typography variation (e.g. "Drop 04 — Harmattan"). */
+function collectionKey(name: string): string {
+  return name.toLowerCase().replace(/[\s'’—–-]+/g, '');
+}
+
 /** Colour-name → swatch hex for the little dots on cards and filters. */
 const SWATCHES: Record<string, string> = {
   black: '#1a1a1a',
@@ -53,7 +72,7 @@ const SWATCHES: Record<string, string> = {
       </button>
       @for (cat of categories(); track cat.name) {
         <button class="pill" [class.active]="category() === cat.name" (click)="category.set(cat.name)">
-          {{ cat.name }} [{{ cat.count | number: '2.0' }}]
+          {{ cat.label }} [{{ cat.count | number: '2.0' }}]
         </button>
       }
     </div>
@@ -200,12 +219,28 @@ export class ShopPage implements OnInit {
       const c = p.category ?? 'other';
       counts.set(c, (counts.get(c) ?? 0) + 1);
     }
-    return [...counts.entries()].map(([name, count]) => ({ name, count }));
+    const names = [...counts.keys()].sort((a, b) => {
+      const ia = CATEGORY_ORDER.indexOf(a);
+      const ib = CATEGORY_ORDER.indexOf(b);
+      return ((ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)) || a.localeCompare(b);
+    });
+    return names.map((name) => ({
+      name,
+      count: counts.get(name) ?? 0,
+      label: CATEGORY_LABELS[name] ?? name.replace(/^\w/, (c) => c.toUpperCase()),
+    }));
   });
 
-  readonly collections = computed(() =>
-    [...new Set(this.all().map((p) => p.collection?.name).filter((n): n is string => !!n))],
-  );
+  readonly collections = computed(() => {
+    const names = [
+      ...new Set(this.all().map((p) => p.collection?.name).filter((n): n is string => !!n)),
+    ].sort((a, b) => {
+      const ia = COLLECTION_ORDER.indexOf(collectionKey(a));
+      const ib = COLLECTION_ORDER.indexOf(collectionKey(b));
+      return ((ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)) || collectionKey(a).localeCompare(collectionKey(b));
+    });
+    return names;
+  });
   readonly allSizes = computed(() => {
     const order = ['S', 'M', 'L', 'XL', 'XXL', 'OS'];
     const set = new Set(
