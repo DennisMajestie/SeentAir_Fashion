@@ -120,3 +120,24 @@ four apps. Resolution order: saved → `prefers-color-scheme`.
 Per-screen: swap inline/literal styles to tokens, add proper states
 (loading/empty/error), 44px targets, dark-mode pass, safe-area on sticky
 elements. One screen per commit chunk; re-check against this doc after each; report between phases.
+
+### Done (chunked commits)
+
+- **Admin — all screens**: Accounting, Inventory, Logistics, Custom orders,
+  then Orders, Catalogue, Partners, Staff, Marketing, Materials, Production,
+  Approvals, Reviews, Wholesale. Inline styles → `.panel.lead`, `.section-label`
+  (`.flush-top`/`.plain`), `.actions.flat`, `.table-filter`, `.acid-text`,
+  `.stars-acid`, `.num-input-xs/-sm`, `.stat-lg`, `.delta`, `.chip.gap-end`,
+  `.panel.tight`. All builds green.
+- **Wholesale — all screens**: duplicated `pill()` collapsed to single
+  `src/app/status-pill.ts`; inline styles on login apply panel, invoice heads,
+  catalogue MOQ line → `.meta-line .tabular .push .apply-* .status-line`. Build green.
+- **Storefront — remaining screens**: Shop, Product, Policies, Account,
+  Reset-password. Inline styles → `.price.lg .cta.block .cta-wrap .box-narrow
+  .flush .flush-top .section-label.plain`; `.event p` rule; Product added a
+  load-error state (sold out / missing sku). Shop-hero `background-image` stays
+  inline — it is a data URL, not a token. Build green.
+- **Partner portal**: audited, already token-clean (no inline styles; all hex is
+  token definitions / theme-color meta). Build green.
+
+Sweep confirmed: zero remaining `style="` in app components across all four apps.
