@@ -203,36 +203,36 @@ import { environment } from '../environments/environment';
           <aside id="sidebar" class="sidebar" [class.open]="menuOpen()" aria-label="Operations navigation">
             <nav>
               <span class="nav-group">Overview</span>
-              <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="menuOpen.set(false)">Dashboard</a>
-              <a routerLink="/approvals" routerLinkActive="active" (click)="menuOpen.set(false)">Approvals</a>
+              <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">dashboard</span>Dashboard</a>
+              <a routerLink="/approvals" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">fact_check</span>Approvals</a>
 
               <span class="nav-group">Commerce</span>
-              <a routerLink="/orders" routerLinkActive="active" (click)="menuOpen.set(false)">Orders</a>
-              <a routerLink="/returns" routerLinkActive="active" (click)="menuOpen.set(false)">Returns</a>
-              <a routerLink="/custom-orders" routerLinkActive="active" (click)="menuOpen.set(false)">Custom orders</a>
-              <a routerLink="/wholesale" routerLinkActive="active" (click)="menuOpen.set(false)">Wholesale</a>
-              <a routerLink="/messages" routerLinkActive="active" (click)="menuOpen.set(false)">Messages</a>
+              <a routerLink="/orders" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">shopping_bag</span>Orders</a>
+              <a routerLink="/returns" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">assignment_return</span>Returns</a>
+              <a routerLink="/custom-orders" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">checkroom</span>Custom orders</a>
+              <a routerLink="/wholesale" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">warehouse</span>Wholesale</a>
+              <a routerLink="/messages" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">forum</span>Messages</a>
 
               <span class="nav-group">Product</span>
-              <a routerLink="/catalogue" routerLinkActive="active" (click)="menuOpen.set(false)">Catalogue</a>
-              <a routerLink="/inventory" routerLinkActive="active" (click)="menuOpen.set(false)">Inventory</a>
-              <a routerLink="/materials" routerLinkActive="active" (click)="menuOpen.set(false)">Materials</a>
-              <a routerLink="/production" routerLinkActive="active" (click)="menuOpen.set(false)">Production</a>
-              <a routerLink="/tech-pack" routerLinkActive="active" (click)="menuOpen.set(false)">Tech pack</a>
-              <a routerLink="/floor-kiosk" routerLinkActive="active" (click)="menuOpen.set(false)">Floor kiosk</a>
+              <a routerLink="/catalogue" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">grid_view</span>Catalogue</a>
+              <a routerLink="/inventory" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">inventory_2</span>Inventory</a>
+              <a routerLink="/materials" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">layers</span>Materials</a>
+              <a routerLink="/production" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">precision_manufacturing</span>Production</a>
+              <a routerLink="/tech-pack" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">description</span>Tech pack</a>
+              <a routerLink="/floor-kiosk" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">tv</span>Floor kiosk</a>
 
               <span class="nav-group">Business</span>
-              <a routerLink="/accounting" routerLinkActive="active" (click)="menuOpen.set(false)">Accounting</a>
-              <a routerLink="/logistics" routerLinkActive="active" (click)="menuOpen.set(false)">Logistics</a>
-              <a routerLink="/vendors" routerLinkActive="active" (click)="menuOpen.set(false)">Procurement</a>
-              <a routerLink="/marketing" routerLinkActive="active" (click)="menuOpen.set(false)">Marketing</a>
-              <a routerLink="/reviews" routerLinkActive="active" (click)="menuOpen.set(false)">Reviews</a>
-              <a routerLink="/partners" routerLinkActive="active" (click)="menuOpen.set(false)">Partners</a>
+              <a routerLink="/accounting" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">account_balance</span>Accounting</a>
+              <a routerLink="/logistics" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">local_shipping</span>Logistics</a>
+              <a routerLink="/vendors" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">request_quote</span>Procurement</a>
+              <a routerLink="/marketing" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">campaign</span>Marketing</a>
+              <a routerLink="/reviews" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">reviews</span>Reviews</a>
+              <a routerLink="/partners" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">handshake</span>Partners</a>
 
               <span class="nav-group">Admin</span>
-              <a routerLink="/staff" routerLinkActive="active" (click)="menuOpen.set(false)">Staff</a>
-              <a routerLink="/audit" routerLinkActive="active" (click)="menuOpen.set(false)">Audit log</a>
-              <a routerLink="/security" routerLinkActive="active" (click)="menuOpen.set(false)">Security</a>
+              <a routerLink="/staff" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">badge</span>Staff</a>
+              <a routerLink="/audit" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">receipt_long</span>Audit log</a>
+              <a routerLink="/security" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">security</span>Security</a>
             </nav>
             <div class="sidebar-foot">
               @if (me(); as profile) {
