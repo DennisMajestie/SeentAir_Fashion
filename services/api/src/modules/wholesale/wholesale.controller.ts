@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
@@ -84,5 +84,12 @@ export class WholesaleController {
   @RequireAccess(ModuleName.CATALOGUE, AccessLevel.FULL)
   updateTier(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTierDto) {
     return this.wholesaleService.updateTier(id, dto);
+  }
+
+  /** Deleting a tier is blocked while any wholesale account still uses it. */
+  @Delete('tiers/:id')
+  @RequireAccess(ModuleName.CATALOGUE, AccessLevel.FULL)
+  removeTier(@Param('id', ParseUUIDPipe) id: string) {
+    return this.wholesaleService.deleteTier(id);
   }
 }

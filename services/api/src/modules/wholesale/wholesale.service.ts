@@ -119,6 +119,11 @@ export class WholesaleService {
   /** Discount changes are price changes — approval-gated at the API layer. */
   async updateTier(id: string, dto: UpdateTierDto): Promise<PriceTier> {
     const tier = await this.getTier(id);
+    if (dto.name !== undefined && dto.name !== tier.name) {
+      const clash = await this.tierRepo.findOne({ where: { name: dto.name } });
+      if (clash) throw new ConflictException(`Tier '${dto.name}' already exists`);
+      tier.name = dto.name;
+    }
     const isDiscountChange =
       dto.discountPercent !== undefined && dto.discountPercent !== tier.discountPercent;
     if (isDiscountChange) {
@@ -135,6 +140,20 @@ export class WholesaleService {
     }
     if (dto.ruleDescription !== undefined) tier.ruleDescription = dto.ruleDescription;
     return this.tierRepo.save(tier);
+  }
+
+  /** Deleting a tier only succeeds when no wholesale account still uses it —
+      otherwise their price silently changes. */
+  async deleteTier(id: string): Promise<{ removed: true }> {
+    const tier = await this.getTier(id);
+    const inUse = await this.accountRepo.count({ where: { tier: { id } } });
+    if (inUse > 0) {
+      throw new ConflictException(
+        `Tier '${tier.name}' is assigned to ${inUse} account(s) — reassign them before deleting.`,
+      );
+    }
+    await this.tierRepo.remove(tier);
+    return { removed: true };
   }
 
   // --- Pricing & invoices ---

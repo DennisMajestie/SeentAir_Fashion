@@ -3,6 +3,10 @@ import { IsNumber, IsOptional, IsString, IsUUID, Max, Min } from 'class-validato
 export class UpdateTierDto {
   @IsOptional()
   @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
   ruleDescription?: string;
 
   /** Changing a tier discount changes prices — requires an approved PRICE_CHANGE request. */
