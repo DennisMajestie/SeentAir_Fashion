@@ -540,6 +540,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
     color: var(--ink); }
   figcaption { font-size: 0.78rem; }
   .review-name { font-weight: 700; color: var(--ink); }
+  .stars { color: var(--primary-fill); letter-spacing: 0.12em; font-size: 0.9rem; }
 }
 
 /* ---------- newsletter ---------- */
