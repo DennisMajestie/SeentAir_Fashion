@@ -59,9 +59,9 @@ function sizeRun(
 
 const CATALOGUE: SeedProduct[] = [
   {
-    name: 'Harmattan Box Tee',
+    name: 'Box Tee',
     description:
-      '280GSM Lagos-loomed cotton. Dropped shoulder, boxy construct, raw-edge neckline.',
+      '280GSM Aba-loomed cotton. Dropped shoulder, boxy construct, raw-edge neckline.',
     category: 'tops',
     basePrice: 24000,
     collection: 'Drop 04 — Harmattan',
@@ -72,7 +72,7 @@ const CATALOGUE: SeedProduct[] = [
     ],
   },
   {
-    name: 'Utility Jogger',
+    name: 'Jogger',
     description:
       'Heavyweight French terry, tapered leg, dust-resistant tailoring for dry-season winds.',
     category: 'bottoms',
@@ -85,7 +85,7 @@ const CATALOGUE: SeedProduct[] = [
     ],
   },
   {
-    name: 'Lagos Proto Hood',
+    name: 'Hoodie',
     description:
       'Raw-edge heavyweight terry hood. Oversized body, twin-needle shoulder, unlined pocket.',
     category: 'outerwear',
@@ -98,7 +98,7 @@ const CATALOGUE: SeedProduct[] = [
     ],
   },
   {
-    name: 'Atelier Overshirt',
+    name: 'Overshirt',
     description:
       'Structured cotton twill overshirt. Patch pockets, horn buttons, cut for layering.',
     category: 'outerwear',
@@ -108,7 +108,7 @@ const CATALOGUE: SeedProduct[] = [
     variants: [...sizeRun('SHT-ATL-SND', 'sand', [7, 12, 11, 6])],
   },
   {
-    name: 'Cut-Panel Cargo',
+    name: 'Cargo',
     description:
       'Pattern-block cargo in washed ripstop. Bellowed thigh pocket, drawcord hem.',
     category: 'bottoms',
@@ -118,7 +118,7 @@ const CATALOGUE: SeedProduct[] = [
     variants: [...sizeRun('CRG-CUT-OLV', 'olive', [11, 17, 15, 8])],
   },
   {
-    name: 'Studio Crewneck',
+    name: 'Crewneck',
     description: 'Mid-weight loopback crew. Ribbed collar, relaxed body, garment-dyed.',
     category: 'tops',
     basePrice: 34000,
@@ -130,7 +130,7 @@ const CATALOGUE: SeedProduct[] = [
     ],
   },
   {
-    name: 'Yaba Work Pant',
+    name: 'Work Pant',
     description: 'Straight-leg cotton drill. Triple-stitched seat, factory-spec hardware.',
     category: 'bottoms',
     basePrice: 36000,
@@ -139,7 +139,7 @@ const CATALOGUE: SeedProduct[] = [
     variants: [...sizeRun('PNT-YBA-IND', 'indigo', [9, 14, 12, 6])],
   },
   {
-    name: 'Signature Cap',
+    name: 'Cap',
     description: 'Six-panel brushed cotton cap with woven Seentair label. One size, adjustable.',
     category: 'accessories',
     basePrice: 14000,
@@ -151,7 +151,7 @@ const CATALOGUE: SeedProduct[] = [
     ],
   },
   {
-    name: 'Archive Tote',
+    name: 'Tote',
     description: '16oz canvas tote, screen-printed spec mark. Made from drop-04 offcuts.',
     category: 'accessories',
     basePrice: 18000,
@@ -160,9 +160,9 @@ const CATALOGUE: SeedProduct[] = [
     variants: [{ size: 'OS', colour: 'natural', sku: 'TOT-ARC-NAT-OS', stock: 41 }],
   },
   {
-    name: 'Commission Suit — Made to Order',
+    name: 'Suit — Made to Order',
     description:
-      'Bespoke two-piece cut to your measurements in the Yaba atelier. 3-week lead time.',
+      'Bespoke two-piece cut to your measurements in the Aba atelier. 3-week lead time.',
     category: 'tailoring',
     basePrice: 185000,
     collection: 'Atelier Commission',

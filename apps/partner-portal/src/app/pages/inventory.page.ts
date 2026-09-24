@@ -17,7 +17,7 @@ import { PortalStore } from '../portal.store';
           <p class="page-kicker">Ledger Asset Register // Warehouse &amp; Mill Holdings</p>
           <h1 class="page-title">Inventory Valuation &amp; Raw Material Reserves</h1>
           <p class="page-sub">
-            Audited warehouse and mill holdings for the Seentair garment factory, Lagos —
+            Audited warehouse and mill holdings for the Seentair garment factory, Aba —
             aggregate telemetry only, derived from event-sourced stock movements.
           </p>
         </div>
@@ -77,7 +77,7 @@ import { PortalStore } from '../portal.store';
           </div>
           <div class="rail-rows">
             <div class="rail-row">
-              <span>Lagos garment factory</span>
+              <span>Aba garment factory</span>
               <strong>{{ d.inventoryVisibility.finishedGoodsUnits | number }} units</strong>
             </div>
           </div>

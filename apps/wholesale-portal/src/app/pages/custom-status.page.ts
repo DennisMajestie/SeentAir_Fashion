@@ -124,7 +124,7 @@ interface Milestone {
           <div class="moq-banner met" style="margin:0">
             <span class="material-symbols-outlined" aria-hidden="true">precision_manufacturing</span>
             <div>
-              <strong>Your sample is in production at the Yaba workshop.</strong>
+              <strong>Your sample is in production at the Aba workshop.</strong>
               <span class="sub">Once it reaches you, record your decision in the sign-off
                 terminal below — full production only starts after your approval.</span>
             </div>

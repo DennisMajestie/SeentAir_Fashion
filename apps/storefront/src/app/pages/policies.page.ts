@@ -13,8 +13,9 @@ import { RouterLink } from '@angular/router';
 
       <section id="shipping" class="policy-block">
         <h2>Shipping &amp; dispatch</h2>
-        <p>Every order is packed at our Yaba, Lagos atelier and dispatched with
-          <strong>GIGL</strong> — Lagos orders typically leave within 24 hours of payment.
+        <p>Every order is packed at our Aba, Abia State atelier and dispatched with
+          <strong>GIGL</strong> — parcels ship nationwide, and Lagos deliveries typically
+          leave within 24 hours of payment.
           You get a tracking reference by notification as soon as your parcel is handed
           to the carrier, and every movement is visible on your
           <a routerLink="/account">order page</a>.</p>

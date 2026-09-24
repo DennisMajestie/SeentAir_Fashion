@@ -122,7 +122,7 @@ import { pill } from '../status-pill';
 
     <div class="section-head">
       <h2>Billing &amp; invoices</h2>
-      <span class="aside">Yaba accounts desk</span>
+      <span class="aside">Aba accounts desk</span>
     </div>
     @for (invoice of recent(); track invoice.orderId) {
       <article class="ordercard" style="padding: var(--space-md) var(--space-lg)">
@@ -154,15 +154,15 @@ import { pill } from '../status-pill';
          assigned rep. Awaits a wholesale account-manager field in the API. -->
     <div class="section-head">
       <h2>Factory desk</h2>
-      <span class="aside">Lagos hub desk</span>
+      <span class="aside">Aba hub desk</span>
     </div>
     <section class="panel">
       <div class="oc-top">
         <div class="id-name">
           <span class="chip dark" style="padding: 10px 8px">YD</span>
           <div>
-            <strong>Yaba Wholesale Desk</strong>
-            <p class="muted small" style="margin: 2px 0 0">Wholesale operations — Lagos factory</p>
+            <strong>Aba Wholesale Desk</strong>
+            <p class="muted small" style="margin: 2px 0 0">Wholesale operations — Aba factory</p>
           </div>
         </div>
       </div>

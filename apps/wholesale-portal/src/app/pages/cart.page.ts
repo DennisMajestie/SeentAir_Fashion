@@ -83,13 +83,13 @@ interface CartGroup {
         <h2>2. Delivery consignee destination</h2>
       </div>
       <!-- GAP: no buyer address-book endpoint yet — destination is agreed with the
-           Yaba desk after commit instead of rendering a stored consignee address. -->
+           Aba desk after commit instead of rendering a stored consignee address. -->
       <section class="panel">
         <div class="oc-top">
           <div>
             <strong>{{ buyerName() ?? 'Wholesale account' }}</strong>
             <p class="muted small" style="margin: 2px 0 0">
-              Delivery destination and consignee contact are confirmed with the Yaba desk
+              Delivery destination and consignee contact are confirmed with the Aba desk
               once the batch is committed — GIGL dispatch or factory pickup.
             </p>
           </div>
@@ -114,9 +114,9 @@ interface CartGroup {
       <label class="radio-opt" [class.selected]="freight === 'pickup'">
         <input type="radio" name="freight" value="pickup" [(ngModel)]="freight" />
         <span class="r-body">
-          <span class="r-title"><span>Factory pickup (Yaba workshop hub)</span>
+          <span class="r-title"><span>Factory pickup (Aba workshop hub)</span>
             <span class="r-price">₦0 (Free)</span></span>
-          <span class="r-sub">Collect directly from the Seentair production floor, Lagos.</span>
+          <span class="r-sub">Collect directly from the Seentair production floor, Aba.</span>
         </span>
       </label>
 

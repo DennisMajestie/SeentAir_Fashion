@@ -72,7 +72,7 @@ import { CartService } from '../cart.service';
             </button>
           </p>
           @if (selectedMadeToOrder()) {
-            <p class="muted small">Cut in the Yaba atelier after your order — allow a 3-week lead time.
+            <p class="muted small">Cut in the Aba atelier after your order — allow a 3-week lead time.
               Custom pieces are excluded from the 12-hour returns window.</p>
           }
           @if (added()) {

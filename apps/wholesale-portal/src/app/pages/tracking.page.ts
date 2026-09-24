@@ -61,14 +61,14 @@ interface Stage {
         <div class="tagbar">
           <span><span class="material-symbols-outlined" style="font-size:14px; vertical-align:-2px"
             aria-hidden="true">route</span> Logistics freight corridor</span>
-          <span>Lagos → nationwide</span>
+          <span>Aba — nationwide</span>
         </div>
         <div class="leg-row" style="display:flex; justify-content:space-between; gap: var(--space-md); font-size: var(--type-body-sm); color: var(--muted)">
           <span>Interstate transit vector</span>
           <span class="chip dark">Carrier: GIGL</span>
         </div>
         <p class="muted small" style="margin: var(--space-sm) 0 0">
-          Batches dispatch from the Yaba workshop onto the GIGL national freight network.
+          Batches dispatch from the Aba workshop onto the GIGL national freight network.
           Waybill telemetry appears here as the carrier integration comes online.
         </p>
       </section>
@@ -125,7 +125,7 @@ interface Stage {
           <span class="chip" [class.okc]="delivered()">{{ delivered() ? 'Delivered' : legStatus() }}</span>
         </div>
         <div class="leg-row"><span>Assigned carrier</span><span class="v">GIGL (first-line, pluggable)</span></div>
-        <div class="leg-row"><span>Route vector</span><span class="v">Yaba workshop → consignee hub</span></div>
+        <div class="leg-row"><span>Route vector</span><span class="v">Aba workshop → consignee hub</span></div>
         <div class="leg-ref">
           <span>Tracking waybill</span>
           <span class="v">Issued at dispatch</span>
@@ -145,14 +145,14 @@ interface Stage {
             </div>
           }
           <!-- GAP: bale counts and gross weights await warehouse packing data -->
-          <p class="muted small" style="margin:0">Packed and sealed at the Lagos factory floor.</p>
+          <p class="muted small" style="margin:0">Packed and sealed at the Aba factory floor.</p>
         </section>
       }
 
       <div class="section-head"><h2>Dispatch support &amp; policy</h2></div>
       <a class="cta" style="width:100%" href="tel:+23418887400">
         <span class="material-symbols-outlined" aria-hidden="true">support_agent</span>
-        Need logistics help? Call the Yaba hub
+        Need logistics help? Call the Aba hub
       </a>
       <div class="policy-strip">
         <span class="material-symbols-outlined" aria-hidden="true">assignment_return</span>
@@ -198,7 +198,7 @@ export class TrackingPage implements OnInit {
     {
       key: /processing|production|packaging|packing|qc/,
       label: 'Processing & packaging',
-      fallbackNote: 'Cutting, sewing, finishing and QC at the Yaba workshop, then carton bundling.',
+      fallbackNote: 'Cutting, sewing, finishing and QC at the Aba workshop, then carton bundling.',
     },
     {
       key: /shipped|dispatch|transit|out_for/,

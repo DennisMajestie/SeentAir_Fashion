@@ -122,7 +122,7 @@ import { ThemeService } from '../theme.service';
             <router-outlet />
           }
           <footer class="content-footer">
-            Seentair Manufacturing Ltd · Institutional Investor Relations Terminal · Lagos, NG
+            Seentair Manufacturing Ltd · Institutional Investor Relations Terminal · Aba, Abia, NG
           </footer>
         </main>
       </div>

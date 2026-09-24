@@ -19,7 +19,7 @@ import { ThemeService } from '../theme.service';
     <div class="auth-shell">
       <header class="auth-topstrip">
         <span class="term-chip"><span class="dot ok"></span> Secure Protocol TLS / Encrypted Session</span>
-        <span class="term-chip strip-node">Node: LOS-HQ · Lagos</span>
+        <span class="term-chip strip-node">Node: ABA-HQ — Aba</span>
         <button
           class="theme-toggle"
           type="button"
@@ -144,7 +144,7 @@ import { ThemeService } from '../theme.service';
         <div class="kpi-grid auth-kpis">
           <div class="kpi"><span class="kpi-label">Manufacturing</span><span class="kpi-value sm">Factory telemetry</span><span class="kpi-sub">Visible after authorization</span></div>
           <div class="kpi"><span class="kpi-label">Equity registry</span><span class="kpi-value sm">Shareholding &amp; capital</span><span class="kpi-sub">Registered partners only</span></div>
-          <div class="kpi"><span class="kpi-label">Lagos hub operations</span><span class="kpi-value sm">Single-factory ops</span><span class="kpi-sub">Aggregates — never customer data</span></div>
+          <div class="kpi"><span class="kpi-label">Aba hub operations</span><span class="kpi-value sm">Single-factory ops</span><span class="kpi-sub">Aggregates — never customer data</span></div>
           <div class="kpi"><span class="kpi-label">Partner dividend cycle</span><span class="kpi-value sm">Quarterly distribution</span><span class="kpi-sub">40 / 40 / 20 covenant</span></div>
         </div>
 
@@ -158,7 +158,7 @@ import { ThemeService } from '../theme.service';
       </main>
 
       <footer class="auth-footer">
-        Seentair Manufacturing Ltd · Institutional Investor Relations Terminal · Lagos, NG
+        Seentair Manufacturing Ltd · Institutional Investor Relations Terminal · Aba, Abia, NG
       </footer>
     </div>
   `,

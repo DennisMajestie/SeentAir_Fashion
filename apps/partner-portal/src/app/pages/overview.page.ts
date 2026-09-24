@@ -151,7 +151,7 @@ import { PortalStore } from '../portal.store';
 
           <section class="panel">
             <div class="panel-head">
-              <h2>Production centre — Lagos</h2>
+              <h2>Production centre — Aba</h2>
             </div>
             <!-- GAP: no facility media/telemetry endpoint (reference shows a live floor photo card). -->
             <p class="gap-note">

@@ -103,7 +103,7 @@ import { CartService } from '../cart.service';
 
       <div class="section-head">
         <h2>Production notes</h2>
-        <span class="aside">Seentair factory · Lagos</span>
+        <span class="aside">Seentair factory — Aba</span>
       </div>
       <!-- GAP: fabric density and lead-time specs are not in the pricing API yet;
            the boxes carry the real category and factory policy instead. -->

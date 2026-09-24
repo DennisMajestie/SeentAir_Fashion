@@ -101,7 +101,7 @@ import { PortalStore } from '../portal.store';
         <div class="letterhead">
           <img src="assets/logo.jpeg" alt="SEENTAIR" height="24" />
           <div class="letterhead-meta">
-            <strong>Seentair Limited — Lagos, Nigeria</strong>
+            <strong>Seentair Limited — Aba, Nigeria</strong>
             <span>Interim statement of comprehensive income · continuous ledger basis · {{ store.periodLabel() }}</span>
           </div>
           <span class="chip">₦ NGN</span>

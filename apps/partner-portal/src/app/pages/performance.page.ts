@@ -16,7 +16,7 @@ import { PortalStore } from '../portal.store';
           <p class="page-kicker">Partner Governance Tier // Verified Ledger Telemetry</p>
           <h1 class="page-title">Operational &amp; Financial Performance</h1>
           <p class="page-sub">
-            Verified production and net yield ledgers for the Seentair garment factory, Lagos unit —
+            Verified production and net yield ledgers for the Seentair garment factory, Aba unit —
             drawn live from the company accounting ledger.
           </p>
         </div>
@@ -137,7 +137,7 @@ import { PortalStore } from '../portal.store';
       <section class="panel">
         <div class="panel-head">
           <h2>Production &amp; manufacturing floor summary</h2>
-          <span class="panel-note">Lagos factory · single site</span>
+          <span class="panel-note">Aba factory · single site</span>
         </div>
         <div class="floor-grid">
           <!-- GAP: no production/QC telemetry endpoint (batches, output pcs, defect rate, QC outcomes). -->

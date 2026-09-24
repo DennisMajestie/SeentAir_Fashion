@@ -36,7 +36,7 @@ function collectionKey(name: string): string {
   template: `
     <div class="shop-hero" style="background-image:url('assets/shop-0.jpg')">
       <div class="hero-body">
-        <p class="page-kicker">Collection 04 / Lagos</p>
+        <p class="page-kicker">Collection 04 / Aba</p>
         <h1>Harmattan Drop</h1>
         <p>Heavyweight French terry, raw-edge seams, and dust-resistant tailoring engineered for dry season winds.</p>
       </div>

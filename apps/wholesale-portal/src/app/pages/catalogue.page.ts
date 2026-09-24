@@ -74,7 +74,7 @@ import { CartService } from '../cart.service';
 
           <div class="scroll-hint" style="margin-top: var(--space-sm)">
             <span>Volume tier matrix</span>
-            <span>Seentair Factory · Lagos</span>
+            <span>Seentair Factory — Aba</span>
           </div>
           <!-- GAP: single-tier ladder only — multi-band volume prices (20-49 / 50-99 / 100+)
                await tier criteria resolution (Open Question #2). The third box routes to the
@@ -100,7 +100,7 @@ import { CartService } from '../cart.service';
           <!-- GAP: no live stock-count endpoint for wholesale buyers yet — availability
                figures from the reference are omitted rather than invented. -->
           <div class="pc-stock">
-            <span>Cut &amp; sewn at the Lagos factory</span>
+            <span>Cut &amp; sewn at the Aba factory</span>
             <span>GIGL dispatch</span>
           </div>
 

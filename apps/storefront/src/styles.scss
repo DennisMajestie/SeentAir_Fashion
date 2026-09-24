@@ -547,11 +547,19 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
 .newsletter {
   margin-top: 2.5rem;
   .newsletter-inner {
+    position: relative; isolation: isolate; overflow: hidden;
     display: flex; flex-wrap: wrap; align-items: center; gap: 1.4rem 2.5rem;
     justify-content: space-between;
     background: var(--container-2); border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: clamp(1.5rem, 4vw, 2.4rem);
+    &::before {
+      content: ''; position: absolute; inset: 0; z-index: -1;
+      background:
+        linear-gradient(color-mix(in srgb, var(--container-2) 82%, transparent),
+                        color-mix(in srgb, var(--container-2) 82%, transparent)),
+        url('/assets/series-4.jpg') center / cover no-repeat;
+    }
     .nl-copy { max-width: 46ch; h2 { border: none; padding: 0; margin: 0 0 0.35rem; } p { margin: 0; } }
     .newsletter-form { display: flex; gap: 0.6rem; flex-wrap: wrap;
       input {

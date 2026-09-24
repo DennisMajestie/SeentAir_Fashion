@@ -50,9 +50,9 @@ import { pill } from '../status-pill';
       <!-- GAP: issuer RC / TIN / registered street address are not exposed by any
            config endpoint — the block carries only what the business docs state. -->
       <div class="party">
-        <div class="p-head"><span>Manufacturer / issuer</span><span class="chip">Lagos hub</span></div>
+        <div class="p-head"><span>Manufacturer / issuer</span><span class="chip">Aba hub</span></div>
         <div class="p-name">Seentair Limited</div>
-        <p class="p-sub">Streetwear manufacturer — single factory, Lagos, Nigeria.</p>
+        <p class="p-sub">Streetwear manufacturer — single factory, Aba, Nigeria.</p>
         <div class="p-foot"><span>Finance desk</span><span class="v">+234 1 888 7400</span></div>
       </div>
 

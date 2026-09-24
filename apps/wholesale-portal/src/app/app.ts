@@ -144,7 +144,7 @@ import { ThemeService } from './theme.service';
               <span class="muted small">|</span>
               <button class="link-inline" (click)="info.set('Support desk is reached on +234 1 888 7400 during operational hours.')">Trouble logging in?</button>
             </div>
-            <p class="auth-desk">Direct desk: Yaba Desk +234 1 888 7400</p>
+            <p class="auth-desk">Direct desk: Aba desk +234 1 888 7400</p>
           </div>
 
           <div class="apply-panel">
@@ -154,7 +154,7 @@ import { ThemeService } from './theme.service';
             </div>
             <p class="small muted apply-copy">
               Access is strictly reserved for fashion retailers, streetwear boutiques and verified
-              merchandise operators procuring in bulk quantities direct from our Lagos factory floor.
+              merchandise operators procuring in bulk quantities direct from our Aba factory floor.
             </p>
             <div class="criteria">
               <div class="crit"><span class="n">01</span><div class="txt">

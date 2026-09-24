@@ -110,7 +110,7 @@ interface DemoReview {
                 </div>
               </div>
               <aside class="hero-card rise">
-                <p class="card-kicker">Series Archive</p>
+                <p class="card-kicker">Seentair - Drop 04</p>
                 <p class="card-tag">{{ stages[activeStage()].tag }}</p>
                 <span class="card-rule"></span>
                 <p class="card-title">{{ stages[activeStage()].line1 }}@if (stages[activeStage()].line2) { {{ stages[activeStage()].line2 }} }</p>
@@ -146,7 +146,7 @@ interface DemoReview {
       <span class="trust-item">Full payment</span>
       <span class="trust-item">Tracked dispatch — 24h</span>
       <span class="trust-item">12h returns</span>
-      <span class="trust-item">One atelier, Lagos</span>
+      <span class="trust-item">One atelier, Aba</span>
     </div>
 
     <section id="hot" class="grid-wrap">
@@ -272,26 +272,26 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private autoInterval: ReturnType<typeof setInterval> | undefined;
 
   readonly stages: Stage[] = [
-    { image: 'series-1.jpg', index: '01', act: '[ACT 01: ORIGIN FORM]',
-      line1: 'BE WORN.', line2: '',
-      caption: 'Architectural silhouettes. Raw luxury calibrated for the continental vanguard.',
-      tag: '₦ CURATED' },
-    { image: 'series-2.jpg', index: '02', act: '[ACT 02: FOUNDATION LAYER]',
-      line1: 'THE TEE.', line2: '',
-      caption: '280GSM Lagos loomed cotton. Dropped shoulder, boxy construct.',
-      tag: 'BOX FIT — 280 GSM' },
-    { image: 'series-3.jpg', index: '03', act: '[ACT 03: LOWER STRUCTURE]',
+    { image: 'series-1.jpg', index: '01', act: '[ACT 01 / MADE IN ABA]',
+      line1: 'MADE IN ABA.', line2: '',
+      caption: 'Original streetwear cut and sewn in our own Aba atelier - no middlemen, no imitations.',
+      tag: '₦ 100% ORIGINAL' },
+    { image: 'series-2.jpg', index: '02', act: '[ACT 02 / THE BOX TEE]',
+      line1: 'THE BOX TEE.', line2: '',
+      caption: '280GSM Aba-loomed cotton. Boxy fit, strong seams, made for everyday.',
+      tag: 'BOX FIT - 280 GSM' },
+    { image: 'series-3.jpg', index: '03', act: '[ACT 03 / THE JOGGER]',
       line1: 'THE JOGGER.', line2: '',
-      caption: 'Heavyweight French terry. Tapered, dust-resistant.',
-      tag: 'TAPERED — 30-36' },
-    { image: 'series-4.jpg', index: '04', act: '[ACT 04: OUTER SHELL]',
-      line1: 'THE HOOD.', line2: '',
-      caption: 'Lagos Proto Hood. Raw edges, heavyweight terry.',
-      tag: 'HOOD — S-XXL' },
-    { image: 'series-5.jpg', index: '05', act: '[STAGE 05 / 05 — CURATED REVEAL]',
-      line1: 'THE LOOK.', line2: '',
-      caption: 'Drop 04 archival assembly. Edition of 180 pieces.',
-      tag: '3 ITEMS' },
+      caption: 'Heavyweight terry, tapered leg, dust-resistant - street-ready in any weather.',
+      tag: 'TAPERED - 30-36' },
+    { image: 'series-4.jpg', index: '04', act: '[ACT 04 / THE GIDI HOOD]',
+      line1: 'THE GIDI HOOD.', line2: '',
+      caption: 'Raw edges, heavyweight terry. Gidi quality - no dulling.',
+      tag: 'HOOD - S-XXL' },
+    { image: 'series-5.jpg', index: '05', act: '[ACT 05 / THE FULL LOOK]',
+      line1: 'THE FULL LOOK.', line2: '',
+      caption: 'Drop 04 stacked head to toe. Edition of 180 pieces - catch it before it sells out.',
+      tag: 'LIMITED - 3 ITEMS' },
   ];
 
   readonly activeStage = signal(0);
@@ -367,14 +367,14 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   /** Demo review cards for the auto-playing marquee (shown until the API
       starts returning real review comments). */
   readonly demoReviews: DemoReview[] = [
-    { name: 'Chidi O.', product: 'The Tee', rating: 5, comment: 'The drop shoulder sits perfectly. Received in Lagos in two days, straight from the atelier.' },
-    { name: 'Amara E.', product: 'The Jogger', rating: 5, comment: 'Heavyweight terry that actually holds its shape. Bought two, wearing the first now.' },
-    { name: 'Tunde A.', product: 'The Hood', rating: 4, comment: 'Raw edges done right. Sizing guide was spot on — same one I got in store.' },
-    { name: 'Zainab K.', product: 'The Tee', rating: 5, comment: 'Quality like the showroom pieces. Full payment upfront, no regrets at all.' },
-    { name: 'Femi B.', product: 'The Jogger', rating: 5, comment: 'Fits the way the lookbook showed it. Edges are clean, seams are straight.' },
-    { name: 'Ngozi U.', product: 'The Hood', rating: 4, comment: 'Dust-resistant claim is real — wore it fieldside. Restocking colours soon, I hope.' },
-    { name: 'Ibrahim S.', product: 'The Tee', rating: 5, comment: '280GSM feels substantial without being stiff. My new everyday piece.' },
-    { name: 'Tobi D.', product: 'The Jogger', rating: 5, comment: 'Easy returns process too — I sized up and swapped within a day of delivery.' },
+    { name: 'Chidi O.', product: 'Box Tee', rating: 5, comment: 'The drop shoulder sits perfectly. Received in Lagos in two days, straight from the atelier.' },
+    { name: 'Amara E.', product: 'Jogger', rating: 5, comment: 'Heavyweight terry that actually holds its shape. Bought two, wearing the first now.' },
+    { name: 'Tunde A.', product: 'Hoodie', rating: 4, comment: 'Raw edges done right. Sizing guide was spot on — same one I got in store.' },
+    { name: 'Zainab K.', product: 'Box Tee', rating: 5, comment: 'Quality like the showroom pieces. Full payment upfront, no regrets at all.' },
+    { name: 'Femi B.', product: 'Jogger', rating: 5, comment: 'Fits the way the lookbook showed it. Edges are clean, seams are straight.' },
+    { name: 'Ngozi U.', product: 'Hoodie', rating: 4, comment: 'Dust-resistant claim is real — wore it fieldside. Restocking colours soon, I hope.' },
+    { name: 'Ibrahim S.', product: 'Box Tee', rating: 5, comment: '280GSM feels substantial without being stiff. My new everyday piece.' },
+    { name: 'Tobi D.', product: 'Jogger', rating: 5, comment: 'Easy returns process too — I sized up and swapped within a day of delivery.' },
   ];
   readonly subscribed = signal(false);
   readonly emailError = signal(false);

@@ -166,7 +166,7 @@ const SIZE_KEYS = ['S', 'M', 'L', 'XL', 'XXL'] as const;
           <span class="rm-n">5</span>
           <div style="flex:1">
             <div class="rm-t"><span>Full batch production</span></div>
-            <p class="rm-d">Cutting → sewing → finishing → QC → dispatch from the Lagos factory.</p>
+            <p class="rm-d">Cutting → sewing → finishing → QC → dispatch from the Aba factory.</p>
           </div>
         </div>
       </section>
