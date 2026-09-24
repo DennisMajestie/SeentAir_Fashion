@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ApiService } from '../api.service';
+import { BrandAlertService } from '../brand-alert.service';
 import { PortalStore } from '../portal.store';
 import { ThemeService } from '../theme.service';
 
@@ -110,7 +111,13 @@ import { ThemeService } from '../theme.service';
           @if (store.loadError(); as err) {
             <p class="error panel">{{ err }}</p>
           } @else if (!store.dash()) {
-            <p class="muted">Loading your investor terminal…</p>
+            <div class="shell-skel" aria-hidden="true">
+              <div class="skeleton sk-tile"></div>
+              <div class="skeleton sk-tile"></div>
+              <div class="skeleton sk-tile"></div>
+              <div class="skeleton sk-tile"></div>
+              <div class="skeleton sk-panel"></div>
+            </div>
           } @else {
             <router-outlet />
           }
@@ -126,6 +133,7 @@ export class PortalShell implements OnInit {
   readonly api = inject(ApiService);
   readonly store = inject(PortalStore);
   readonly theme = inject(ThemeService);
+  private readonly alerts = inject(BrandAlertService);
   private readonly router = inject(Router);
   readonly navOpen = signal(false);
 
@@ -133,9 +141,17 @@ export class PortalShell implements OnInit {
     this.store.load();
   }
 
-  signOut(): void {
+  async signOut(): Promise<void> {
+    const ok = await this.alerts.confirm({
+      title: 'Sign out?',
+      html: 'End this investor terminal session. Your portfolio data is reloaded fresh on the next sign-in.',
+      confirm: 'Sign out',
+      cancel: 'Stay',
+    });
+    if (!ok) return;
     this.api.logout();
     this.store.clear();
+    void this.alerts.toast('Signed out of the investor terminal');
     void this.router.navigateByUrl('/login');
   }
 }

@@ -1209,3 +1209,44 @@ select, input, textarea {
     &.open { display: flex; }
   }
 }
+
+/* ============================================================
+   Brand SweetAlert2 skin (storefront ivory/gold) — appended so it
+   sits after the base import layers.
+   ============================================================ */
+.swal2-popup.ba-popup, .swal2-popup.ba-toast {
+  font-family: inherit;
+  border: 1px solid rgba(148, 118, 55, 0.32);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+  padding: 1.25rem;
+}
+.swal2-title.ba-title { color: inherit; font-weight: 700; letter-spacing: -0.01em; }
+.swal2-html-container.ba-html { color: inherit; }
+.ba-icon { border-color: currentcolor !important; }
+.ba-btn { border: none; border-radius: 10px; font: inherit; font-size: 0.88rem !important;
+  font-weight: 700 !important; padding: 0.7rem 1.15rem !important; cursor: pointer; }
+.ba-btn.ba-confirm { background: #c9a24b !important; color: #2a2317 !important; }
+.ba-btn.ba-confirm:hover { background: #d8b060 !important; }
+.ba-btn.ba-danger { background: #c2563f !important; color: #fff !important; }
+.ba-btn.ba-danger:hover { background: #d4684f !important; }
+.ba-btn.ba-cancel { background: transparent !important; color: inherit !important; }
+.ba-btn.ba-cancel:hover { background: rgba(120, 110, 95, 0.15) !important; }
+.swal2-timer-progress-bar.ba-timer { background: #c9a24b; }
+@media (prefers-reduced-motion: reduce) { .swal2-popup { animation: none !important; } }
+
+/* Skeleton composition strips for shop/product/order loading moments. */
+.sk-line { height: 14px; width: 100%; }
+.sk-line.w40 { width: 40%; }
+.sk-line.w60 { width: 60%; }
+.sk-line.w80 { width: 80%; }
+.sk-face-pull { max-width: 640px; display: grid; gap: 0.7rem; }
+.sk-card {
+  display: grid; gap: 0.6rem; padding: 0.9rem;
+  background: var(--card); border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: var(--radius);
+}
+.sk-img { aspect-ratio: 4 / 5; height: auto; }
+.sk-row { display: flex; align-items: center; gap: 0.6rem; }
+.sk-av { width: 46px; height: 46px; border-radius: 8px; flex: none; }
+.sk-strip { display: grid; gap: 0.9rem; }

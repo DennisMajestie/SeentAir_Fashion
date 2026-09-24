@@ -14,6 +14,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
+import { BrandAlertService } from '../brand-alert.service';
 import { ProductCardComponent } from '../product-card.component';
 
 /** Curated category order for the home "Suggested" tiles — tailoring last. */
@@ -263,6 +264,7 @@ interface DemoReview {
 })
 export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private readonly api = inject(ApiService);
+  private readonly alerts = inject(BrandAlertService);
 
   @ViewChild('particleCanvas') canvasRef?: ElementRef<HTMLCanvasElement>;
 
@@ -486,6 +488,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     } catch {
       /* storage unavailable — in-memory confirmation only */
     }
+    void this.alerts.toast(`You're on the list — ${email}`);
   }
 
   // ------------------------------------------------------------------

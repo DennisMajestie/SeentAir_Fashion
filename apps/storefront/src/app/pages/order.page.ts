@@ -118,7 +118,16 @@ const RETURN_WINDOW_MS = 12 * 3_600_000;
         </aside>
       </div>
     } @else {
-      <p class="muted">Loading…</p>
+      <div class="sk-strip" aria-hidden="true">
+        <div class="skeleton sk-line w40"></div>
+        <div class="skeleton sk-line w80"></div>
+        @for (r of [0, 1, 2]; track r) {
+          <div class="sk-row">
+            <div class="skeleton sk-av"></div>
+            <div class="skeleton sk-line w60"></div>
+          </div>
+        }
+      </div>
     }
   `,
 })

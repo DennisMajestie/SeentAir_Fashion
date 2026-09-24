@@ -3,6 +3,7 @@ import { Component, ElementRef, inject, signal, viewChild } from '@angular/core'
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../api.service';
+import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
 
 /** Checkout — Stitch approved screen, stages 02 "Final payment" and
@@ -168,6 +169,7 @@ import { CartService } from '../cart.service';
 export class CheckoutPage {
   readonly cart = inject(CartService);
   readonly api = inject(ApiService);
+  private readonly alerts = inject(BrandAlertService);
   private readonly details = viewChild<ElementRef<HTMLElement>>('details');
 
   readonly mode = signal<'login' | 'register'>('login');
@@ -220,6 +222,7 @@ export class CheckoutPage {
         this.orderId.set(order.id);
         this.paidTotal.set(order.totalAmount);
         this.cart.clear();
+        void this.alerts.toast(`Order placed — ref ${order.id.slice(0, 8).toUpperCase()}`);
         this.api.payWithPaystack(order.id, order.totalAmount).subscribe({
           next: (res) => {
             this.paystackUrl.set(res.authorizationUrl);

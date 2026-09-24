@@ -108,7 +108,16 @@ function collectionKey(name: string): string {
     </div>
 
     @if (loading()) {
-      <p class="muted">Loading…</p>
+      <div class="grid" aria-hidden="true">
+        @for (g of skCards; track g) {
+          <div class="sk-card">
+            <div class="skeleton sk-img"></div>
+            <div class="skeleton sk-line w60"></div>
+            <div class="skeleton sk-line w40"></div>
+            <div class="skeleton sk-line w80"></div>
+          </div>
+        }
+      </div>
     } @else if (filtered().length === 0) {
       <p class="muted">Nothing matches — clear the search or filters.</p>
     } @else {
@@ -125,6 +134,7 @@ export class ShopPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   readonly all = signal<Product[]>([]);
   readonly loading = signal(true);
+  readonly skCards = Array.from({ length: 8 }, (_, i) => i);
   readonly query = signal('');
   readonly category = signal<string | null>(null);
   readonly collection = signal<string | null>(null);

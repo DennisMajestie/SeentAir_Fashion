@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Product, ProductVariant } from './api.service';
+import { BrandAlertService } from './brand-alert.service';
 import { CartService } from './cart.service';
 import { WishlistService } from './wishlist.service';
 
@@ -104,6 +105,7 @@ export const SWATCHES: Record<string, string> = {
 })
 export class ProductCardComponent implements OnDestroy {
   private readonly cart = inject(CartService);
+  private readonly alerts = inject(BrandAlertService);
   readonly wishlist = inject(WishlistService);
   readonly product = input.required<Product>();
   readonly index = input(0);
@@ -188,6 +190,7 @@ export class ProductCardComponent implements OnDestroy {
     this.cart.add(p, v, 1);
     this.quickAddId.set(null);
     this.addedId.set(p.id);
+    void this.alerts.toast(`${p.name} added to basket`);
     clearTimeout(this.addedTimer);
     this.addedTimer = setTimeout(() => this.addedId.set(null), 1800);
   }

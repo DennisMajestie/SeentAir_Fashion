@@ -368,3 +368,44 @@ label.field { display: block; margin: 0.7rem 0; font-size: var(--type-label-md);
 .link { background: none; border: none; color: var(--ink-dim); text-decoration: underline; cursor: pointer;
   font-family: inherit; font-size: var(--type-body-sm); padding: 0;
   &:hover { color: var(--acid-ink); } }
+
+/* ============================================================
+   Brand SweetAlert2 skin + shimmer primitives.
+   ============================================================ */
+.swal2-popup.ba-popup, .swal2-popup.ba-toast {
+  font-family: inherit;
+  border: 1px solid rgba(148, 118, 55, 0.32);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+  padding: 1.25rem;
+}
+.swal2-title.ba-title { color: inherit; font-weight: 700; letter-spacing: -0.01em; }
+.swal2-html-container.ba-html { color: inherit; }
+.ba-icon { border-color: currentcolor !important; }
+.ba-btn { border: none; border-radius: 10px; font: inherit; font-size: 0.88rem !important;
+  font-weight: 700 !important; padding: 0.7rem 1.15rem !important; cursor: pointer; }
+.ba-btn.ba-confirm { background: #c9a24b !important; color: #2a2317 !important; }
+.ba-btn.ba-confirm:hover { background: #d8b060 !important; }
+.ba-btn.ba-danger { background: #c2563f !important; color: #fff !important; }
+.ba-btn.ba-danger:hover { background: #d4684f !important; }
+.ba-btn.ba-cancel { background: transparent !important; color: inherit !important; }
+.ba-btn.ba-cancel:hover { background: rgba(120, 110, 95, 0.15) !important; }
+.swal2-timer-progress-bar.ba-timer { background: #c9a24b; }
+@media (prefers-reduced-motion: reduce) { .swal2-popup { animation: none !important; } }
+.skeleton {
+  position: relative; overflow: hidden;
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+  border-radius: var(--radius-field, 8px);
+  &::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent,
+      color-mix(in srgb, var(--gold) 26%, transparent), transparent);
+    animation: brand-shimmer 1.4s infinite; }
+}
+@keyframes brand-shimmer { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .skeleton::after { animation: none; } }
+
+.shell-skel { display: grid; gap: 1rem; }
+.shell-skel .sk-tile { height: 96px; border-radius: var(--radius, 16px); }
+.shell-skel .sk-panel { height: 220px; border-radius: var(--radius, 16px); }
+
+@media (prefers-reduced-motion: reduce) { .shell-skel .skeleton { background: color-mix(in srgb, var(--gold) 12%, transparent); } }

@@ -2,6 +2,7 @@ import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ApiService } from './api.service';
+import { BrandAlertService } from './brand-alert.service';
 import { CartService } from './cart.service';
 import { ThemeService } from './theme.service';
 
@@ -213,6 +214,7 @@ export class App implements OnDestroy {
   readonly api = inject(ApiService);
   readonly cart = inject(CartService);
   readonly theme = inject(ThemeService);
+  private readonly alerts = inject(BrandAlertService);
   private readonly onScroll = () => {
     this.scrolled.set((window.scrollY ?? 0) > 10);
   };
@@ -285,11 +287,19 @@ export class App implements OnDestroy {
     });
   }
 
-  logout(): void {
+  async logout(): Promise<void> {
+    const ok = await this.alerts.confirm({
+      title: 'Sign out?',
+      html: 'End this wholesale session. Open batches stay in your account for the next sign-in.',
+      confirm: 'Sign out',
+      cancel: 'Stay',
+    });
+    if (!ok) return;
     this.api.logout();
     this.error.set(null);
     this.info.set(null);
     this.password = '';
     this.showPassword.set(false);
+    void this.alerts.toast('Signed out of the wholesale portal');
   }
 }

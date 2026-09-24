@@ -3,6 +3,7 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ApiService } from './api.service';
+import { BrandAlertService } from './brand-alert.service';
 import { ThemeService } from './theme.service';
 import { environment } from '../environments/environment';
 
@@ -258,6 +259,7 @@ import { environment } from '../environments/environment';
 export class App implements OnInit, OnDestroy {
   readonly api = inject(ApiService);
   readonly theme = inject(ThemeService);
+  private readonly alerts = inject(BrandAlertService);
   readonly environment = environment;
   private readonly onScroll = () => {
     this.scrolled.set((window.scrollY ?? 0) > 10);
@@ -372,9 +374,17 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
-  logout(): void {
+  async logout(): Promise<void> {
+    const ok = await this.alerts.confirm({
+      title: 'Sign out?',
+      html: 'End this operations-console session. Pending approvals stay queued for the next session.',
+      confirm: 'Sign out',
+      cancel: 'Stay',
+    });
+    if (!ok) return;
     this.me.set(null);
     this.api.logout();
+    void this.alerts.toast('Signed out of the operations console');
   }
 
   /** Real name/role for the sidebar account footer — from the auth session. */

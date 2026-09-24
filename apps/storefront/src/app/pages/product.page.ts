@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService, Product, ProductVariant } from '../api.service';
+import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
 
 /** Product detail — Stitch PDP layout: gallery left; kicker, Anton title,
@@ -93,7 +94,13 @@ import { CartService } from '../cart.service';
     } @else if (loadError()) {
       <p class="muted">That piece could not be loaded — it may have sold out. <a routerLink="/shop">Back to the shop</a></p>
     } @else {
-      <p class="muted">Loading…</p>
+      <div class="sk-face-pull" aria-hidden="true">
+        <div class="skeleton sk-line w40"></div>
+        <div class="skeleton sk-line w80"></div>
+        <div class="skeleton sk-img"></div>
+        <div class="skeleton sk-line"></div>
+        <div class="skeleton sk-line w60"></div>
+      </div>
     }
   `,
 })
@@ -101,6 +108,7 @@ export class ProductPage implements OnInit {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly cart = inject(CartService);
+  private readonly alerts = inject(BrandAlertService);
 
   readonly product = signal<Product | null>(null);
   readonly reviews = signal<Array<{ rating: number; comment: string | null }>>([]);
@@ -184,5 +192,6 @@ export class ProductPage implements OnInit {
     if (!p || !v) return;
     this.cart.add(p, v, Math.max(1, this.quantity));
     this.added.set(true);
+    void this.alerts.toast(`Added to basket — ${p.name}`);
   }
 }

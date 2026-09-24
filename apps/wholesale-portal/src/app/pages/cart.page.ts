@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService, Pricing } from '../api.service';
+import { BrandAlertService } from '../brand-alert.service';
 import { CartLine, CartService } from '../cart.service';
 
 interface CartGroup {
@@ -216,6 +217,7 @@ interface CartGroup {
 })
 export class CartPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly alerts = inject(BrandAlertService);
   readonly cart = inject(CartService);
   readonly buyerName = signal<string | null>(null);
   readonly pricing = signal<Pricing | null>(null);
@@ -274,7 +276,16 @@ export class CartPage implements OnInit {
     return Math.max(0, this.moq() - this.cart.units());
   }
 
-  commit(): void {
+  async commit(): Promise<void> {
+    if (this.placing()) return;
+    const units = this.cart.units();
+    const ok = await this.alerts.confirm({
+      title: 'Commit this batch order?',
+      html: `${units} unit${units === 1 ? '' : 's'} at wholesale rate — full payment upfront, and the order is final once committed.`,
+      confirm: 'Commit order',
+      icon: 'warning',
+    });
+    if (!ok) return;
     this.placing.set(true);
     this.error.set(null);
     this.api.placeOrder(this.cart.toOrderItems()).subscribe({
@@ -282,10 +293,12 @@ export class CartPage implements OnInit {
         this.placing.set(false);
         this.orderResult.set(order);
         this.cart.clear();
+        void this.alerts.toast(`Batch committed — ref ${order.id.slice(0, 8).toUpperCase()}`);
       },
       error: (err) => {
         this.placing.set(false);
         this.error.set(err?.error?.message ?? 'Order failed.');
+        void this.alerts.toast('Order failed — please retry.', { icon: 'error' });
       },
     });
   }

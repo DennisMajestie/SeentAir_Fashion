@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiService } from '../api.service';
+import { BrandAlertService } from '../brand-alert.service';
 import { PortalStore } from '../portal.store';
 import { ThemeService } from '../theme.service';
 
@@ -227,6 +228,7 @@ export class LoginPage {
   private readonly router = inject(Router);
   private readonly store = inject(PortalStore);
   readonly theme = inject(ThemeService);
+  private readonly alerts = inject(BrandAlertService);
 
   readonly phase = signal<1 | 2>(1);
   readonly busy = signal(false);
@@ -283,6 +285,7 @@ export class LoginPage {
 
   private enter(): void {
     this.store.clear();
+    void this.alerts.toast('Session authorized — investor terminal unlocked');
     void this.router.navigateByUrl('/overview');
   }
 }

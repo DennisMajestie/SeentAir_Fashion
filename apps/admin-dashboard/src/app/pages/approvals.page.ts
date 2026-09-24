@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, Approval } from '../api.service';
+import { BrandAlertService } from '../brand-alert.service';
 
 /** A14 — Management approvals queue. Approved Stitch layout: compliance strip,
     per-request dossier cards with the payload decoded into an impact table,
@@ -99,6 +100,7 @@ import { ApiService, Approval } from '../api.service';
 })
 export class ApprovalsPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly alerts = inject(BrandAlertService);
   readonly approvals = signal<Approval[]>([]);
   readonly history = signal<Approval[]>([]);
   readonly error = signal<string | null>(null);
@@ -159,13 +161,27 @@ export class ApprovalsPage implements OnInit {
     this.api.approvalsHistory(this.historyFilter || undefined).subscribe((res) => this.history.set(res.data));
   }
 
-  decide(id: string, decision: 'approved' | 'rejected'): void {
+  async decide(id: string, decision: 'approved' | 'rejected'): Promise<void> {
+    const a = this.approvals().find((x) => x.id === id);
+    const label = a ? this.title(a.actionType) : 'this request';
+    const ok = await this.alerts.confirm({
+      title: decision === 'approved' ? 'Approve & execute?' : 'Reject request?',
+      html: `${label} — the decision is written to the audit log and cannot be reversed.`,
+      confirm: decision === 'approved' ? 'Approve' : 'Reject',
+      danger: decision === 'rejected',
+      icon: decision === 'approved' ? 'warning' : 'error',
+    });
+    if (!ok) return;
     this.api.decideApproval(id, decision).subscribe({
       next: () => {
         this.load();
         this.loadHistory();
+        void this.alerts.toast(`${label} ${decision}`);
       },
-      error: (err) => this.error.set(err?.error?.message ?? 'Decision failed.'),
+      error: (err) => {
+        this.error.set(err?.error?.message ?? 'Decision failed.');
+        void this.alerts.toast('Decision failed', { icon: 'error' });
+      },
     });
   }
 }
