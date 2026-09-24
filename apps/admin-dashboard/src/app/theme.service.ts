@@ -23,8 +23,7 @@ export class ThemeService {
   private load(): Theme {
     if (typeof window === 'undefined') return 'light';
     const saved = localStorage.getItem(THEME_KEY);
-    if (saved === 'light' || saved === 'dark') return saved;
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return saved === 'light' || saved === 'dark' ? saved : 'light';
   }
 
   private set(t: Theme): void {
