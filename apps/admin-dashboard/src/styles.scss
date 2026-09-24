@@ -324,6 +324,12 @@ code { font-family: 'Inter', sans-serif; font-size: 0.85em; color: var(--ink); f
   width: 224px; flex-shrink: 0;
   background: var(--panel); border-right: 1px solid var(--hairline);
   padding: 1rem 0.8rem 0.8rem; display: flex; flex-direction: column; gap: 0.5rem;
+  .sidebar-logo {
+    display: inline-flex; align-items: center;
+    padding: 0.1rem 0.6rem 0.45rem;
+    text-decoration: none;
+    img { display: block; height: 32px; width: auto; object-fit: contain; }
+  }
   &::-webkit-scrollbar { width: 8px; }
   &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb { background: var(--hairline-2); border-radius: 4px; }

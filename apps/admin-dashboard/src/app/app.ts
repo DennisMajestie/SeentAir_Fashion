@@ -206,6 +206,9 @@ import { environment } from '../environments/environment';
             tabindex="-1"
           ></button>
           <aside id="sidebar" class="sidebar" [class.open]="menuOpen()" aria-label="Operations navigation">
+            <a class="sidebar-logo" routerLink="/" (click)="menuOpen.set(false)" aria-label="SEENTAIR Operations">
+              <img src="assets/logo.jpeg" alt="SEENTAIR" width="160" height="32" />
+            </a>
             <nav>
               <span class="nav-group">Overview</span>
               <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">dashboard</span>Dashboard</a>
