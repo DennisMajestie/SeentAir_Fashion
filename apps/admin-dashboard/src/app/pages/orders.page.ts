@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AdminOrder, ApiService } from '../api.service';
+import { downloadCsv } from '../csv.util';
 
 const NEXT_STATUS: Record<string, string> = {
   order_received: 'processing',
@@ -25,6 +27,7 @@ const NEXT_STATUS: Record<string, string> = {
       <div class="ops-actions">
         <span class="live-chip">Live</span>
         <button class="cta small ghost" type="button" (click)="print()">Print today's deliveries</button>
+        <button class="cta small ghost" type="button" (click)="exportCsv()">Export CSV</button>
       </div>
     </div>
 
@@ -192,6 +195,7 @@ const NEXT_STATUS: Record<string, string> = {
 })
 export class OrdersPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly route = inject(ActivatedRoute);
   readonly orders = signal<AdminOrder[]>([]);
   readonly total = signal(0);
   readonly error = signal<string | null>(null);
@@ -204,6 +208,7 @@ export class OrdersPage implements OnInit {
   notifyMsg = '';
 
   ngOnInit(): void {
+    this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
     this.load();
   }
 
@@ -275,6 +280,20 @@ export class OrdersPage implements OnInit {
   }
 
   print(): void { window.print(); }
+
+  exportCsv(): void {
+    const rows = this.visible().map((o) => ({
+      OrderID: o.id,
+      Channel: o.channel,
+      Status: o.status,
+      Payment: o.paymentStatus,
+      Customer: o.customer?.name ?? 'walk-in',
+      Items: this.itemCount(o),
+      Value_NGN: o.totalAmount,
+      Created: o.createdAt,
+    }));
+    downloadCsv(`orders-${this.channel || 'all'}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  }
 
   /** Manual in-platform message to the customer about this order. */
   notify(order: AdminOrder): void {

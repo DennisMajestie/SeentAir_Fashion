@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 
@@ -15,11 +16,14 @@ interface TierRow { id: string; name: string; discountPercent: number; ruleDescr
   template: `
     <h1>Wholesale</h1>
 
-    <p class="section-label">Applications & accounts <span class="count">[{{ accounts().length | number: '2.0' }}]</span></p>
+    <p class="section-label">Applications & accounts <span class="count">[{{ filteredAccounts().length | number: '2.0' }}]</span></p>
+    <div class="ops-toolbar" style="padding:0 0 0.7rem 0;">
+      <span class="search"><input placeholder="Search business, email or status…" [(ngModel)]="query" name="q" aria-label="Search wholesale accounts" /></span>
+    </div>
     <table class="table">
       <thead><tr><th>Business user</th><th>Applied</th><th>Status</th><th>Tier</th><th>Decision</th></tr></thead>
       <tbody>
-        @for (a of accounts(); track a.id) {
+        @for (a of filteredAccounts(); track a.id) {
           <tr>
             <td><strong>{{ a.user.name }}</strong><br /><span class="muted small">{{ a.user.email }}</span></td>
             <td class="mono small">{{ a.createdAt | date: 'mediumDate' }}</td>
@@ -119,12 +123,14 @@ interface TierRow { id: string; name: string; discountPercent: number; ruleDescr
 export class WholesaleAdminPage implements OnInit {
   private readonly api = inject(ApiService);
   private readonly alerts = inject(BrandAlertService);
+  private readonly route = inject(ActivatedRoute);
   readonly accounts = signal<AccountRow[]>([]);
   readonly tiers = signal<TierRow[]>([]);
   /** One account's full record, read on demand. */
   readonly detail = signal<Record<string, unknown> | null>(null);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
+  query = '';
   tierChoice: Record<string, string> = {};
   newDiscounts: Record<string, number> = {};
   tierApprovals: Record<string, string> = {};
@@ -133,7 +139,22 @@ export class WholesaleAdminPage implements OnInit {
   editRule: Record<string, string> = {};
   nt = { name: '', discountPercent: 0, ruleDescription: '' };
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
+    this.load();
+  }
+
+  filteredAccounts(): AccountRow[] {
+    const q = this.query.trim().toLowerCase();
+    if (!q) return this.accounts();
+    return this.accounts().filter(
+      (a) =>
+        a.user.name.toLowerCase().includes(q) ||
+        a.user.email.toLowerCase().includes(q) ||
+        a.status.toLowerCase().includes(q) ||
+        (a.tier?.name.toLowerCase().includes(q) ?? false),
+    );
+  }
   private load(): void {
     this.api.wholesaleAccounts().subscribe((res) => {
       const rows = res as unknown as AccountRow[];

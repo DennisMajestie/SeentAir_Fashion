@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../api.service';
+import { downloadCsv } from '../csv.util';
 
 interface MaterialRow { id: string; name: string; unit: string; currentQuantity: number; reorderThreshold: number; lowStock: boolean; }
 interface MovementRow { id: string; movementType: string; quantityDelta: number; timestamp: string; referenceId: string | null; }
@@ -21,6 +23,7 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
         <p class="ops-sub">{{ materials().length }} materials tracked — amounts update automatically as stock moves.</p>
       </div>
       <div class="ops-actions">
+        <button class="cta small ghost" type="button" (click)="exportCsv()">Export CSV</button>
         <button class="cta small" type="button" (click)="showAdd.set(!showAdd())">{{ showAdd() ? 'Close' : '+ Add material' }}</button>
       </div>
     </div>
@@ -154,6 +157,7 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
 })
 export class MaterialsAdminPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly route = inject(ActivatedRoute);
   readonly materials = signal<MaterialRow[]>([]);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
@@ -173,7 +177,7 @@ export class MaterialsAdminPage implements OnInit {
   pu = { quantity: 0, cost: 0, note: '', approvalRequestId: '' };
   us = { quantityUsed: 0, batchId: '' };
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void { this.query = this.route.snapshot.queryParamMap.get('q') ?? ''; this.load(); }
   private load(): void {
     this.api.materials().subscribe((res) => this.materials.set(res as unknown as MaterialRow[]));
     this.api.lowStockMaterials().subscribe((res) => this.lowStock.set(res as unknown as MaterialRow[]));
@@ -186,6 +190,17 @@ export class MaterialsAdminPage implements OnInit {
       if (this.view() === 'ok' && m.lowStock) return false;
       return !q || m.name.toLowerCase().includes(q);
     });
+  }
+
+  exportCsv(): void {
+    const rows = this.visible().map((m) => ({
+      Material: m.name,
+      Unit: m.unit,
+      Current: m.currentQuantity,
+      ReorderThreshold: m.reorderThreshold,
+      Status: m.lowStock ? 'Critical' : 'Healthy',
+    }));
+    downloadCsv(`materials-${this.view()}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
   }
 
   health(m: MaterialRow): string {

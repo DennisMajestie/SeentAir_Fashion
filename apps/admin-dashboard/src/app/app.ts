@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AppSearchComponent } from './app-search.component';
+import { AppOpsbarComponent } from './app-opsbar.component';
 import { ApiService } from './api.service';
 import { BrandAlertService } from './brand-alert.service';
 import { ThemeService } from './theme.service';
@@ -9,7 +11,7 @@ import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, FormsModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, FormsModule, RouterOutlet, RouterLink, RouterLinkActive, AppSearchComponent, AppOpsbarComponent],
   template: `
     @if (!api.isLoggedIn) {
       <main class="login-shell">
@@ -147,6 +149,7 @@ import { environment } from '../environments/environment';
             <a routerLink="/" class="logo" aria-label="SEENTAIR Operations">
               <img src="assets/logo.jpeg" alt="SEENTAIR" width="200" height="40" />
             </a>
+            <app-search />
             <nav class="top-tabs" aria-label="Other Seentair apps">
               <a class="preview-tab" [href]="environment.storefrontUrl" target="_blank" rel="noopener noreferrer">
                 <span class="tab-ico" aria-hidden="true">storefront</span>Store<span class="tab-note">Preview</span>
@@ -159,6 +162,7 @@ import { environment } from '../environments/environment';
               </a>
             </nav>
             <div class="header-actions">
+              <app-opsbar />
               <button
                 class="theme-toggle"
                 type="button"

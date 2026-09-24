@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../api.service';
 
 interface VariantRow { id: string; sku: string; size: string | null; colour: string | null; priceOverride: number | null; }
@@ -172,6 +173,7 @@ interface TierRow { id: string; name: string; ruleDescription: string | null; di
 })
 export class CatalogueAdminPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly route = inject(ActivatedRoute);
   readonly products = signal<ProductRow[]>([]);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
@@ -193,6 +195,7 @@ export class CatalogueAdminPage implements OnInit {
   nv = { productId: '', sku: '', size: '', colour: '', priceOverride: null as number | null };
 
   ngOnInit(): void {
+    this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
     this.load();
     this.api.tiers().subscribe({ next: (t) => this.tiers.set(t as unknown as TierRow[]), error: () => undefined });
     this.api.inventorySummary().subscribe({

@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../api.service';
 
 interface CustomRow {
   id: string; status: string; sizes: string; colours: string; quantity: number;
   location: string; fabricQuality: string; description: string; desiredDate: string;
-  buyer: { name: string; email: string }; paidAt: string | null;
+  buyer: { name: string; email: string }; paidAt: string | null; productName?: string;
 }
 
 const NEXT: Record<string, string | null> = {
@@ -26,7 +27,11 @@ const NEXT: Record<string, string | null> = {
     <h1>Custom orders</h1>
     <p class="rule-strip">FULL PRODUCTION ONLY AFTER THE BUYER APPROVES THE SAMPLE — the API enforces it; the buyer decides in their portal.</p>
 
-    @for (r of requests(); track r.id) {
+    <div class="ops-toolbar" style="padding:0 0 0.7rem 0;">
+      <span class="search"><input placeholder="Search buyer, product or status…" [(ngModel)]="query" name="q" aria-label="Search custom orders" /></span>
+    </div>
+
+    @for (r of visibleRequests(); track r.id) {
       <section class="panel">
         <div class="panel row row-flat">
           <div>
@@ -93,6 +98,12 @@ const NEXT: Record<string, string | null> = {
         <h2 class="empty-state-title">No custom requests yet</h2>
         <p class="empty-state-sub">New bespoke requests from customers will appear here.</p>
       </div>
+    } @else if (visibleRequests().length === 0) {
+      <div class="empty-state">
+        <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg></span>
+        <h2 class="empty-state-title">No requests match "{{ query }}"</h2>
+        <p class="empty-state-sub">Try a buyer name, product or status.</p>
+      </div>
     }
     @if (message()) { <p class="success">{{ message() }}</p> }
     @if (error()) { <p class="error">{{ error() }}</p> }
@@ -100,6 +111,7 @@ const NEXT: Record<string, string | null> = {
 })
 export class CustomAdminPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly route = inject(ActivatedRoute);
   readonly requests = signal<CustomRow[]>([]);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
@@ -107,11 +119,28 @@ export class CustomAdminPage implements OnInit {
   readonly detailId = signal<string | null>(null);
   readonly detail = signal<Record<string, unknown> | null>(null);
   readonly quotation = signal<Record<string, unknown> | null>(null);
+  query = '';
   quoteAmounts: Record<string, number> = {};
   payAmounts: Record<string, number> = {};
   payMethods: Record<string, string> = {};
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
+    this.load();
+  }
+
+  visibleRequests(): CustomRow[] {
+    const q = this.query.trim().toLowerCase();
+    if (!q) return this.requests();
+    return this.requests().filter(
+      (r) =>
+        r.id.toLowerCase().includes(q) ||
+        r.buyer.name.toLowerCase().includes(q) ||
+        r.buyer.email.toLowerCase().includes(q) ||
+        r.productName?.toLowerCase().includes(q) ||
+        r.status.toLowerCase().includes(q),
+    );
+  }
   private load(): void {
     this.api.customOrders().subscribe((res) => {
       const rows = res.data as unknown as CustomRow[];

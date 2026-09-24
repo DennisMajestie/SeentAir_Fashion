@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../api.service';
+import { downloadCsv } from '../csv.util';
 
 interface LedgerRow { id: string; type: string; amount: number; category: string | null; referenceId: string | null; entryDate: string; }
 
@@ -30,6 +31,7 @@ interface LedgerRow { id: string; type: string; amount: number; category: string
               <option value="">all types</option>
               @for (t of types; track t) { <option [value]="t">{{ t }}</option> }
             </select>
+            <button class="cta small ghost" type="button" (click)="exportCsv()">CSV</button>
           </span>
         </p>
         <table class="table">
@@ -110,6 +112,18 @@ export class AccountingAdminPage implements OnInit {
 
   loadLedger(): void {
     this.api.ledger(this.typeFilter || undefined).subscribe((res) => this.ledgerRows.set(res.data as unknown as LedgerRow[]));
+  }
+
+  exportCsv(): void {
+    const rows = this.ledgerRows().map((e) => ({
+      Date: e.entryDate,
+      Type: e.type,
+      Category: e.category ?? '',
+      Amount_NGN: e.amount,
+      Ref: e.referenceId ?? '',
+    }));
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadCsv(`ledger-${this.typeFilter || 'all'}-${stamp}.csv`, rows);
   }
 
   requestApproval(): void {

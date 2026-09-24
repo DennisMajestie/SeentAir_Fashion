@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService, ReturnRequest } from '../api.service';
 
 /** A11 — Customer returns quarantine & inspection desk. Approved Stitch
@@ -39,6 +40,7 @@ import { ApiService, ReturnRequest } from '../api.service';
     <p class="rule-strip">RETURN WINDOWS // request within 12h of receipt · complete within 24h · custom orders excluded — enforced by the API.</p>
 
     <div class="ops-toolbar">
+      <span class="search"><input placeholder="Search by SKU, ref or reason…" [(ngModel)]="query" name="q" aria-label="Search returns" /></span>
       <div class="seg" role="group" aria-label="Status filter">
         <button type="button" [class.on]="statusFilter() === ''" (click)="statusFilter.set('')">All returns <span class="seg-n">{{ returns().length }}</span></button>
         @for (g of statusGroups(); track g.status) {
@@ -123,13 +125,16 @@ import { ApiService, ReturnRequest } from '../api.service';
 })
 export class ReturnsPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly route = inject(ActivatedRoute);
   readonly returns = signal<ReturnRequest[]>([]);
   readonly error = signal<string | null>(null);
   readonly selected = signal<ReturnRequest | null>(null);
   readonly statusFilter = signal('');
+  query = '';
   resolutions: Record<string, string> = {};
 
   ngOnInit(): void {
+    this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
     this.load();
   }
 
@@ -152,7 +157,17 @@ export class ReturnsPage implements OnInit {
 
   visible(): ReturnRequest[] {
     const s = this.statusFilter();
-    return s ? this.returns().filter((r) => r.status === s) : this.returns();
+    const q = this.query.trim().toLowerCase();
+    return this.returns().filter((r) => {
+      if (s && r.status !== s) return false;
+      if (!q) return true;
+      return (
+        r.id.toLowerCase().includes(q) ||
+        r.variant.sku.toLowerCase().includes(q) ||
+        r.reason.toLowerCase().includes(q) ||
+        r.status.toLowerCase().includes(q)
+      );
+    });
   }
 
   select(r: ReturnRequest): void {

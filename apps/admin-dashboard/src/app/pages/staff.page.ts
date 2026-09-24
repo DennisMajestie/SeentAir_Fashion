@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService, AuditEntry } from '../api.service';
 
 interface UserRow { id: string; name: string; email: string; phone?: string | null; status: string; totpEnabled: boolean; role: { name: string }; }
@@ -145,6 +146,7 @@ const ROLES = [
 })
 export class StaffAdminPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly route = inject(ActivatedRoute);
   readonly users = signal<UserRow[]>([]);
   readonly roles = ROLES;
   readonly message = signal<string | null>(null);
@@ -159,6 +161,7 @@ export class StaffAdminPage implements OnInit {
   nu = { name: '', email: '', phone: '', password: '', role: 'sales' };
 
   ngOnInit(): void {
+    this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
     this.load();
     this.api.auditLog({ action: 'user', limit: 6 }).subscribe({
       next: (res) => this.permLogs.set(res.data),

@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../api.service';
+import { downloadCsv } from '../csv.util';
 
 interface SummaryRow { itemType: string; itemId: string; currentQuantity: number; byMovementType: Record<string, number>; }
 interface MovementRow { id: string; movementType: string; quantityDelta: number; timestamp: string; referenceId: string | null; actorId?: string | null; }
@@ -22,6 +24,7 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
       </div>
       <div class="ops-actions">
         <span class="live-chip">Live</span>
+        <button class="cta small ghost" type="button" (click)="exportCsv()">Export CSV</button>
       </div>
     </div>
 
@@ -153,6 +156,7 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
 })
 export class InventoryAdminPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly route = inject(ActivatedRoute);
   readonly summary = signal<SummaryRow[]>([]);
   readonly selected = signal<SummaryRow | null>(null);
   readonly movementRows = signal<MovementRow[]>([]);
@@ -169,6 +173,7 @@ export class InventoryAdminPage implements OnInit {
   private readonly variants = signal<Map<string, VariantInfo>>(new Map());
 
   ngOnInit(): void {
+    this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
     this.api.products().subscribe((res) => {
       const labels = new Map(this.labels());
       const variants = new Map(this.variants());
@@ -251,6 +256,16 @@ export class InventoryAdminPage implements OnInit {
       this.currentQty.set(res.currentQuantity);
       this.ledgerTotal.set(res.total);
     });
+  }
+
+  exportCsv(): void {
+    const rows = this.visible().map((s) => ({
+      Item: this.labelFor(s.itemType, s.itemId),
+      Type: s.itemType === 'variant' ? 'finished' : 'material',
+      CurrentUnits: s.currentQuantity,
+      Value_NGN: this.valueOf(s) ?? '',
+    }));
+    downloadCsv(`inventory-${this.view()}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
   }
 
   requestDisposalApproval(): void {
