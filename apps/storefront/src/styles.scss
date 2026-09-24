@@ -960,7 +960,8 @@ select, input, textarea {
 
 .review-form { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin: 0.6rem 0;
   input, select { margin-top: 0; width: auto; }
-  input { flex: 1 1 160px; } }
+  input { flex: 1 1 160px; }
+  select { color: var(--primary-fill); font-weight: 600; } }
 .reviews { margin-top: 2.5rem; }
 .review { border-top: 1px solid var(--line); padding: 0.7rem 0;
   .stars { color: var(--primary-fill); letter-spacing: 0.2em; } }
