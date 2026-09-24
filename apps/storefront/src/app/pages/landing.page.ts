@@ -100,7 +100,7 @@ interface DemoReview {
                 <h1 class="stage-label rise">{{ stages[activeStage()].line1 }}@if (stages[activeStage()].line2) { <em>{{ stages[activeStage()].line2 }}</em> }</h1>
                 <p class="stage-lede rise">{{ stages[activeStage()].caption }}</p>
                 <div class="hero-actions rise">
-                  <a class="btn btn-primary" routerLink="/shop">Shop the drop</a>
+                  <a class="btn btn-primary" routerLink="/shop">Shop Now</a>
                 </div>
                 <div class="trust-row rise">
                   <span>Full payment</span>

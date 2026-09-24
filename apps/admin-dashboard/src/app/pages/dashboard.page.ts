@@ -74,6 +74,8 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
     @if (dashboard(); as d) {
       <div class="kpi-bar">
         <div class="kpi">
+          <span class="kpi-badge" aria-hidden="true">₦</span>
+          <span class="kpi-idx" aria-hidden="true">₦</span>
           <span class="kpi-label">Sales today</span>
           <span class="kpi-value">₦{{ d.salesToday.revenue | number: '1.0-0' }}</span>
           <span class="kpi-sub">{{ d.salesToday.orders }} paid order(s) since midnight</span>
@@ -104,8 +106,11 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
             <polyline class="spark-line" [attr.points]="sparkPoints(orderTrend())"></polyline>
           </svg>
           <span class="kpi-minis">
-            @if (pendingReturns() > 0) { <span class="chip warn">{{ pendingReturns() }} return(s) awaiting</span> }
-            @else { <span class="chip ok">0 returns waiting</span> }
+            @if (pendingReturns() > 0) {
+              <span class="chip warn">{{ pendingReturns() }} return(s) awaiting</span>
+            } @else {
+              <span class="chip ok">0 returns waiting</span>
+            }
           </span>
         </div>
         <div class="kpi kpi-action">
@@ -128,11 +133,12 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
 
       <div class="ops-grid">
         <section class="panel flat">
-          <div class="panel-head">
-            <h2>Sales performance</h2>
-            <span class="ph-sub">gross paid-order revenue · {{ rangeLabel() }}</span>
-            <span class="ph-end naira stat-md">₦{{ chartTotal() | number: '1.0-0' }}</span>
-          </div>
+            <div class="panel-head">
+              <span class="gold-bullet" aria-hidden="true"></span>
+              <h2>Sales performance</h2>
+              <span class="ph-sub">gross paid-order revenue · {{ rangeLabel() }}</span>
+              <span class="ph-end naira stat-md">₦{{ chartTotal() | number: '1.0-0' }}</span>
+            </div>
           @if (chartPoints().length > 1) {
             <div class="chart-wrap" (mouseleave)="hoverIdx.set(null)">
               <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none" role="img"
@@ -172,8 +178,35 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
             <p class="muted">Not enough paid orders in {{ rangeLabel() }} to draw the trend yet.</p>
           }
 
-          <div class="chan-legend">
-            <p class="mini-note" style="margin:0.4rem 0 0;">Channel mix — all-time paid revenue</p>
+          <div class="combo-summary" aria-label="Revenue and order volume by bucket for the selected range">
+            <span class="mini-note" style="margin-bottom:0.3rem;">
+              <span class="gold-bullet inline" aria-hidden="true"></span> Gross paid revenue (gold) · order volume (gray)
+            </span>
+            @let ordersMax = comboOrdersMax();
+            @let revMax = comboRevMax();
+            <svg viewBox="0 0 260 110" preserveAspectRatio="none" role="img"
+                 aria-label="Combo chart: gold line = gross paid revenue, gray bars = paid order count per bucket">
+              @for (g of comboGridYs(110); track g) {
+                <line [attr.x1]="0" [attr.x2]="260" [attr.y1]="g" [attr.y2]="g"
+                      stroke="var(--hairline)" stroke-width="1" />
+              }
+              @for (c of d.series; track c.label; let i = $index) {
+                <rect [attr.x]="8 + i * (250 / d.series.length)"
+                      [attr.width]="(250 / d.series.length) * 0.5"
+                      [attr.y]="100 - (ordersMax > 0 ? (c.orders / ordersMax) * 92 : 0)"
+                      [attr.height]="ordersMax > 0 ? (c.orders / ordersMax) * 92 : 0"
+                      fill="var(--acid-ink)" opacity="0.5" />
+              }
+              <polyline class="combo-line"
+                        [attr.points]="comboRevPoints(d.series, revMax)"></polyline>
+            </svg>
+            <span class="mini-note" style="margin-top:0.3rem;display:flex;justify-content:space-between;">
+              <span>{{ d.series[0].label }}</span>
+              <span>₦{{ comboRevTotal() | number: '1.0-0' }} rev · {{ comboOrdersTotal() | number }} orders</span>
+              <span>{{ d.series[d.series.length - 1].label }}</span>
+            </span>
+          </div>
+          <div class="channel-list">
             @for (row of d.salesByChannel; track row.channel; let i = $index) {
               <div class="cl-row">
                 <span class="cl-mark" [class.m2]="i === 1" [class.m3]="i === 2"></span>
@@ -189,6 +222,46 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
         <aside>
           <section class="panel flat">
             <div class="panel-head">
+              <span class="gold-bullet" aria-hidden="true"></span>
+              <h2>Order status — live</h2>
+              <span class="ph-sub">paid orders by status · {{ rangeLabel() }}</span>
+            </div>
+            @if (dashboard(); as d) {
+              @if (d.statusBreakdown.length > 0) {
+                <div class="donut-wrap">
+                  <svg viewBox="0 0 220 120" role="img" class="donut"
+                       aria-label="Paid-order status breakdown for the selected range">
+                    @for (sb of d.statusBreakdown; track sb.status; let i = $index) {
+                      <circle cx="60" cy="60" [attr.r]="ringR" fill="none"
+                              [attr.stroke]="statusColor(i)"
+                              stroke-width="14"
+                              [attr.stroke-dasharray]="ringTotal() > 0 ? ((sb.count / ringTotal()) * ringC()) + ' ' + ringC() : '0 ' + ringC()"
+                              [attr.stroke-dashoffset]="-ringSegmentOffset(i)"
+                              transform="rotate(-90 60 60)" />
+                    }
+                  </svg>
+                  <div class="donut-center">
+                    <span class="dc-total">{{ ringTotal() | number }}</span>
+                    <span class="dc-sub">paid orders</span>
+                  </div>
+                  <ul class="donut-legend">
+                    @for (sb of d.statusBreakdown; track sb.status; let i = $index) {
+                      <li>
+                        <span class="dl-mark" [style.background]="statusColor(i)"></span>
+                        <span class="dl-name">{{ statusLabel(sb.status) }}</span>
+                        <span class="dl-count">{{ sb.count }}</span>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              } @else {
+                <p class="muted small">No paid orders in the selected range yet.</p>
+              }
+            }
+          </section>
+          <section class="panel flat">
+            <div class="panel-head">
+              <span class="gold-bullet" aria-hidden="true"></span>
               <h2>Needs your attention</h2>
               <span class="ph-end chip warn">{{ attention().length }} escalation(s)</span>
             </div>
@@ -207,19 +280,103 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
           </section>
 
           <section class="panel">
-            <div class="panel-head"><h2>Recent activity</h2><a class="link ph-end" routerLink="/audit">Audit log</a></div>
+            <div class="panel-head">
+              <span class="gold-bullet" aria-hidden="true"></span>
+              <h2>Recent activity</h2>
+              <a class="link ph-end" routerLink="/audit">Audit log</a>
+            </div>
             @if (activity().length === 0) { <p class="muted small">No recent activity.</p> }
             <ul class="activity">
               @for (entry of activity(); track entry.id) {
                 <li>
                   <time [attr.datetime]="entry.timestamp">{{ formatTime(entry.timestamp) }}</time>
-                  <span class="act-action">{{ entry.action }}</span>
+                  <span class="gold-bullet inline" aria-hidden="true"></span>
+                  <span class="act-action" [attr.title]="entry.action">{{ feedPhrase(entry.action) }}</span>
                 </li>
               }
             </ul>
           </section>
+          <section class="panel">
+            <div class="panel-head">
+              <span class="gold-bullet" aria-hidden="true"></span>
+              <h2>Revenue &amp; orders</h2>
+              <span class="ph-end naira stat-md">{{ comboTotal() | number: '1.0-0' }} orders</span>
+            </div>
+            @if (dashboard(); as d) {
+              @let maxOrders = comboOrdersMax();
+              <div class="combo-wrap">
+                <svg viewBox="0 0 260 110" preserveAspectRatio="none" role="img" class="combo"
+                     aria-label="Paid revenue (gold line) and paid order count (gray bars) by bucket for the selected range">
+                  @for (gy of comboGridYs(); track gy) {
+                    <line [attr.x1]="'0'" [attr.x2]="'260'" [attr.y1]="gy" [attr.y2]="gy"
+                          stroke="var(--hairline)" stroke-width="1" />
+                  }
+                  @for (b of d.series; track b.label; let i = $index) {
+                    <rect [attr.x]="8 + i * (250 / d.series.length)"
+                          [attr.width]="(250 / d.series.length) * 0.55"
+                          [attr.y]="100 - (maxOrders > 0 ? (b.orders / maxOrders) * 90 : 0)"
+                          [attr.height]="maxOrders > 0 ? (b.orders / maxOrders) * 90 : 0"
+                          fill="var(--acid-ink)" opacity="0.45" />
+                  }
+                  <path [attr.d]="comboRevPath()" fill="none" stroke="var(--gold)" stroke-width="2"
+                        stroke-linejoin="round" stroke-linecap="round" />
+                  @if (comboPeak(); as cp) {
+                    <circle [attr.cx]="cp.x" [attr.cy]="cp.y" r="4" fill="var(--gold)"
+                            stroke="var(--panel)" stroke-width="2" />
+                  }
+                </svg>
+                <span class="mini-note" style="display:flex;justify-content:space-between;margin:0.3rem 0 0;">
+                  <span class="gold-bullet inline" aria-hidden="true"></span> Paid revenue (gold line)
+                  <span>·</span>
+                  <span>Paid orders (gray bars)</span>
+                </span>
+              </div>
+              <p class="muted small">Both series come from the same Analytics API payload as the chart above —
+                the selected range, no invented buckets.</p>
+            }
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <span class="gold-bullet" aria-hidden="true"></span>
+              <h2>Order status — live</h2>
+              <span class="chp-end">{{ statusBreakdownTotal() | number }} paid</span>
+            </div>
+            @if (dashboard(); as d) {
+              @if (d.statusBreakdown.length > 0) {
+                <div class="ring-wrap">
+                  <div class="ring">
+                    <svg viewBox="0 0 200 200" role="img" aria-label="Current paid-order status ring">
+                      @for (sb of d.statusBreakdown; track sb.status; let i = $index) {
+                        <circle cx="100" cy="100" r="72" fill="none"
+                                [attr.stroke]="statusColor(i)"
+                                stroke-width="14"
+                                [attr.stroke-dasharray]="ringTotal() > 0 ? ((sb.count / ringTotal()) * 100) + ' ' + 100 : '0 100'"
+                                [attr.stroke-dashoffset]="-ringSegmentOffsetPct(i)"
+                                transform="rotate(-90 100 100)" />
+                      }
+                    </svg>
+                  </div>
+                  <div class="ring-center">
+                    <span class="rc-val">{{ ringTotal() | number }}</span>
+                    <span class="rc-sub">paid orders</span>
+                  </div>
+                  <ul class="ring-legend">
+                    @for (sb of d.statusBreakdown; track sb.status; let i = $index) {
+                      <li>
+                        <span class="rl-col" [style.background]="statusColor(i)"></span>
+                        <span class="rl-name">{{ statusLabel(sb.status) }}</span>
+                        <span class="rl-val">{{ sb.count }}</span>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              } @else {
+                <p class="muted small">No paid orders in the selected range yet.</p>
+              }
+            }
+          </section>
         </aside>
-      </div>
 
       <section class="panel">
         <div class="panel-head">
@@ -311,6 +468,7 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
             <p class="muted small">Loading reserve levels…</p>
           }
         </section>
+      </div>
       </div>
     } @else {
       <div class="kpi-bar" aria-hidden="true">
@@ -606,6 +764,128 @@ export class DashboardPage implements OnInit {
   }
 
   private readonly SPARK_H = 26;
+
+  // ---- Combo chart (revenue line + order bars) helpers, drawn from the same
+  // ---- Analytics API series as the main chart. No invented data. ----
+  readonly ringR = 44;
+
+  comboOrdersMax(): number {
+    const series = this.dashboard()?.series ?? [];
+    return series.length === 0 ? 0 : Math.max(...series.map((p) => p.orders));
+  }
+
+  comboRevMax(): number {
+    const series = this.dashboard()?.series ?? [];
+    return series.length === 0 ? 0 : Math.max(...series.map((p) => p.revenue), 1);
+  }
+
+  comboGridYs(height = 110): number[] {
+    if (height === 110) return [5, 28, 51, 74, 97];
+    return [10, 55, 100, 145, 186];
+  }
+
+  comboRevPoints(series: Array<{ label: string; revenue: number; orders: number }>, revMax: number): string {
+    const n = series.length;
+    if (n === 0) return '';
+    return series
+      .map((p, i) => `${(8 + (i * 244) / (n - 1)).toFixed(1)},${(102 - (p.revenue / (revMax > 0 ? revMax : 1)) * 94).toFixed(1)}`)
+      .join(' ');
+  }
+
+  readonly comboRevPath = computed(() => {
+    const series = this.dashboard()?.series ?? [];
+    if (series.length === 0) return '';
+    const max = Math.max(...series.map((p) => p.revenue), 1);
+    return this.comboRevPoints(series, max)
+      .split(' ')
+      .map((pt, i) => `${i === 0 ? 'M' : 'L'}${pt}`)
+      .join(' ');
+  });
+
+  readonly comboPeak = computed<ChartPoint | null>(() => {
+    const series = this.dashboard()?.series ?? [];
+    if (series.length === 0) return null;
+    const max = Math.max(...series.map((p) => p.revenue), 1);
+    let peakI = 0;
+    for (let i = 1; i < series.length; i++) if (series[i].revenue > series[peakI].revenue) peakI = i;
+    const n = series.length;
+    const x = 8 + (peakI * 244) / (n - 1);
+    const y = 102 - (series[peakI].revenue / max) * 94;
+    return { x, y, date: series[peakI].label, label: series[peakI].label, value: series[peakI].revenue };
+  });
+
+  comboOrdersTotal(): number {
+    return (this.dashboard()?.series ?? []).reduce((s, p) => s + p.orders, 0);
+  }
+
+  comboRevTotal(): number {
+    return (this.dashboard()?.series ?? []).reduce((s, p) => s + p.revenue, 0);
+  }
+
+  /** Combo-summary header number (order volume for the range). */
+  comboTotal(): number {
+    return (this.dashboard()?.series ?? []).reduce((s, p) => s + p.orders, 0);
+  }
+
+  // ---- Order-status ring helpers ----
+  ringTotal(): number {
+    return (this.dashboard()?.statusBreakdown ?? []).reduce((s, sb) => s + sb.count, 0);
+  }
+
+  statusBreakdownTotal(): number {
+    return this.ringTotal();
+  }
+
+  /** Circle circumference for the ring radius used in the status ring. */
+  ringC(): number {
+    return 2 * Math.PI * this.ringR;
+  }
+
+  /** Cumulative dash-offset (in circumference units) before segment `i`. */
+  ringSegmentOffset(i: number): number {
+    const counts = this.dashboard()?.statusBreakdown.map((sb) => sb.count) ?? [];
+    const total = counts.reduce((s, c) => s + c, 0);
+    if (total <= 0 || i <= 0) return 0;
+    return (counts.slice(0, i).reduce((s, c) => s + c, 0) / total) * this.ringC();
+  }
+
+  /** Cumulative dash-offset (as % of the ring) before segment `i`. */
+  ringSegmentOffsetPct(i: number): number {
+    const counts = this.dashboard()?.statusBreakdown.map((sb) => sb.count) ?? [];
+    const total = counts.reduce((s, c) => s + c, 0);
+    if (total <= 0 || i <= 0) return 0;
+    return (counts.slice(0, i).reduce((s, c) => s + c, 0) / total) * 100;
+  }
+
+  statusColor(i: number): string {
+    const palette = ['#d8ac3c', '#e56a3f', '#7a8a99', '#4f7a8f', '#8aa67f'];
+    return palette[i % palette.length];
+  }
+
+  statusLabel(status: string): string {
+    const map: Record<string, string> = {
+      paid: 'Paid',
+      processing: 'Processing',
+      ready: 'Ready for dispatch',
+      shipped: 'Shipped',
+      in_transit: 'In transit',
+      delivered: 'Delivered',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+    };
+    return map[status] ?? status.replaceAll('_', ' ');
+  }
+
+  feedPhrase(action: string): string {
+    const map: Record<string, string> = {
+      order_created: 'Order placed',
+      payment_received: 'Payment received',
+      production_started: 'Production started',
+      stock_adjusted: 'Stock adjusted',
+      dispatch_created: 'Dispatch created',
+    };
+    return map[action] ?? action.replaceAll('_', ' ');
+  }
 
   formatTime(ts: string): string {
     const d = new Date(ts);
