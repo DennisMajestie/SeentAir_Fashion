@@ -82,7 +82,7 @@ code { font-family: 'Inter', sans-serif; font-size: 0.85em; color: var(--ink); f
   background: transparent;
   border-bottom: 1px solid transparent;
   transition: background 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease, box-shadow 0.3s ease;
-  .header-inner { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; align-items: center; justify-content: flex-start; padding: 0.8rem 22px; width: 100%; }
+  .header-inner { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; align-items: center; justify-content: flex-start; padding: 0.8rem 22px; width: calc(100% - 224px); max-width: 1180px; margin-left: 224px; }
   &.scrolled {
     background: color-mix(in srgb, var(--obsidian) 88%, transparent);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -289,6 +289,7 @@ code { font-family: 'Inter', sans-serif; font-size: 0.85em; color: var(--ink); f
 @media (max-width: 760px) {
   .header-actions { margin-left: auto; }
   .site-header .gs { display: none; }
+  .site-header .header-inner { width: 100%; max-width: none; margin-left: 0; }
   .site-header .menu-toggle { display: flex; }
   .site-header .top-tabs { gap: 0.1rem; }
   .layout { position: relative; }
