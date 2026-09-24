@@ -764,7 +764,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
 }
 .stars-line {
   display: flex; align-items: center; gap: 0.45rem; margin: 0.3rem 0 0;
-  .stars { color: var(--primary); letter-spacing: 0.12em; font-size: 0.85rem; }
+  .stars { color: var(--primary-fill); letter-spacing: 0.12em; font-size: 0.85rem; }
 }
 .chip-out { margin-left: 0.25rem; color: var(--danger); }
 
@@ -963,7 +963,7 @@ select, input, textarea {
   input { flex: 1 1 160px; } }
 .reviews { margin-top: 2.5rem; }
 .review { border-top: 1px solid var(--line); padding: 0.7rem 0;
-  .stars { color: var(--primary); letter-spacing: 0.2em; } }
+  .stars { color: var(--primary-fill); letter-spacing: 0.2em; } }
 
 .event { padding: 0.6rem 0; border-bottom: 1px solid var(--line);
   strong { text-transform: capitalize; margin-right: 0.6rem; }
