@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../api.service';
+import { BrandAlertService } from '../brand-alert.service';
 
 interface AccountRow { id: string; status: string; createdAt: string; user: { name: string; email: string }; tier: { id: string; name: string } | null; }
 interface TierRow { id: string; name: string; discountPercent: number; ruleDescription: string | null; }
@@ -98,6 +99,7 @@ interface TierRow { id: string; name: string; discountPercent: number; ruleDescr
 })
 export class WholesaleAdminPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly alerts = inject(BrandAlertService);
   readonly accounts = signal<AccountRow[]>([]);
   readonly tiers = signal<TierRow[]>([]);
   /** One account's full record, read on demand. */
@@ -133,8 +135,12 @@ export class WholesaleAdminPage implements OnInit {
     return tier?.name ?? 'none';
   }
 
-  private ok(m: string): void { this.message.set(m); this.error.set(null); this.load(); }
-  private fail(e: { error?: { message?: string } }, fb: string): void { this.error.set(e?.error?.message ?? fb); this.message.set(null); }
+  private ok(m: string): void { this.message.set(m); this.error.set(null); this.load(); void this.alerts.toast(m); }
+  private fail(e: { error?: { message?: string } }, fb: string): void {
+    this.error.set(e?.error?.message ?? fb);
+    this.message.set(null);
+    void this.alerts.toast(e?.error?.message ?? fb, { icon: 'error' });
+  }
 
   decide(a: AccountRow, status: 'approved' | 'rejected'): void {
     this.api.reviewWholesaleAccount(a.id, { status, tierId: this.tierChoice[a.id] || undefined })
@@ -148,7 +154,7 @@ export class WholesaleAdminPage implements OnInit {
 
   requestTierApproval(t: TierRow): void {
     const to = this.newDiscounts[t.id];
-    if (to === undefined) { this.error.set('Enter the new discount first.'); return; }
+    if (to === undefined) { this.error.set('Enter the new discount first.'); void this.alerts.toast('Enter the new discount first.', { icon: 'warning' }); return; }
     this.api.createApproval('price_change', { tier: t.name, from: t.discountPercent, to })
       .subscribe({ next: (r) => { this.tierApprovals[t.id] = r.id; this.ok('Approval requested — Management decides in the queue.'); }, error: (e) => this.fail(e, 'Request failed.') });
   }
