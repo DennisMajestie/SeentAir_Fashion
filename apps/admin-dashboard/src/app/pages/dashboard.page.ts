@@ -1,15 +1,33 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { AdminOrder, ApiService, Approval, AuditEntry, Dashboard, LowStock } from '../api.service';
+import { AdminOrder, AnalyticsRange, ApiService, Approval, AuditEntry, Dashboard, LowStock } from '../api.service';
 
 interface SellerRow { sku: string; productName: string; unitsSold: number; revenue: number }
 interface ChartPoint { x: number; y: number; date: string; label: string; value: number }
 
+/** Analytics-range control (folded into the approved A1 layout). */
+const RANGE_KEYS: Array<{ key: AnalyticsRange; label: string }> = [
+  { key: 'today', label: 'Today' },
+  { key: '7d', label: '7 days' },
+  { key: '30d', label: '30 days' },
+  { key: 'custom', label: 'Custom' },
+];
+
+const RANGE_LABEL: Record<string, string> = {
+  today: 'today',
+  '7d': 'the last 7 days',
+  '30d': 'the last 30 days',
+  custom: 'the selected range',
+};
+
+const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
+
 /** A1 — Executive Operations Command (owner home). Approved Stitch layout:
-    KPI command bar, 30-day sales chart, needs-attention rail, manufacturing
-    pipeline, best sellers / slow movers / critical materials. Every figure is
-    bound to a live endpoint — nothing invented, gaps labeled. */
+    KPI command bar, range-scoped sales chart (server-bucketed by the
+    Analytics API), needs-attention rail, manufacturing pipeline, best
+    sellers / slow movers / critical materials. Every figure is bound to a
+    live endpoint — nothing invented, gaps labeled. */
 @Component({
   selector: 'app-dashboard',
   imports: [CommonModule, RouterLink],
@@ -27,12 +45,43 @@ interface ChartPoint { x: number; y: number; date: string; label: string; value:
       </div>
     </div>
 
+    <div class="dash-head range-wrap">
+      <div class="range" role="group" aria-label="Analytics range">
+        @for (r of rangeKeys; track r.key) {
+          <button type="button" [class.on]="range() === r.key" (click)="setRange(r.key)">
+            {{ r.label }}
+          </button>
+        }
+      </div>
+      @if (range() === 'custom') {
+        <div class="range custom-range" role="group" aria-label="Custom range">
+          <label class="range-field">From
+            <input type="date" [value]="fromDate()" (change)="fromDate.set($any($event.target).value)" />
+          </label>
+          <label class="range-field">To
+            <input type="date" [value]="toDate()" (change)="toDate.set($any($event.target).value)" />
+          </label>
+          <button type="button" class="cta small" (click)="load()">Apply</button>
+        </div>
+      }
+      @if (loadError(); as err) {
+        <p class="range-note error" role="alert">{{ err }}
+          <button type="button" class="link" (click)="load()">Retry</button>
+        </p>
+      }
+    </div>
+
     @if (dashboard(); as d) {
       <div class="kpi-bar">
         <div class="kpi">
-          <span class="kpi-label">Sales today <span class="delta plus" *ngIf="false"></span></span>
+          <span class="kpi-label">Sales today</span>
           <span class="kpi-value">₦{{ d.salesToday.revenue | number: '1.0-0' }}</span>
           <span class="kpi-sub">{{ d.salesToday.orders }} paid order(s) since midnight</span>
+          @let revDelta = delta(d.metrics.revenue, d.metrics.priorRevenue);
+          <span class="delta" [class.plus]="revDelta.cls === 'plus'" [class.minus]="revDelta.cls === 'minus'">{{ revDelta.text }} vs prior period</span>
+          <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none" role="img" aria-label="Revenue trend for the selected range">
+            <polyline class="spark-line" [attr.points]="sparkPoints(revenueTrend())"></polyline>
+          </svg>
           <span class="kpi-minis">
             @for (c of topChannels(); track c.channel) {
               <span class="chip">{{ c.channel.replaceAll('_', ' ') }} ₦{{ c.revenue | number: '1.0-0' }}</span>
@@ -49,6 +98,11 @@ interface ChartPoint { x: number; y: number; date: string; label: string; value:
           <span class="kpi-label">Orders today</span>
           <span class="kpi-value">{{ d.salesToday.orders }}</span>
           <span class="kpi-sub">{{ transitCount() }} dispatch leg(s) in transit</span>
+          @let odDelta = delta(d.metrics.openOrders, d.metrics.priorOpenOrders);
+          <span class="delta" [class.plus]="odDelta.cls === 'plus'" [class.minus]="odDelta.cls === 'minus'">{{ odDelta.text }} vs prior period</span>
+          <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none" role="img" aria-label="Open orders trend for the selected range">
+            <polyline class="spark-line" [attr.points]="sparkPoints(orderTrend())"></polyline>
+          </svg>
           <span class="kpi-minis">
             @if (pendingReturns() > 0) { <span class="chip warn">{{ pendingReturns() }} return(s) awaiting</span> }
             @else { <span class="chip ok">0 returns waiting</span> }
@@ -63,6 +117,11 @@ interface ChartPoint { x: number; y: number; date: string; label: string; value:
             }
             @if (approvalGroups().length === 0) { <span class="chip ok">Queue clear</span> }
           </span>
+          @if (d.trends.approvals.length > 1) {
+            <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none" role="img" aria-label="Pending approvals trend for the selected range">
+              <polyline class="spark-line" [attr.points]="sparkPoints(d.trends.approvals)"></polyline>
+            </svg>
+          }
           <a class="cta small" routerLink="/approvals">Review approvals</a>
         </div>
       </div>
@@ -70,14 +129,14 @@ interface ChartPoint { x: number; y: number; date: string; label: string; value:
       <div class="ops-grid">
         <section class="panel flat">
           <div class="panel-head">
-            <h2>Sales performance (last 30 days)</h2>
-            <span class="ph-sub">gross paid-order revenue, all channels</span>
+            <h2>Sales performance</h2>
+            <span class="ph-sub">gross paid-order revenue · {{ rangeLabel() }}</span>
             <span class="ph-end naira stat-md">₦{{ chartTotal() | number: '1.0-0' }}</span>
           </div>
           @if (chartPoints().length > 1) {
             <div class="chart-wrap" (mouseleave)="hoverIdx.set(null)">
               <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none" role="img"
-                   aria-label="Daily paid-order revenue for the last 30 days"
+                   aria-label="Paid-order revenue by bucket for the selected range"
                    (mousemove)="onChartMove($event)">
                 <!-- recessive grid -->
                 @for (gy of gridYs; track gy) {
@@ -107,11 +166,10 @@ interface ChartPoint { x: number; y: number; date: string; label: string; value:
                 <span class="mini-note">{{ chartPoints()[chartPoints().length - 1].label }}</span>
               </div>
             </div>
-            @if (chartCapped()) {
-              <p class="muted small">Computed from the most recent {{ chartOrderCount() }} orders the API returns per page.</p>
-            }
+            <p class="muted small">Buckets, totals and the prior-period delta are computed server-side by the
+              Analytics API over {{ rangeLabel() }}. No data is invented.</p>
           } @else {
-            <p class="muted">Not enough paid orders in the last 30 days to draw the trend yet.</p>
+            <p class="muted">Not enough paid orders in {{ rangeLabel() }} to draw the trend yet.</p>
           }
 
           <div class="chan-legend">
@@ -244,6 +302,11 @@ interface ChartPoint { x: number; y: number; date: string; label: string; value:
               <p class="success small">Nothing needs reordering.</p>
             }
             <a class="link" routerLink="/materials">Trigger POs in raw materials</a>
+            @if (d.trends.lowStock.length > 1) {
+              <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none" role="img" aria-label="Low stock trend for the selected range">
+                <polyline class="spark-line" [attr.points]="sparkPoints(d.trends.lowStock)"></polyline>
+              </svg>
+            }
           } @else {
             <p class="muted small">Loading reserve levels…</p>
           }
@@ -288,6 +351,12 @@ export class DashboardPage implements OnInit {
   readonly pendingReturns = signal(0);
   readonly firstReturn = signal<{ sku: string; deadline: string } | null>(null);
   readonly hoverIdx = signal<number | null>(null);
+  /** Analytics range + custom date controls (server-bucketed). */
+  readonly range = signal<AnalyticsRange>('today');
+  readonly fromDate = signal('');
+  readonly toDate = signal('');
+  readonly loadError = signal<string | null>(null);
+  readonly rangeKeys = RANGE_KEYS;
   /** variantId → SKU, so low-stock rows name pieces instead of UUIDs. */
   private readonly skus = signal<Map<string, string>>(new Map());
 
@@ -309,7 +378,9 @@ export class DashboardPage implements OnInit {
   })();
 
   ngOnInit(): void {
-    this.api.dashboard().subscribe((d) => this.dashboard.set(d));
+    this.fromDate.set(ISO_DATE(new Date(Date.now() - 6 * 86_400_000)));
+    this.toDate.set(ISO_DATE(new Date()));
+    this.load();
     this.api.bestSellers('best').subscribe((b) => this.bestSellers.set(b));
     this.api.bestSellers('slow').subscribe((b) => this.slowMovers.set(b));
     this.api.lowStock().subscribe((ls) => this.lowStock.set(ls));
@@ -338,6 +409,29 @@ export class DashboardPage implements OnInit {
     });
   }
 
+  /** Range switch + reload; Custom needs a From/To pair before firing. */
+  setRange(key: AnalyticsRange): void {
+    if (this.range() === key) return;
+    this.range.set(key);
+    this.load();
+  }
+
+  load(): void {
+    const range = this.range();
+    if (range === 'custom' && (!this.fromDate() || !this.toDate())) {
+      this.loadError.set('Pick a From and To date, then Apply.');
+      return;
+    }
+    this.loadError.set(null);
+    const payload = range === 'custom'
+      ? this.api.dashboard('custom', this.fromDate(), this.toDate())
+      : this.api.dashboard(range);
+    payload.subscribe({
+      next: (d) => this.dashboard.set(d),
+      error: (e) => this.loadError.set(e instanceof Error ? e.message : 'Could not load the overview.'),
+    });
+  }
+
   /** Approvals grouped by action type for the executive-action KPI. */
   readonly approvalGroups = computed(() => {
     const counts = new Map<string, number>();
@@ -345,45 +439,27 @@ export class DashboardPage implements OnInit {
     return [...counts.entries()].map(([type, count]) => ({ type, count }));
   });
 
-  /** Daily paid revenue for the last 30 days, from the real order list. */
-  readonly chartDays = computed(() => {
-    const days: Array<{ date: Date; key: string; label: string; value: number }> = [];
-    const now = new Date();
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-      days.push({
-        date: d,
-        key: d.toDateString(),
-        label: new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(d),
-        value: 0,
-      });
-    }
-    const byKey = new Map(days.map((d) => [d.key, d]));
-    for (const o of this.recentOrders()) {
-      if (o.paymentStatus !== 'paid') continue;
-      const key = new Date(o.createdAt).toDateString();
-      const slot = byKey.get(key);
-      if (slot) slot.value += Number(o.totalAmount) || 0;
-    }
-    return days;
-  });
+  /** Sparkline series sourced from the Analytics API for the selected range. */
+  readonly revenueTrend = computed(() => (this.dashboard()?.series ?? []).map((p) => p.revenue));
+  readonly orderTrend = computed(() => (this.dashboard()?.series ?? []).map((p) => p.orders));
+  readonly rangeLabel = computed(() => RANGE_LABEL[this.range()] ?? 'the selected range');
 
-  readonly chartTotal = computed(() => this.chartDays().reduce((s, d) => s + d.value, 0));
-  readonly chartCapped = computed(() => this.ordersTotal() > this.recentOrders().length);
-  readonly chartOrderCount = computed(() => this.recentOrders().length);
+  readonly chartTotal = computed(() => this.dashboard()?.metrics.revenue ?? 0);
 
+  /** Server-bucketed paid revenue for the selected range, drawn with the
+      approved A1 chart geometry (hover, peak, recessed grid). */
   readonly chartPoints = computed<ChartPoint[]>(() => {
-    const days = this.chartDays();
-    if (days.length === 0) return [];
-    const max = Math.max(...days.map((d) => d.value), 1);
+    const buckets = this.dashboard()?.series ?? [];
+    if (buckets.length < 2) return [];
+    const max = Math.max(...buckets.map((b) => b.revenue), 1);
     const innerW = this.W - this.PAD * 2;
     const innerH = this.H - this.PAD - this.PAD_B;
-    return days.map((d, i) => ({
-      x: this.PAD + (i / (days.length - 1)) * innerW,
-      y: this.PAD + innerH - (d.value / max) * innerH,
-      date: d.key,
-      label: d.label,
-      value: d.value,
+    return buckets.map((b, i) => ({
+      x: this.PAD + (i / (buckets.length - 1)) * innerW,
+      y: this.PAD + innerH - (b.revenue / max) * innerH,
+      date: b.label,
+      label: b.label,
+      value: b.revenue,
     }));
   });
 
@@ -506,6 +582,30 @@ export class DashboardPage implements OnInit {
   exportSheet(): void {
     window.print();
   }
+
+  delta(cur: number, prior: number): { text: string; cls: string } {
+    if (prior === 0) {
+      if (cur === 0) return { text: '0%', cls: '' };
+      return { text: 'new this period', cls: 'plus' };
+    }
+    const p = Math.round(((cur - prior) / prior) * 100);
+    return { text: `${p >= 0 ? '+' : ''}${p}%`, cls: p >= 0 ? 'plus' : 'minus' };
+  }
+
+  sparkPoints(values: number[]): string {
+    const n = values.length;
+    if (n === 0) return '';
+    const max = Math.max(...values, 1);
+    const pts: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const x = n === 1 ? 50 : (i * 100) / (n - 1);
+      const y = 2 + (1 - Math.max(0, values[i]) / max) * (this.SPARK_H - 4);
+      pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+    return pts.join(' ');
+  }
+
+  private readonly SPARK_H = 26;
 
   formatTime(ts: string): string {
     const d = new Date(ts);

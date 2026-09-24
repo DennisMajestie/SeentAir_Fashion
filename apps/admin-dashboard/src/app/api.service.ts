@@ -5,6 +5,19 @@ import { API_BASE, TokenStore } from './auth-token.store';
 
 export { API_BASE, authInterceptor } from './auth-token.store';
 
+export type AnalyticsRange = 'today' | '7d' | '30d' | 'custom';
+
+export interface DashboardSeriesPoint {
+  label: string;
+  revenue: number;
+  orders: number;
+}
+
+export interface DashboardStatusCount {
+  status: string;
+  count: number;
+}
+
 export interface Dashboard {
   salesToday: { orders: number; revenue: number };
   profitLoss: { income: number; expenditure: number; net: number };
@@ -17,6 +30,19 @@ export interface Dashboard {
     lowStockMaterials: Array<{ name: string; currentQuantity: number; reorderThreshold: number }>;
   };
   pendingApprovals: number;
+  range: { key: AnalyticsRange; from: string; to: string };
+  metrics: {
+    revenue: number;
+    priorRevenue: number;
+    openOrders: number;
+    priorOpenOrders: number;
+  };
+  series: DashboardSeriesPoint[];
+  statusBreakdown: DashboardStatusCount[];
+  trends: {
+    approvals: number[];
+    lowStock: number[];
+  };
 }
 
 /** Reorder view: materials under threshold + variants running thin. */
@@ -139,8 +165,12 @@ export class ApiService {
       `${API_BASE}/analytics/low-stock?variantThreshold=${variantThreshold}`,
     );
   }
-  dashboard(): Observable<Dashboard> {
-    return this.http.get<Dashboard>(`${API_BASE}/analytics/dashboard`);
+  dashboard(range: AnalyticsRange = 'today', from?: string, to?: string): Observable<Dashboard> {
+    const q =
+      range === 'custom' && from && to
+        ? `?range=${range}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+        : `?range=${range}`;
+    return this.http.get<Dashboard>(`${API_BASE}/analytics/dashboard${q}`);
   }
 
   bestSellers(direction: 'best' | 'slow' = 'best', limit = 5): Observable<Array<{ sku: string; productName: string; unitsSold: number; revenue: number }>> {

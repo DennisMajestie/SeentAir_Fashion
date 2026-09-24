@@ -10,11 +10,16 @@ import { AnalyticsService } from './analytics.service';
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
-  /** The owner's one-glance dashboard (UX requirement #5). */
+  /** The owner's one-glance dashboard (UX requirement #5). Optionally scoped to
+      a range: ?range=today|7d|30d|custom (+ from/to as YYYY-MM-DD for custom). */
   @Get('dashboard')
   @RequireAccess(ModuleName.ANALYTICS, AccessLevel.VIEW)
-  dashboard() {
-    return this.analyticsService.dashboard();
+  dashboard(
+    @Query('range') range: 'today' | '7d' | '30d' | 'custom' = 'today',
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.analyticsService.dashboard(range, from, to);
   }
 
   /** Best sellers by default; ?direction=slow for slow movers. */
