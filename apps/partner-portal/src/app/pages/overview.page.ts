@@ -106,10 +106,11 @@ import { PortalStore } from '../portal.store';
               <span class="panel-note">Managing Director notes</span>
             </div>
             <!-- GAP: no management-commentary endpoint — honest empty state, no fabricated notes. -->
-            <p class="gap-note">
-              No commentary has been published for this period yet. Quarterly operating notes from
-              the Managing Director appear here when released.
-            </p>
+            <div class="empty-state">
+              <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+              <h2 class="empty-state-title">No commentary yet</h2>
+              <p class="empty-state-sub">Quarterly operating notes from the Managing Director appear here when released.</p>
+            </div>
           </section>
 
           <section class="panel">
@@ -118,10 +119,11 @@ import { PortalStore } from '../portal.store';
               <span class="panel-note">Operational headlines</span>
             </div>
             <!-- GAP: no operational-headlines endpoint (production lines, sourcing, treasury notes). -->
-            <p class="gap-note">
-              Operational headlines — production line commissioning, sourcing and treasury policy
-              notes — are published here with each quarterly briefing. None shared yet.
-            </p>
+            <div class="empty-state">
+              <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+              <h2 class="empty-state-title">No headlines yet</h2>
+              <p class="empty-state-sub">Operational headlines are published here with each quarterly briefing.</p>
+            </div>
           </section>
         </div>
 
@@ -142,10 +144,11 @@ import { PortalStore } from '../portal.store';
                 <div class="rail-row"><span>Settlement details</span><strong>Issued by Seentair HQ</strong></div>
               </div>
             } @else {
-              <p class="gap-note">
-                No distributions declared yet — dividends are declared quarterly from audited net
-                profit under the 40 / 40 / 20 covenant.
-              </p>
+              <div class="empty-state">
+                <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+                <h2 class="empty-state-title">No distributions yet</h2>
+                <p class="empty-state-sub">Dividends are declared quarterly from audited net profit (40 / 40 / 20).</p>
+              </div>
             }
           </section>
 

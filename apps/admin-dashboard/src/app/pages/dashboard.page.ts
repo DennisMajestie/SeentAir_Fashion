@@ -275,7 +275,13 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
                   </span>
                 </div>
               }
-              @if (attention().length === 0) { <p class="success small">All clear — nothing needs your attention right now.</p> }
+              @if (attention().length === 0) {
+                <div class="empty-state ok">
+                  <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+                  <h2 class="empty-state-title">All clear</h2>
+                  <p class="empty-state-sub">Nothing needs your attention right now.</p>
+                </div>
+              }
             </div>
           </section>
 
@@ -335,13 +341,15 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
                 for the selected period.</p>
             }
           </section>
+        </aside>
 
-          <section class="panel">
-            <div class="panel-head">
-              <span class="gold-bullet" aria-hidden="true"></span>
-              <h2>Order status — live</h2>
-              <span class="chp-end">{{ statusBreakdownTotal() | number }} paid</span>
-            </div>
+      <div class="cols">
+        <section class="panel flat">
+          <div class="panel-head">
+            <span class="gold-bullet" aria-hidden="true"></span>
+            <h2>Order status — live</h2>
+            <span class="chp-end">{{ statusBreakdownTotal() | number }} paid</span>
+          </div>
             @if (dashboard(); as d) {
               @if (d.statusBreakdown.length > 0) {
                 <div class="ring-wrap">
@@ -375,29 +383,35 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
                 <p class="muted small">No paid orders in the selected range yet.</p>
               }
             }
-          </section>
-        </aside>
+</section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Manufacturing floor active pipeline</h2>
-          <span class="ph-sub">real-time batches across the factory stages</span>
-          <span class="ph-end">
-            <span class="mini-note">Active volume {{ activeUnits() | number }} pcs</span>
-            <a class="link" routerLink="/production">Open production board</a>
-          </span>
-        </div>
-        <div class="pipeline">
-          @for (s of pipeline(); track s.stage; let i = $index) {
-            <div class="stage-cell" [class.hot]="s.units > 0">
-              <span class="st-idx">{{ (i + 1) | number: '2.0' }} · {{ s.stage }}</span>
-              <p class="st-count">{{ s.units | number }} <small>pcs</small></p>
-              <span class="st-sub">{{ s.batches }} batch(es)</span>
-            </div>
-          }
-          @if (pipeline().length === 0) { <p class="muted small" style="padding:0.6rem;">No production batches yet.</p> }
-        </div>
-      </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Manufacturing floor active pipeline</h2>
+            <span class="ph-sub">real-time batches across the factory stages</span>
+            <span class="ph-end">
+              <span class="mini-note">Active volume {{ activeUnits() | number }} pcs</span>
+              <a class="link" routerLink="/production">Open production board</a>
+            </span>
+          </div>
+          <div class="pipeline">
+            @for (s of pipeline(); track s.stage; let i = $index) {
+              <div class="stage-cell" [class.hot]="s.units > 0">
+                <span class="st-idx">{{ (i + 1) | number: '2.0' }} · {{ s.stage }}</span>
+                <p class="st-count">{{ s.units | number }} <small>pcs</small></p>
+                <span class="st-sub">{{ s.batches }} batch(es)</span>
+              </div>
+            }
+            @if (pipeline().length === 0) {
+              <div class="empty-state">
+                <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+                <h2 class="empty-state-title">No production batches yet</h2>
+                <p class="empty-state-sub">New batches appear here once production starts.</p>
+              </div>
+            }
+          </div>
+        </section>
+      </div>
 
       <div class="cols">
         <section class="panel flat">

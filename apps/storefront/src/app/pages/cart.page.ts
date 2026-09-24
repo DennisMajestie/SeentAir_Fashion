@@ -15,9 +15,11 @@ import { environment } from '../../environments/environment';
     <h1 class="page-title">Cart & checkout</h1>
 
     @if (cart.items().length === 0) {
-      <div class="cart-empty u-rise">
-        <p class="muted flush">Your cart is empty.</p>
-        <a class="cta" routerLink="/shop">Back to the shop</a>
+      <div class="empty-state u-rise">
+        <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+        <h2 class="empty-state-title">Your cart is empty</h2>
+        <p class="empty-state-sub">Quality streetwear, cut and sewn in-house.</p>
+        <p class="empty-state-cta"><a class="cta" routerLink="/shop">Back to the shop</a></p>
       </div>
     } @else {
       <div class="stage-bar u-rise">

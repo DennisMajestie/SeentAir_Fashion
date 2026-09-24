@@ -93,7 +93,11 @@ import { pill } from '../status-pill';
       <a class="link" routerLink="/orders">View all orders</a>
     </div>
     @if (invoices().length === 0) {
-      <p class="muted small">No wholesale orders yet — your first batch will appear here.</p>
+      <div class="empty-state">
+        <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+        <h2 class="empty-state-title">No orders yet</h2>
+        <p class="empty-state-sub">Your first wholesale batch will appear here.</p>
+      </div>
     }
     @for (invoice of recent(); track invoice.orderId) {
       <article class="ordercard">

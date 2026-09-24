@@ -38,8 +38,11 @@ interface CartGroup {
     </div>
 
     @if (cart.units() === 0 && !orderResult()) {
-      <p class="muted">Your draft batch is empty — build it from the
-        <a class="link" routerLink="/catalogue">catalogue</a>.</p>
+      <div class="empty-state">
+        <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+        <h2 class="empty-state-title">Your draft batch is empty</h2>
+        <p class="empty-state-sub">Build it from the <a class="link" routerLink="/catalogue">catalogue</a>.</p>
+      </div>
     }
 
     @if (cart.units() > 0) {

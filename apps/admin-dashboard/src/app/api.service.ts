@@ -311,6 +311,9 @@ export class ApiService {
   updateTier(id: string, body: Record<string, unknown>): Observable<unknown> {
     return this.http.patch(`${API_BASE}/wholesale/tiers/${id}`, body);
   }
+  deleteTier(id: string): Observable<unknown> {
+    return this.http.delete(`${API_BASE}/wholesale/tiers/${id}`);
+  }
 
   // --- Custom orders admin ---
   customOrders(): Observable<{ data: Array<Record<string, unknown>>; total: number }> {

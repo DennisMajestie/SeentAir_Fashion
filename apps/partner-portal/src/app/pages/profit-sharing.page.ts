@@ -118,11 +118,11 @@ import { PortalStore } from '../portal.store';
       } @else {
         <section class="panel">
           <div class="panel-head"><h2>Distribution cycle</h2></div>
-          <p class="gap-note">
-            No distributions have been declared yet. Dividends are declared quarterly from audited
-            net profit under the 40 / 40 / 20 covenant, and each declaration is approval-gated as a
-            fund movement before settlement.
-          </p>
+          <div class="empty-state">
+            <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+            <h2 class="empty-state-title">No distributions yet</h2>
+            <p class="empty-state-sub">Dividends are declared quarterly from audited net profit (40 / 40 / 20).</p>
+          </div>
         </section>
       }
 

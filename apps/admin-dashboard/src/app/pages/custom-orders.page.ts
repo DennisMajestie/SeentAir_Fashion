@@ -87,7 +87,13 @@ const NEXT: Record<string, string | null> = {
         }
       </section>
     }
-    @if (requests().length === 0) { <p class="muted">No custom design requests yet.</p> }
+    @if (requests().length === 0) {
+      <div class="empty-state">
+        <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+        <h2 class="empty-state-title">No custom requests yet</h2>
+        <p class="empty-state-sub">New bespoke requests from customers will appear here.</p>
+      </div>
+    }
     @if (message()) { <p class="success">{{ message() }}</p> }
     @if (error()) { <p class="error">{{ error() }}</p> }
   `,

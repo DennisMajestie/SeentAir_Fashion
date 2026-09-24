@@ -56,7 +56,13 @@ interface CustomerThread {
               <span class="att-act"><span class="mini-note">latest #{{ t.orders[0].id.slice(0, 8) }} · {{ t.orders[0].status.replaceAll('_', ' ') }}</span></span>
             </button>
           }
-          @if (visibleThreads().length === 0) { <p class="muted small">No customers with orders yet.</p> }
+          @if (visibleThreads().length === 0) {
+            <div class="empty-state">
+              <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+              <h2 class="empty-state-title">No customers yet</h2>
+              <p class="empty-state-sub">People with orders appear here so you can reach them.</p>
+            </div>
+          }
         </div>
       </div>
 

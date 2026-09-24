@@ -65,7 +65,25 @@ interface TierRow { id: string; name: string; discountPercent: number; ruleDescr
           <tbody>
             @for (t of tiers(); track t.id) {
               <tr>
-                <td><strong>{{ t.name }}</strong><br /><span class="muted small">{{ t.ruleDescription }}</span></td>
+                <td>
+                  @if (editing[t.id]) {
+                    <div class="form-grid" style="margin:0;">
+                      <label>Name <input [(ngModel)]="editName[t.id]" [name]="'en' + t.id" required /></label>
+                      <label>Rule <input [(ngModel)]="editRule[t.id]" [name]="'er' + t.id" placeholder="assignment criteria" /></label>
+                    </div>
+                  } @else {
+                    <strong>{{ t.name }}</strong><br /><span class="muted small">{{ t.ruleDescription }}</span>
+                  }
+                  <div class="actions flat" style="margin-top:0.35rem;">
+                    @if (editing[t.id]) {
+                      <button class="cta small" (click)="saveTier(t)">Save</button>
+                      <button class="link" (click)="editingClose(t.id)">Cancel</button>
+                    } @else {
+                      <button class="link" (click)="editingStart(t)">edit name / rule</button>
+                      <button class="danger" (click)="deleteTier(t)">Delete</button>
+                    }
+                  </div>
+                </td>
                 <td class="mono">{{ t.discountPercent }}%</td>
                 <td>
                   <div class="actions flat">
@@ -74,6 +92,7 @@ interface TierRow { id: string; name: string; discountPercent: number; ruleDescr
                       <button class="cta small ghost" (click)="requestTierApproval(t)">Request approval</button>
                     } @else {
                       <button class="cta small" (click)="applyDiscount(t)">Apply</button>
+                      <button class="link" (click)="cancelTierApproval(t)">cancel request</button>
                     }
                   </div>
                 </td>
@@ -109,6 +128,9 @@ export class WholesaleAdminPage implements OnInit {
   tierChoice: Record<string, string> = {};
   newDiscounts: Record<string, number> = {};
   tierApprovals: Record<string, string> = {};
+  editing: Record<string, boolean> = {};
+  editName: Record<string, string> = {};
+  editRule: Record<string, string> = {};
   nt = { name: '', discountPercent: 0, ruleDescription: '' };
 
   ngOnInit(): void { this.load(); }
@@ -162,5 +184,43 @@ export class WholesaleAdminPage implements OnInit {
   applyDiscount(t: TierRow): void {
     this.api.updateTier(t.id, { discountPercent: Number(this.newDiscounts[t.id]), approvalRequestId: this.tierApprovals[t.id] })
       .subscribe({ next: () => { delete this.tierApprovals[t.id]; this.ok('Discount updated.'); }, error: (e) => this.fail(e, 'Not approved yet.') });
+  }
+
+  editingStart(t: TierRow): void {
+    this.editName[t.id] = t.name;
+    this.editRule[t.id] = t.ruleDescription ?? '';
+    this.editing[t.id] = true;
+  }
+  editingClose(id: string): void {
+    delete this.editing[id];
+  }
+  /** Name and rule edits — allowed immediately; only discounts stay approval-gated. */
+  saveTier(t: TierRow): void {
+    const name = (this.editName[t.id] ?? '').trim();
+    if (!name) { this.error.set('Tier name is required.'); return; }
+    const rule = (this.editRule[t.id] ?? '').trim();
+    this.api.updateTier(t.id, { name, ruleDescription: rule || undefined })
+      .subscribe({ next: () => this.ok('Tier saved.'), error: (e) => this.fail(e, 'Could not save the tier.') });
+  }
+  /** Drop a pending approval locally — the tier discount stays unchanged. */
+  cancelTierApproval(t: TierRow): void {
+    delete this.tierApprovals[t.id];
+    this.ok(`Approval request for '${t.name}' cancelled — the tier is unchanged.`);
+  }
+  deleteTier(t: TierRow): void {
+    void this.alerts.confirm({
+      title: `Delete tier '${t.name}'?`,
+      html: `This removes the <strong>${t.discountPercent}%</strong> tier permanently. It cannot be deleted while wholesale accounts still use it.`,
+      confirm: 'Delete tier',
+      cancel: 'Cancel',
+      danger: true,
+      icon: 'warning',
+    }).then((yes) => {
+      if (!yes) return;
+      this.api.deleteTier(t.id).subscribe({
+        next: () => this.ok('Tier deleted.'),
+        error: (e) => this.fail(e, 'Could not delete the tier.'),
+      });
+    });
   }
 }

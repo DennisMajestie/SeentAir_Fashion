@@ -57,22 +57,25 @@ import { PortalStore } from '../portal.store';
           <p class="num-head"><span class="num">1.</span> Shareholder &amp; governance agreements <span class="tail">0 records</span></p>
           <!-- GAP: no document-library endpoint — executed agreements, CAC forms and share
                certificates appear here as downloadable rows once the API ships one. -->
-          <p class="gap-note">
-            No documents shared yet. Your executed shareholders' agreement, CAC filings, and Class
-            A share certificate appear here once countersigned and released.
-          </p>
+          <div class="empty-state">
+            <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+            <h2 class="empty-state-title">No documents yet</h2>
+            <p class="empty-state-sub">Your shareholders' agreement, CAC filings and share certificate appear here once released.</p>
+          </div>
 
           <p class="num-head"><span class="num">2.</span> Quarterly investor letters &amp; briefings <span class="tail">0 records</span></p>
-          <p class="gap-note">
-            No letters published yet. The Managing Director's quarterly letters are filed here with
-            each distribution cycle.
-          </p>
+          <div class="empty-state">
+            <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+            <h2 class="empty-state-title">No letters yet</h2>
+            <p class="empty-state-sub">The Managing Director's quarterly letters are filed here with each distribution cycle.</p>
+          </div>
 
           <p class="num-head"><span class="num">3.</span> Tax &amp; statutory filings <span class="tail">0 records</span></p>
-          <p class="gap-note">
-            No filings shared yet. Withholding-tax credit notes and statutory receipts relevant to
-            your dividends are deposited here.
-          </p>
+          <div class="empty-state">
+            <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+            <h2 class="empty-state-title">No filings yet</h2>
+            <p class="empty-state-sub">Withholding-tax credit notes and statutory receipts are deposited here.</p>
+          </div>
         </section>
 
         <div>

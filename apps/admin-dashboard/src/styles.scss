@@ -1131,3 +1131,22 @@ $ops-canvas: var(--obsidian);
 .ba-btn.ba-cancel:hover { background: rgba(120, 110, 95, 0.15) !important; }
 .swal2-timer-progress-bar.ba-timer { background: #c9a24b; }
 @media (prefers-reduced-motion: reduce) { .swal2-popup { animation: none !important; } }
+
+/* ============================================================
+   Empty states (Nothing pending / All clear / No X yet)
+   ============================================================ */
+.empty-state {
+  display: grid; justify-items: center; text-align: center;
+  gap: 0.4rem; margin: 0.75rem 0 0.25rem; padding: 2rem 1.25rem;
+  border: 1.5px dashed var(--hairline); background: var(--panel);
+  border-radius: 12px;
+  .empty-state-icon { width: 44px; height: 44px; flex: none; display: grid; place-items: center;
+    border-radius: 50%; background: rgba(201, 162, 74, 0.14); color: var(--gold); margin-bottom: 0.4rem;
+    svg { width: 22px; height: 22px; } }
+  .empty-state-title { margin: 0; font-family: 'Inter', sans-serif; font-weight: 800;
+    font-size: 1rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink); }
+  .empty-state-sub { margin: 0; color: var(--ink-dim); font-size: 0.92rem;
+    line-height: 1.55; max-width: 42ch; }
+  .empty-state-cta { margin-top: 0.7rem; display: grid; justify-items: center; }
+  &.ok { .empty-state-icon { background: rgba(27, 127, 59, 0.12); color: var(--ok); } }
+}

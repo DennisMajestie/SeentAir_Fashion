@@ -44,9 +44,11 @@ import { CartService } from '../cart.service';
         <p class="small"><a routerLink="/account">Track it from your account →</a></p>
       </section>
     } @else if (cart.items().length === 0) {
-      <div class="cart-empty u-rise">
-        <p class="muted flush">Nothing to check out.</p>
-        <a class="cta" routerLink="/shop">Back to the shop</a>
+      <div class="empty-state u-rise">
+        <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+        <h2 class="empty-state-title">Nothing to check out</h2>
+        <p class="empty-state-sub">Add something to your cart first, then come back here.</p>
+        <p class="empty-state-cta"><a class="cta" routerLink="/shop">Back to the shop</a></p>
       </div>
     } @else {
       @if (cart.moqEligible) {

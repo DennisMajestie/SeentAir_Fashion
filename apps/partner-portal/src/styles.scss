@@ -409,3 +409,19 @@ label.field { display: block; margin: 0.7rem 0; font-size: var(--type-label-md);
 .shell-skel .sk-panel { height: 220px; border-radius: var(--radius, 16px); }
 
 @media (prefers-reduced-motion: reduce) { .shell-skel .skeleton { background: color-mix(in srgb, var(--gold) 12%, transparent); } }
+
+/* Empty states (no commentary / docs / distributions yet) */
+.empty-state {
+  display: grid; justify-items: center; text-align: center;
+  gap: 0.4rem; margin: 0.4rem 0 0.2rem; padding: 1.6rem 1.2rem;
+  border: 1.5px dashed var(--hairline-2); background: var(--panel-2); border-radius: 12px;
+  .empty-state-icon { width: 42px; height: 42px; flex: none; display: grid; place-items: center;
+    border-radius: 50%; background: rgba(201, 162, 74, 0.14); color: var(--acid-ink); margin-bottom: 0.35rem;
+    svg { width: 22px; height: 22px; } }
+  .empty-state-title { margin: 0; font-family: 'Inter', sans-serif; font-weight: 700;
+    font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+  .empty-state-sub { margin: 0; color: var(--ink-dim); font-size: 0.88rem;
+    line-height: 1.55; max-width: 44ch; }
+  .empty-state-cta { margin-top: 0.5rem; }
+  &.ok .empty-state-icon { background: rgba(27, 127, 59, 0.12); color: var(--ok); }
+}

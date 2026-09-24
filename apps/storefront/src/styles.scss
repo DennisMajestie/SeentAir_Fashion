@@ -1260,3 +1260,18 @@ select, input, textarea {
 .sk-row { display: flex; align-items: center; gap: 0.6rem; }
 .sk-av { width: 46px; height: 46px; border-radius: 8px; flex: none; }
 .sk-strip { display: grid; gap: 0.9rem; }
+
+/* Empty states (empty cart / nothing to check out) */
+.empty-state {
+  display: grid; justify-items: center; text-align: center;
+  gap: 0.5rem; margin: 1rem 0; padding: 2.75rem 1.5rem 3rem;
+  border: 1.5px dashed var(--line); background: var(--card); border-radius: var(--radius);
+  .empty-state-icon { width: 48px; height: 48px; flex: none; display: grid; place-items: center;
+    border-radius: 50%; background: var(--primary-tint); color: var(--primary-fill); margin-bottom: 0.4rem;
+    svg { width: 24px; height: 24px; } }
+  .empty-state-title { margin: 0; font-family: 'Oswald', sans-serif; font-weight: 700;
+    font-size: 1.1rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink); }
+  .empty-state-sub { margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.6; max-width: 44ch; }
+  .empty-state-cta { margin-top: 0.5rem; }
+  &.ok .empty-state-icon { background: rgba(27, 127, 59, 0.1); color: var(--ok); }
+}
