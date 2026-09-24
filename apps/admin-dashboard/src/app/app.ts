@@ -149,13 +149,13 @@ import { environment } from '../environments/environment';
             </a>
             <nav class="top-tabs" aria-label="Other Seentair apps">
               <a class="preview-tab" [href]="environment.storefrontUrl" target="_blank" rel="noopener noreferrer">
-                Store<span class="tab-note">Preview</span>
+                <span class="tab-ico" aria-hidden="true">storefront</span>Store<span class="tab-note">Preview</span>
               </a>
               <a class="preview-tab" [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer">
-                Wholesale<span class="tab-note">Preview</span>
+                <span class="tab-ico" aria-hidden="true">inventory_2</span>Wholesale<span class="tab-note">Preview</span>
               </a>
               <a class="preview-tab" [href]="environment.partnerUrl" target="_blank" rel="noopener noreferrer">
-                Partners<span class="tab-note">Preview</span>
+                <span class="tab-ico" aria-hidden="true">handshake</span>Partners<span class="tab-note">Preview</span>
               </a>
             </nav>
             <div class="header-actions">

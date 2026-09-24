@@ -99,6 +99,12 @@ code { font-family: 'Inter', sans-serif; font-size: 0.85em; color: var(--ink); f
         padding: 0.45rem 0.8rem; border: 1px solid var(--hairline); border-radius: var(--radius-pill);
         background: var(--panel); transition: color 0.15s ease, border-color 0.15s ease;
         .tab-note { font-size: 0.55rem; font-weight: 600; letter-spacing: 0.12em; color: var(--ink-dim); opacity: 0.75; } }
+      .tab-ico {
+        font-family: 'Material Symbols Outlined', sans-serif;
+        font-variation-settings: 'wght' 500, 'opsz' 20;
+        font-size: 16px; line-height: 1;
+        color: var(--gold-strong);
+      }
     .preview-tab:hover, .preview-tab:hover .tab-note { color: var(--acid-ink); border-color: var(--acid); }
   }
   .menu-toggle {
