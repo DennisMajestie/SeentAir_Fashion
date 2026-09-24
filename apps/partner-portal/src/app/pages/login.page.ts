@@ -187,7 +187,7 @@ import { ThemeService } from '../theme.service';
         max-width: 52ch; margin: 0.6rem auto 1.4rem; }
       .auth-card {
         display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--hairline);
-        background: var(--panel);
+        background: var(--panel); border-radius: var(--radius); overflow: hidden;
       }
       @media (max-width: 759px) { .auth-card { grid-template-columns: 1fr; } }
       .phase { padding: 1.1rem 1.2rem 1.3rem; min-width: 0;

@@ -25,7 +25,8 @@
   --danger: #ba1a1a;
   --ok: #1b7f3b;
 
-  /* Approved industrial interactions: square surfaces, pill buttons (storefront shape) */
+  /* Approved industrial interactions: 16px cards, pill buttons (storefront shape) */
+  --radius: 16px;
   --radius-pill: 999px;
   --radius-field: 0;
 
@@ -247,6 +248,7 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 /* Panels & split layouts */
 .panel {
   background: var(--panel); border: 1px solid var(--hairline);
+  border-radius: var(--radius);
   padding: 1rem 1.1rem 1.15rem; margin: 0 0 0.9rem; min-width: 0;
 }
 .panel-head {

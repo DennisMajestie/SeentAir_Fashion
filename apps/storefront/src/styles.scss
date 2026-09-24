@@ -369,7 +369,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
    the condition is actually true. */
 .notice {
   display: flex; gap: 0.75rem; align-items: flex-start;
-  padding: 0.85rem 1rem; border-radius: 12px;
+  padding: 0.85rem 1rem; border-radius: var(--radius);
   font-size: 0.86rem; line-height: 1.5; border: 1px solid transparent;
   .notice-title { display: block; font-size: 0.68rem; font-weight: 700;
     letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 0.2rem; }
@@ -446,7 +446,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   .exec-count { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1.6rem; color: var(--primary); } }
 .step-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin: 1rem 0 2rem; }
 .step-card {
-  background: var(--card); border: 1px solid var(--line); padding: 0.85rem; border-radius: 2px;
+  background: var(--card); border: 1px solid var(--line); padding: 0.85rem; border-radius: var(--radius);
   .s-idx { font-size: 0.62rem; font-weight: 700; color: var(--muted); letter-spacing: 0.2em; }
   .s-name { font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; font-size: 0.95rem; margin: 0.3rem 0; color: var(--muted); }
   .s-state { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.16em; color: var(--muted); }
@@ -454,12 +454,12 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   &.current { border-color: var(--primary); background: var(--primary-tint);
     .s-name { color: var(--primary); } .s-state { color: var(--primary); } }
 }
-.audit-row { background: var(--card); border: 1px solid var(--line); padding: 0.75rem 0.95rem; margin-bottom: 6px; border-radius: 2px;
+.audit-row { background: var(--card); border: 1px solid var(--line); padding: 0.75rem 0.95rem; margin-bottom: 6px; border-radius: var(--radius);
   .a-time { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.08em; }
   .a-status { text-transform: uppercase; font-weight: 700; letter-spacing: 0.06em; } }
 
 .rule-strip { border: 1px solid var(--primary); background: var(--primary-tint);
-  padding: 0.75rem 0.95rem; font-size: 0.82rem; margin: 1rem 0; border-radius: 2px;
+  padding: 0.75rem 0.95rem; font-size: 0.82rem; margin: 1rem 0; border-radius: var(--radius);
   font-weight: 600; letter-spacing: 0.02em; color: var(--primary); }
 
 /* ---------- buttons & links ---------- */
@@ -544,11 +544,13 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
 
 /* ---------- newsletter ---------- */
 .newsletter {
-  margin-top: 2.5rem; background: var(--container-2); border-block: 1px solid var(--line);
-  padding-top: 2.75rem;
+  margin-top: 2.5rem;
   .newsletter-inner {
     display: flex; flex-wrap: wrap; align-items: center; gap: 1.4rem 2.5rem;
-    justify-content: space-between; padding-block-end: 2.75rem;
+    justify-content: space-between;
+    background: var(--container-2); border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: clamp(1.5rem, 4vw, 2.4rem);
     .nl-copy { max-width: 46ch; h2 { border: none; padding: 0; margin: 0 0 0.35rem; } p { margin: 0; } }
     .newsletter-form { display: flex; gap: 0.6rem; flex-wrap: wrap;
       input {
@@ -626,7 +628,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
 /* ---------- product grid (shop) ---------- */
 .grid-wrap { padding-top: 2.5rem; }
 .shop-hero {
-  position: relative; margin: 1.5rem 0 0.5rem; min-height: 320px; border-radius: 2px; overflow: hidden;
+  position: relative; margin: 1.5rem 0 0.5rem; min-height: 320px; border-radius: var(--radius); overflow: hidden;
   display: flex; align-items: flex-end;
   background-size: cover; background-position: center 30%;
   &::after { content: ''; position: absolute; inset: 0;
@@ -685,7 +687,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
 .card {
-  background: var(--card); border: 1px solid var(--line); border-radius: 2px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
   text-decoration: none; display: block; overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   &:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(28, 27, 27, 0.09);
@@ -698,7 +700,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   display: flex; align-items: center; justify-content: center; overflow: hidden;
   img { width: 100%; height: 100%; object-fit: cover; }
   .thumb-fallback { font-family: 'Oswald', sans-serif; font-size: 3rem; color: var(--line-2); }
-  &.large { max-width: 460px; border: 1px solid var(--line); border-radius: 2px; }
+  &.large { max-width: 460px; border: 1px solid var(--line); border-radius: var(--radius); }
 }
 .category { color: var(--muted); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.18em; margin: 0; font-weight: 700; }
 .price { font-family: 'Oswald', sans-serif; font-weight: 600; margin: 0.35rem 0 0; }
@@ -849,7 +851,7 @@ select, input, textarea {
 .auth-card {
   width: 100%; max-width: 440px;
   background: var(--card); border: 1px solid var(--line);
-  border-radius: 24px; padding: clamp(1.4rem, 4vw, 2.2rem);
+  border-radius: var(--radius); padding: clamp(1.4rem, 4vw, 2.2rem);
 }
 .auth-eyebrow {
   font-size: 11px; font-weight: 700; letter-spacing: 0.14em;
@@ -931,7 +933,7 @@ select, input, textarea {
 
 .auth-submit { width: 100%; margin-top: 0.3rem; }
 .auth-error, .auth-info {
-  margin: 0.9rem 0 0; padding: 0.7rem 0.9rem; border-radius: 12px;
+  margin: 0.9rem 0 0; padding: 0.7rem 0.9rem; border-radius: var(--radius);
   font-size: 0.85rem; line-height: 1.45;
 }
 .auth-error { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent);
@@ -942,7 +944,7 @@ select, input, textarea {
 .auth-trust { margin-top: 1.6rem; }
 
 .auth-box, .success-box, .review-box {
-  background: var(--card); border: 1px solid var(--line); border-radius: 2px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 1.4rem; margin: 1.2rem 0; max-width: 500px;
   input { max-width: 100%; } }
 .checkout-auth { max-width: none; margin: 0; }
@@ -951,7 +953,7 @@ select, input, textarea {
 
 .order-row {
   display: flex; justify-content: space-between; gap: 1rem; padding: 0.9rem;
-  background: var(--card); border: 1px solid var(--line); margin-bottom: 6px; border-radius: 2px;
+  background: var(--card); border: 1px solid var(--line); margin-bottom: 6px; border-radius: var(--radius);
   text-decoration: none; flex-wrap: wrap;
   &:hover { border-color: var(--primary); } }
 .status { text-transform: capitalize; font-weight: 700; color: var(--primary); }
@@ -1044,7 +1046,7 @@ select, input, textarea {
   backdrop-filter: blur(16px) saturate(1.1);
   -webkit-backdrop-filter: blur(16px) saturate(1.1);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--radius);
   box-shadow: 0 2px 10px rgba(28, 27, 27, 0.08);
 }
 

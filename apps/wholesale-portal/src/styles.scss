@@ -68,8 +68,7 @@
   --wrap-max: 1120px;
   --wrap-x: 16px;
 
-  border-radius: 0;
-  --radius: 0;
+  --radius: 16px;
   --radius-pill: 999px; /* storefront button shape */
   --radius-field: 0;
 }
@@ -210,6 +209,7 @@ strong { font-weight: 600; }
 .panel {
   background: var(--surface-lowest);
   border: 1px solid var(--hairline);
+  border-radius: var(--radius);
   padding: var(--space-lg);
   margin: var(--space-lg) 0;
 }
@@ -222,6 +222,7 @@ strong { font-weight: 600; }
   font-size: var(--type-label-md); font-weight: 600; color: var(--muted);
   text-transform: uppercase; letter-spacing: 0.08em;
   border-bottom: 1px solid var(--hairline);
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 
 /* ---------- Buttons & CTAs ---------- */
@@ -359,7 +360,7 @@ label { display: block; margin: var(--space-md) 0; font-size: var(--type-label-m
 }
 
 .auth-card {
-  background: var(--icard); border: 1px solid var(--ihair); padding: var(--space-lg);
+  background: var(--icard); border: 1px solid var(--ihair); padding: var(--space-lg); border-radius: var(--radius);
   .tagbar { display: flex; justify-content: space-between; background: var(--ilow);
     padding: var(--space-sm) var(--space-md); margin: calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg)) var(--space-md);
     font-size: var(--type-label-md); font-weight: 600; text-transform: uppercase;
