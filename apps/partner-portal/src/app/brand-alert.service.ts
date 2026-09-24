@@ -65,7 +65,7 @@ export class BrandAlertService {
     const p = this.p();
     await Swal.fire({
       toast: true,
-      position: 'top-end',
+      position: 'center',
       timer: opts.timer ?? 2600,
       timerProgressBar: true,
       text,
