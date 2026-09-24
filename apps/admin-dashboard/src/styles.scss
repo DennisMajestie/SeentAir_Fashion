@@ -155,9 +155,17 @@ code { font-family: 'Inter', sans-serif; font-size: 0.85em; color: var(--ink); f
 .layout { display: flex; flex: 1; min-height: 0; }
 
 .sidebar {
+  position: sticky; top: 0;
+  height: 100vh; height: 100svh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--hairline-2) transparent;
   width: 224px; flex-shrink: 0;
   background: var(--panel); border-right: 1px solid var(--hairline);
   padding: 1rem 0.8rem 0.8rem; display: flex; flex-direction: column; gap: 0.5rem;
+  &::-webkit-scrollbar { width: 8px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: var(--hairline-2); border-radius: 4px; }
   nav { display: flex; flex-direction: column; gap: 2px;
     a { color: var(--ink-dim); text-decoration: none; padding: 0.44rem 0.6rem;
         font-size: var(--type-label-md); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
@@ -175,7 +183,9 @@ code { font-family: 'Inter', sans-serif; font-size: 0.85em; color: var(--ink); f
     }
   }
   .sidebar-foot {
-    margin-top: auto; padding-top: 0.9rem; border-top: 1px solid var(--hairline);
+    margin-top: auto; position: sticky; bottom: 0;
+    padding-top: 0.9rem; border-top: 1px solid var(--hairline);
+    background: var(--panel);
     display: flex; align-items: center; gap: 0.6rem; min-width: 0;
     .avatar {
       flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%;
