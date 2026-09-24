@@ -16,7 +16,7 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
       <div class="ops-id">
         <p class="eyebrow">Operations · Production floor pipeline</p>
         <h1>Production Kanban board</h1>
-        <p class="ops-sub">Batches per variant across the factory stages — completion stocks finished goods via the ledger.</p>
+        <p class="ops-sub">Batches for each product as they move through the factory. Finished batches are added to stock automatically.</p>
       </div>
       <div class="ops-actions">
         <span class="search"><input placeholder="Filter by SKU…" [(ngModel)]="skuFilter" name="skuFilter" aria-label="Filter batches by SKU" /></span>
@@ -35,7 +35,7 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
       <div class="kpi">
         <span class="kpi-label">Completed</span>
         <span class="kpi-value">{{ completedUnits() | number }} <small>units</small></span>
-        <span class="kpi-sub">ready for dispatch (stocked via ledger)</span>
+        <span class="kpi-sub">ready to ship (added to stock)</span>
       </div>
       <div class="kpi">
         <span class="kpi-label">Rejection rate</span>
@@ -124,7 +124,7 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
 
         <div class="cols">
           <section class="panel flat">
-            <div class="panel-head"><h2>Batch cost breakdown</h2><span class="ph-sub">standard direct allocation</span></div>
+            <div class="panel-head"><h2>Batch costs</h2><span class="ph-sub">how the money splits</span></div>
             @if (costOf(b.id); as cost) {
               <table class="table">
                 <tbody>
@@ -132,7 +132,7 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
                   <tr><td>Sewing & assembly labour</td><td class="mono">₦{{ num(cost['sewingCost']) | number: '1.0-2' }}</td></tr>
                   <tr><td>Branding & hardware</td><td class="mono">₦{{ num(cost['brandingCost']) | number: '1.0-2' }}</td></tr>
                   <tr><td>Packaging & polybags</td><td class="mono">₦{{ num(cost['packagingCost']) | number: '1.0-2' }}</td></tr>
-                  <tr><td><strong>Aggregate run valuation</strong></td>
+                  <tr><td><strong>Total batch value</strong></td>
                       <td class="mono"><strong class="naira">₦{{ totalCost(b.id) | number: '1.0-2' }}</strong>
                         <span class="muted small"> · ₦{{ perUnit(b) | number: '1.0-2' }}/unit</span></td></tr>
                 </tbody>
@@ -190,7 +190,7 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
     <!-- ===================== A2 — Kanban board ===================== -->
     <div class="panel-head" style="margin-top:1.2rem;">
       <h2>Board</h2>
-      <span class="ph-sub">completion stocks finished goods via the inventory ledger</span>
+      <span class="ph-sub">finished batches are added to stock automatically</span>
     </div>
     <div class="board">
       @for (stage of stages(); track stage; let i = $index) {

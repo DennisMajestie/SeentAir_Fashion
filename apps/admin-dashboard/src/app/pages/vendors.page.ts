@@ -19,9 +19,9 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
   template: `
     <div class="ops-head">
       <div class="ops-id">
-        <p class="eyebrow">Management · Procurement</p>
-        <h1>Supply records & procurement</h1>
-        <p class="ops-sub">Inward supply history per material, from the inventory ledger's purchase movements.</p>
+        <p class="eyebrow">Management · Purchases</p>
+        <h1>Supply records & purchases</h1>
+        <p class="ops-sub">How much of each material you've bought, straight from Inventory's records.</p>
       </div>
       <div class="ops-actions">
         <a class="cta small" href="/materials">Draft new purchase order</a>
@@ -76,11 +76,11 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
           <dl class="kv">
             <dt>On hand</dt><dd>{{ m.currentQuantity | number }} {{ m.unit }}</dd>
             <dt>Reorder at</dt><dd>{{ m.reorderThreshold | number }} {{ m.unit }}</dd>
-            <dt>Purchased in</dt><dd>+{{ purchasedOf(m.id) | number }} {{ m.unit }} (ledger total)</dd>
-            <dt>Vendor</dt><dd class="muted">free-text on each purchase note — no vendor registry (descoped)</dd>
+            <dt>Purchased in</dt><dd>+{{ purchasedOf(m.id) | number }} {{ m.unit }} (total bought)</dd>
+            <dt>Vendor</dt><dd class="muted">free-text on each purchase note — vendors aren't tracked as a separate list (yet)</dd>
           </dl>
 
-          <div class="panel-head"><h2>Inward purchase ledger</h2><span class="ph-sub">live movements</span></div>
+          <div class="panel-head"><h2>Purchase history</h2><span class="ph-sub">latest first</span></div>
           @if (ledger().length > 0) {
             <table class="table">
               <thead><tr><th>Date</th><th>Qty</th><th>Reference</th></tr></thead>
@@ -100,10 +100,10 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
           <!-- GAP: per-purchase supplier name, lead time and ₦ cost history — purchases store a
                note and cost server-side but the movements read model exposes qty/reference only. -->
           <div class="actions" style="margin-top:0.6rem;">
-            <a class="cta small ghost" href="/materials">Record purchase (approval-gated)</a>
+            <a class="cta small ghost" href="/materials">Record purchase (needs approval)</a>
           </div>
         } @else {
-          <p class="muted small">Select a supply record to view its inward purchase ledger.</p>
+          <p class="muted small">Select a material to see its purchase history.</p>
         }
       </aside>
     </div>

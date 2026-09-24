@@ -14,12 +14,12 @@ import { BrandAlertService } from '../brand-alert.service';
   template: `
     <div class="ops-head">
       <div class="ops-id">
-        <p class="eyebrow">Governance · Timeliness & compliance</p>
+        <p class="eyebrow">Approvals · who asked & what changed</p>
         <h1>Management approval queue</h1>
         <p class="ops-sub">Price changes, purchasing, production starts and stock removals wait here — nothing proceeds without a decision.</p>
       </div>
       <div class="ops-actions">
-        <span class="live-chip">Queue live</span>
+        <span class="live-chip">Live</span>
         <span class="chip warn">{{ approvals().length }} pending</span>
       </div>
     </div>

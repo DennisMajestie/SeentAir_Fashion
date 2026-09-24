@@ -16,27 +16,27 @@ interface TierRow { id: string; name: string; ruleDescription: string | null; di
   template: `
     <div class="ops-head">
       <div class="ops-id">
-        <p class="eyebrow">Product · Silhouette registry</p>
-        <h1>Product catalogue & specifications</h1>
-        <p class="ops-sub">Central registry for silhouettes, variants, colourways and price integrity across channels.</p>
+        <p class="eyebrow">Products · Prices & sizes</p>
+        <h1>Product catalogue</h1>
+        <p class="ops-sub">Everything you sell — products, sizes, colours and prices, all in one place.</p>
       </div>
       <div class="ops-actions">
-        <button class="cta small" type="button" (click)="showAdd.set(!showAdd())">{{ showAdd() ? 'Close' : '+ New silhouette' }}</button>
+        <button class="cta small" type="button" (click)="showAdd.set(!showAdd())">{{ showAdd() ? 'Close' : '+ New product' }}</button>
       </div>
     </div>
 
     <div class="kpi-bar">
-      <div class="kpi"><span class="kpi-label">Active silhouettes</span><span class="kpi-value">{{ products().length }}</span><span class="kpi-sub">styles registered</span></div>
-      <div class="kpi"><span class="kpi-label">Catalogue SKUs</span><span class="kpi-value">{{ skuCount() }}</span><span class="kpi-sub">active variants</span></div>
-      <div class="kpi"><span class="kpi-label">Catalogue asset valuation</span><span class="kpi-value">₦{{ catalogueValue() | number: '1.0-0' }}</span><span class="kpi-sub">stock on hand × current retail price</span></div>
+      <div class="kpi"><span class="kpi-label">Active products</span><span class="kpi-value">{{ products().length }}</span><span class="kpi-sub">in your catalogue</span></div>
+      <div class="kpi"><span class="kpi-label">Sizes & colours</span><span class="kpi-value">{{ skuCount() }}</span><span class="kpi-sub">across all products</span></div>
+      <div class="kpi"><span class="kpi-label">Stock value</span><span class="kpi-value">₦{{ catalogueValue() | number: '1.0-0' }}</span><span class="kpi-sub">units in stock × retail price</span></div>
       <div class="kpi" [class.kpi-action]="pendingPriceChanges() > 0">
         <span class="kpi-label">Pending price changes</span>
         <span class="kpi-value">{{ pendingPriceChanges() }}</span>
-        <span class="kpi-sub">dual-control — decided in Approvals</span>
+        <span class="kpi-sub">needs management approval — see Approvals</span>
       </div>
     </div>
 
-    <p class="rule-strip">Price changes require an approved request — request → Management approves in the queue → apply.</p>
+    <p class="rule-strip">To change a price: request it → management approves it → then it applies.</p>
 
     @if (showAdd()) {
       <div class="cols">
@@ -61,7 +61,7 @@ interface TierRow { id: string; name: string; ruleDescription: string | null; di
           </div>
         </section>
         <section class="panel">
-          <div class="panel-head"><h2>Add variant</h2></div>
+          <div class="panel-head"><h2>Add size / colour</h2></div>
           <form class="form-grid" (ngSubmit)="createVariant()">
             <label class="wide">Product
               <select [(ngModel)]="nv.productId" name="vprod" required>
@@ -71,15 +71,15 @@ interface TierRow { id: string; name: string; ruleDescription: string | null; di
             <label>SKU <input [(ngModel)]="nv.sku" name="vsku" required placeholder="TEE-BLK-M" /></label>
             <label>Size <input [(ngModel)]="nv.size" name="vsize" placeholder="M" /></label>
             <label>Colour <input [(ngModel)]="nv.colour" name="vcol" placeholder="black" /></label>
-            <label>Price override ₦ <input type="number" min="0" [(ngModel)]="nv.priceOverride" name="vpo" /></label>
-            <div class="wide"><button class="cta small" type="submit">Add variant</button></div>
+            <label>Custom price ₦ <input type="number" min="0" [(ngModel)]="nv.priceOverride" name="vpo" /></label>
+            <div class="wide"><button class="cta small" type="submit">Add size / colour</button></div>
           </form>
         </section>
       </div>
     }
 
     <div class="ops-toolbar">
-      <span class="search"><input placeholder="Search by silhouette, SKU or category…" [(ngModel)]="query" name="q" aria-label="Search catalogue" /></span>
+      <span class="search"><input placeholder="Search by product, size or category…" [(ngModel)]="query" name="q" aria-label="Search catalogue" /></span>
       <div class="seg" role="group" aria-label="Category">
         <button type="button" [class.on]="catFilter() === ''" (click)="catFilter.set('')">All <span class="seg-n">{{ products().length }}</span></button>
         @for (c of categories(); track c.name) {
@@ -91,7 +91,7 @@ interface TierRow { id: string; name: string; ruleDescription: string | null; di
     <div class="side-split">
       <div class="table-scroll">
         <table class="table">
-          <thead><tr><th>Silhouette & SKU range</th><th>Category</th><th>Colourways</th><th>Stock</th><th>Retail ₦</th></tr></thead>
+          <thead><tr><th>Product & item codes</th><th>Category</th><th>Colours & sizes</th><th>Stock</th><th>Retail ₦</th></tr></thead>
           <tbody>
             @for (p of visible(); track p.id) {
               <tr class="clickable" [class.sel]="selected()?.id === p.id" (click)="select(p)">
@@ -100,12 +100,12 @@ interface TierRow { id: string; name: string; ruleDescription: string | null; di
                   @if (p.collection) { <span class="chip gap-end">{{ p.collection.name }}</span> }
                 </td>
                 <td><span class="chip">{{ p.category || '—' }}</span></td>
-                <td class="mono">{{ colourways(p) }} colour(s) · {{ p.variants.length }} variant(s)</td>
+                <td class="mono">{{ colourways(p) }} colour(s) · {{ p.variants.length }} size option(s)</td>
                 <td class="mono">{{ stockOf(p) | number }}</td>
                 <td class="mono">₦{{ p.basePrice | number: '1.0-0' }}</td>
               </tr>
             }
-            @if (visible().length === 0) { <tr><td colspan="5" class="muted small">No silhouettes match.</td></tr> }
+            @if (visible().length === 0) { <tr><td colspan="5" class="muted small">No products match.</td></tr> }
           </tbody>
         </table>
       </div>
@@ -117,7 +117,7 @@ interface TierRow { id: string; name: string; ruleDescription: string | null; di
             <span class="chip acid">{{ p.category || 'uncategorised' }}</span>
           </div>
 
-          <div class="panel-head"><h2>Commercial & margins profile</h2></div>
+          <div class="panel-head"><h2>Prices & margins</h2></div>
           <dl class="kv">
             <dt>Retail price</dt><dd class="naira">₦{{ p.basePrice | number: '1.0-0' }}</dd>
             @for (t of tiers(); track t.id) {
@@ -127,7 +127,7 @@ interface TierRow { id: string; name: string; ruleDescription: string | null; di
             <dt>Stock on hand</dt><dd>{{ stockOf(p) | number }} unit(s) · est. ₦{{ stockValue(p) | number: '1.0-0' }}</dd>
           </dl>
 
-          <div class="panel-head"><h2>Target retail price revision</h2><span class="ph-sub">dual-control</span></div>
+          <div class="panel-head"><h2>Change retail price</h2><span class="ph-sub">needs management approval</span></div>
           <div class="actions">
             <input type="number" placeholder="New ₦" [(ngModel)]="newPrices[p.id]" name="npx" class="num-input-sm" />
             @if (!approvals[p.id]) {
@@ -138,7 +138,7 @@ interface TierRow { id: string; name: string; ruleDescription: string | null; di
           </div>
 
           <div class="gap-sep"></div>
-          <div class="panel-head"><h2>Size matrix & availability</h2><span class="ph-sub">live from the API</span></div>
+          <div class="panel-head"><h2>Sizes & availability</h2><span class="ph-sub">up to date</span></div>
           @if (variantRows().length > 0) {
             <table class="table">
               <thead><tr><th>SKU</th><th>Size</th><th>Colour</th><th>Price</th><th>Status</th></tr></thead>
@@ -161,7 +161,7 @@ interface TierRow { id: string; name: string; ruleDescription: string | null; di
                export need a tech-pack data model the API doesn't have (see Tech pack page). -->
           <a class="link" href="/tech-pack">Open tech pack editor (layout preview)</a>
         } @else {
-          <p class="muted small">Select a silhouette to open its spec inspector: pricing, tiers and size matrix.</p>
+          <p class="muted small">Select a product to see its prices, wholesale discounts and sizes.</p>
         }
       </aside>
     </div>

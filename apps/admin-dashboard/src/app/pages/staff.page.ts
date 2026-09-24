@@ -32,11 +32,11 @@ const ROLES = [
     <div class="kpi-bar">
       <div class="kpi"><span class="kpi-label">Total headcount</span><span class="kpi-value">{{ users().length }}</span><span class="kpi-sub">accounts enrolled</span></div>
       <div class="kpi"><span class="kpi-label">Active</span><span class="kpi-value">{{ activeCount() }}</span><span class="kpi-sub">{{ users().length - activeCount() }} inactive/suspended</span></div>
-      <div class="kpi"><span class="kpi-label">2FA enforced</span><span class="kpi-value">{{ totpCount() }}<small>/{{ users().length }}</small></span><span class="kpi-sub">TOTP enabled accounts</span></div>
-      <div class="kpi"><span class="kpi-label">Roles in use</span><span class="kpi-value">{{ rolesInUse() }}</span><span class="kpi-sub">of {{ roles.length }} defined in the matrix</span></div>
+      <div class="kpi"><span class="kpi-label">2FA enforced</span><span class="kpi-value">{{ totpCount() }}<small>/{{ users().length }}</small></span><span class="kpi-sub">with 2FA on</span></div>
+      <div class="kpi"><span class="kpi-label">Roles in use</span><span class="kpi-value">{{ rolesInUse() }}</span><span class="kpi-sub">of {{ roles.length }} set up</span></div>
     </div>
 
-    <p class="rule-strip">LEAST PRIVILEGE // new accounts start view-only per the role matrix. Recommend 2FA for every staff account (Security page).</p>
+    <p class="rule-strip">START SAFE // new staff start view-only and you give them more access as needed. Turn on 2FA for every account (Security page).</p>
 
     @if (showInvite()) {
       <section class="panel">
@@ -104,7 +104,7 @@ const ROLES = [
               <dt>Status</dt><dd>{{ u.status }}</dd>
               <dt>Created</dt><dd>{{ dt(d['createdAt']) | date: 'medium' }}</dd>
               <dt>Last login</dt><dd>{{ d['lastLoginAt'] ? (dt(d['lastLoginAt']) | date: 'medium') : 'never' }}</dd>
-              <dt>2FA</dt><dd>{{ u.totpEnabled ? 'TOTP enabled' : 'not enabled' }}</dd>
+              <dt>2FA</dt><dd>{{ u.totpEnabled ? 'on' : 'off' }}</dd>
             </dl>
           } @else {
             <p class="muted small">Loading account record…</p>
@@ -112,7 +112,7 @@ const ROLES = [
 
           <div class="gap-sep"></div>
           <div class="panel-head"><h2>Role & clearance</h2></div>
-          <p class="muted small">Module-level permissions follow the role matrix and are enforced by the API on every endpoint.</p>
+          <p class="muted small">Each staff member can only see and do what their role allows — this is enforced automatically.</p>
           <!-- GAP: the reference's per-module permission dot-matrix (view/own/edit/full/approve
                per module) needs a permissions read endpoint; the API only exposes role change. -->
           <div class="actions">

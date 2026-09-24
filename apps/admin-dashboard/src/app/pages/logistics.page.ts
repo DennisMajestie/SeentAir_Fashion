@@ -18,29 +18,29 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
   template: `
     <div class="ops-head">
       <div class="ops-id">
-        <p class="eyebrow">Operations · Deliveries & haulage</p>
-        <h1>Inter-facility haulage & delivery logistics</h1>
-        <p class="ops-sub">Real-time tracking of finished goods legs between factory, depots and customers.</p>
+        <p class="eyebrow">Operations · Deliveries</p>
+        <h1>Deliveries & shipping</h1>
+        <p class="ops-sub">Live tracking of finished goods as they move between the factory, depots and customers.</p>
       </div>
       <div class="ops-actions">
         <span class="live-chip">Tracking live</span>
-        <button class="cta small" type="button" (click)="showCreate.set(!showCreate())">{{ showCreate() ? 'Close' : '⚡ Schedule haulage dispatch' }}</button>
+        <button class="cta small" type="button" (click)="showCreate.set(!showCreate())">{{ showCreate() ? 'Close' : '⚡ New delivery run' }}</button>
       </div>
     </div>
 
     <div class="kpi-bar">
-      <div class="kpi"><span class="kpi-label">Haulage runs</span><span class="kpi-value">{{ legs().length }}</span><span class="kpi-sub">delivery legs on record</span></div>
-      <div class="kpi"><span class="kpi-label">Active transit</span><span class="kpi-value">{{ countStatus('in_transit') }}</span><span class="kpi-sub">{{ countStatus('pending') }} awaiting gate pass</span></div>
-      <div class="kpi"><span class="kpi-label">Delivered & signed</span><span class="kpi-value">{{ countStatus('delivered') }}</span><span class="kpi-sub">{{ countStatus('failed') }} failed leg(s)</span></div>
-      <div class="kpi"><span class="kpi-label">Freight spend</span><span class="kpi-value">₦{{ totalCost() | number: '1.0-0' }}</span><span class="kpi-sub">recorded leg costs</span></div>
+      <div class="kpi"><span class="kpi-label">Delivery runs</span><span class="kpi-value">{{ legs().length }}</span><span class="kpi-sub">runs on record</span></div>
+      <div class="kpi"><span class="kpi-label">Active transit</span><span class="kpi-value">{{ countStatus('in_transit') }}</span><span class="kpi-sub">{{ countStatus('pending') }} not yet dispatched</span></div>
+      <div class="kpi"><span class="kpi-label">Delivered & signed</span><span class="kpi-value">{{ countStatus('delivered') }}</span><span class="kpi-sub">{{ countStatus('failed') }} failed run(s)</span></div>
+      <div class="kpi"><span class="kpi-label">Freight spend</span><span class="kpi-value">₦{{ totalCost() | number: '1.0-0' }}</span><span class="kpi-sub">recorded costs</span></div>
       <!-- GAP: unit volumes per run (pcs) need consignment contents the delivery leg doesn't store. -->
     </div>
 
     @if (showCreate()) {
       <section class="panel">
-        <div class="panel-head"><h2>Schedule haulage dispatch</h2><span class="ph-sub">creates a delivery leg</span></div>
+        <div class="panel-head"><h2>New delivery run</h2><span class="ph-sub">books a delivery</span></div>
         <form class="form-grid" (ngSubmit)="create()">
-          <label class="wide">Order id <input [(ngModel)]="nd.orderId" name="doid" required placeholder="paste manifest ref (order uuid)" /></label>
+          <label class="wide">Order id <input [(ngModel)]="nd.orderId" name="doid" required placeholder="paste order reference (order id)" /></label>
           <label>Carrier
             <select [(ngModel)]="nd.carrier" name="dcar">
               <option value="gigl">GIGL (API)</option>
@@ -75,7 +75,7 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
     <div class="side-split">
       <div class="table-scroll">
         <table class="table">
-          <thead><tr><th>Waybill / run</th><th>Carrier</th><th>Leg</th><th>Tracking</th><th>Cost</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Shipment / run</th><th>Carrier</th><th>Step</th><th>Tracking</th><th>Cost</th><th>Status</th><th></th></tr></thead>
           <tbody>
             @for (l of visible(); track l.id) {
               <tr class="clickable" [class.sel]="selected()?.id === l.id" (click)="select(l)">
@@ -95,7 +95,7 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
                 </td>
               </tr>
             }
-            @if (visible().length === 0) { <tr><td colspan="7" class="muted small">No haulage runs in this view.</td></tr> }
+            @if (visible().length === 0) { <tr><td colspan="7" class="muted small">No delivery runs in this view.</td></tr> }
           </tbody>
         </table>
       </div>
@@ -103,17 +103,17 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
       <aside class="inspector">
         @if (selected(); as l) {
           <div class="insp-head">
-            <h2>Master waybill WB-{{ l.id.slice(0, 6) }}</h2>
+            <h2>Shipment WB-{{ l.id.slice(0, 6) }}</h2>
             <span class="chip" [class.ok]="l.status === 'delivered'" [class.warn]="l.status === 'in_transit'" [class.bad]="l.status === 'failed'">{{ l.status.replaceAll('_', ' ') }}</span>
           </div>
           <dl class="kv">
-            <dt>Order manifest</dt><dd><code class="wrap-anywhere">{{ l.order.id }}</code></dd>
+            <dt>Order reference</dt><dd><code class="wrap-anywhere">{{ l.order.id }}</code></dd>
             <dt>Carrier</dt><dd>{{ l.carrier.replaceAll('_', ' ') }}</dd>
             <dt>Leg number</dt><dd>{{ l.legNumber }}</dd>
             <dt>Freight cost</dt><dd>{{ l.cost !== null ? '₦' + (l.cost | number) : 'not recorded' }}</dd>
           </dl>
 
-          <div class="panel-head"><h2>Carrier telemetry</h2><span class="ph-sub">live tracking read</span></div>
+          <div class="panel-head"><h2>Live tracking</h2><span class="ph-sub">updated as it moves</span></div>
           @if (tracking(); as t) {
             <dl class="kv">
               <dt>Tracking ref</dt><dd class="wrap-anywhere">{{ t['trackingRef'] || '—' }}</dd>
@@ -128,11 +128,11 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
                PIN handshake need GPS/telematics feeds no carrier integration provides yet
                (GIGL adapter awaits production keys). -->
         } @else {
-          <p class="muted small">Select a haulage run to open its master waybill and carrier telemetry.</p>
+          <p class="muted small">Select a delivery run to see its shipment details and live tracking.</p>
         }
 
         <div class="gap-sep"></div>
-        <div class="panel-head"><h2>Zone pricing engine</h2><span class="ph-sub">weight + location</span></div>
+        <div class="panel-head"><h2>Zone prices</h2><span class="ph-sub">weight + location</span></div>
         <table class="table">
           <thead><tr><th>Zone</th><th>Base ₦</th><th>Per kg ₦</th></tr></thead>
           <tbody>

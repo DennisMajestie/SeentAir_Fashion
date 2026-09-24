@@ -19,12 +19,12 @@ const NEXT_STATUS: Record<string, string> = {
     <div class="ops-head">
       <div class="ops-id">
         <p class="eyebrow">Operations · Omnichannel orders</p>
-        <h1>Orders & fulfilment desk</h1>
+        <h1>Orders & shipping</h1>
         <p class="ops-sub">Centralised payment verification and dispatch routing across wholesale B2B, retail web and in-store.</p>
       </div>
       <div class="ops-actions">
-        <span class="live-chip">Desk live</span>
-        <button class="cta small ghost" type="button" (click)="print()">Print daily manifest</button>
+        <span class="live-chip">Live</span>
+        <button class="cta small ghost" type="button" (click)="print()">Print today's deliveries</button>
       </div>
     </div>
 
@@ -110,7 +110,7 @@ const NEXT_STATUS: Record<string, string> = {
     @if (selected(); as o) {
       <section class="panel" style="border-color: var(--hairline-strong);">
         <div class="panel-head">
-          <h2>Dispatch dossier & pick verification — #{{ o.id.slice(0, 8) }}</h2>
+          <h2>Dispatch details & item check — #{{ o.id.slice(0, 8) }}</h2>
           <span class="chip" [class.ok]="o.paymentStatus === 'paid'" [class.bad]="o.paymentStatus !== 'paid'">{{ o.paymentStatus }}</span>
           <span class="chip acid">{{ o.status.replaceAll('_', ' ') }}</span>
           <span class="ph-end">
@@ -122,7 +122,7 @@ const NEXT_STATUS: Record<string, string> = {
 
         <div class="ops-grid">
           <div>
-            <div class="panel-head"><h2>Verified pick checklist</h2><span class="ph-sub">{{ itemCount(o) }} unit(s) to stage</span></div>
+            <div class="panel-head"><h2>Packing checklist</h2><span class="ph-sub">{{ itemCount(o) }} unit(s) to stage</span></div>
             <table class="table">
               <thead><tr><th>SKU</th><th>Description</th><th>Qty</th><th>Unit ₦</th><th>Line ₦</th></tr></thead>
               <tbody>
@@ -155,19 +155,19 @@ const NEXT_STATUS: Record<string, string> = {
           </div>
 
           <aside>
-            <div class="panel-head"><h2>Consignee & routing</h2></div>
+            <div class="panel-head"><h2>Recipient & delivery</h2></div>
             <dl class="kv">
-              <dt>Consignee</dt><dd>{{ o.customer?.name ?? 'walk-in customer' }}</dd>
+              <dt>Recipient</dt><dd>{{ o.customer?.name ?? 'walk-in customer' }}</dd>
               <dt>Channel</dt><dd>{{ o.channel.replaceAll('_', ' ') }}@if (o.source) { · via {{ o.source }} }</dd>
               <dt>Placed</dt><dd>{{ o.createdAt | date: 'medium' }}</dd>
               <dt>Delivered</dt><dd>{{ o.deliveredAt ? (str(o.deliveredAt) | date: 'medium') : 'not yet' }}</dd>
-              <dt>Manifest ref</dt><dd><code class="wrap-anywhere">{{ o.id }}</code></dd>
+              <dt>Order reference</dt><dd><code class="wrap-anywhere">{{ o.id }}</code></dd>
             </dl>
             <!-- GAP: shipping address, gross weight/pallet staging and the QR thermal-stencil
                  preview need address & parcel data the order API doesn't carry. -->
-            <p class="mini-note">Create the courier leg in Logistics with this manifest ref.</p>
+            <p class="mini-note">Book the delivery in Logistics using this order reference.</p>
             <div class="actions flat">
-              <button class="cta small ghost" type="button" (click)="copyRef(o.id)">Copy manifest ref</button>
+              <button class="cta small ghost" type="button" (click)="copyRef(o.id)">Copy order reference</button>
               <a class="cta small ghost" href="/logistics">Open logistics</a>
             </div>
 
@@ -269,7 +269,7 @@ export class OrdersPage implements OnInit {
 
   copyRef(id: string): void {
     navigator.clipboard?.writeText(id).then(
-      () => this.message.set('Manifest ref copied.'),
+      () => this.message.set('Order reference copied.'),
       () => this.error.set('Could not copy — select and copy the ref manually.'),
     );
   }

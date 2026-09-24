@@ -16,7 +16,7 @@ import { ApiService, ReturnRequest } from '../api.service';
       <div class="ops-id">
         <p class="eyebrow">Operations · Returns & inspection</p>
         <h1>Customer returns & inspection queue</h1>
-        <p class="ops-sub">Omnichannel return triage, garment inspection, condition grading and restock authorisation.</p>
+        <p class="ops-sub">Check returned items, decide what happens to them, and authorise restocking.</p>
       </div>
       <div class="ops-actions">
         <span class="live-chip">Intake live</span>
@@ -27,7 +27,7 @@ import { ApiService, ReturnRequest } from '../api.service';
       <div class="kpi" [class.kpi-action]="pendingCount() > 0">
         <span class="kpi-label">Pending inspections</span>
         <span class="kpi-value">{{ pendingCount() }}</span>
-        <span class="kpi-sub">awaiting grading & disposition</span>
+        <span class="kpi-sub">waiting to be checked</span>
       </div>
       <div class="kpi"><span class="kpi-label">Units in quarantine</span><span class="kpi-value">{{ pendingUnits() }}</span><span class="kpi-sub">across open requests</span></div>
       <div class="kpi"><span class="kpi-label">Overdue returns</span><span class="kpi-value" [class.error]="overdueCount() > 0">{{ overdueCount() }}</span><span class="kpi-sub">past the 24h physical-return deadline</span></div>
@@ -52,11 +52,11 @@ import { ApiService, ReturnRequest } from '../api.service';
     <div class="side-split">
       <div class="table-scroll">
         <table class="table">
-          <thead><tr><th>RMA</th><th>Item</th><th>Reason</th><th>Requested</th><th>Return deadline</th><th>Status</th></tr></thead>
+          <thead><tr><th>Return</th><th>Item</th><th>Reason</th><th>Requested</th><th>Return deadline</th><th>Status</th></tr></thead>
           <tbody>
             @for (r of visible(); track r.id) {
               <tr class="clickable" [class.sel]="selected()?.id === r.id" (click)="select(r)">
-                <td><code>RMA-{{ r.id.slice(0, 6) }}</code><br /><span class="mini-note">order {{ r.order.id.slice(0, 8) }}</span></td>
+                <td><code>RET-{{ r.id.slice(0, 6) }}</code><br /><span class="mini-note">order {{ r.order.id.slice(0, 8) }}</span></td>
                 <td><strong>{{ r.variant.sku }}</strong> × {{ r.quantity }}</td>
                 <td class="small">“{{ r.reason }}”</td>
                 <td class="mono small">{{ r.requestedAt | date: 'MMM d, HH:mm' }}</td>
@@ -78,7 +78,7 @@ import { ApiService, ReturnRequest } from '../api.service';
       <aside class="inspector">
         @if (selected(); as r) {
           <div class="insp-head">
-            <h2>RMA-{{ r.id.slice(0, 6) }}</h2>
+            <h2>RET-{{ r.id.slice(0, 6) }}</h2>
             <span class="chip" [class.warn]="r.status === 'requested'" [class.ok]="r.status !== 'requested'">{{ r.status.replaceAll('_', ' ') }}</span>
           </div>
           <dl class="kv">
@@ -93,14 +93,14 @@ import { ApiService, ReturnRequest } from '../api.service';
 
           @if (r.status === 'requested') {
             <div class="gap-sep"></div>
-            <div class="panel-head"><h2>Condition grading & disposition</h2></div>
+            <div class="panel-head"><h2>Check condition & decide</h2></div>
             <label>Inspection note (required)
               <input [(ngModel)]="resolutions[r.id]" name="res" placeholder="e.g. tags intact, refund issued / seam damage" />
             </label>
             <div class="attention">
               <div class="att-item">
                 <span class="att-tag">Grade A/B · Pristine or mint-grade</span>
-                <p class="att-body">Original packaging & tags intact — return to sellable stock (ledger movement: return in).</p>
+                <p class="att-body">Original packaging and tags intact — put it back into sellable stock.</p>
                 <span class="att-act"><button class="cta small" (click)="resolve(r.id, 'restocked')">✓ Approve & restock</button></span>
               </div>
               <div class="att-item crit">
@@ -110,10 +110,10 @@ import { ApiService, ReturnRequest } from '../api.service';
               </div>
             </div>
           } @else {
-            <p class="success small">This RMA has been resolved — disposition is recorded on the inventory ledger and audit log.</p>
+            <p class="success small">This return has been resolved — the outcome is recorded in Inventory and the Activity log.</p>
           }
         } @else {
-          <p class="muted small">Select an RMA to open the inspection & grading desk.</p>
+          <p class="muted small">Select a return to check the item and decide what happens to it.</p>
         }
       </aside>
     </div>

@@ -16,12 +16,12 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
       <div class="ops-id">
         <p class="eyebrow">Factory terminal</p>
         <h1>Station kiosk</h1>
-        <p class="ops-sub">Active traveler batch for this station — large-format controls for the sewing floor.</p>
+        <p class="ops-sub">The batch currently at this work station — big, easy buttons for the sewing floor.</p>
       </div>
       <div class="ops-actions">
         <span class="live-chip">Station online</span>
         <select class="table-filter" [(ngModel)]="selectedId" name="batch" (ngModelChange)="pick()">
-          <option value="">— assign traveler batch —</option>
+          <option value="">— assign a batch —</option>
           @for (b of batches(); track b.id) {
             <option [value]="b.id">#{{ b.id.slice(0, 6) }} · {{ b.variant.sku }} × {{ b.quantity }} ({{ b.stage }})</option>
           }
@@ -32,9 +32,9 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
     @if (selected(); as b) {
       <div class="kpi-bar">
         <div class="kpi kpi-action">
-          <span class="kpi-label">Active traveler batch</span>
+          <span class="kpi-label">Active batch</span>
           <span class="kpi-value">#{{ b.id.slice(0, 6) }}</span>
-          <span class="kpi-sub">{{ b.variant.sku }} — {{ b.quantity }} unit run</span>
+          <span class="kpi-sub">{{ b.variant.sku }} — {{ b.quantity }} units</span>
         </div>
         <div class="kpi">
           <span class="kpi-label">Current stage</span>
@@ -44,7 +44,7 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
         <div class="kpi">
           <span class="kpi-label">Units in run</span>
           <span class="kpi-value">{{ b.quantity }}</span>
-          <span class="kpi-sub">{{ flagged() }} flagged by QC on this batch</span>
+          <span class="kpi-sub">{{ flagged() }} unit(s) flagged by QC on this batch</span>
           <!-- GAP: stitched-and-passed per-unit counters need per-unit scan events; the API
                tracks whole batches only, so no unit-by-unit progress is shown. -->
         </div>
@@ -65,7 +65,7 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
                 ✓ Stage complete — advance to {{ next }}
               </button>
             } @else {
-              <p class="success">Run completed — finished goods stocked via the ledger.</p>
+              <p class="success">Batch done — finished goods added to stock.</p>
             }
             <div class="actions" style="justify-content:center; margin-top:0.8rem;">
               <button class="danger" style="min-height:52px; padding:0 1.4rem;" (click)="showFlag.set(!showFlag())">⚠ Flag seam defect / QC issue</button>
@@ -93,7 +93,7 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
           }
 
           <section class="panel flat">
-            <div class="panel-head"><h2>Shift travel feed</h2><span class="ph-sub">production events from the audit log</span></div>
+            <div class="panel-head"><h2>Recent activity</h2><span class="ph-sub">production events</span></div>
             @if (feed().length > 0) {
               <ul class="activity">
                 @for (e of feed(); track e.id) {
@@ -101,24 +101,23 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
                 }
               </ul>
             } @else {
-              <p class="muted small">No production events in the recent audit window.</p>
+              <p class="muted small">No production events recently.</p>
             }
           </section>
         </div>
 
         <aside>
           <section class="panel flat">
-            <div class="panel-head"><h2>Station bay telemetry</h2></div>
+            <div class="panel-head"><h2>Machine status</h2></div>
             <div style="border:1px dashed var(--hairline-2); padding:1.2rem 1rem; text-align:center;">
-              <p class="mini-note">No machine telemetry</p>
-              <p class="muted small" style="margin:0.3rem 0 0;">Stitch cycle counters, thread reserve and vibration
-                monitoring need factory IoT hardware that isn't integrated.</p>
+              <p class="mini-note">No machine data</p>
+              <p class="muted small" style="margin:0.3rem 0 0;">Live stitch counts, thread levels and vibration monitoring need factory hardware that isn't set up yet.</p>
             </div>
             <!-- GAP: JUKI/YAMAHA machine RPM, needle cycle values, bobbin thread reserve and
                  harmonic vibration wave — no IoT/telemetry backend exists. -->
           </section>
           <section class="panel flat">
-            <div class="panel-head"><h2>Traveler record</h2></div>
+            <div class="panel-head"><h2>Batch details</h2></div>
             <dl class="kv">
               <dt>Batch id</dt><dd><code class="wrap-anywhere">{{ b.id }}</code></dd>
               <dt>SKU</dt><dd>{{ b.variant.sku }}</dd>
@@ -131,7 +130,7 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
         </aside>
       </div>
     } @else {
-      <p class="muted">Assign a traveler batch from the selector above to activate this station terminal.</p>
+      <p class="muted">Assign a batch from the menu above to start working on it.</p>
     }
 
     @if (message()) { <p class="success">{{ message() }}</p> }

@@ -18,12 +18,12 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
     <div class="ops-head">
       <div class="ops-id">
         <p class="eyebrow">Product · Spec & BOM editor</p>
-        <h1>Silhouette pattern & technical specification</h1>
-        <p class="ops-sub">Anatomic cut geometry, fabric consumption parameters and garment measurement sets per silhouette.</p>
+        <h1>Product technical details</h1>
+        <p class="ops-sub">Cutting, fabric needs and measurement details for each product.</p>
       </div>
       <div class="ops-actions">
         <select class="table-filter" [(ngModel)]="selectedId" name="prod" (ngModelChange)="select()">
-          <option value="">— pick a silhouette —</option>
+          <option value="">— choose a product —</option>
           @for (p of products(); track p.id) { <option [value]="p.id">{{ p.name }}</option> }
         </select>
         <button class="cta small" type="button" disabled title="No tech-pack revision workflow exists in the API yet">
@@ -36,7 +36,7 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
     </div>
 
     @if (selected(); as p) {
-      <p class="rule-strip">LOCKED SPECIFICATION // production-grade values live in the catalogue & batch records; edits to price go through the dual-control flow on the Catalogue page.</p>
+      <p class="rule-strip">LOCKED SPEC // production values live in the catalogue & batch records; price changes need approval on the Catalogue page.</p>
 
       <div class="kpi-bar">
         <div class="kpi">
@@ -46,11 +46,11 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
             <span class="kpi-sub">from batch #{{ costBatchRef() }} recorded cost</span>
           } @else {
             <span class="kpi-value">—</span>
-            <span class="kpi-sub">no costed production batch for this silhouette yet</span>
+            <span class="kpi-sub">no production batch costs for this product yet</span>
           }
         </div>
         <div class="kpi"><span class="kpi-label">Retail price</span><span class="kpi-value">₦{{ p.basePrice | number: '1.0-0' }}</span><span class="kpi-sub">current catalogue base price</span></div>
-        <div class="kpi"><span class="kpi-label">Size run</span><span class="kpi-value">{{ p.variants.length }}</span><span class="kpi-sub">registered variants / colourways</span></div>
+        <div class="kpi"><span class="kpi-label">Size run</span><span class="kpi-value">{{ p.variants.length }}</span><span class="kpi-sub">sizes & colours registered</span></div>
         <div class="kpi">
           <span class="kpi-label">Fabric consumption</span>
           <span class="kpi-value">—</span>
@@ -84,7 +84,7 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
           </section>
 
           <section class="panel flat">
-            <div class="panel-head"><h2>Size matrix & colourways</h2><span class="ph-sub">live catalogue data</span></div>
+            <div class="panel-head"><h2>Sizes & colours</h2><span class="ph-sub">live catalogue data</span></div>
             <table class="table">
               <thead><tr><th>SKU</th><th>Size</th><th>Colour</th><th>Price ₦</th></tr></thead>
               <tbody>
@@ -123,27 +123,27 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
                   <tr><td><strong>Total standard unit cost</strong></td><td class="mono"><strong class="naira">₦{{ unitCost() | number: '1.0-2' }}</strong></td></tr>
                 </tbody>
               </table>
-              <p class="mini-note">Derived from the latest costed production batch of this silhouette.</p>
+              <p class="mini-note">Based on the latest production batch of this product.</p>
             } @else {
-              <p class="muted small">No costed batch yet — record a batch cost in Production to populate this matrix.</p>
+              <p class="muted small">No batch costs yet — record one in Production to fill this in.</p>
             }
             <!-- GAP: line-item BOM (fabric m, zips pcs, labels pcs with unit costs) needs a
                  per-garment BOM model; only the four batch cost buckets exist. -->
           </section>
 
           <section class="panel flat">
-            <div class="panel-head"><h2>Materials registry</h2><span class="ph-sub">available for allocation</span></div>
+            <div class="panel-head"><h2>Materials list</h2><span class="ph-sub">ready to use</span></div>
             <ul class="activity">
               @for (m of materials(); track m['id']) {
                 <li><span class="act-action">{{ m['name'] }}</span><time>{{ m['unit'] }}</time></li>
               }
             </ul>
-            <p class="mini-note">Per-garment allocations aren't tracked — usage is logged per batch on the inventory ledger.</p>
+            <p class="mini-note">Fabric use is recorded per batch (not per garment) — see Inventory for the history.</p>
           </section>
         </aside>
       </div>
     } @else {
-      <p class="muted">Pick a silhouette above to open its technical specification shell.</p>
+      <p class="muted">Choose a product above to see its technical details.</p>
     }
   `,
 })

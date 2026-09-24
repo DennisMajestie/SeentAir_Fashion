@@ -17,8 +17,8 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
     <div class="ops-head">
       <div class="ops-id">
         <p class="eyebrow">Operations · Raw materials</p>
-        <h1>Warehouse stock depository</h1>
-        <p class="ops-sub">{{ materials().length }} materials tracked — quantities derived from the inventory ledger.</p>
+        <h1>Materials & raw stock</h1>
+        <p class="ops-sub">{{ materials().length }} materials tracked — amounts update automatically as stock moves.</p>
       </div>
       <div class="ops-actions">
         <button class="cta small" type="button" (click)="showAdd.set(!showAdd())">{{ showAdd() ? 'Close' : '+ Add material' }}</button>
@@ -30,7 +30,7 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
         <span class="att-tag">Critical reorder level reached <span>{{ lowStock().length }} item(s) alert</span></span>
         <p class="att-body">{{ lowStockNames() }}</p>
         <span class="att-act">
-          <button class="link" type="button" (click)="draftPo()">Generate purchase order draft (approval request)</button>
+          <button class="link" type="button" (click)="draftPo()">Create a purchase order (needs approval)</button>
         </span>
       </div>
     }
@@ -94,7 +94,7 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
           <!-- GAP: unit-price and est.-runway tiles need purchase pricing per unit and a
                consumption-rate series the API doesn't expose; not fabricated. -->
 
-          <div class="panel-head"><h2>Purchase history ledger</h2><span class="ph-sub">live movements</span></div>
+          <div class="panel-head"><h2>Purchase history</h2><span class="ph-sub">latest first</span></div>
           @if (ledger().length > 0) {
             <table class="table">
               <thead><tr><th>Date</th><th>Type</th><th>Qty</th></tr></thead>
@@ -136,13 +136,13 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
             <div class="wide"><button class="cta small ghost" type="submit">Record usage</button></div>
           </form>
         } @else {
-          <p class="muted small">Select a material row to open its stock card, live ledger and purchase/usage actions.</p>
+          <p class="muted small">Select a material to see its stock history and record a purchase or a use.</p>
         }
       </aside>
     </div>
 
     <div class="stat-strip">
-      <div class="stat-cell"><span class="sc-label">SKUs tracked</span><p class="sc-value">{{ materials().length }}</p><span class="sc-sub">raw materials registry</span></div>
+      <div class="stat-cell"><span class="sc-label">SKUs tracked</span><p class="sc-value">{{ materials().length }}</p><span class="sc-sub">materials on file</span></div>
       <div class="stat-cell"><span class="sc-label">Stockout risk</span><p class="sc-value" [class.error]="lowStock().length > 0">{{ lowStock().length }} SKUs</p><span class="sc-sub">at or below reorder threshold</span></div>
       <div class="stat-cell"><span class="sc-label">Healthy reserve</span><p class="sc-value">{{ materials().length - lowStock().length }} SKUs</p><span class="sc-sub">above threshold</span></div>
       <!-- GAP: total valuation (₦) needs a per-unit cost figure the materials API doesn't store. -->
@@ -243,7 +243,7 @@ export class MaterialsAdminPage implements OnInit {
       quantity: Number(this.pu.quantity), cost: Number(this.pu.cost),
       note: this.pu.note || undefined, approvalRequestId: this.pu.approvalRequestId,
     }).subscribe({
-      next: () => { this.pu = { quantity: 0, cost: 0, note: '', approvalRequestId: '' }; this.ok('Purchase recorded — stock updated via the ledger.'); this.inspectRefresh(sel.id); },
+      next: () => { this.pu = { quantity: 0, cost: 0, note: '', approvalRequestId: '' }; this.ok('Purchase recorded — stock updated.'); this.inspectRefresh(sel.id); },
       error: (e) => this.fail(e, 'Not approved yet — check the Approvals queue.'),
     });
   }

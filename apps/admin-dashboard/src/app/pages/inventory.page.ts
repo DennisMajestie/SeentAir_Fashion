@@ -17,15 +17,15 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
     <div class="ops-head">
       <div class="ops-id">
         <p class="eyebrow">Operations · Inventory</p>
-        <h1>Inventory valuation & stock depository</h1>
-        <p class="ops-sub">Real-time valuation and event-sourced SKU movement logs — quantities are always derived, never edited.</p>
+        <h1>Inventory & stock levels</h1>
+        <p class="ops-sub">Live stock levels with a full history of every change in and out. Stock is never edited directly.</p>
       </div>
       <div class="ops-actions">
-        <span class="live-chip">Ledger live</span>
+        <span class="live-chip">Live</span>
       </div>
     </div>
 
-    <p class="rule-strip">STOCK IS A LEDGER, NOT A NUMBER // every unit in or out is a logged movement; removals require approval.</p>
+    <p class="rule-strip">EVERY CHANGE IS RECORDED // stock moves only through logged entries — removing stock needs approval.</p>
 
     <div class="kpi-bar">
       <div class="kpi">
@@ -36,7 +36,7 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
       <div class="kpi">
         <span class="kpi-label">Raw materials</span>
         <span class="kpi-value">{{ materialSkus() }}</span>
-        <span class="kpi-sub">material SKUs on the ledger</span>
+        <span class="kpi-sub">materials tracked</span>
       </div>
       <div class="kpi">
         <span class="kpi-label">Work in progress</span>
@@ -46,7 +46,7 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
       <div class="kpi" [class.kpi-action]="returnsAwaiting() > 0">
         <span class="kpi-label">Customer returns</span>
         <span class="kpi-value">{{ returnsAwaiting() }}</span>
-        <span class="kpi-sub">awaiting inspection & disposition</span>
+        <span class="kpi-sub">waiting to be checked</span>
       </div>
     </div>
 
@@ -97,7 +97,7 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
             <div class="kpi">
               <span class="kpi-label">Current stock</span>
               <span class="kpi-value">{{ currentQty() ?? s.currentQuantity | number }}</span>
-              <span class="kpi-sub">derived from {{ ledgerTotal() }} movement(s)</span>
+              <span class="kpi-sub">from {{ ledgerTotal() }} total movements</span>
             </div>
             @if (valueOf(s) !== null) {
               <div class="kpi">
@@ -108,7 +108,7 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
             }
           </div>
 
-          <div class="panel-head"><h2>Immutable movement ledger</h2><span class="ph-sub">latest first</span></div>
+          <div class="panel-head"><h2>Stock movement history</h2><span class="ph-sub">latest first</span></div>
           <table class="table">
             <thead><tr><th>When</th><th>Type</th><th>Δ</th><th>Reference</th></tr></thead>
             <tbody>
@@ -127,10 +127,10 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
                need hash-chaining and warehouse-location data the API doesn't model. -->
 
           <div class="gap-sep"></div>
-          <div class="panel-head"><h2>Request stock adjustment</h2><span class="ph-sub">approval-gated</span></div>
-          <p class="muted small">Positive = correction in. Negative = removal/disposal — approval required, per the no-unauthorized-removal rule.</p>
+          <div class="panel-head"><h2>Request stock adjustment</h2><span class="ph-sub">needs approval</span></div>
+          <p class="muted small">Add stock = correction in. Remove stock = taking it out — removal needs approval.</p>
           <form (ngSubmit)="adjust()">
-            <label>Delta (±) <input type="number" [(ngModel)]="adj.delta" name="adelta" required /></label>
+            <label>Change (±) <input type="number" [(ngModel)]="adj.delta" name="adelta" required /></label>
             <label>Reference note <input [(ngModel)]="adj.reference" name="aref" placeholder="stocktake correction…" /></label>
             <div class="actions">
               @if (adj.delta < 0 && !adj.approvalRequestId) {
@@ -142,7 +142,7 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
             </div>
           </form>
         } @else {
-          <p class="muted small">Select a stock row to open its movement ledger and adjustment controls.</p>
+          <p class="muted small">Select a stock row to see its movement history and make changes.</p>
         }
       </aside>
     </div>

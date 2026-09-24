@@ -21,16 +21,16 @@ interface CustomerThread {
   template: `
     <div class="ops-head">
       <div class="ops-id">
-        <p class="eyebrow">Support desk</p>
-        <h1>Client communications & dispatch support</h1>
-        <p class="ops-sub">Customer order context and outbound order updates — real-time chat channels are not built yet.</p>
+        <p class="eyebrow">Customer support</p>
+        <h1>Customer messages & order support</h1>
+        <p class="ops-sub">See who needs help and send order updates. Live chat isn't built yet.</p>
       </div>
       <div class="ops-actions">
-        <span class="live-chip">Desk online</span>
+        <span class="live-chip">Online now</span>
       </div>
     </div>
 
-    <p class="rule-strip">OUTBOUND ONLY // messages send as real in-platform notifications on an order.
+    <p class="rule-strip">SENDING ONLY // messages go out as real in-app notifications on an order.
       Inbound live web chat & WhatsApp Business API are future integrations.</p>
     <!-- GAP: inbound customer messages, thread history, macros/AI replies, SLA response
          timers and escalate-to-WhatsApp — no messaging module exists in the API. -->
@@ -39,7 +39,7 @@ interface CustomerThread {
       <div class="kpi"><span class="kpi-label">Customers</span><span class="kpi-value">{{ threads().length }}</span><span class="kpi-sub">with order activity (latest {{ orders().length }} orders)</span></div>
       <div class="kpi"><span class="kpi-label">Open orders</span><span class="kpi-value">{{ openOrders() }}</span><span class="kpi-sub">not yet delivered</span></div>
       <div class="kpi"><span class="kpi-label">Awaiting payment</span><span class="kpi-value">{{ unpaidOrders() }}</span><span class="kpi-sub">most common support trigger</span></div>
-      <div class="kpi"><span class="kpi-label">Returns pending</span><span class="kpi-value">{{ returnsPending() }}</span><span class="kpi-sub">initiate via the Returns desk</span></div>
+      <div class="kpi"><span class="kpi-label">Returns pending</span><span class="kpi-value">{{ returnsPending() }}</span><span class="kpi-sub">start it on the Returns page</span></div>
     </div>
 
     <div class="side-split" style="grid-template-columns: minmax(220px, 0.8fr) minmax(0, 2fr);">

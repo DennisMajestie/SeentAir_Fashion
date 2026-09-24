@@ -24,7 +24,7 @@ interface LedgerRow { id: string; type: string; amount: number; category: string
 
     <div class="cols">
       <section class="panel lead">
-        <p class="section-label">General ledger
+        <p class="section-label">All transactions
           <span class="count">
             <select class="table-filter" [(ngModel)]="typeFilter" name="tf" (ngModelChange)="loadLedger()">
               <option value="">all types</option>

@@ -13,7 +13,7 @@ interface DistRow { period: string; totalProfit: number; reinvestmentAmount: num
   imports: [CommonModule, FormsModule],
   template: `
     <h1>Partners & investors</h1>
-    <p class="rule-strip">CONFIRMED MODEL // 1,000,000 shares: 60% founder, 40% partners by equity. Profit splits 40% reinvest / 40% dividends / 20% reserve, quarterly.</p>
+    <p class="rule-strip">AGREED MODEL // 1,000,000 shares: 60% founder, 40% partners. Profits split each quarter: 40% reinvested, 40% paid out, 20% kept in reserve.</p>
 
     <div class="cols">
       <section class="panel lead">
@@ -56,7 +56,7 @@ interface DistRow { period: string; totalProfit: number; reinvestmentAmount: num
 
       <section class="panel">
         <p class="section-label">Add partner</p>
-        <p class="muted small">The user must already exist with the partner_investor role (Staff page). The investment lands in the ledger automatically.</p>
+        <p class="muted small">The person needs a staff login first (Staff page). Their payment is recorded automatically.</p>
         <form (ngSubmit)="createPartner()">
           <label>Partner user id <input [(ngModel)]="np.userId" name="puid" required placeholder="uuid from Staff page" /></label>
           <label>Equity % (of total shares) <input type="number" min="0.01" max="40" step="0.01" [(ngModel)]="np.equityPercentage" name="peq" required /></label>
@@ -144,7 +144,7 @@ export class PartnersAdminPage implements OnInit {
     this.api.createPartner({
       userId: this.np.userId, equityPercentage: Number(this.np.equityPercentage),
       investedAmount: Number(this.np.investedAmount),
-    }).subscribe({ next: () => this.ok('Partner created — investment recorded in the ledger.'), error: (e) => this.fail(e, 'Create failed (role/equity cap?).') });
+    }).subscribe({ next: () => this.ok('Partner created — their payment is recorded automatically.'), error: (e) => this.fail(e, 'Create failed (role/equity cap?).') });
   }
 
   requestDistApproval(): void {

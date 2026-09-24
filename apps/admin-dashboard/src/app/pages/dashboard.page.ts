@@ -172,20 +172,20 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
                 <span class="mini-note">{{ chartPoints()[chartPoints().length - 1].label }}</span>
               </div>
             </div>
-            <p class="muted small">Buckets, totals and the prior-period delta are computed server-side by the
-              Analytics API over {{ rangeLabel() }}. No data is invented.</p>
+            <p class="muted small">Totals and the change from the previous period are calculated automatically for
+              {{ rangeLabel() }}. No data is invented.</p>
           } @else {
             <p class="muted">Not enough paid orders in {{ rangeLabel() }} to draw the trend yet.</p>
           }
 
-          <div class="combo-summary" aria-label="Revenue and order volume by bucket for the selected range">
+          <div class="combo-summary" aria-label="Revenue and order volume for the selected period">
             <span class="mini-note" style="margin-bottom:0.3rem;">
               <span class="gold-bullet inline" aria-hidden="true"></span> Gross paid revenue (gold) · order volume (gray)
             </span>
             @let ordersMax = comboOrdersMax();
             @let revMax = comboRevMax();
             <svg viewBox="0 0 260 110" preserveAspectRatio="none" role="img"
-                 aria-label="Combo chart: gold line = gross paid revenue, gray bars = paid order count per bucket">
+                 aria-label="Combo chart: gold line = revenue paid, gray bars = paid orders per period">
               @for (g of comboGridYs(110); track g) {
                 <line [attr.x1]="0" [attr.x2]="260" [attr.y1]="g" [attr.y2]="g"
                       stroke="var(--hairline)" stroke-width="1" />
@@ -263,7 +263,7 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
             <div class="panel-head">
               <span class="gold-bullet" aria-hidden="true"></span>
               <h2>Needs your attention</h2>
-              <span class="ph-end chip warn">{{ attention().length }} escalation(s)</span>
+              <span class="ph-end chip warn">{{ attention().length }} to review</span>
             </div>
             <div class="attention">
               @for (a of attention(); track a.key) {
@@ -275,7 +275,7 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
                   </span>
                 </div>
               }
-              @if (attention().length === 0) { <p class="success small">All clear — no escalations right now.</p> }
+              @if (attention().length === 0) { <p class="success small">All clear — nothing needs your attention right now.</p> }
             </div>
           </section>
 
@@ -306,7 +306,7 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
               @let maxOrders = comboOrdersMax();
               <div class="combo-wrap">
                 <svg viewBox="0 0 260 110" preserveAspectRatio="none" role="img" class="combo"
-                     aria-label="Paid revenue (gold line) and paid order count (gray bars) by bucket for the selected range">
+                     aria-label="Paid revenue (gold line) and paid order count (gray bars) by period for the selected range">
                   @for (gy of comboGridYs(); track gy) {
                     <line [attr.x1]="'0'" [attr.x2]="'260'" [attr.y1]="gy" [attr.y2]="gy"
                           stroke="var(--hairline)" stroke-width="1" />
@@ -331,8 +331,8 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
                   <span>Paid orders (gray bars)</span>
                 </span>
               </div>
-              <p class="muted small">Both series come from the same Analytics API payload as the chart above —
-                the selected range, no invented buckets.</p>
+              <p class="muted small">Both series come from the same source as the chart above —
+                for the selected period.</p>
             }
           </section>
 
@@ -449,11 +449,11 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
             @for (v of ls.variants.slice(0, 5); track v.variantId) {
               <div class="att-item warn" style="margin-bottom:0.5rem;">
                 <span class="att-tag">Finished goods thin</span>
-                <p class="att-body"><strong>{{ skuFor(v.variantId) }}</strong> — {{ v.currentQuantity }} unit(s) left (floor {{ ls.variantThreshold }})</p>
+                <p class="att-body"><strong>{{ skuFor(v.variantId) }}</strong> — {{ v.currentQuantity }} unit(s) left (low-stock level {{ ls.variantThreshold }})</p>
               </div>
             }
             @if (ls.variants.length > 5) {
-              <p class="mini-note">+{{ ls.variants.length - 5 }} more variant(s) at or below the floor — full list on the Inventory page.</p>
+              <p class="mini-note">+{{ ls.variants.length - 5 }} more size(s) at or below the low-stock level — full list on the Inventory page.</p>
             }
             @if (ls.materials.length === 0 && ls.variants.length === 0) {
               <p class="success small">Nothing needs reordering.</p>

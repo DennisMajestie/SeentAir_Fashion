@@ -14,11 +14,11 @@ import { ApiService, AuditEntry } from '../api.service';
     <div class="ops-head">
       <div class="ops-id">
         <p class="eyebrow">Governance · Audit</p>
-        <h1>Immutable operational audit log</h1>
-        <p class="ops-sub">Every mutating action, recorded automatically by interceptor — never manual per-feature calls.</p>
+        <h1>Activity log</h1>
+        <p class="ops-sub">Every change to the business is recorded here automatically — nothing needs to be typed in by hand.</p>
       </div>
       <div class="ops-actions">
-        <span class="live-chip">Append-only</span>
+        <span class="live-chip">Automatic</span>
         <!-- GAP: the reference's "Verify Data Integrity" runs a cryptographic hash-chain check;
              the audit table has no hash column, so no integrity-proof action exists yet. -->
       </div>
