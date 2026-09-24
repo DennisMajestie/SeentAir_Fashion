@@ -272,10 +272,10 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private autoInterval: ReturnType<typeof setInterval> | undefined;
 
   readonly stages: Stage[] = [
-    { image: 'series-1.jpg', index: '01', act: '[ACT 01 / MADE IN ABA]',
-      line1: 'MADE IN ABA.', line2: '',
-      caption: 'Original streetwear cut and sewn in our own Aba atelier - no middlemen, no imitations.',
-      tag: '₦ 100% ORIGINAL' },
+    { image: 'series-1.jpg', index: '01', act: '[ACT 01 / QUALITY FIRST]',
+      line1: 'QUALITY STREETWEAR.', line2: '',
+      caption: 'Honest fabric, honest price - cut and sewn in our single in-house atelier, no middlemen.',
+      tag: '₦ ORIGINAL' },
     { image: 'series-2.jpg', index: '02', act: '[ACT 02 / THE BOX TEE]',
       line1: 'THE BOX TEE.', line2: '',
       caption: '280GSM Aba-loomed cotton. Boxy fit, strong seams, made for everyday.',
@@ -284,9 +284,9 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       line1: 'THE JOGGER.', line2: '',
       caption: 'Heavyweight terry, tapered leg, dust-resistant - street-ready in any weather.',
       tag: 'TAPERED - 30-36' },
-    { image: 'series-4.jpg', index: '04', act: '[ACT 04 / THE GIDI HOOD]',
-      line1: 'THE GIDI HOOD.', line2: '',
-      caption: 'Raw edges, heavyweight terry. Gidi quality - no dulling.',
+    { image: 'series-4.jpg', index: '04', act: '[ACT 04 / THE QUALITY HOODIE]',
+      line1: 'THE QUALITY HOODIE.', line2: '',
+      caption: 'Raw edges, heavyweight terry. Thick, warm, built to last.',
       tag: 'HOOD - S-XXL' },
     { image: 'series-5.jpg', index: '05', act: '[ACT 05 / THE FULL LOOK]',
       line1: 'THE FULL LOOK.', line2: '',
