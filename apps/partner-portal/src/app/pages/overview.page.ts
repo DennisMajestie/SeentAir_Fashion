@@ -187,7 +187,6 @@ import { PortalStore } from '../portal.store';
       .trend { width: 100%; height: auto; display: block; }
       .axis-label { font-size: 9px; fill: var(--ink-dim); font-family: inherit; }
       .value-label { font-size: 10px; font-weight: 700; fill: var(--ink); font-variant-numeric: tabular-nums; }
-      .fine { font-size: var(--type-label-sm); margin: 0.5rem 0 0; }
       .rail-kicker { margin: 0 0 0.4rem; font-size: var(--type-label-sm); text-transform: uppercase;
         letter-spacing: 0.1em; color: var(--ink-dim); }
       .rail-figure { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--acid-ink);

@@ -220,7 +220,6 @@ import { PortalStore } from '../portal.store';
         &:last-child { border-bottom: 0; } }
       .how-copy { margin: 0; font-size: var(--type-body-sm); max-width: 82ch;
         strong { color: var(--acid-ink); } }
-      .fine { font-size: var(--type-label-sm); margin: 0.6rem 0 0; }
     `,
   ],
 })

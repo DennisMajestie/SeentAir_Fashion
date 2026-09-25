@@ -205,7 +205,7 @@ import { ThemeService } from '../theme.service';
       .phase-tag { font-size: var(--type-label-sm); font-weight: 700; letter-spacing: 0.14em;
         text-transform: uppercase; color: var(--ink-dim); flex-basis: 100%;
         &.gold-tag { color: var(--acid-ink); } }
-      .fine { color: var(--ink-dim); font-size: var(--type-label-sm); margin: 0.3rem 0 0.8rem; }
+      .fine { margin: 0.3rem 0 0.8rem; }
       .challenge-note {
         border: 1px solid var(--gold); background: color-mix(in srgb, var(--gold) 9%, var(--panel));
         padding: 0.6rem 0.7rem; font-size: var(--type-body-sm); margin: 0.6rem 0 0.2rem;

@@ -74,6 +74,7 @@ h1, h2, h3 { font-weight: 700; letter-spacing: -0.01em; margin: 0; }
 code, .mono { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; }
 .muted { color: var(--ink-dim); }
 .error { color: var(--danger); }
+.fine { color: var(--ink-dim); font-size: var(--type-label-sm); margin: 0.5rem 0 0; }
 
 a:focus-visible, button:focus-visible, input:focus-visible {
   outline: 2px solid var(--acid-ink); outline-offset: 2px;

@@ -162,7 +162,6 @@ import { PortalStore } from '../portal.store';
   styles: [
     `
       .meter-list { margin-bottom: 0.6rem; }
-      .fine { font-size: var(--type-label-sm); margin: 0.6rem 0 0; }
       .floor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
         background: var(--hairline); border: 1px solid var(--hairline); }
       .floor-cell { background: var(--panel-2); padding: 0.65rem 0.75rem; display: flex; flex-direction: column; gap: 0.05rem;

@@ -172,7 +172,6 @@ import { PortalStore } from '../portal.store';
       .ratios .panel { margin-bottom: 0; }
       .ratio-figure { margin: 0 0 0.5rem; font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums;
         &.neg { color: var(--danger); } }
-      .fine { font-size: var(--type-label-sm); margin: 0.5rem 0 0; }
       .donut-wrap.compact .donut.small { width: 110px; height: 110px; flex-basis: 110px; }
       .statement { margin-top: 0.9rem; }
       .letterhead { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
