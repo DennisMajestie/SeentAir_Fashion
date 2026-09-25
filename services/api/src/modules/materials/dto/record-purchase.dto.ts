@@ -14,6 +14,17 @@ export class RecordPurchaseDto {
   @IsString()
   note?: string;
 
+  /** Per-purchase supplier name (certified-mill directory lives in `suppliers`). */
+  @IsOptional()
+  @IsString()
+  supplierName?: string;
+
+  /** Supplier lead time for this purchase (days) — feeds SLA/quota history. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  leadTimeDays?: number;
+
   /** Purchasing requires an approved request (appendix 19). */
   @IsUUID()
   approvalRequestId: string;

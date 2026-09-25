@@ -165,9 +165,34 @@ const NEXT_STATUS: Record<string, string> = {
               <dt>Placed</dt><dd>{{ o.createdAt | date: 'medium' }}</dd>
               <dt>Delivered</dt><dd>{{ o.deliveredAt ? (str(o.deliveredAt) | date: 'medium') : 'not yet' }}</dd>
               <dt>Order reference</dt><dd><code class="wrap-anywhere">{{ o.id }}</code></dd>
+              @if (str(o['shippingAddress'])) {
+                <dt>Ship to</dt><dd class="wrap-anywhere">{{ o['shippingAddress'] }}</dd>
+              }
             </dl>
-            <!-- GAP: shipping address, gross weight/pallet staging and the QR thermal-stencil
-                 preview need address & parcel data the order API doesn't carry. -->
+
+            <div class="gap-sep"></div>
+            <div class="panel-head"><h2>Warehouse pack-out</h2><span class="ph-sub">pallet & QR stencil</span></div>
+            @if (str(o['oqrCode'])) {
+              <div class="rule-strip" style="margin:0 0 0.8rem;">
+                <strong>QR stencil generated</strong>
+                <code class="mono wrap-anywhere">{{ o['oqrCode'] }}</code>
+                <small class="mini-note">print on thermal label, fix to the top carton before dispatch.</small>
+              </div>
+            }
+            <form (ngSubmit)="fulfil(o)">
+              <label>Shipping address
+                <textarea rows="2" [(ngModel)]="fulfilment.shippingAddress" name="fship"
+                  placeholder="Building, street, area, LGA — used on the waybill."></textarea>
+              </label>
+              <div class="form-grid">
+                <label>Gross weight (kg) <input type="number" min="0" step="0.1" [(ngModel)]="fulfilment.grossWeightKg" name="fgross" /></label>
+                <label>Pallet ref <input [(ngModel)]="fulfilment.palletRef" name="fpallet" placeholder="P-A1" /></label>
+              </div>
+              <label>Generate QR dispatch stencil? <input type="checkbox" [(ngModel)]="fulfilment.generateQrStencil" name="fqr" /></label>
+              <div class="actions flat">
+                <button class="cta small" type="submit">Record pack-out</button>
+              </div>
+            </form>
             <p class="mini-note">Book the delivery in Logistics using this order reference.</p>
             <div class="actions flat">
               <button class="cta small ghost" type="button" (click)="copyRef(o.id)">Copy order reference</button>
@@ -206,6 +231,7 @@ export class OrdersPage implements OnInit {
   channel = '';
   query = '';
   notifyMsg = '';
+  fulfilment = { shippingAddress: '', grossWeightKg: null as number | null, palletRef: '', generateQrStencil: false };
 
   ngOnInit(): void {
     this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
@@ -277,6 +303,24 @@ export class OrdersPage implements OnInit {
       () => this.message.set('Order reference copied.'),
       () => this.error.set('Could not copy — select and copy the ref manually.'),
     );
+  }
+
+  fulfil(order: AdminOrder): void {
+    const body: Record<string, unknown> = {
+      generateQrStencil: !!this.fulfilment.generateQrStencil,
+    };
+    if (this.fulfilment.shippingAddress.trim()) body['shippingAddress'] = this.fulfilment.shippingAddress.trim();
+    if (this.fulfilment.grossWeightKg != null) body['grossWeightKg'] = Number(this.fulfilment.grossWeightKg);
+    if (this.fulfilment.palletRef.trim()) body['palletRef'] = this.fulfilment.palletRef.trim();
+    this.api.fulfilOrder(order.id, body).subscribe({
+      next: (res) => {
+        this.message.set('Pack-out recorded.');
+        this.error.set(null);
+        this.fulfilment = { shippingAddress: '', grossWeightKg: null, palletRef: '', generateQrStencil: false };
+        this.api.order(order.id).subscribe((fresh) => this.selected.set({ ...this.selected()!, ...fresh } as AdminOrder));
+      },
+      error: (err) => this.error.set(err?.error?.message ?? 'Pack-out failed.'),
+    });
   }
 
   print(): void { window.print(); }

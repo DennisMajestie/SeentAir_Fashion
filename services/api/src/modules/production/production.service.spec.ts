@@ -8,7 +8,9 @@ import { CatalogueService } from '../catalogue/catalogue.service';
 import { InventoryItemType, MovementType } from '../inventory/inventory-movement.entity';
 import { InventoryService } from '../inventory/inventory.service';
 import { ProductionBatch } from './entities/production-batch.entity';
+import { BatchScanEvent } from './entities/batch-scan-event.entity';
 import { ProductionCost } from './entities/production-cost.entity';
+import { ProductionTelemetry } from './entities/production-telemetry.entity';
 import { QCDisposition, QCRejection } from './entities/qc-rejection.entity';
 import { ProductionService } from './production.service';
 
@@ -37,6 +39,12 @@ describe('ProductionService', () => {
     find: jest.fn(async () => []),
   };
   const costRepo = { findOne: jest.fn(), create: jest.fn((v) => v), save: jest.fn(async (v) => v) };
+  const scanRepo = { create: jest.fn((v) => v), save: jest.fn(async (v) => v), find: jest.fn(async () => []) };
+  const telemetryRepo = {
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => v),
+    find: jest.fn(async () => []),
+  };
   const approvalsService = { assertApproved: jest.fn() };
   const inventoryService = { record: jest.fn() };
   const catalogueService = { findVariantById: jest.fn(async () => ({ id: 'v1' })) };
@@ -65,6 +73,8 @@ describe('ProductionService', () => {
         { provide: getRepositoryToken(ProductionBatch), useValue: batchRepo },
         { provide: getRepositoryToken(ProductionCost), useValue: costRepo },
         { provide: getRepositoryToken(QCRejection), useValue: rejectionRepo },
+        { provide: getRepositoryToken(BatchScanEvent), useValue: scanRepo },
+        { provide: getRepositoryToken(ProductionTelemetry), useValue: telemetryRepo },
         { provide: ApprovalsService, useValue: approvalsService },
         { provide: InventoryService, useValue: inventoryService },
         { provide: CatalogueService, useValue: catalogueService },

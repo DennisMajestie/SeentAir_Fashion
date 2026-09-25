@@ -41,6 +41,10 @@ export class ApprovalRequest {
   @JoinColumn({ name: 'approved_by' })
   approvedBy: User | null;
 
+  /** Required in practice for rejections — why the approver decided as they did. */
+  @Column({ type: 'text', nullable: true })
+  justification: string | null;
+
   @Column({ name: 'decided_at', type: 'timestamptz', nullable: true })
   decidedAt: Date | null;
 

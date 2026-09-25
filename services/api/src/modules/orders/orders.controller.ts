@@ -18,6 +18,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { OrderFulfilmentDto } from './dto/order-fulfilment.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrderChannel, OrderStatus } from './entities/order.entity';
@@ -74,6 +75,20 @@ export class OrdersController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.ordersService.updateStatus(id, dto.status, dto.note, user);
+  }
+
+  /**
+   * Fulfilment staging: shipping address, gross weight, pallet reference and
+   * QR stencil generation before dispatch (appendix 04 / appendix 05).
+   */
+  @Patch('orders/:id/fulfilment')
+  @ApiBearerAuth()
+  fulfilment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: OrderFulfilmentDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.ordersService.fulfilment(id, dto, user);
   }
 
   /**

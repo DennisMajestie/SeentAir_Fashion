@@ -25,8 +25,23 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
       <div class="ops-actions">
         <span class="live-chip">Live</span>
         <button class="cta small ghost" type="button" (click)="exportCsv()">Export CSV</button>
+        <button class="cta small ghost" type="button" (click)="verifyLedger()">Verify ledger</button>
+        @if (ledgerVerify(); as lv) {
+          <span class="chip" [class.ok]="lv.broken === 0" [class.bad]="lv.broken > 0">
+            ledger {{ lv.broken === 0 ? 'sealed' : lv.broken + ' broken' }} · {{ lv.valid }}/{{ lv.total }}
+          </span>
+        }
       </div>
     </div>
+
+    @if (ledgerVerify(); as lv) {
+      <div class="rule-strip" [style.borderColor]="lv.broken > 0 ? 'var(--danger)' : ''">
+        <strong>Ledger hash-chain</strong> — every movement is SHA-256 bound to the previous one.
+        @if (lv.broken === 0) { All {{ lv.total }} entries verify; stock history has not been tampered with. }
+        @else { {{ lv.broken }} of {{ lv.total }} entries fail verification. }
+        @if (lv.headHash) { <code class="mono">{{ lv.headHash }}</code> }
+      </div>
+    }
 
     <p class="rule-strip">EVERY CHANGE IS RECORDED // stock moves only through logged entries — removing stock needs approval.</p>
 
@@ -141,8 +156,29 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
               @if (movementRows().length === 0) { <tr><td colspan="4" class="muted small">No movements yet.</td></tr> }
             </tbody>
           </table>
-          <!-- GAP: the reference's cryptographic ledger-hash badge and bay/rack storage map
-               need hash-chaining and warehouse-location data the API doesn't model. -->
+
+          <div class="gap-sep"></div>
+          <div class="panel-head"><h2>Stock check digest</h2><span class="ph-sub">book vs actual</span>
+            <span class="ph-end"><button class="cta small ghost" type="button" (click)="stockCheck()">Run stock check</button></span>
+          </div>
+          @if (digest(); as d) {
+            <div class="kpi-bar" style="margin-bottom:0.8rem;">
+              <div class="kpi"><span class="kpi-label">Book quantity</span><span class="kpi-value">{{ d.expectedQuantity | number }}</span><span class="kpi-sub">sum of all movements</span></div>
+              <div class="kpi"><span class="kpi-label">Recorded current</span><span class="kpi-value">{{ d.currentQuantity | number }}</span><span class="kpi-sub">ledger running balance</span></div>
+              <div class="kpi" [class.kpi-action]="d.runningBalance !== d.currentQuantity"><span class="kpi-label">Variance</span><span class="kpi-value" [class.delta.plus]="d.runningBalance === d.currentQuantity" [class.delta.minus]="d.runningBalance !== d.currentQuantity">{{ d.runningBalance - d.currentQuantity }}</span><span class="kpi-sub">investigate if non-zero</span></div>
+            </div>
+          }
+
+          @if (s.itemType === 'material') {
+            <div class="gap-sep"></div>
+            <div class="panel-head"><h2>Storage map</h2><span class="ph-sub">warehouse book</span></div>
+            @if (materialMeta(s.itemId); as mm) {
+              <dl class="kv">
+                <dt>Category</dt><dd>{{ mm.category || '—' }}</dd>
+                <dt>Bay / rack location</dt><dd class="mono">{{ mm.storageLocation || '—' }}</dd>
+              </dl>
+            } @else { <p class="muted small">No location recorded for this material.</p> }
+          }
 
           <div class="gap-sep"></div>
           <div class="panel-head"><h2>Request stock adjustment</h2><span class="ph-sub">needs approval</span></div>
@@ -184,10 +220,13 @@ export class InventoryAdminPage implements OnInit {
   readonly pageSize = signal(12);
   readonly wipUnits = signal(0);
   readonly returnsAwaiting = signal(0);
+  readonly ledgerVerify = signal<{ total: number; valid: number; broken: number; headHash: string | null } | null>(null);
+  readonly digest = signal<{ currentQuantity: number; expectedQuantity: number; runningBalance: number; materialCount: number } | null>(null);
   query = '';
   adj = { delta: 0, reference: '', approvalRequestId: '' };
   private readonly labels = signal<Map<string, string>>(new Map());
   private readonly variants = signal<Map<string, VariantInfo>>(new Map());
+  private readonly materialLocations = signal<Map<string, { category: string | null; storageLocation: string | null }>>(new Map());
 
   ngOnInit(): void {
     this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
@@ -208,10 +247,13 @@ export class InventoryAdminPage implements OnInit {
     });
     this.api.materials().subscribe((mats) => {
       const labels = new Map(this.labels());
-      for (const m of mats as unknown as Array<{ id: string; name: string }>) {
+      const meta = new Map(this.materialLocations());
+      for (const m of mats as unknown as Array<{ id: string; name: string; category: string | null; storageLocation: string | null }>) {
         labels.set(`material:${m.id}`, m.name);
+        meta.set(m.id, { category: m.category ?? null, storageLocation: m.storageLocation ?? null });
       }
       this.labels.set(labels);
+      this.materialLocations.set(meta);
     });
     this.api.inventorySummary().subscribe((s) => this.summary.set(s));
     this.api.batches().subscribe((res) => {
@@ -329,5 +371,25 @@ export class InventoryAdminPage implements OnInit {
       },
       error: (e) => this.error.set(e?.error?.message ?? 'Refused — removals need an approved request.'),
     });
+  }
+
+  verifyLedger(): void {
+    this.api.inventoryLedgerVerify().subscribe({
+      next: (res) => { this.ledgerVerify.set(res); this.error.set(null); },
+      error: (e) => this.error.set(e?.error?.message ?? 'Ledger verification failed.'),
+    });
+  }
+
+  stockCheck(): void {
+    const sel = this.selected();
+    if (!sel) return;
+    this.api.stockCheckDigest(sel.itemType as 'variant' | 'material', sel.itemId).subscribe({
+      next: (res) => { this.digest.set(res); this.error.set(null); },
+      error: (e) => this.error.set(e?.error?.message ?? 'Stock check failed.'),
+    });
+  }
+
+  materialMeta(id: string): { category: string | null; storageLocation: string | null } | null {
+    return this.materialLocations().get(id) ?? null;
   }
 }

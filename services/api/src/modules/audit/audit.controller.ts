@@ -30,4 +30,11 @@ export class AuditController {
       limit: parseInt(limit, 10),
     });
   }
+
+  /** Tamper-evidence badge: recomputes the full hash chain in the database. */
+  @Get('verify')
+  @RequireAccess(ModuleName.APPROVALS_AUDIT, AccessLevel.VIEW)
+  verify() {
+    return this.auditService.verify();
+  }
 }

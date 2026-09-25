@@ -67,10 +67,12 @@ import { BrandAlertService } from '../brand-alert.service';
         }
 
         <div class="actions">
+          <label class="wide" style="margin:0; text-transform:none; font-weight:600;">
+            Written justification for this decision
+            <textarea rows="2" placeholder="Recorded to the audit log — required." [(ngModel)]="justifications[approval.id]" name="j-{{ approval.id }}" aria-label="Justification"></textarea>
+          </label>
           <button class="cta small" (click)="decide(approval.id, 'approved')">✓ Approve & execute</button>
           <button class="danger" (click)="decide(approval.id, 'rejected')">✕ Reject</button>
-          <!-- GAP: the reference attaches a written justification to each decision; the
-               decide endpoint accepts only approved/rejected, no note field. -->
         </div>
       </section>
     }
@@ -110,6 +112,7 @@ export class ApprovalsPage implements OnInit {
   readonly error = signal<string | null>(null);
   readonly typeFilter = signal('');
   historyFilter = '';
+  justifications: Record<string, string> = {};
 
   ngOnInit(): void {
     this.load();
@@ -168,16 +171,22 @@ export class ApprovalsPage implements OnInit {
   async decide(id: string, decision: 'approved' | 'rejected'): Promise<void> {
     const a = this.approvals().find((x) => x.id === id);
     const label = a ? this.title(a.actionType) : 'this request';
+    const justification = (this.justifications[id] ?? '').trim();
+    if (!justification) {
+      this.error.set('A written justification is required on every decision.');
+      return;
+    }
     const ok = await this.alerts.confirm({
       title: decision === 'approved' ? 'Approve & execute?' : 'Reject request?',
-      html: `${label} — the decision is written to the audit log and cannot be reversed.`,
+      html: `${label} — the decision and your justification are written to the audit log and cannot be reversed.`,
       confirm: decision === 'approved' ? 'Approve' : 'Reject',
       danger: decision === 'rejected',
       icon: decision === 'approved' ? 'warning' : 'error',
     });
     if (!ok) return;
-    this.api.decideApproval(id, decision).subscribe({
+    this.api.decideApprovalWithJustification(id, decision, justification).subscribe({
       next: () => {
+        this.justifications[id] = '';
         this.load();
         this.loadHistory();
         void this.alerts.toast(`${label} ${decision}`);

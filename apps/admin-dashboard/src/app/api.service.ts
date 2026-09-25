@@ -86,6 +86,10 @@ export interface AdminOrder {
   deliveredAt?: string | null;
   customer: { id: string; name: string } | null;
   items?: Array<{ id: string; quantity: number; unitPrice: number; variant: { id: string; sku: string; size?: string | null; colour?: string | null } }>;
+  shippingAddress?: string | null;
+  oqrCode?: string | null;
+  grossWeightKg?: number | null;
+  palletRef?: string | null;
 }
 
 export interface ReturnRequest {
@@ -95,8 +99,11 @@ export interface ReturnRequest {
   quantity: number;
   requestedAt: string;
   returnDeadline: string;
-  variant: { sku: string };
+  variant: { sku: string; unitPrice?: number };
   order: { id: string };
+  refundAmount?: number;
+  photoUrls?: string[];
+  bayTag?: string | null;
 }
 
 export interface AuditEntry {
@@ -187,6 +194,21 @@ export class ApiService {
     return this.http.post(`${API_BASE}/approvals/${id}/decide`, { decision });
   }
 
+  decideApprovalWithJustification(
+    id: string,
+    decision: 'approved' | 'rejected',
+    justification: string,
+  ): Observable<unknown> {
+    return this.http.post(`${API_BASE}/approvals/${id}/decide`, { decision, justification });
+  }
+
+  /** Tamper-evidence badge: hash-chain integrity for the whole audit ledger. */
+  auditVerify(): Observable<{ total: number; valid: number; broken: number; headHash: string | null }> {
+    return this.http.get<{ total: number; valid: number; broken: number; headHash: string | null }>(
+      `${API_BASE}/audit-log/verify`,
+    );
+  }
+
   batches(): Observable<{ data: Batch[]; stages: string[] }> {
     return this.http.get<{ data: Batch[]; stages: string[] }>(`${API_BASE}/production-batches?limit=100`);
   }
@@ -216,6 +238,11 @@ export class ApiService {
     return this.http.patch(`${API_BASE}/orders/${id}/status`, { status });
   }
 
+  /** Warehouse pack-out for dispatch: shipping address, gross weight, pallet, QR stencil. */
+  fulfilOrder(id: string, body: Record<string, unknown>): Observable<Record<string, unknown>> {
+    return this.http.patch<Record<string, unknown>>(`${API_BASE}/orders/${id}/fulfilment`, body);
+  }
+
   returns(): Observable<{ data: ReturnRequest[]; total: number }> {
     return this.http.get<{ data: ReturnRequest[]; total: number }>(`${API_BASE}/returns`);
   }
@@ -230,6 +257,23 @@ export class ApiService {
       resolution,
       restocked: disposition === 'restocked',
       damaged: disposition === 'damaged',
+    });
+  }
+
+  resolveReturnWithEvidence(
+    id: string,
+    resolution: string,
+    disposition: 'restocked' | 'damaged',
+    photoUrls: string[],
+    bayTag?: string,
+  ): Observable<unknown> {
+    return this.http.patch(`${API_BASE}/returns/${id}/resolve`, {
+      decision: 'resolved',
+      resolution,
+      restocked: disposition === 'restocked',
+      damaged: disposition === 'damaged',
+      photoUrls,
+      bayTag,
     });
   }
 
@@ -265,6 +309,19 @@ export class ApiService {
   createVariant(productId: string, body: Record<string, unknown>): Observable<unknown> {
     return this.http.post(`${API_BASE}/products/${productId}/variants`, body);
   }
+  updateVariant(productId: string, variantId: string, body: Record<string, unknown>): Observable<unknown> {
+    return this.http.patch(`${API_BASE}/products/${productId}/variants/${variantId}`, body);
+  }
+  variantBom(variantId: string): Observable<Array<Record<string, unknown>>> {
+    return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/variants/${variantId}/bom`);
+  }
+  replaceVariantBom(variantId: string, items: Array<{ materialId: string; quantity: number; note?: string }>): Observable<unknown> {
+    return this.http.put(`${API_BASE}/variants/${variantId}/bom`, { items });
+  }
+  /** Engineering spec-sheet: fit note, pattern, DXF, BOM, approved tech pack. */
+  variantSpecSheet(variantId: string): Observable<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(`${API_BASE}/variants/${variantId}/spec-sheet`);
+  }
   collections(): Observable<Array<{ id: string; name: string }>> {
     return this.http.get<Array<{ id: string; name: string }>>(`${API_BASE}/collections`);
   }
@@ -290,6 +347,47 @@ export class ApiService {
   }
   recordUsage(materialId: string, body: Record<string, unknown>): Observable<unknown> {
     return this.http.post(`${API_BASE}/materials/${materialId}/usage`, body);
+  }
+
+  // --- Materials valuation + supplier directory ---
+  materialsValuation(): Observable<
+    Array<{
+      id: string;
+      name: string;
+      unit: string;
+      category: string | null;
+      storageLocation: string | null;
+      currentQuantity: number;
+      lowStock: boolean;
+      lastUnitCost: number | null;
+      lastPurchaseAt: string | null;
+      currentValue: number;
+    }>
+  > {
+    return this.http.get<Array<{
+      id: string;
+      name: string;
+      unit: string;
+      category: string | null;
+      storageLocation: string | null;
+      currentQuantity: number;
+      lowStock: boolean;
+      lastUnitCost: number | null;
+      lastPurchaseAt: string | null;
+      currentValue: number;
+    }>>(`${API_BASE}/materials/valuation`);
+  }
+  suppliers(): Observable<Array<Record<string, unknown>>> {
+    return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/materials/suppliers`);
+  }
+  createSupplier(body: Record<string, unknown>): Observable<unknown> {
+    return this.http.post(`${API_BASE}/materials/suppliers`, body);
+  }
+  updateSupplier(id: string, body: Record<string, unknown>): Observable<unknown> {
+    return this.http.patch(`${API_BASE}/materials/suppliers/${id}`, body);
+  }
+  deleteSupplier(id: string): Observable<unknown> {
+    return this.http.delete(`${API_BASE}/materials/suppliers/${id}`);
   }
 
   // --- Wholesale admin ---
@@ -360,6 +458,14 @@ export class ApiService {
   changeRole(id: string, role: string): Observable<unknown> {
     return this.http.patch(`${API_BASE}/users/${id}/role`, { role });
   }
+  rolesMatrix(): Observable<Array<{ id: string; name: string; permissions: Array<{ id?: string; module: string; accessLevel: string }> }>> {
+    return this.http.get<Array<{ id: string; name: string; permissions: Array<{ id?: string; module: string; accessLevel: string }> }>>(
+      `${API_BASE}/users/roles`,
+    );
+  }
+  updateRolePermissions(role: string, permissions: Array<{ module: string; accessLevel: string }>): Observable<unknown> {
+    return this.http.put(`${API_BASE}/users/roles/${encodeURIComponent(role)}/permissions`, { permissions });
+  }
 
   // --- Logistics ---
   deliveries(): Observable<{ data: Array<Record<string, unknown>>; total: number }> {
@@ -373,6 +479,9 @@ export class ApiService {
   }
   updateDeliveryStatus(id: string, status: string): Observable<unknown> {
     return this.http.patch(`${API_BASE}/deliveries/${id}/status`, { status });
+  }
+  addDeliveryCheckpoint(id: string, body: Record<string, unknown>): Observable<unknown> {
+    return this.http.post(`${API_BASE}/deliveries/${id}/checkpoint`, body);
   }
   deliveryPricing(): Observable<Array<Record<string, unknown>>> {
     return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/logistics/pricing`);
@@ -401,6 +510,32 @@ export class ApiService {
     return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/production-batches/${id}/qc-rejections`);
   }
 
+  // --- Floor kiosk: barcode, scan journal, telemetry, planned-vs-consumed BOM ---
+  registerBatchBarcode(id: string, code: string, body?: Record<string, unknown>): Observable<unknown> {
+    return this.http.post(`${API_BASE}/production-batches/${id}/barcode`, { barcode: code, ...body });
+  }
+  batchBarcode(id: string): Observable<Record<string, unknown> | null> {
+    return this.http.get<Record<string, unknown> | null>(`${API_BASE}/production-batches/${id}/barcode`);
+  }
+  batchScans(id: string): Observable<Array<Record<string, unknown>>> {
+    return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/production-batches/${id}/scans`);
+  }
+  recordBatchScan(id: string, body: Record<string, unknown>): Observable<unknown> {
+    return this.http.post(`${API_BASE}/production-batches/${id}/scans`, body);
+  }
+  batchTelemetry(id: string): Observable<Array<Record<string, unknown>>> {
+    return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/production-batches/${id}/telemetry`);
+  }
+  recordTelemetry(id: string, body: Record<string, unknown>): Observable<unknown> {
+    return this.http.post(`${API_BASE}/production-batches/${id}/telemetry`, body);
+  }
+  /** BOM vs actuals per batch: what was planned vs what the floor consumed. */
+  plannedVsConsumed(id: string): Observable<Array<{ materialId: string; materialName: string; plannedQuantity: number; consumedQuantity: number; variance: number }>> {
+    return this.http.get<Array<{ materialId: string; materialName: string; plannedQuantity: number; consumedQuantity: number; variance: number }>>(
+      `${API_BASE}/production-batches/${id}/bom`,
+    );
+  }
+
   // --- Reviews moderation ---
   pendingReviews(): Observable<Array<Record<string, unknown>>> {
     return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/reviews/pending`);
@@ -418,6 +553,16 @@ export class ApiService {
   }
   recordMovement(itemId: string, itemType: 'variant' | 'material', body: Record<string, unknown>): Observable<unknown> {
     return this.http.post(`${API_BASE}/inventory/${itemId}/movements?itemType=${itemType}`, body);
+  }
+  inventoryLedgerVerify(): Observable<{ total: number; valid: number; broken: number; headHash: string | null }> {
+    return this.http.get<{ total: number; valid: number; broken: number; headHash: string | null }>(
+      `${API_BASE}/inventory/ledger/verify`,
+    );
+  }
+  stockCheckDigest(itemType: 'variant' | 'material', itemId: string): Observable<{ currentQuantity: number; expectedQuantity: number; runningBalance: number; materialCount: number }> {
+    return this.http.get<{ currentQuantity: number; expectedQuantity: number; runningBalance: number; materialCount: number }>(
+      `${API_BASE}/inventory/digest/${itemType}/${itemId}`,
+    );
   }
 
   // --- Partners administration ---
@@ -454,5 +599,33 @@ export class ApiService {
   }
   createCampaign(body: Record<string, unknown>): Observable<unknown> {
     return this.http.post(`${API_BASE}/campaigns`, body);
+  }
+
+  // --- Tech packs (make-ready specs with revision history) ---
+  techPacks(): Observable<Array<Record<string, unknown>>> {
+    return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/tech-packs?limit=100`);
+  }
+  techPack(id: string): Observable<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(`${API_BASE}/tech-packs/${id}`);
+  }
+  createTechPack(body: Record<string, unknown>): Observable<Record<string, unknown>> {
+    return this.http.post<Record<string, unknown>>(`${API_BASE}/tech-packs`, body);
+  }
+  updateTechPack(id: string, body: Record<string, unknown>): Observable<Record<string, unknown>> {
+    return this.http.put<Record<string, unknown>>(`${API_BASE}/tech-packs/${id}`, body);
+  }
+  approveTechPack(id: string): Observable<Record<string, unknown>> {
+    return this.http.post<Record<string, unknown>>(`${API_BASE}/tech-packs/${id}/approve`, {});
+  }
+  techPackRevisions(id: string): Observable<Array<Record<string, unknown>>> {
+    return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/tech-packs/${id}/revisions`);
+  }
+
+  // --- Password reset (admin self-service) ---
+  forgotPassword(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${API_BASE}/auth/forgot-password`, { email });
+  }
+  resetPassword(token: string, newPassword: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${API_BASE}/auth/reset-password`, { token, newPassword });
   }
 }

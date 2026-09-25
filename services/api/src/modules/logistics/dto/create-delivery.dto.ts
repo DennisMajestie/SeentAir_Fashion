@@ -1,4 +1,15 @@
-import { IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class ConsignmentItemDto {
+  @IsString()
+  @IsNotEmpty()
+  sku: string;
+
+  @IsInt()
+  @Min(1)
+  quantity: number;
+}
 
 export class CreateDeliveryDto {
   @IsUUID()
@@ -22,4 +33,19 @@ export class CreateDeliveryDto {
   @IsOptional()
   @IsString()
   zone?: string;
+
+  /** Consignment contents — what travels on this leg. */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsignmentItemDto)
+  contents?: ConsignmentItemDto[];
+
+  @IsOptional()
+  @IsString()
+  driverName?: string;
+
+  @IsOptional()
+  @IsString()
+  driverPhone?: string;
 }

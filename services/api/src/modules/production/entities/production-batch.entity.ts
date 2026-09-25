@@ -45,6 +45,10 @@ export class ProductionBatch {
   @Column({ name: 'approval_request_id', type: 'uuid' })
   approvalRequestId: string;
 
+  /** Registered floor-kiosk barcode (unique). */
+  @Column({ type: 'varchar', unique: true, nullable: true })
+  barcode: string | null;
+
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy: string | null;
 

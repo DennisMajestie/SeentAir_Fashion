@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { ProductVariant } from '../catalogue/entities/product-variant.entity';
 import { Order } from '../orders/entities/order.entity';
+import { numericTransformer } from '../../common/numeric.transformer';
 
 export enum ReturnStatus {
   REQUESTED = 'requested',
@@ -36,6 +37,18 @@ export class ReturnRequest {
 
   @Column({ type: 'integer' })
   quantity: number;
+
+  /** Expected refund (₦): order-item unit price × quantity, exposed at request time. */
+  @Column({ name: 'refund_amount', type: 'numeric', precision: 12, scale: 2, nullable: true, transformer: numericTransformer })
+  refundAmount: number | null;
+
+  /** Customer-submitted/intake photos documenting the returned item. */
+  @Column({ name: 'photo_urls', type: 'jsonb', nullable: true })
+  photoUrls: string[] | null;
+
+  /** Quarantine-bay tag assigned at intake (e.g. "Q-07"). */
+  @Column({ name: 'bay_tag', type: 'varchar', nullable: true })
+  bayTag: string | null;
 
   @Column({ type: 'text' })
   reason: string;

@@ -1,11 +1,13 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ApprovalActionType } from '../../common/enums';
 import { ApprovalsService } from '../approvals/approvals.service';
+import { TechPack } from '../tech-packs/tech-pack.entity';
 import { CatalogueService } from './catalogue.service';
 import { Collection } from './entities/collection.entity';
 import { Product } from './entities/product.entity';
+import { ProductBomItem } from './entities/product-bom-item.entity';
 import { ProductVariant } from './entities/product-variant.entity';
 
 describe('CatalogueService — price-change approval gate', () => {
@@ -20,6 +22,7 @@ describe('CatalogueService — price-change approval gate', () => {
   };
   const emptyRepo = { findOne: jest.fn(), find: jest.fn(), create: jest.fn(), save: jest.fn() };
   const approvalsService = { assertApproved: jest.fn() };
+  const dataSource = { transaction: jest.fn(async (fn: (m: unknown) => Promise<unknown>) => fn({ getRepository: () => emptyRepo })) };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -29,7 +32,10 @@ describe('CatalogueService — price-change approval gate', () => {
         { provide: getRepositoryToken(Product), useValue: productRepo },
         { provide: getRepositoryToken(ProductVariant), useValue: emptyRepo },
         { provide: getRepositoryToken(Collection), useValue: emptyRepo },
+        { provide: getRepositoryToken(ProductBomItem), useValue: emptyRepo },
+        { provide: getRepositoryToken(TechPack), useValue: emptyRepo },
         { provide: ApprovalsService, useValue: approvalsService },
+        { provide: getDataSourceToken(), useValue: dataSource },
       ],
     }).compile();
     service = moduleRef.get(CatalogueService);

@@ -33,8 +33,7 @@ import { ApiService, ReturnRequest } from '../api.service';
       <div class="kpi"><span class="kpi-label">Units in quarantine</span><span class="kpi-value">{{ pendingUnits() }}</span><span class="kpi-sub">across open requests</span></div>
       <div class="kpi"><span class="kpi-label">Overdue returns</span><span class="kpi-value" [class.error]="overdueCount() > 0">{{ overdueCount() }}</span><span class="kpi-sub">past the 24h physical-return deadline</span></div>
       <div class="kpi"><span class="kpi-label">Total requests</span><span class="kpi-value">{{ returns().length }}</span><span class="kpi-sub">in the current window</span></div>
-      <!-- GAP: refund-exposure ₦ needs the returned line's unit price; the returns API
-           carries sku + quantity only. -->
+      <div class="kpi"><span class="kpi-label">Refund exposure</span><span class="kpi-value">₦{{ openRefundExposure() | number: '1.0-0' }}</span><span class="kpi-sub">unit price × qty on open returns</span></div>
     </div>
 
     <p class="rule-strip">RETURN WINDOWS // request within 12h of receipt · complete within 24h · custom orders excluded — enforced by the API.</p>
@@ -86,18 +85,34 @@ import { ApiService, ReturnRequest } from '../api.service';
           <dl class="kv">
             <dt>Item</dt><dd>{{ r.variant.sku }} × {{ r.quantity }}</dd>
             <dt>Order</dt><dd><code>{{ r.order.id.slice(0, 8) }}</code></dd>
+            @if (r.refundAmount != null) {
+              <dt class="naira">Refund exposure</dt><dd class="naira">₦{{ r.refundAmount | number: '1.0-2' }}</dd>
+            }
             <dt>Reason</dt><dd>“{{ r.reason }}”</dd>
             <dt>Requested</dt><dd>{{ r.requestedAt | date: 'medium' }}</dd>
             <dt>Return due</dt><dd [class.error]="isOverdue(r)">{{ r.returnDeadline | date: 'medium' }} ({{ deadlineLabel(r) }})</dd>
+            @if (r.bayTag) { <dt>Quarantine bay tag</dt><dd class="mono">{{ r.bayTag }}</dd> }
+            @if (r.photoUrls && r.photoUrls.length > 0) {
+              <dt>Evidence photos</dt>
+              <dd>
+                @for (u of r.photoUrls; track u) {
+                  <a [href]="u" target="_blank" rel="noopener" class="link">{{ u }}</a><br />
+                }
+              </dd>
+            }
           </dl>
-          <!-- GAP: intake garment photos and the QR quarantine-bay tag need media/storage
-               fields the returns API doesn't carry. -->
 
           @if (r.status === 'requested') {
             <div class="gap-sep"></div>
             <div class="panel-head"><h2>Check condition & decide</h2></div>
             <label>Inspection note (required)
               <input [(ngModel)]="resolutions[r.id]" name="res" placeholder="e.g. tags intact, refund issued / seam damage" />
+            </label>
+            <label>Evidence photo URL(s) <span class="mini-note">comma-separated</span>
+              <input [(ngModel)]="photoUrls[r.id]" name="photos" placeholder="https://…/front.jpg, https://…/detail.jpg" />
+            </label>
+            <label>Quarantine bay tag
+              <input [(ngModel)]="bayTags[r.id]" name="bay" placeholder="Q-B7 (printed QR, attach to item)" />
             </label>
             <div class="attention">
               <div class="att-item">
@@ -132,6 +147,8 @@ export class ReturnsPage implements OnInit {
   readonly statusFilter = signal('');
   query = '';
   resolutions: Record<string, string> = {};
+  photoUrls: Record<string, string> = {};
+  bayTags: Record<string, string> = {};
 
   ngOnInit(): void {
     this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
@@ -149,6 +166,8 @@ export class ReturnsPage implements OnInit {
   readonly pendingCount = computed(() => this.returns().filter((r) => r.status === 'requested').length);
   readonly pendingUnits = computed(() => this.returns().filter((r) => r.status === 'requested').reduce((s, r) => s + r.quantity, 0));
   readonly overdueCount = computed(() => this.returns().filter((r) => r.status === 'requested' && this.isOverdue(r)).length);
+  readonly openRefundExposure = computed(() =>
+    this.returns().filter((r) => r.status === 'requested').reduce((s, r) => s + (Number(r.refundAmount) || 0), 0));
   readonly statusGroups = computed(() => {
     const counts = new Map<string, number>();
     for (const r of this.returns()) counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
@@ -193,9 +212,16 @@ export class ReturnsPage implements OnInit {
       this.error.set('Enter an inspection note first.');
       return;
     }
+    const photos = (this.photoUrls[id] ?? '').split(',').map((u) => u.trim()).filter((u) => u.length > 0);
+    const bay = (this.bayTags[id] ?? '').trim();
     this.error.set(null);
-    this.api.resolveReturn(id, resolution, disposition).subscribe({
-      next: () => this.load(),
+    this.api.resolveReturnWithEvidence(id, resolution, disposition, photos, bay || undefined).subscribe({
+      next: () => {
+        delete this.resolutions[id];
+        delete this.photoUrls[id];
+        delete this.bayTags[id];
+        this.load();
+      },
       error: (err) => this.error.set(err?.error?.message ?? 'Resolution failed.'),
     });
   }

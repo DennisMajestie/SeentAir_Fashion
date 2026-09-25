@@ -7,6 +7,9 @@ import { AuthenticatedUser } from '../../common/interfaces';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { RecordCostDto } from './dto/record-cost.dto';
 import { RecordQCRejectionDto } from './dto/record-qc-rejection.dto';
+import { RecordScanDto } from './dto/record-scan.dto';
+import { RecordTelemetryDto } from './dto/record-telemetry.dto';
+import { RegisterBarcodeDto } from './dto/register-barcode.dto';
 import { UpdateStageDto } from './dto/update-stage.dto';
 import { ProductionService } from './production.service';
 
@@ -75,5 +78,52 @@ export class ProductionController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.productionService.recordQCRejection(id, dto, user.id);
+  }
+
+  // --- Floor kiosk: barcode, scans & machine telemetry ---
+
+  @Post(':id/barcode')
+  @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.FULL)
+  registerBarcode(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RegisterBarcodeDto) {
+    return this.productionService.registerBarcode(id, dto.barcode);
+  }
+
+  @Post(':id/scans')
+  @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.FULL)
+  recordScan(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RecordScanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.productionService.recordScan(id, dto, user.id);
+  }
+
+  @Get(':id/scans')
+  @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.VIEW)
+  findScans(@Param('id', ParseUUIDPipe) id: string) {
+    return this.productionService.findScans(id);
+  }
+
+  @Post(':id/telemetry')
+  @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.FULL)
+  recordTelemetry(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RecordTelemetryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.productionService.recordTelemetry(id, dto, user.id);
+  }
+
+  @Get(':id/telemetry')
+  @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.VIEW)
+  findTelemetry(@Param('id', ParseUUIDPipe) id: string) {
+    return this.productionService.findTelemetry(id);
+  }
+
+  /** Planned BOM vs consumed materials for the batch (yield review). */
+  @Get(':id/bom')
+  @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.VIEW)
+  plannedVsConsumed(@Param('id', ParseUUIDPipe) id: string) {
+    return this.productionService.plannedVsConsumed(id);
   }
 }

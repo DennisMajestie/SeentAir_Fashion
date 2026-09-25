@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsInt,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -44,4 +45,9 @@ export class CreateOrderDto {
   @IsString()
   @IsNotEmpty()
   source?: string;
+
+  /** Free-form delivery destination (address line, city, state, phone, …). */
+  @IsOptional()
+  @IsObject()
+  shippingAddress?: Record<string, unknown>;
 }

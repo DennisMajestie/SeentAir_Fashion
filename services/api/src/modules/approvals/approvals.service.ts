@@ -65,6 +65,7 @@ export class ApprovalsService {
     id: string,
     decision: 'approved' | 'rejected',
     decider: AuthenticatedUser,
+    justification?: string,
   ): Promise<ApprovalRequest> {
     const request = await this.approvalRepo.findOne({ where: { id } });
     if (!request) throw new NotFoundException(`Approval request ${id} not found`);
@@ -79,6 +80,7 @@ export class ApprovalsService {
       decision === 'approved' ? ApprovalStatus.APPROVED : ApprovalStatus.REJECTED;
     request.approvedBy = await this.usersService.findById(decider.id);
     request.decidedAt = new Date();
+    request.justification = justification ?? null;
     return this.approvalRepo.save(request);
   }
 

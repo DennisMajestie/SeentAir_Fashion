@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import {
   InventoryItemType,
   InventoryMovement,
@@ -26,6 +26,7 @@ export class InventoryService {
   constructor(
     @InjectRepository(InventoryMovement)
     private readonly movementRepo: Repository<InventoryMovement>,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   async record(input: RecordMovementInput, manager?: EntityManager): Promise<InventoryMovement> {
@@ -123,5 +124,96 @@ export class InventoryService {
       byItem.set(key, entry);
     }
     return [...byItem.values()];
+  }
+
+  /**
+   * Per-item ledger digest: the derived quantity plus the hash-chain head for
+   * that item. The admin shows this as a verifiable "ledger badge".
+   */
+  async digest(
+    itemType: InventoryItemType,
+    itemId: string,
+  ): Promise<{
+    itemType: InventoryItemType;
+    itemId: string;
+    currentQuantity: number;
+    entryCount: number;
+    firstTimestamp: Date | null;
+    lastTimestamp: Date | null;
+    ledgerHead: string | null;
+  }> {
+    const [currentQuantity, entryCount, head] = await Promise.all([
+      this.currentQuantity(itemType, itemId),
+      this.movementRepo.count({ where: { itemType, itemId } }),
+      this.movementRepo
+        .createQueryBuilder('m')
+        .select('m.entry_hash', 'ledger_head')
+        .addSelect('m.timestamp', 'last_timestamp')
+        .addSelect('(SELECT MIN(m2.timestamp) FROM inventory_movements m2 WHERE m2.item_type = :itemType AND m2.item_id = :itemId)', 'first_timestamp')
+        .where('m.item_type = :itemType AND m.item_id = :itemId', { itemType, itemId })
+        .orderBy('m.timestamp', 'DESC')
+        .addOrderBy('m.id', 'DESC')
+        .limit(1)
+        .getRawOne<{ ledger_head: string; last_timestamp: Date; first_timestamp: Date }>(),
+    ]);
+    return {
+      itemType,
+      itemId,
+      currentQuantity,
+      entryCount,
+      firstTimestamp: head?.first_timestamp ?? null,
+      lastTimestamp: head?.last_timestamp ?? null,
+      ledgerHead: head?.ledger_head ?? null,
+    };
+  }
+
+  /** Full-ledger hash-chain integrity check (same expression as the insert trigger). */
+  async verify(): Promise<{
+    total: number;
+    valid: number;
+    broken: number;
+    headHash: string | null;
+  }> {
+    const rows: Array<{
+      total: string;
+      valid: string;
+      broken: string;
+      head_hash: string | null;
+    }> = await this.dataSource.query(
+      `WITH linked AS (
+         SELECT id,
+                "timestamp",
+                prev_hash,
+                entry_hash,
+                seentair_chain_hash(
+                  id,
+                  prev_hash,
+                  item_type::text,
+                  NULL,
+                  jsonb_build_object(
+                    'itemId', item_id::text,
+                    'movementType', movement_type::text,
+                    'quantityDelta', quantity_delta,
+                    'actorId', actor_id::text,
+                    'referenceId', reference_id),
+                  "timestamp") AS expected_hash,
+                (prev_hash IS NOT NULL AND NOT EXISTS (
+                  SELECT 1 FROM inventory_movements p WHERE p.entry_hash = inventory_movements.prev_hash
+                )) AS dangling
+         FROM inventory_movements
+       )
+       SELECT count(*)::text AS total,
+              count(*) FILTER (WHERE entry_hash = expected_hash AND NOT dangling)::text AS valid,
+              count(*) FILTER (WHERE entry_hash IS DISTINCT FROM expected_hash OR dangling)::text AS broken,
+              (SELECT entry_hash FROM inventory_movements ORDER BY "timestamp" DESC, id DESC LIMIT 1) AS head_hash
+       FROM linked`,
+    );
+    const row = rows[0];
+    return {
+      total: parseInt(row?.total ?? '0', 10),
+      valid: parseInt(row?.valid ?? '0', 10),
+      broken: parseInt(row?.broken ?? '0', 10),
+      headHash: row?.head_hash ?? null,
+    };
   }
 }

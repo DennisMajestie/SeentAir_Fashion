@@ -28,6 +28,14 @@ export class MaterialPurchase {
   @Column({ type: 'text', nullable: true })
   note: string | null;
 
+  /** Per-purchase supplier name — the certified-mill directory is in `suppliers`. */
+  @Column({ name: 'supplier_name', type: 'varchar', nullable: true })
+  supplierName: string | null;
+
+  /** Supplier lead time for this purchase (days) — feeds SLA/quota history. */
+  @Column({ name: 'lead_time_days', type: 'integer', nullable: true })
+  leadTimeDays: number | null;
+
   @Column({ name: 'recorded_by', type: 'uuid', nullable: true })
   recordedBy: string | null;
 

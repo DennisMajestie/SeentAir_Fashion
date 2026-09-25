@@ -51,6 +51,20 @@ export class DeliveryLeg {
   @Column({ type: 'varchar', nullable: true })
   zone: string | null;
 
+  /** Consignment contents — [{ sku, quantity }] — what travels on this leg. */
+  @Column({ type: 'jsonb', nullable: true })
+  contents: unknown | null;
+
+  /** Live corridor checkpoints: [{ zone, status, sealId, note, driverName, at }]. */
+  @Column({ type: 'jsonb', nullable: true })
+  checkpoints: unknown | null;
+
+  @Column({ name: 'driver_name', type: 'varchar', nullable: true })
+  driverName: string | null;
+
+  @Column({ name: 'driver_phone', type: 'varchar', nullable: true })
+  driverPhone: string | null;
+
   /** Quoted delivery cost (weight + location — appendix 14). */
   @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true, transformer: numericTransformer })
   cost: number | null;

@@ -69,6 +69,21 @@ export class Order {
   @Column({ name: 'total_amount', type: 'numeric', precision: 12, scale: 2, transformer: numericTransformer })
   totalAmount: number;
 
+  /** Free-form delivery destination captured at creation for outbound fulfilment. */
+  @Column({ name: 'shipping_address', type: 'jsonb', nullable: true })
+  shippingAddress: unknown | null;
+
+  @Column({ name: 'gross_weight_kg', type: 'numeric', precision: 8, scale: 2, nullable: true, transformer: numericTransformer })
+  grossWeightKg: number | null;
+
+  /** Pallet staging reference for the warehouse. */
+  @Column({ name: 'pallet_ref', type: 'varchar', nullable: true })
+  palletRef: string | null;
+
+  /** Generated QR stencil reference printed on the box for scanning. */
+  @Column({ name: 'qr_stencil_ref', type: 'varchar', nullable: true })
+  qrStencilRef: string | null;
+
   /** Set when the order reaches DELIVERED — anchors the 12h return window and reviews. */
   @Column({ name: 'delivered_at', type: 'timestamptz', nullable: true })
   deliveredAt: Date | null;

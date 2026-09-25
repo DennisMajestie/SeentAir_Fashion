@@ -52,4 +52,12 @@ export class InventoryMovement {
   @Index()
   @CreateDateColumn({ name: 'timestamp' })
   timestamp: Date;
+
+  /** Tamper-evidence chain (Phase 9): hash of the immediately preceding movement. */
+  @Column({ name: 'prev_hash', type: 'varchar', length: 64, nullable: true })
+  prevHash: string | null;
+
+  /** SHA-256 over prevHash + movement contents — computed by a DB trigger on insert. */
+  @Column({ name: 'entry_hash', type: 'varchar', length: 64, unique: true })
+  entryHash: string;
 }

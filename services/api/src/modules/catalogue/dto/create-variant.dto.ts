@@ -1,4 +1,13 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Min,
+} from 'class-validator';
 import { AvailabilityStatus } from '../entities/product-variant.entity';
 
 export class CreateVariantDto {
@@ -26,4 +35,21 @@ export class CreateVariantDto {
   @IsOptional()
   @IsEnum(AvailabilityStatus)
   availabilityStatus?: AvailabilityStatus;
+
+  @IsOptional()
+  @IsString()
+  fitNote?: string;
+
+  /** Graded pattern dimensions keyed by size. */
+  @IsOptional()
+  @IsObject()
+  patternGeometry?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  dxfUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  storageLocation?: string;
 }

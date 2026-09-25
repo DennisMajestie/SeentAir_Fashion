@@ -19,10 +19,23 @@ import { ApiService, AuditEntry } from '../api.service';
       </div>
       <div class="ops-actions">
         <span class="live-chip">Automatic</span>
-        <!-- GAP: the reference's "Verify Data Integrity" runs a cryptographic hash-chain check;
-             the audit table has no hash column, so no integrity-proof action exists yet. -->
+        <button class="cta small ghost" type="button" (click)="verifyIntegrity()">Verify data integrity</button>
+        @if (verifyResult(); as v) {
+          <span class="chip" [class.ok]="v.broken === 0" [class.bad]="v.broken > 0">
+            {{ v.broken === 0 ? 'hash-chain valid' : v.broken + ' broken link(s)' }} · {{ v.valid }}/{{ v.total }}
+          </span>
+        }
       </div>
     </div>
+
+    @if (verifyResult(); as v) {
+      <div class="rule-strip" [style.borderColor]="v.broken > 0 ? 'var(--danger)' : ''">
+        <strong>Hash-chain integrity check</strong> — every audit entry is SHA-256 chained to the previous one.
+        @if (v.broken === 0) { All {{ v.total }} entries verify end-to-end; the ledger has not been tampered with. }
+        @else { {{ v.broken }} of {{ v.total }} entries fail verification — investigate immediately. }
+        @if (v.headHash) { <code class="mono">{{ v.headHash }}</code> }
+      </div>
+    }
 
     <div class="kpi-bar">
       <div class="kpi"><span class="kpi-label">Entries recorded</span><span class="kpi-value">{{ total() | number }}</span><span class="kpi-sub">matching current filter</span></div>
@@ -85,12 +98,14 @@ export class AuditPage implements OnInit {
   readonly total = signal(0);
   readonly openId = signal<string | null>(null);
   readonly filtered = signal(false);
+  readonly verifyResult = signal<{ total: number; valid: number; broken: number; headHash: string | null } | null>(null);
   fAction = '';
   fFrom = '';
   fTo = '';
 
   ngOnInit(): void {
     this.load();
+    this.verifyIntegrity();
   }
 
   readonly distinctActors = computed(() => new Set(this.entries().filter((e) => e.actorId).map((e) => e.actorId)).size);
@@ -130,5 +145,9 @@ export class AuditPage implements OnInit {
   pretty(v: unknown): string {
     if (v == null) return '— not captured —';
     try { return JSON.stringify(v, null, 2); } catch { return String(v); }
+  }
+
+  verifyIntegrity(): void {
+    this.api.auditVerify().subscribe((res) => this.verifyResult.set(res));
   }
 }

@@ -4,11 +4,13 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { numericTransformer } from '../../../common/numeric.transformer';
 import { Product } from './product.entity';
+import { ProductBomItem } from './product-bom-item.entity';
 
 export enum AvailabilityStatus {
   IN_STOCK = 'in_stock',
@@ -58,6 +60,25 @@ export class ProductVariant {
     default: AvailabilityStatus.IN_STOCK,
   })
   availabilityStatus: AvailabilityStatus;
+
+  /** Garment engineering (Phase 9): how the silhouette is meant to fit. */
+  @Column({ name: 'fit_note', type: 'text', nullable: true })
+  fitNote: string | null;
+
+  /** Graded pattern dimensions keyed by size (xs/s/m/l/xl/…). */
+  @Column({ name: 'pattern_geometry', type: 'jsonb', nullable: true })
+  patternGeometry: unknown | null;
+
+  /** Source DXF/spec-sheet file for the pattern. */
+  @Column({ name: 'dxf_url', type: 'varchar', length: 500, nullable: true })
+  dxfUrl: string | null;
+
+  /** Warehouse location, e.g. "A1-B2" (bay-rack map). */
+  @Column({ name: 'storage_location', type: 'varchar', nullable: true })
+  storageLocation: string | null;
+
+  @OneToMany(() => ProductBomItem, (bom) => bom.variant)
+  bomItems: ProductBomItem[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

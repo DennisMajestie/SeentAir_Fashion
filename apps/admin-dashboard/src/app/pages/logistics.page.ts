@@ -3,7 +3,8 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../api.service';
 
-interface LegRow { id: string; carrier: string; legNumber: number; status: string; trackingRef: string | null; cost: number | null; order: { id: string }; }
+interface LegRow { id: string; carrier: string; legNumber: number; status: string; trackingRef: string | null; cost: number | null; order: { id: string }; driverName: string | null; driverPhone: string | null; contents: Array<{ sku?: string; quantity: number }> | null; checkpoints: Array<Record<string, unknown>> | null; }
+interface CheckpointRow { zone: string; sealId: string | null; status: string; note: string | null; driverName: string | null; driverPhone: string | null; at: string; }
 interface ZoneRow { id: string; zone: string; baseFee: number; pricePerKg: number; }
 
 const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
@@ -33,7 +34,7 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
       <div class="kpi"><span class="kpi-label">Active transit</span><span class="kpi-value">{{ countStatus('in_transit') }}</span><span class="kpi-sub">{{ countStatus('pending') }} not yet dispatched</span></div>
       <div class="kpi"><span class="kpi-label">Delivered & signed</span><span class="kpi-value">{{ countStatus('delivered') }}</span><span class="kpi-sub">{{ countStatus('failed') }} failed run(s)</span></div>
       <div class="kpi"><span class="kpi-label">Freight spend</span><span class="kpi-value">₦{{ totalCost() | number: '1.0-0' }}</span><span class="kpi-sub">recorded costs</span></div>
-      <!-- GAP: unit volumes per run (pcs) need consignment contents the delivery leg doesn't store. -->
+      <div class="kpi"><span class="kpi-label">Units on consignment</span><span class="kpi-value">{{ totalUnits() | number }}</span><span class="kpi-sub">pcs across all legs</span></div>
     </div>
 
     @if (showCreate()) {
@@ -55,6 +56,11 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
               <option value="">—</option>
               @for (z of zones(); track z.id) { <option [value]="z.zone">{{ z.zone }}</option> }
             </select>
+          </label>
+          <label>Driver name <input [(ngModel)]="nd.driverName" name="ddriver" placeholder="Okafor, driver name" /></label>
+          <label>Driver phone <input [(ngModel)]="nd.driverPhone" name="dphone" placeholder="0803…" /></label>
+          <label class="wide">Contents (pcs) <span class="mini-note">one line per SKU: SKU×qty, e.g. SFT-TEE-BLK-M×5</span>
+            <textarea rows="3" [(ngModel)]="nd.contentsText" name="dcontents" placeholder="SFT-TEE-BLK-M×5&#10;SFT-HOOD-NAV-L×3"></textarea>
           </label>
           <div class="wide"><button class="cta small" type="submit">Create leg</button></div>
         </form>
@@ -111,7 +117,48 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
             <dt>Carrier</dt><dd>{{ l.carrier.replaceAll('_', ' ') }}</dd>
             <dt>Leg number</dt><dd>{{ l.legNumber }}</dd>
             <dt>Freight cost</dt><dd>{{ l.cost !== null ? '₦' + (l.cost | number) : 'not recorded' }}</dd>
+            @if (l.driverName) { <dt>Driver</dt><dd>{{ l.driverName }}<span class="mini-note" *ngIf="l.driverPhone"> · {{ l.driverPhone }}</span></dd> }
+            @if ((l.contents ?? []).length > 0) {
+              <dt>Contents (pcs)</dt>
+              <dd class="wrap-anywhere">@for (c of l.contents ?? []; track $index) { {{ c.quantity }}×{{ c.sku ?? '—' }} @if ($index < (l.contents ?? []).length - 1) { · } }</dd>
+            }
           </dl>
+
+          <div class="panel-head"><h2>Corridor checkpoints</h2><span class="ph-sub">torque-seal journal</span></div>
+          @if (checkpointsOf(l).length > 0) {
+            <ul class="activity">
+              @for (cp of checkpointsOf(l); track $index) {
+                <li>
+                  <time>{{ str(cp.at) | date: 'MMM d, HH:mm' }}</time>
+                  <span class="act-action">
+                    {{ cp.zone }} — <span class="chip" [class.ok]="cp.status === 'delivered'" [class.warn]="cp.status !== 'delivered'">{{ cp.status.replaceAll('_', ' ') }}</span>
+                    @if (cp.sealId) { · seal {{ cp.sealId }} }
+                    @if (cp.driverName) { · {{ cp.driverName }} }
+                    @if (cp.note) { · {{ cp.note }} }
+                  </span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="muted small">No corridor checkpoints logged on this leg yet.</p>
+          }
+
+          <form class="form-grid" (ngSubmit)="addCheckpoint(l)">
+            <label>Zone / location <input [(ngModel)]="cp.zone" name="cpzone" required placeholder="Ojota park interchange" /></label>
+            <label>Seal id <input [(ngModel)]="cp.sealId" name="cpseal" placeholder="SEAL-204" /></label>
+            <label>Status
+              <select [(ngModel)]="cp.status" name="cpstatus">
+                <option value="on_track">on track</option>
+                <option value="delayed">delayed</option>
+                <option value="seal_intact">seal intact</option>
+                <option value="delivered">delivered</option>
+              </select>
+            </label>
+            <label>Driver name <input [(ngModel)]="cp.driverName" name="cpdriver" /></label>
+            <label>Driver phone <input [(ngModel)]="cp.driverPhone" name="cphone" placeholder="0803…" /></label>
+            <label class="wide">Note <input [(ngModel)]="cp.note" name="cpnote" placeholder="held at gate 20min…" /></label>
+            <div class="wide actions flat"><button class="cta small ghost" type="submit">Log checkpoint</button></div>
+          </form>
 
           <div class="panel-head"><h2>Live tracking</h2><span class="ph-sub">updated as it moves</span></div>
           @if (tracking(); as t) {
@@ -181,7 +228,8 @@ export class LogisticsAdminPage implements OnInit {
   readonly statusFilter = signal('');
   readonly legStatuses = LEG_STATUSES;
   statusChoice: Record<string, string> = {};
-  nd = { orderId: '', carrier: 'dispatch_rider', legNumber: 1, weightKg: 0, zone: '' };
+  nd = { orderId: '', carrier: 'dispatch_rider', legNumber: 1, weightKg: 0, zone: '', driverName: '', driverPhone: '', contentsText: '' };
+  cp = { zone: '', sealId: '', status: 'on_track', driverName: '', driverPhone: '', note: '' };
   nz = { zone: '', baseFee: 0, pricePerKg: 0 };
   qc = { weightKg: 0, zone: '' };
 
@@ -199,6 +247,11 @@ export class LogisticsAdminPage implements OnInit {
 
   countStatus(s: string): number { return this.legs().filter((l) => l.status === s).length; }
   readonly totalCost = computed(() => this.legs().reduce((sum, l) => sum + (Number(l.cost) || 0), 0));
+  readonly totalUnits = computed(() =>
+    this.legs().reduce((sum, l) => sum + (l.contents ?? []).reduce((s, c) => s + (Number(c.quantity) || 0), 0), 0));
+  checkpointsOf(l: LegRow): CheckpointRow[] {
+    return (l.checkpoints ?? []) as unknown as CheckpointRow[];
+  }
 
   visible(): LegRow[] {
     const s = this.statusFilter();
@@ -222,10 +275,31 @@ export class LogisticsAdminPage implements OnInit {
   private fail(e: { error?: { message?: string } }, fb: string): void { this.error.set(e?.error?.message ?? fb); this.message.set(null); }
 
   create(): void {
+    const contents = this.nd.contentsText.split('\n').map((line) => line.trim()).filter(Boolean)
+      .map((line) => {
+        const m = line.match(/^(.*?)×(\d+)$/i) ?? line.match(/^(.*?)\s+x?\s*(\d+)$/i);
+        return m ? { sku: m[1].trim(), quantity: Number(m[2]) } : { sku: line, quantity: 1 };
+      });
     this.api.createDelivery({
       orderId: this.nd.orderId, carrier: this.nd.carrier, legNumber: Number(this.nd.legNumber),
       weightKg: this.nd.weightKg ? Number(this.nd.weightKg) : undefined, zone: this.nd.zone || undefined,
+      driverName: this.nd.driverName || undefined, driverPhone: this.nd.driverPhone || undefined,
+      contents: contents.length ? contents : undefined,
     }).subscribe({ next: () => { this.showCreate.set(false); this.ok('Delivery leg created.'); }, error: (e) => this.fail(e, 'Create failed — GIGL needs API keys; use a manual carrier meanwhile.') });
+  }
+
+  addCheckpoint(l: LegRow): void {
+    this.api.addDeliveryCheckpoint(l.id, {
+      zone: this.cp.zone,
+      sealId: this.cp.sealId || undefined,
+      status: this.cp.status || undefined,
+      driverName: this.cp.driverName || undefined,
+      driverPhone: this.cp.driverPhone || undefined,
+      note: this.cp.note || undefined,
+    }).subscribe({
+      next: () => { this.cp = { zone: '', sealId: '', status: 'on_track', driverName: '', driverPhone: '', note: '' }; this.ok('Checkpoint logged.'); },
+      error: (e) => this.fail(e, 'Checkpoint failed.'),
+    });
   }
 
   upsertZone(): void {

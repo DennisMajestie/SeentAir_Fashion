@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { randomUUID } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { DataSource, Repository } from 'typeorm';
 import { ACCESS_RANK, AccessLevel, ModuleName, RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
@@ -20,6 +20,7 @@ import { AccountingService } from '../accounting/accounting.service';
 import { LedgerEntryType } from '../accounting/ledger-entry.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { OrderFulfilmentDto } from './dto/order-fulfilment.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
@@ -142,6 +143,7 @@ export class OrdersService {
       customer: customerId ? await this.usersService.findById(customerId) : null,
       channel,
       source: dto.source ?? null,
+      shippingAddress: dto.shippingAddress ?? null,
       status: OrderStatus.AWAITING_PAYMENT,
       paymentStatus: PaymentStatus.UNPAID,
       totalAmount: Math.round(total * 100) / 100,
@@ -308,6 +310,29 @@ export class OrdersService {
       },
       user,
     );
+  }
+
+  /**
+   * Fulfilment staging before dispatch: shipping address, gross weight,
+   * pallet reference and optional QR stencil generation (appendix 04/05).
+   */
+  async fulfilment(
+    orderId: string,
+    dto: OrderFulfilmentDto,
+    actor: AuthenticatedUser,
+  ): Promise<Order> {
+    const access = await this.effectiveAccess(actor);
+    if (ACCESS_RANK[access] < ACCESS_RANK[AccessLevel.FULL]) {
+      throw new ForbiddenException('Fulfilment requires full order access');
+    }
+    const order = await this.getOrderOrThrow(orderId);
+    if (dto.shippingAddress !== undefined) order.shippingAddress = dto.shippingAddress;
+    if (dto.grossWeightKg !== undefined) order.grossWeightKg = dto.grossWeightKg;
+    if (dto.palletRef !== undefined) order.palletRef = dto.palletRef;
+    if (dto.generateQrStencil) {
+      order.qrStencilRef = `OQR-${randomBytes(4).toString('hex').toUpperCase()}`;
+    }
+    return this.orderRepo.save(order);
   }
 
   /** Customer-visible tracking timeline. */

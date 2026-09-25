@@ -15,8 +15,12 @@ import { InventoryService } from '../inventory/inventory.service';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { RecordCostDto } from './dto/record-cost.dto';
 import { RecordQCRejectionDto } from './dto/record-qc-rejection.dto';
+import { RecordScanDto } from './dto/record-scan.dto';
+import { RecordTelemetryDto } from './dto/record-telemetry.dto';
 import { ProductionBatch } from './entities/production-batch.entity';
+import { BatchScanEvent } from './entities/batch-scan-event.entity';
 import { ProductionCost } from './entities/production-cost.entity';
+import { ProductionTelemetry } from './entities/production-telemetry.entity';
 import { QCDisposition, QCRejection } from './entities/qc-rejection.entity';
 
 @Injectable()
@@ -25,6 +29,9 @@ export class ProductionService {
     @InjectRepository(ProductionBatch) private readonly batchRepo: Repository<ProductionBatch>,
     @InjectRepository(ProductionCost) private readonly costRepo: Repository<ProductionCost>,
     @InjectRepository(QCRejection) private readonly rejectionRepo: Repository<QCRejection>,
+    @InjectRepository(BatchScanEvent) private readonly scanRepo: Repository<BatchScanEvent>,
+    @InjectRepository(ProductionTelemetry)
+    private readonly telemetryRepo: Repository<ProductionTelemetry>,
     private readonly approvalsService: ApprovalsService,
     private readonly inventoryService: InventoryService,
     private readonly catalogueService: CatalogueService,
@@ -187,9 +194,148 @@ export class ProductionService {
       quantity,
       reason: dto.reason,
       disposition: dto.disposition,
+      inspectorId: dto.inspectorId ?? null,
       recordedBy: actorId,
     });
     return this.rejectionRepo.save(rejection);
+  }
+
+  // --- Floor-kiosk barcode, scans & machine telemetry ---
+
+  /** Register the QR/1D barcode printed on the batch label (unique per batch). */
+  async registerBarcode(batchId: string, barcode: string): Promise<ProductionBatch> {
+    const batch = await this.findById(batchId);
+    if (batch.barcode && batch.barcode !== barcode) {
+      throw new BadRequestException(`Batch ${batchId} already has barcode ${batch.barcode}`);
+    }
+    const clash = await this.batchRepo.findOne({ where: { barcode } });
+    if (clash && clash.id !== batchId) {
+      throw new ConflictException(`Barcode ${barcode} is already registered to batch ${clash.id}`);
+    }
+    batch.barcode = barcode;
+    return this.batchRepo.save(batch);
+  }
+
+  /** Operator scan at a stage gate. */
+  async recordScan(
+    batchId: string,
+    dto: RecordScanDto,
+    actorId: string,
+  ): Promise<BatchScanEvent> {
+    const batch = await this.findById(batchId);
+    return this.scanRepo.save(
+      this.scanRepo.create({
+        batch,
+        eventType: dto.eventType,
+        operatorId: dto.operatorId ?? actorId,
+        scannedQty: dto.scannedQty ?? batch.quantity,
+      }),
+    );
+  }
+
+  async findScans(batchId: string): Promise<BatchScanEvent[]> {
+    await this.findById(batchId);
+    return this.scanRepo.find({
+      where: { batch: { id: batchId } },
+      order: { scannedAt: 'ASC' },
+    });
+  }
+
+  /** Live machine/line telemetry snapshot from the floor kiosk. */
+  async recordTelemetry(
+    batchId: string,
+    dto: RecordTelemetryDto,
+    actorId: string,
+  ): Promise<ProductionTelemetry> {
+    const batch = await this.findById(batchId);
+    return this.telemetryRepo.save(
+      this.telemetryRepo.create({
+        batch,
+        stage: dto.stage,
+        machine: dto.machine,
+        rpm: dto.rpm ?? null,
+        needleCycles: dto.needleCycles ?? null,
+        threadReservePct: dto.threadReservePct ?? null,
+        operatorId: dto.operatorId ?? actorId,
+      }),
+    );
+  }
+
+  async findTelemetry(batchId: string): Promise<ProductionTelemetry[]> {
+    await this.findById(batchId);
+    return this.telemetryRepo.find({
+      where: { batch: { id: batchId } },
+      order: { recordedAt: 'DESC' },
+      take: 100,
+    });
+  }
+
+  /**
+   * Planned BOM (variant germ-line × batch quantity) vs actual consumption
+   * from material-usages for this batch — the fabric yield review screen.
+   */
+  async plannedVsConsumed(batchId: string): Promise<
+    Array<{
+      materialId: string;
+      materialName: string;
+      unit: string;
+      plannedQty: number;
+      consumedQty: number;
+      variance: number;
+    }>
+  > {
+    const batch = await this.findById(batchId);
+    const variant = await this.catalogueService.findVariantById(batch.variant.id);
+    const consumed: Array<{
+      material_id: string;
+      material_name: string;
+      unit: string;
+      used: string;
+    }> = await this.dataSource.query(
+      `SELECT m.id AS material_id, m.name AS material_name, m.unit AS unit,
+              COALESCE(SUM(u.quantity_used), 0)::text AS used
+       FROM material_usages u
+       JOIN raw_materials m ON m.id = u.material_id
+       WHERE u.batch_id = $1
+       GROUP BY m.id, m.name, m.unit`,
+      [batchId],
+    );
+    const consumedByMaterial = new Map(
+      consumed.map((c) => [
+        c.material_id,
+        {
+          materialName: c.material_name,
+          unit: c.unit,
+          consumedQty: Number(c.used),
+        },
+      ]),
+    );
+    const planned = (variant.bomItems ?? []).map((item) => {
+      const used = consumedByMaterial.get(item.material.id);
+      const plannedQty = item.quantity * batch.quantity;
+      return {
+        materialId: item.material.id,
+        materialName: item.material.name,
+        unit: item.material.unit,
+        plannedQty,
+        consumedQty: used?.consumedQty ?? 0,
+        variance: plannedQty - (used?.consumedQty ?? 0),
+      };
+    });
+    // Materials consumed but not in the planned BOM (variance from both sides).
+    for (const c of consumed) {
+      if (!Object.values(planned).some((p) => p.materialId === c.material_id)) {
+        planned.push({
+          materialId: c.material_id,
+          materialName: c.material_name,
+          unit: c.unit,
+          plannedQty: 0,
+          consumedQty: Number(c.used),
+          variance: -Number(c.used),
+        });
+      }
+    }
+    return planned;
   }
 
   async findRejections(batchId: string): Promise<QCRejection[]> {

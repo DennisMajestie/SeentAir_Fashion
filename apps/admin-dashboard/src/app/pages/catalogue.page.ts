@@ -150,7 +150,10 @@ interface TierRow { id: string; name: string; ruleDescription: string | null; di
                     <td class="mono">{{ v['size'] || '—' }}</td>
                     <td>{{ v['colour'] || '—' }}</td>
                     <td class="mono">₦{{ variantPrice(v, p.basePrice) | number: '1.0-0' }}</td>
-                    <td><span class="chip" [class.ok]="v['availabilityStatus'] === 'in_stock'" [class.warn]="v['availabilityStatus'] !== 'in_stock'">{{ v['availabilityStatus'] }}</span></td>
+                    <td>
+                      <span class="chip" [class.ok]="v['availabilityStatus'] === 'in_stock'" [class.warn]="v['availabilityStatus'] !== 'in_stock'">{{ v['availabilityStatus'] }}</span>
+                      <button class="cta small ghost" type="button" (click)="openSpec(v)">spec & BOM</button>
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -158,9 +161,56 @@ interface TierRow { id: string; name: string; ruleDescription: string | null; di
           } @else {
             <p class="muted small">Loading variants…</p>
           }
-          <!-- GAP: anatomic fit notes, pattern geometry, BOM per silhouette and DXF/spec-sheet
-               export need a tech-pack data model the API doesn't have (see Tech pack page). -->
-          <a class="link" href="/tech-pack">Open tech pack editor (layout preview)</a>
+
+          @if (activeSpec(); as v) {
+            <div class="gap-sep"></div>
+            <div class="panel-head"><h2>Tech spec — {{ v['sku'] }}</h2><span class="ph-sub">fit note & pattern geometry</span>
+              <span class="ph-end"><button class="cta small ghost" type="button" (click)="exportSpecSheet(v)">Export spec-sheet</button></span>
+            </div>
+            <form class="form-grid" (ngSubmit)="saveSpec(v, p)">
+              <label class="wide">Fit note (anatomic)
+                <textarea rows="2" [(ngModel)]="spec.fitNotes" name="sfit" placeholder="Regular fit, half-inch ease at chest; drop shoulder 3 cm…"></textarea>
+              </label>
+              <label>Pattern geometry <input [(ngModel)]="spec.patternNotes" name="spat" placeholder="Block size small; 1.2 cm seam allowance" /></label>
+              <label>DXF / pattern file <input [(ngModel)]="spec.dxfUrl" name="sdxf" placeholder="s3://patterns/silktee-small.dxf" /></label>
+              <label>Cut folder <input [(ngModel)]="spec.cutFolder" name="scut" placeholder="cut/fw25/tee/small" /></label>
+              <div class="wide"><button class="cta small" type="submit">Save spec</button></div>
+            </form>
+
+            <div class="panel-head" style="margin-top:0.9rem;"><h3 style="font-size:0.9rem;">Bill of materials</h3><span class="ph-sub">per silhouette</span></div>
+            @if (specBom().length > 0) {
+              <table class="table">
+                <thead><tr><th>Material</th><th>Qty / unit</th><th>Unit</th></tr></thead>
+                <tbody>
+                  @for (row of specBom(); track $index) {
+                    <tr>
+                      <td class="small">{{ row['materialName'] ?? rawName(row['materialId']) }}</td>
+                      <td class="mono">{{ row['quantityPerUnit'] ?? row['quantity'] }}</td>
+                      <td class="mono">{{ row['unitOfMeasure'] ?? '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            } @else {
+              <p class="muted small">No raw materials listed for this silhouette yet.</p>
+            }
+            <div class="actions">
+              <select [(ngModel)]="nbom.materialId" name="bmtl">
+                <option value="">+ Add raw material…</option>
+                @for (m of rawMaterials(); track m.id) { <option [value]="m.id">{{ m.name }}{{ m.unit ? ' (' + m.unit + ')' : '' }}</option> }
+              </select>
+              <input type="number" min="0" step="0.01" style="width:6rem;" [(ngModel)]="nbom.quantity" name="bqty" placeholder="qty" />
+              <button class="cta small ghost" [disabled]="!nbom.materialId" (click)="addBomItem()">Add</button>
+              @if (specBom().length > 0) { <button class="cta small" (click)="saveBom(v)">Save BOM</button> }
+            </div>
+
+            @if (specSheet(); as json) {
+              <div class="gap-sep"></div>
+              <details><summary>Spec-sheet document</summary>
+              <pre class="code-window">{{ json }}</pre></details>
+            }
+          }
+          <a class="link" href="/tech-pack">Open tech pack editor</a>
         } @else {
           <p class="muted small">Select a product to see its prices, wholesale discounts and sizes.</p>
         }
@@ -187,6 +237,12 @@ export class CatalogueAdminPage implements OnInit {
   readonly pendingPriceChanges = signal(0);
   /** variantId → current stock (inventory summary), for valuation. */
   private readonly stockMap = signal<Map<string, number>>(new Map());
+  readonly activeSpec = signal<Record<string, unknown> | null>(null);
+  readonly specBom = signal<Array<Record<string, unknown>>>([]);
+  readonly rawMaterials = signal<Array<{ id: string; name: string; unit: string | null }>>([]);
+  readonly specSheet = signal<string | null>(null);
+  spec = { fitNotes: '', patternNotes: '', dxfUrl: '', cutFolder: '' };
+  nbom = { materialId: '', quantity: 1 };
   newPrices: Record<string, number> = {};
   approvals: Record<string, string> = {};
   newCollection = '';
@@ -264,12 +320,75 @@ export class CatalogueAdminPage implements OnInit {
   }
 
   select(p: ProductRow): void {
-    if (this.selected()?.id === p.id) { this.selected.set(null); this.variantRows.set([]); return; }
+    if (this.selected()?.id === p.id) { this.selected.set(null); this.variantRows.set([]); this.activeSpec.set(null); return; }
     this.selected.set(p);
     this.variantRows.set([]);
     this.api.productVariants(p.id).subscribe({
       next: (rows) => this.variantRows.set(rows),
       error: () => this.error.set('Could not load variants.'),
+    });
+  }
+
+  openSpec(v: Record<string, unknown>): void {
+    if (this.activeSpec()?.['id'] === v['id']) { this.activeSpec.set(null); this.specSheet.set(null); return; }
+    this.activeSpec.set(v);
+    this.specBom.set([]);
+    this.specSheet.set(null);
+    this.spec = {
+      fitNotes: String(v['fitNotes'] ?? ''), patternNotes: String(v['patternNotes'] ?? ''),
+      dxfUrl: String(v['dxfUrl'] ?? ''), cutFolder: String(v['cutFolder'] ?? ''),
+    };
+    this.api.variantBom(v['id'] as string).subscribe({
+      next: (rows) => this.specBom.set(rows),
+      error: () => this.specBom.set([]),
+    });
+    if (this.rawMaterials().length === 0) {
+      this.api.materials().subscribe({
+        next: (m) => this.rawMaterials.set(m as unknown as Array<{ id: string; name: string; unit: string | null }>),
+        error: () => undefined,
+      });
+    }
+  }
+
+  rawName(materialId: unknown): string {
+    return this.rawMaterials().find((m) => m.id === materialId)?.name ?? String(materialId ?? '').slice(0, 8);
+  }
+
+  saveSpec(v: Record<string, unknown>, p: ProductRow): void {
+    this.api.updateVariant(p.id, v['id'] as string, {
+      fitNotes: this.spec.fitNotes || undefined,
+      patternNotes: this.spec.patternNotes || undefined,
+      dxfUrl: this.spec.dxfUrl || undefined,
+      cutFolder: this.spec.cutFolder || undefined,
+    }).subscribe({
+      next: () => this.ok('Spec saved to the variant.'),
+      error: (e) => this.fail(e, 'Spec save failed.'),
+    });
+  }
+
+  addBomItem(): void {
+    const m = this.rawMaterials().find((x) => x.id === this.nbom.materialId);
+    if (!m) return;
+    this.specBom.update((rows) => [...rows, { materialId: m.id, materialName: m.name, unitOfMeasure: m.unit, quantityPerUnit: Number(this.nbom.quantity) || 1 }]);
+    this.nbom = { materialId: '', quantity: 1 };
+  }
+
+  saveBom(v: Record<string, unknown>): void {
+    const items = this.specBom().map((r) => ({
+      materialId: r['materialId'] as string,
+      quantity: Number(r['quantityPerUnit'] ?? r['quantity'] ?? 1),
+      note: r['materialName'] as string | undefined,
+    }));
+    this.api.replaceVariantBom(v['id'] as string, items).subscribe({
+      next: () => this.ok('BOM saved for this silhouette.'),
+      error: (e) => this.fail(e, 'BOM save failed.'),
+    });
+  }
+
+  exportSpecSheet(v: Record<string, unknown>): void {
+    this.api.variantSpecSheet(v['id'] as string).subscribe({
+      next: (sheet) => this.specSheet.set(JSON.stringify(sheet, null, 2)),
+      error: (e) => this.fail(e, 'Could not build the spec-sheet.'),
     });
   }
 

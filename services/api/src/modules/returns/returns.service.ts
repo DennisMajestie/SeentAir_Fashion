@@ -81,6 +81,7 @@ export class ReturnsService {
         order,
         variant: item.variant,
         quantity,
+        refundAmount: item.unitPrice * quantity,
         reason: dto.reason,
         returnDeadline: new Date(Date.now() + this.completionWindowMs),
         trackingNumber: dto.trackingNumber ?? null,
@@ -139,6 +140,12 @@ export class ReturnsService {
         request.restocked = restocked;
         request.damaged = damaged;
         request.trackingNumber = dto.trackingNumber ?? request.trackingNumber;
+        request.photoUrls = dto.photoUrls ?? request.photoUrls;
+        request.bayTag = dto.bayTag ?? request.bayTag;
+        if (request.refundAmount === null) {
+          const item = request.order.items?.find((i) => i.variant.id === request.variant.id);
+          request.refundAmount = item ? item.unitPrice * request.quantity : null;
+        }
         request.resolvedBy = actor.id;
         request.resolvedAt = new Date();
         const saved = await manager.getRepository(ReturnRequest).save(request);
@@ -173,6 +180,8 @@ export class ReturnsService {
 
     request.status = ReturnStatus.REJECTED;
     request.resolution = dto.resolution;
+    request.photoUrls = dto.photoUrls ?? request.photoUrls;
+    request.bayTag = dto.bayTag ?? request.bayTag;
     request.resolvedBy = actor.id;
     request.resolvedAt = new Date();
     return this.returnRepo.save(request);

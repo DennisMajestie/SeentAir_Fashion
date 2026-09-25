@@ -11,6 +11,8 @@ const ROLES = [
   'production', 'finance_accounting', 'partner_investor', 'wholesaler', 'customer',
 ];
 
+const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
+
 /** A16 — Staff directory & access control matrix. Approved Stitch layout:
     headcount tiles, searchable directory with role/2FA chips, and a
     role-inspector rail with the role-change action. Access stays enforced
@@ -112,10 +114,38 @@ const ROLES = [
           }
 
           <div class="gap-sep"></div>
-          <div class="panel-head"><h2>Role & clearance</h2></div>
+          <div class="panel-head"><h2>Permission matrix</h2><span class="ph-sub">dot-matrix view · edit by role</span></div>
+          <div class="actions" style="margin-bottom:0.6rem;">
+            <select [(ngModel)]="mRole" name="mrole" class="table-filter" (ngModelChange)="setMatrixRole()">
+              @for (r of matrix(); track r.id) { <option [value]="r.name">{{ r.name.replaceAll('_', ' ') }}</option> }
+            </select>
+            <button class="cta small" (click)="saveMatrix()">Save role permissions</button>
+          </div>
+          @if (draftModules().length > 0) {
+            <table class="table">
+              <thead><tr><th>Module</th><th>Level</th></tr></thead>
+              <tbody>
+                @for (mod of draftModules(); track mod) {
+                  <tr>
+                    <td class="small">{{ mod.replaceAll('_', ' ') }}</td>
+                    <td>
+                      <span class="seg" role="group" aria-label="{{ mod }}">
+                        @for (lv of ACCESS_LEVELS; track lv) {
+                          <button type="button" [class.on]="edit[mod] === lv" [disabled]="mod === 'staff_access' && lv === 'none'" (click)="setLevel(mod, lv)">{{ lv.slice(0, 1).toUpperCase() }}</button>
+                        }
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            <p class="muted small" style="margin-top:0.5rem;">STAFF_ACCESS cannot drop below view — the owner is never locked out. A dot is VIEW-to-FULL (N → none, O → own, V → view, A → approve, F → full).</p>
+          } @else {
+            <p class="muted small">Loading permission matrix…</p>
+          }
+
+          <div class="panel-head" style="margin-top:0.9rem;"><h2>Role & clearance</h2></div>
           <p class="muted small">Each staff member can only see and do what their role allows — this is enforced automatically.</p>
-          <!-- GAP: the reference's per-module permission dot-matrix (view/own/edit/full/approve
-               per module) needs a permissions read endpoint; the API only exposes role change. -->
           <div class="actions">
             <select [(ngModel)]="roleChoice[u.id]" [name]="'r' + u.id" class="table-filter">
               @for (r of roles; track r) { <option [value]="r">{{ r.replaceAll('_', ' ') }}</option> }
@@ -156,6 +186,15 @@ export class StaffAdminPage implements OnInit {
   readonly selectedId = signal<string | null>(null);
   readonly detail = signal<Record<string, unknown> | null>(null);
   readonly permLogs = signal<AuditEntry[]>([]);
+  readonly matrix = signal<Array<{ id: string; name: string; permissions: Array<{ module: string; accessLevel: string }> }>>([]);
+  readonly ACCESS_LEVELS = ACCESS_LEVELS;
+  readonly draftModules = computed(() => {
+    const seen = new Set<string>();
+    for (const r of this.matrix()) for (const p of r.permissions) seen.add(p.module);
+    return this.saveOrder(seen);
+  });
+  mRole = '';
+  edit: Record<string, string> = {};
   roleChoice: Record<string, string> = {};
   query = '';
   nu = { name: '', email: '', phone: '', password: '', role: 'sales' };
@@ -163,6 +202,7 @@ export class StaffAdminPage implements OnInit {
   ngOnInit(): void {
     this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
     this.load();
+    this.loadMatrix();
     this.api.auditLog({ action: 'user', limit: 6 }).subscribe({
       next: (res) => this.permLogs.set(res.data),
       error: () => this.permLogs.set([]),
@@ -203,7 +243,11 @@ export class StaffAdminPage implements OnInit {
     this.selectedId.set(id);
     this.detail.set(null);
     this.api.user(id).subscribe({
-      next: (u) => this.detail.set(u),
+      next: (u) => {
+        this.detail.set(u);
+        const roleName = (u['role'] as Record<string, unknown> | null)?.['name'];
+        this.loadMatrix(roleName ? String(roleName) : String((u as unknown as UserRow).role.name ?? ''));
+      },
       error: (e) => this.error.set(e?.error?.message ?? 'Could not load that account.'),
     });
   }
@@ -213,6 +257,52 @@ export class StaffAdminPage implements OnInit {
       const rows = res.data as unknown as UserRow[];
       this.users.set(rows);
       for (const u of rows) this.roleChoice[u.id] ??= u.role.name;
+    });
+  }
+
+  private loadMatrix(prefer?: string): void {
+    this.api.rolesMatrix().subscribe({
+      next: (rows) => {
+        this.matrix.set(rows);
+        if (!this.mRole && !prefer && rows.length > 0) this.mRole = rows[0].name;
+        this.setMatrixRole(prefer);
+      },
+      error: () => undefined,
+    });
+  }
+
+  private saveOrder(seen: Set<string>): string[] {
+    const preference = ['manufacturing', 'raw_materials', 'catalogue', 'inventory', 'retail_orders', 'wholesale_orders', 'custom_orders', 'payments', 'returns', 'accounting', 'logistics', 'marketing', 'analytics', 'partners', 'staff_access', 'approvals_audit', 'communication'];
+    return [...seen].sort((a, b) => { const ia = preference.indexOf(a); const ib = preference.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
+  }
+
+  setMatrixRole(prefer?: string): void {
+    const name = prefer ?? this.mRole;
+    const role = this.matrix().find((r) => r.name === name) ?? null;
+    if (!role) return;
+    this.mRole = role.name;
+    const next: Record<string, string> = {};
+    for (const p of role.permissions) next[p.module] = p.accessLevel;
+    if (!next['staff_access']) next['staff_access'] = 'view';
+    this.edit = next;
+  }
+
+  setLevel(module: string, level: string): void {
+    if (module === 'staff_access' && level === 'none') return;
+    this.edit = { ...this.edit, [module]: level };
+  }
+
+  saveMatrix(): void {
+    const role = this.mRole;
+    if (!role) { this.error.set('Pick a role first.'); return; }
+    const permissions = Object.entries(this.edit).map(([module, accessLevel]) => ({ module, accessLevel }));
+    if (!permissions.some((p) => p.module === 'staff_access' && ['view', 'approve', 'full', 'own'].includes(p.accessLevel))) {
+      this.error.set('STAFF_ACCESS must keep at least view access — raise it and try again.');
+      return;
+    }
+    this.api.updateRolePermissions(role, permissions).subscribe({
+      next: () => { this.message.set(`${role.replaceAll('_', ' ')} permission row updated.`); this.error.set(null); },
+      error: (e) => this.error.set(e?.error?.message ?? 'Permission update failed.'),
     });
   }
 

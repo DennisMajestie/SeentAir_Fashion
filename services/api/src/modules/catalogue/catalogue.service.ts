@@ -4,15 +4,19 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ApprovalActionType } from '../../common/enums';
 import { ApprovalsService } from '../approvals/approvals.service';
+import { TechPack } from '../tech-packs/tech-pack.entity';
+import { ReplaceBomDto } from './dto/bom.dto';
 import { CreateCollectionDto } from './dto/create-collection.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { UpdateVariantDto } from './dto/update-variant.dto';
 import { Collection } from './entities/collection.entity';
+import { ProductBomItem } from './entities/product-bom-item.entity';
 import { Product } from './entities/product.entity';
 import { ProductVariant } from './entities/product-variant.entity';
 
@@ -22,7 +26,10 @@ export class CatalogueService {
     @InjectRepository(Product) private readonly productRepo: Repository<Product>,
     @InjectRepository(ProductVariant) private readonly variantRepo: Repository<ProductVariant>,
     @InjectRepository(Collection) private readonly collectionRepo: Repository<Collection>,
+    @InjectRepository(ProductBomItem) private readonly bomRepo: Repository<ProductBomItem>,
+    @InjectRepository(TechPack) private readonly techPackRepo: Repository<TechPack>,
     private readonly approvalsService: ApprovalsService,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   // --- Products ---
@@ -96,7 +103,7 @@ export class CatalogueService {
   async findVariantById(variantId: string): Promise<ProductVariant> {
     const variant = await this.variantRepo.findOne({
       where: { id: variantId },
-      relations: { product: true },
+      relations: { product: true, bomItems: { material: true } },
     });
     if (!variant) throw new NotFoundException(`Variant ${variantId} not found`);
     return variant;
@@ -122,8 +129,76 @@ export class CatalogueService {
       priceOverride: dto.priceOverride ?? null,
       imageUrl: dto.imageUrl ?? null,
       availabilityStatus: dto.availabilityStatus,
+      fitNote: dto.fitNote ?? null,
+      patternGeometry: dto.patternGeometry ?? null,
+      dxfUrl: dto.dxfUrl ?? null,
+      storageLocation: dto.storageLocation ?? null,
     });
     return this.variantRepo.save(variant);
+  }
+
+  /** Update the garment-engineering fields of one variant in place. */
+  async updateVariant(variantId: string, dto: UpdateVariantDto): Promise<ProductVariant> {
+    const variant = await this.findVariantById(variantId);
+    if (dto.size !== undefined) variant.size = dto.size;
+    if (dto.colour !== undefined) variant.colour = dto.colour;
+    if (dto.availabilityStatus !== undefined) variant.availabilityStatus = dto.availabilityStatus;
+    if (dto.fitNote !== undefined) variant.fitNote = dto.fitNote;
+    if (dto.patternGeometry !== undefined) variant.patternGeometry = dto.patternGeometry;
+    if (dto.dxfUrl !== undefined) variant.dxfUrl = dto.dxfUrl;
+    if (dto.storageLocation !== undefined) variant.storageLocation = dto.storageLocation;
+    return this.variantRepo.save(variant);
+  }
+
+  // --- Bill of materials (per variant) ---
+
+  async getBom(variantId: string): Promise<ProductBomItem[]> {
+    await this.findVariantById(variantId);
+    return this.bomRepo.find({
+      where: { variant: { id: variantId } },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  /** Replace the whole planned BOM for a variant in one transaction. */
+  async replaceBom(variantId: string, dto: ReplaceBomDto): Promise<ProductBomItem[]> {
+    const variant = await this.findVariantById(variantId);
+    return this.dataSource.transaction(async (manager) => {
+      await manager.getRepository(ProductBomItem).delete({ variant: { id: variantId } });
+      const rows = dto.items.map((i) =>
+        manager.getRepository(ProductBomItem).create({
+          variant,
+          material: { id: i.materialId } as never,
+          quantity: i.quantity,
+          note: i.note ?? null,
+        }),
+      );
+      await manager.getRepository(ProductBomItem).save(rows);
+      return manager.getRepository(ProductBomItem).find({
+        where: { variant: { id: variantId } },
+        order: { createdAt: 'ASC' },
+      });
+    });
+  }
+
+  /**
+   * Full engineering spec-sheet for a SKU: fit note, pattern geometry, DXF
+   * source, planned BOM and the current approved tech pack (if any).
+   */
+  async specSheet(variantId: string): Promise<{
+    variant: ProductVariant;
+    bom: ProductBomItem[];
+    techPack: TechPack | null;
+  }> {
+    const variant = await this.findVariantById(variantId);
+    const [bom, techPack] = await Promise.all([
+      this.getBom(variantId),
+      this.techPackRepo.findOne({
+        where: { variant: { id: variantId }, status: 'approved' },
+        order: { revision: 'DESC' },
+      }),
+    ]);
+    return { variant, bom, techPack };
   }
 
   // --- Collections ---

@@ -50,6 +50,6 @@ export class ApprovalsController {
     @Body() dto: DecideApprovalDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.approvalsService.decide(id, dto.decision, user);
+    return this.approvalsService.decide(id, dto.decision, user, dto.justification);
   }
 }

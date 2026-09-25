@@ -14,6 +14,7 @@ import { CarrierAdapter } from './carriers/carrier-adapter.interface';
 import { GiglAdapter } from './carriers/gigl.adapter';
 import { ManualCarrierAdapter } from './carriers/manual.adapter';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
+import { AddCheckpointDto } from './dto/add-checkpoint.dto';
 import { UpdateDeliveryStatusDto } from './dto/update-delivery-status.dto';
 import { UpsertPricingDto } from './dto/upsert-pricing.dto';
 import { DeliveryLeg, DeliveryLegStatus } from './entities/delivery-leg.entity';
@@ -67,6 +68,9 @@ export class LogisticsService {
         trackingRef,
         weightKg: dto.weightKg ?? null,
         zone: dto.zone ?? null,
+        contents: dto.contents ?? null,
+        driverName: dto.driverName ?? null,
+        driverPhone: dto.driverPhone ?? null,
         cost,
         createdBy: actor.id,
       }),
@@ -88,6 +92,30 @@ export class LogisticsService {
     if (!leg) throw new NotFoundException(`Delivery leg ${id} not found`);
     leg.status = dto.status;
     if (dto.trackingRef !== undefined) leg.trackingRef = dto.trackingRef;
+    return this.legRepo.save(leg);
+  }
+
+  /**
+   * Corridor checkpoint: appends a {zone, sealId, status, timestamp, ...}
+   * object to the leg's checkpoints journal and updates driver contact if
+   * provided (appendix 08 — torque-seal corridor tracking).
+   */
+  async addCheckpoint(id: string, dto: AddCheckpointDto): Promise<DeliveryLeg> {
+    const leg = await this.legRepo.findOne({ where: { id } });
+    if (!leg) throw new NotFoundException(`Delivery leg ${id} not found`);
+    const checkpoints = Array.isArray(leg.checkpoints) ? leg.checkpoints : [];
+    checkpoints.push({
+      zone: dto.zone,
+      sealId: dto.sealId ?? null,
+      status: dto.status ?? 'on_track',
+      timestamp: new Date().toISOString(),
+      driverName: dto.driverName ?? leg.driverName,
+      driverPhone: dto.driverPhone ?? leg.driverPhone,
+      note: dto.note ?? null,
+    });
+    leg.checkpoints = checkpoints;
+    if (dto.driverName) leg.driverName = dto.driverName;
+    if (dto.driverPhone) leg.driverPhone = dto.driverPhone;
     return this.legRepo.save(leg);
   }
 

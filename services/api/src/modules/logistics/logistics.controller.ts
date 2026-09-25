@@ -5,6 +5,7 @@ import { RequireAccess } from '../../common/decorators/require-access.decorator'
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
+import { AddCheckpointDto } from './dto/add-checkpoint.dto';
 import { UpdateDeliveryStatusDto } from './dto/update-delivery-status.dto';
 import { UpsertPricingDto } from './dto/upsert-pricing.dto';
 import { LogisticsService } from './logistics.service';
@@ -31,6 +32,13 @@ export class LogisticsController {
   @RequireAccess(ModuleName.LOGISTICS, AccessLevel.FULL)
   updateStatus(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateDeliveryStatusDto) {
     return this.logisticsService.updateStatus(id, dto);
+  }
+
+  /** Corridor checkpoint — the delivery's per-leg checkpoint journal. */
+  @Post('deliveries/:id/checkpoint')
+  @RequireAccess(ModuleName.LOGISTICS, AccessLevel.FULL)
+  addCheckpoint(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AddCheckpointDto) {
+    return this.logisticsService.addCheckpoint(id, dto);
   }
 
   /** Own-scoped for customers/wholesalers; full view for staff. */

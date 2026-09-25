@@ -33,6 +33,23 @@ export class InventoryController {
     return this.inventoryService.summary();
   }
 
+  /** Tamper-evidence badge: recomputes the whole movement chain in the database. */
+  @Get('ledger/verify')
+  @RequireAccess(ModuleName.INVENTORY, AccessLevel.VIEW)
+  verify() {
+    return this.inventoryService.verify();
+  }
+
+  /** Per-item ledger digest: derived quantity + hash-chain head ("badge"). */
+  @Get('digest/:itemType/:itemId')
+  @RequireAccess(ModuleName.INVENTORY, AccessLevel.VIEW)
+  digest(
+    @Param('itemType') itemType: InventoryItemType,
+    @Param('itemId', ParseUUIDPipe) itemId: string,
+  ) {
+    return this.inventoryService.digest(itemType, itemId);
+  }
+
   @Get(':variantId/movements')
   @RequireAccess(ModuleName.INVENTORY, AccessLevel.VIEW)
   movements(

@@ -40,6 +40,10 @@ export class QCRejection {
   @Column({ name: 'recorded_by', type: 'uuid', nullable: true })
   recordedBy: string | null;
 
+  /** QA inspector who performed the check. */
+  @Column({ name: 'inspector_id', type: 'uuid', nullable: true })
+  inspectorId: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

@@ -140,8 +140,29 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
             } @else {
               <p class="muted small">No cost recorded yet — use "Record batch cost" above.</p>
             }
-            <!-- GAP: bill of materials / actual consumption per batch — the API records material
-                 usage as inventory movements but has no per-batch consumption read endpoint. -->
+            <div class="gap-sep"></div>
+            <div class="panel-head"><h2>BOM vs actual consumption</h2><span class="ph-sub">planned vs floor usage</span></div>
+            @if (bomOf(b.id); as bom) {
+              @if (bom.length > 0) {
+                <table class="table">
+                  <thead><tr><th>Material</th><th>Planned</th><th>Consumed</th><th>Δ</th></tr></thead>
+                  <tbody>
+                    @for (row of bom; track $index) {
+                      <tr>
+                        <td class="small">{{ row['materialName'] }}</td>
+                        <td class="mono">{{ row['plannedQuantity'] }}</td>
+                        <td class="mono">{{ row['consumedQuantity'] }}</td>
+                        <td class="mono" [class.delta.plus]="num(row['variance']) === 0" [class.delta.minus]="num(row['variance']) !== 0">{{ row['variance'] }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              } @else {
+                <p class="muted small">No BOM linked to this batch variant yet.</p>
+              }
+            } @else {
+              <p class="muted small">Loading consumption…</p>
+            }
           </section>
 
           <section class="panel flat">
@@ -179,8 +200,44 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
             <dt>Completed</dt><dd>{{ d['completedDate'] ? (str(d['completedDate']) | date: 'medium') : 'not yet' }}</dd>
             <dt>Approval request</dt><dd><code>{{ str(d['approvalRequestId']).slice(0, 8) }}</code> (production_start, approved)</dd>
           </dl>
-          <!-- GAP: line telemetry / machine audit feed (stitch tension, thread reserve) — no
-               factory IoT integration exists; the reference's telemetry panel is omitted. -->
+
+          <div class="gap-sep"></div>
+          <div class="panel-head"><h2>Line telemetry</h2><span class="ph-sub">machine audit feed</span>
+            <span class="ph-end"><button class="cta small ghost" type="button" (click)="openTelemetryForm()">Record snapshot</button></span>
+          </div>
+          @if (telemetry().length > 0) {
+            <table class="table">
+              <thead><tr><th>When</th><th>Stage</th><th>Machine</th><th>RPM</th><th>Needle cycles</th><th>Thread reserve</th></tr></thead>
+              <tbody>
+                @for (t of telemetry(); track $index) {
+                  <tr>
+                    <td class="mono small">{{ str(t['recordedAt']) | date: 'MMM d, HH:mm' }}</td>
+                    <td class="small">{{ t['stage'] }}</td>
+                    <td class="small">{{ t['machine'] }}</td>
+                    <td class="mono">{{ t['rpm'] ?? '—' }}</td>
+                    <td class="mono">{{ t['needleCycles'] ?? '—' }}</td>
+                    <td class="mono">{{ t['threadReservePct'] != null ? t['threadReservePct'] + '%' : '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          } @else {
+            <p class="muted small">No machine snapshots recorded on this batch yet.</p>
+          }
+
+          @if (showTelemetry()) {
+            <form class="form-grid" (ngSubmit)="recordTelemetry(b)">
+              <label>Stage <input [(ngModel)]="nt.stage" name="tstage" required placeholder="Sewing" /></label>
+              <label>Machine <input [(ngModel)]="nt.machine" name="tmachine" required placeholder="JUKI DDL-8700 (line 02)" /></label>
+              <label>RPM <input type="number" min="0" [(ngModel)]="nt.rpm" name="trpm" /></label>
+              <label>Needle cycles <input type="number" min="0" [(ngModel)]="nt.needleCycles" name="tcycles" /></label>
+              <label>Thread reserve % <input type="number" min="0" max="100" [(ngModel)]="nt.threadReservePct" name="treserve" /></label>
+              <div class="wide actions flat">
+                <button class="cta small" type="submit">Save snapshot</button>
+                <button class="link" type="button" (click)="showTelemetry.set(false)">Close</button>
+              </div>
+            </form>
+          }
         } @else {
           <p class="muted small">Loading batch record…</p>
         }
@@ -259,10 +316,13 @@ interface ProductOpt { id: string; name: string; variants: Array<{ id: string; s
               <label class="wide">Defect station / anatomic location
                 <input [(ngModel)]="nq.station" name="qstation" placeholder="left thigh pocket seam / line 02…" />
               </label>
-              <label class="wide">Assigned inspector / sign-off
-                <input [value]="inspector()" name="qinsp" disabled />
-                <!-- GAP: inspector assignment is not a field on the QC record — the API stamps
-                     the authenticated actor; shown read-only here. -->
+              <label class="wide">Assigned inspector (QA sign-off)
+                <select [(ngModel)]="nq.inspectorId" name="qinsp">
+                  <option value="">— unassigned —</option>
+                  @for (u of staff(); track u['id']) {
+                    <option [value]="u['id']">{{ u['name'] }} ({{ roleLabel(u) }})</option>
+                  }
+                </select>
               </label>
               <label class="wide">Detailed notes & remediation observations
                 <textarea [(ngModel)]="nq.reason" name="qreason" rows="3" required
@@ -297,15 +357,31 @@ export class ProductionPage implements OnInit {
   readonly detail = signal<Record<string, unknown> | null>(null);
   readonly qcBatch = signal<Batch | null>(null);
   readonly inspector = signal('signed in staff');
+  readonly bomCache = signal<Map<string, Array<Record<string, unknown>>>>(new Map());
+  readonly telemetry = signal<Array<Record<string, unknown>>>([]);
+  readonly showTelemetry = signal(false);
+  readonly staff = signal<Array<Record<string, unknown>>>([]);
+  private meEmail: string | null = null;
   skuFilter = '';
   nb = { variantId: '', quantity: 0, plannedDate: '', approvalRequestId: '' };
   nc = { batchId: '', materialCost: 0, sewingCost: 0, brandingCost: 0, packagingCost: 0 };
-  nq = { batchId: '', quantity: 1, disposition: 'burned', reason: '', station: '' };
+  nq = { batchId: '', quantity: 1, disposition: 'burned', reason: '', station: '', inspectorId: '' };
+  nt = { stage: '', machine: '', rpm: null as number | null, needleCycles: null as number | null, threadReservePct: null as number | null };
 
   ngOnInit(): void {
     this.load();
     this.api.products().subscribe((res) => this.products.set(res.data as unknown as ProductOpt[]));
-    this.api.me().subscribe({ next: (p) => this.inspector.set(`${p.name} (${p.role.replaceAll('_', ' ')})`), error: () => undefined });
+    this.api.me().subscribe({
+      next: (p) => { this.inspector.set(`${p.name} (${p.role.replaceAll('_', ' ')})`); this.meEmail = p.email; },
+      error: () => undefined,
+    });
+    this.api.users().subscribe((res) => {
+      this.staff.set(res.data as unknown as Array<Record<string, unknown>>);
+      if (this.meEmail) {
+        const me = (res.data as unknown as Array<{ id: string; email: string }>).find((u) => u.email === this.meEmail);
+        if (me) this.nq.inspectorId = me.id;
+      }
+    });
   }
 
   private load(): void {
@@ -363,16 +439,59 @@ export class ProductionPage implements OnInit {
     if (this.selected()?.id === batch.id) { this.closeDetail(); return; }
     this.selected.set(batch);
     this.detail.set(null);
+    this.telemetry.set([]);
     this.api.batch(batch.id).subscribe({
       next: (b) => this.detail.set(b),
       error: (e) => this.fail(e, 'Could not load that batch.'),
     });
+    this.api.plannedVsConsumed(batch.id).subscribe({
+      next: (rows) => {
+        const cache = new Map(this.bomCache());
+        cache.set(batch.id, (rows ?? []) as unknown as Array<Record<string, unknown>>);
+        this.bomCache.set(cache);
+      },
+      error: () => undefined,
+    });
+    this.api.batchTelemetry(batch.id).subscribe({
+      next: (rows) => this.telemetry.set(rows as unknown as Array<Record<string, unknown>>),
+      error: () => this.telemetry.set([]),
+    });
   }
-  closeDetail(): void { this.selected.set(null); this.detail.set(null); }
+  closeDetail(): void { this.selected.set(null); this.detail.set(null); this.telemetry.set([]); }
+
+  bomOf(batchId: string): Array<Record<string, unknown>> | null {
+    return this.bomCache().get(batchId) ?? null;
+  }
+
+  roleLabel(u: Record<string, unknown>): string {
+    const r = u['role'];
+    return typeof r === 'string' ? r.replaceAll('_', ' ') : '—';
+  }
+
+  openTelemetryForm(): void { this.showTelemetry.set(!this.showTelemetry()); }
+
+  recordTelemetry(batch: Batch): void {
+    this.api.recordTelemetry(batch.id, {
+      stage: this.nt.stage,
+      machine: this.nt.machine,
+      rpm: this.nt.rpm ?? undefined,
+      needleCycles: this.nt.needleCycles ?? undefined,
+      threadReservePct: this.nt.threadReservePct ?? undefined,
+      operatorId: this.nq.inspectorId || undefined,
+    }).subscribe({
+      next: () => {
+        this.nt = { stage: '', machine: '', rpm: null, needleCycles: null, threadReservePct: null };
+        this.showTelemetry.set(false);
+        this.ok('Telemetry snapshot recorded.');
+        this.api.batchTelemetry(batch.id).subscribe((rows) => this.telemetry.set(rows as unknown as Array<Record<string, unknown>>));
+      },
+      error: (e) => this.fail(e, 'Telemetry failed.'),
+    });
+  }
 
   openQcModal(batch: Batch): void {
     this.qcBatch.set(batch);
-    this.nq = { batchId: batch.id, quantity: 1, disposition: 'burned', reason: '', station: '' };
+    this.nq = { batchId: batch.id, quantity: 1, disposition: 'burned', reason: '', station: '', inspectorId: this.nq.inspectorId };
   }
   closeQcModal(ev: MouseEvent): void {
     if (ev.target === ev.currentTarget) this.qcBatch.set(null);
@@ -445,13 +564,14 @@ export class ProductionPage implements OnInit {
   }
 
   recordQc(): void {
-    const { batchId, station, ...rest } = this.nq;
+    const { batchId, station, inspectorId, ...rest } = this.nq;
     const reason = station ? `${station} — ${rest.reason}` : rest.reason;
     this.api.recordQcRejection(batchId, {
       quantity: Number(rest.quantity), reason, disposition: rest.disposition,
+      inspectorId: inspectorId || undefined,
     }).subscribe({
       next: () => {
-        this.nq = { batchId: '', quantity: 1, disposition: 'burned', reason: '', station: '' };
+        this.nq = { batchId: '', quantity: 1, disposition: 'burned', reason: '', station: '', inspectorId: this.nq.inspectorId };
         this.qcBatch.set(null);
         this.ok('Rejection recorded — burned units are excluded from completion stock-in.');
       },

@@ -18,6 +18,14 @@ export class RawMaterial {
   @Column()
   unit: string;
 
+  /** fabrics | trims_hardware | thread | packaging | printing | labels | other */
+  @Column({ type: 'varchar', nullable: true })
+  category: string | null;
+
+  /** Warehouse location, e.g. "C3-R1" (bay-rack map). */
+  @Column({ name: 'storage_location', type: 'varchar', nullable: true })
+  storageLocation: string | null;
+
   @Column({ name: 'reorder_threshold', type: 'integer', default: 0 })
   reorderThreshold: number;
 

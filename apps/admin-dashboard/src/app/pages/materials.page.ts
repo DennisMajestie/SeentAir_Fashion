@@ -5,8 +5,20 @@ import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../api.service';
 import { downloadCsv } from '../csv.util';
 
-interface MaterialRow { id: string; name: string; unit: string; currentQuantity: number; reorderThreshold: number; lowStock: boolean; }
+interface MaterialRow { id: string; name: string; unit: string; currentQuantity: number; reorderThreshold: number; lowStock: boolean; category: string | null; storageLocation: string | null; }
+interface ValuationRow { id: string; name: string; category: string | null; storageLocation: string | null; lastUnitCost: number | null; currentValue: number; currentQuantity: number; }
 interface MovementRow { id: string; movementType: string; quantityDelta: number; timestamp: string; referenceId: string | null; }
+
+const MATERIAL_CATEGORIES = [
+  { value: '', label: 'no category' },
+  { value: 'fabrics', label: 'Fabrics' },
+  { value: 'trims_hardware', label: 'Trims & hardware' },
+  { value: 'thread', label: 'Thread' },
+  { value: 'packaging', label: 'Packaging' },
+  { value: 'printing', label: 'Printing' },
+  { value: 'labels', label: 'Labels' },
+  { value: 'other', label: 'Other' },
+];
 
 /** A5 — Raw materials inventory & thresholds. Approved Stitch layout: critical
     reorder banner, warehouse stock depository table with health meters, and a
@@ -44,6 +56,10 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
         <form class="form-grid" (ngSubmit)="create()">
           <label>Name <input [(ngModel)]="nm.name" name="mname" required placeholder="Cotton fabric" /></label>
           <label>Unit <input [(ngModel)]="nm.unit" name="munit" required placeholder="yards" /></label>
+          <label>Category <select [(ngModel)]="nm.category" name="mcat">
+              @for (c of MATERIAL_CATEGORIES; track c.value) { <option [value]="c.value">{{ c.label }}</option> }
+            </select></label>
+          <label>Storage location <input [(ngModel)]="nm.storageLocation" name="mloc" placeholder="C3-R1" /></label>
           <label>Reorder threshold <input type="number" min="0" [(ngModel)]="nm.reorderThreshold" name="mthr" /></label>
           <div class="wide"><button class="cta small" type="submit">Create</button></div>
         </form>
@@ -57,8 +73,14 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
         <button type="button" [class.on]="view() === 'low'" (click)="view.set('low')">Critical <span class="seg-n">{{ lowStock().length }}</span></button>
         <button type="button" [class.on]="view() === 'ok'" (click)="view.set('ok')">Healthy <span class="seg-n">{{ materials().length - lowStock().length }}</span></button>
       </div>
-      <!-- GAP: the reference's category tabs (Fabrics / Trims & Hardware / Thread / Packaging)
-           need a material-type field the API doesn't have. -->
+      <div class="seg" role="group" aria-label="Category">
+        <button type="button" [class.on]="categoryFilter() === ''" (click)="categoryFilter.set('')">All</button>
+        @for (c of MATERIAL_CATEGORIES; track c.value) {
+          @if (c.value && countCategory(c.value) > 0) {
+            <button type="button" [class.on]="categoryFilter() === c.value" (click)="categoryFilter.set(c.value)">{{ c.label }} <span class="seg-n">{{ countCategory(c.value) }}</span></button>
+          }
+        }
+      </div>
     </div>
 
     <div class="side-split">
@@ -93,9 +115,21 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
             <div class="kpi"><span class="kpi-label">Current stock</span>
               <span class="kpi-value">{{ d.currentQuantity | number }} <small>{{ d.unit }}</small></span>
               <span class="kpi-sub">reorder at {{ d.reorderThreshold | number }}</span></div>
+            @if (valuationOf(d.id); as v) {
+              <div class="kpi"><span class="kpi-label">Last unit cost</span>
+                <span class="kpi-value">{{ v.lastUnitCost != null ? ('₦' + (v.lastUnitCost | number: '1.0-2')) : '—' }}</span>
+                <span class="kpi-sub">latest purchase price</span></div>
+              <div class="kpi"><span class="kpi-label">Stock value</span>
+                <span class="kpi-value">₦{{ v.currentValue | number: '1.0-0' }}</span>
+                <span class="kpi-sub">qty × last unit cost</span></div>
+            }
           </div>
-          <!-- GAP: unit-price and est.-runway tiles need purchase pricing per unit and a
-               consumption-rate series the API doesn't expose; not fabricated. -->
+          @if (d.category || d.storageLocation) {
+            <dl class="kv" style="margin:0 0 0.8rem;">
+              @if (d.category) { <dt>Category</dt><dd>{{ d.category.replace('_', ' ') }}</dd> }
+              @if (d.storageLocation) { <dt>Bay / rack</dt><dd class="mono">{{ d.storageLocation }}</dd> }
+            </dl>
+          }
 
           <div class="panel-head"><h2>Purchase history</h2><span class="ph-sub">latest first</span></div>
           @if (ledger().length > 0) {
@@ -121,7 +155,9 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
           <form class="form-grid" (ngSubmit)="purchase()">
             <label>Quantity <input type="number" min="1" [(ngModel)]="pu.quantity" name="puqty" required /></label>
             <label>Cost ₦ <input type="number" min="0" [(ngModel)]="pu.cost" name="pucost" required /></label>
-            <label class="wide">Note (supplier — free text) <input [(ngModel)]="pu.note" name="punote" /></label>
+            <label>Supplier <input [(ngModel)]="pu.supplierName" name="pusupplier" placeholder="e.g. Chinchin Textile" /></label>
+            <label>Lead time (days) <input type="number" min="0" [(ngModel)]="pu.leadTimeDays" name="pulead" /></label>
+            <label class="wide">Note (free text) <input [(ngModel)]="pu.note" name="punote" /></label>
             <div class="wide actions flat">
               @if (!pu.approvalRequestId) {
                 <button class="cta small ghost" type="button" (click)="requestPurchaseApproval()">Request approval</button>
@@ -148,7 +184,7 @@ interface MovementRow { id: string; movementType: string; quantityDelta: number;
       <div class="stat-cell"><span class="sc-label">SKUs tracked</span><p class="sc-value">{{ materials().length }}</p><span class="sc-sub">materials on file</span></div>
       <div class="stat-cell"><span class="sc-label">Stockout risk</span><p class="sc-value" [class.error]="lowStock().length > 0">{{ lowStock().length }} SKUs</p><span class="sc-sub">at or below reorder threshold</span></div>
       <div class="stat-cell"><span class="sc-label">Healthy reserve</span><p class="sc-value">{{ materials().length - lowStock().length }} SKUs</p><span class="sc-sub">above threshold</span></div>
-      <!-- GAP: total valuation (₦) needs a per-unit cost figure the materials API doesn't store. -->
+      <div class="stat-cell"><span class="sc-label">Stock valuation</span><p class="sc-value">₦{{ valuationTotal() | number: '1.0-0' }}</p><span class="sc-sub">at latest purchase prices</span></div>
     </div>
 
     @if (message()) { <p class="success">{{ message() }}</p> }
@@ -163,6 +199,8 @@ export class MaterialsAdminPage implements OnInit {
   readonly error = signal<string | null>(null);
   readonly showAdd = signal(false);
   readonly view = signal<'all' | 'low' | 'ok'>('all');
+  readonly categoryFilter = signal('');
+  readonly valuations = signal<ValuationRow[]>([]);
   /** Server-authoritative reorder list (GET /materials/low-stock). */
   readonly lowStock = signal<MaterialRow[]>([]);
   readonly lowStockNames = computed(() =>
@@ -173,21 +211,37 @@ export class MaterialsAdminPage implements OnInit {
   readonly ledger = signal<MovementRow[]>([]);
   query = '';
 
-  nm = { name: '', unit: '', reorderThreshold: 0 };
-  pu = { quantity: 0, cost: 0, note: '', approvalRequestId: '' };
+  nm = { name: '', unit: '', category: '', storageLocation: '', reorderThreshold: 0 };
+  pu = { quantity: 0, cost: 0, note: '', supplierName: '', leadTimeDays: 0, approvalRequestId: '' };
   us = { quantityUsed: 0, batchId: '' };
+
+  readonly MATERIAL_CATEGORIES = MATERIAL_CATEGORIES;
 
   ngOnInit(): void { this.query = this.route.snapshot.queryParamMap.get('q') ?? ''; this.load(); }
   private load(): void {
     this.api.materials().subscribe((res) => this.materials.set(res as unknown as MaterialRow[]));
     this.api.lowStockMaterials().subscribe((res) => this.lowStock.set(res as unknown as MaterialRow[]));
+    this.api.materialsValuation().subscribe((res) => this.valuations.set(res as unknown as ValuationRow[]));
   }
+
+  countCategory(category: string): number {
+    return this.valuations().filter((v) => v.category === category).length;
+  }
+
+  valuationOf(id: string): ValuationRow | null {
+    return this.valuations().find((v) => v.id === id) ?? null;
+  }
+
+  readonly valuationTotal = computed(() =>
+    this.valuations().reduce((sum, v) => sum + (v.currentValue || 0), 0),
+  );
 
   visible(): MaterialRow[] {
     const q = this.query.trim().toLowerCase();
     return this.materials().filter((m) => {
       if (this.view() === 'low' && !m.lowStock) return false;
       if (this.view() === 'ok' && m.lowStock) return false;
+      if (this.categoryFilter() && m.category !== this.categoryFilter()) return false;
       return !q || m.name.toLowerCase().includes(q);
     });
   }
@@ -237,7 +291,10 @@ export class MaterialsAdminPage implements OnInit {
   private fail(err: { error?: { message?: string } }, fb: string): void { this.error.set(err?.error?.message ?? fb); this.message.set(null); }
 
   create(): void {
-    this.api.createMaterial({ name: this.nm.name, unit: this.nm.unit, reorderThreshold: Number(this.nm.reorderThreshold) })
+    this.api.createMaterial({
+      name: this.nm.name, unit: this.nm.unit, reorderThreshold: Number(this.nm.reorderThreshold),
+      category: this.nm.category || undefined, storageLocation: this.nm.storageLocation || undefined,
+    })
       .subscribe({ next: () => { this.showAdd.set(false); this.ok('Material created.'); }, error: (e) => this.fail(e, 'Create failed.') });
   }
 
@@ -257,8 +314,10 @@ export class MaterialsAdminPage implements OnInit {
     this.api.recordPurchase(sel.id, {
       quantity: Number(this.pu.quantity), cost: Number(this.pu.cost),
       note: this.pu.note || undefined, approvalRequestId: this.pu.approvalRequestId,
+      supplierName: this.pu.supplierName || undefined,
+      leadTimeDays: this.pu.leadTimeDays ? Number(this.pu.leadTimeDays) : undefined,
     }).subscribe({
-      next: () => { this.pu = { quantity: 0, cost: 0, note: '', approvalRequestId: '' }; this.ok('Purchase recorded — stock updated.'); this.inspectRefresh(sel.id); },
+      next: () => { this.pu = { quantity: 0, cost: 0, note: '', supplierName: '', leadTimeDays: 0, approvalRequestId: '' }; this.ok('Purchase recorded — stock updated.'); this.inspectRefresh(sel.id); },
       error: (e) => this.fail(e, 'Not approved yet — check the Approvals queue.'),
     });
   }

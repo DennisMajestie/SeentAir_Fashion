@@ -31,6 +31,12 @@ export class MaterialsController {
     return this.materialsService.lowStock();
   }
 
+  @Get('valuation')
+  @RequireAccess(ModuleName.RAW_MATERIALS, AccessLevel.VIEW)
+  valuation() {
+    return this.materialsService.valuation();
+  }
+
   @Get(':id')
   @RequireAccess(ModuleName.RAW_MATERIALS, AccessLevel.VIEW)
   findOne(@Param('id', ParseUUIDPipe) id: string) {

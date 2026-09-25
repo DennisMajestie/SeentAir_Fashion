@@ -50,7 +50,41 @@ import { environment } from '../environments/environment';
         </aside>
 
         <section class="auth-col">
-          @if (!challengeToken()) {
+          @if (!challengeToken() && resetMode()) {
+            <div class="auth-wrap">
+              <form class="auth-card" (ngSubmit)="resetSent() ? submitReset() : sendForgot()" novalidate>
+                <p class="eyebrow">Staff access</p>
+                <h1>Reset password.</h1>
+                <p class="subtext">{{ resetSent() ? 'Enter the token from your email plus a new password.' : 'We will send a 64-character reset token to your inbox.' }}</p>
+
+                @if (!resetSent()) {
+                  <label class="field">
+                    <span class="field-label">Email</span>
+                    <input type="email" [(ngModel)]="email" name="remail" placeholder="you@seentair.ng" autocomplete="email" required />
+                    @if (errors().email) { <span class="field-err">{{ errors().email }}</span> }
+                  </label>
+                } @else {
+                  <label class="field">
+                    <span class="field-label">Reset token</span>
+                    <input class="mono" [(ngModel)]="resetToken" name="rtoken" placeholder="64 hex chars from the email" required />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">New password</span>
+                    <input [type]="showPassword ? 'text' : 'password'" [(ngModel)]="newPassword" name="rpass" placeholder="at least 8 characters" autocomplete="new-password" required />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">Confirm new password</span>
+                    <input [type]="showPassword ? 'text' : 'password'" [(ngModel)]="newPassword2" name="rpass2" placeholder="repeat it" autocomplete="new-password" required />
+                  </label>
+                }
+
+                <button class="cta signin" type="submit" [disabled]="loading()">{{ loading() ? 'Working…' : (resetSent() ? 'Set new password' : 'Send reset token →') }}</button>
+                <button class="link" type="button" (click)="backToSignin()">Back to sign in</button>
+                @if (formError()) { <p class="field-err form-err">{{ formError() }}</p> }
+                @if (resetMsg()) { <p class="success">{{ resetMsg() }}</p> }
+              </form>
+            </div>
+          } @else if (!challengeToken()) {
             <div class="auth-wrap">
               <form class="auth-card" (ngSubmit)="onSubmit()" novalidate>
                 <p class="eyebrow">Staff access</p>
@@ -286,6 +320,12 @@ export class App implements OnInit, OnDestroy {
   code = '';
   rememberMe = false;
   showPassword = false;
+  readonly resetMode = signal(false);
+  readonly resetSent = signal(false);
+  readonly resetMsg = signal<string | null>(null);
+  resetToken = '';
+  newPassword = '';
+  newPassword2 = '';
 
   private clockTimer?: ReturnType<typeof setInterval>;
 
@@ -407,9 +447,62 @@ export class App implements OnInit, OnDestroy {
     return (`${a}${b}` || 'SE').toUpperCase();
   }
 
-  forgot(): void {
-    // TODO(ops): wire to the real password-reset flow once the backend ships it.
-    this.formError.set('Password reset is coming soon — contact a system admin.');
+forgot(): void {
+    this.resetMode.set(true);
+    this.resetSent.set(false);
+    this.resetToken = '';
+    this.newPassword = '';
+    this.newPassword2 = '';
+    this.formError.set(null);
+    this.resetMsg.set(null);
+    this.errors.set({});
+  }
+
+  backToSignin(): void {
+    this.resetMode.set(false);
+    this.resetSent.set(false);
+    this.formError.set(null);
+    this.resetMsg.set(null);
+    this.errors.set({});
+  }
+
+  sendForgot(): void {
+    const email = this.email.trim();
+    if (!this.emailRe.test(email)) { this.errors.set({ email: 'Enter a valid email address.' }); this.triggerShake(); return; }
+    this.errors.set({});
+    this.loading.set(true);
+    this.api.forgotPassword(email).subscribe({
+      next: () => this.confirmTokenSent(),
+      error: () => this.confirmTokenSent(),
+    });
+  }
+
+  private confirmTokenSent(): void {
+    this.loading.set(false);
+    this.resetSent.set(true);
+    this.resetMsg.set('If that email exists, a reset token is on its way — check your inbox (and spam).');
+  }
+
+  submitReset(): void {
+    const token = this.resetToken.trim();
+    if (!/^[0-9a-fA-F]{64}$/.test(token)) { this.formError.set('The token is a 64-character hex string from the email.'); return; }
+    if (this.newPassword.length < 8) { this.formError.set('New password must be at least 8 characters.'); return; }
+    if (this.newPassword !== this.newPassword2) { this.formError.set('Passwords do not match.'); return; }
+    this.formError.set(null);
+    this.loading.set(true);
+    this.api.resetPassword(token.toLowerCase(), this.newPassword).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.resetMsg.set('Password changed — sign in with the new password.');
+        this.resetMode.set(false);
+        this.resetSent.set(false);
+        this.password = '';
+        this.resetToken = '';
+        this.newPassword = '';
+        this.newPassword2 = '';
+      },
+      error: () => { this.loading.set(false); this.formError.set('Reset failed — the token may be invalid or already used.'); },
+    });
   }
 
   private triggerShake(): void {

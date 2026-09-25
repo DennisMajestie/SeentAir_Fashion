@@ -48,10 +48,44 @@ export class MaterialsService {
       this.materialRepo.create({
         name: dto.name,
         unit: dto.unit,
+        category: dto.category ?? null,
+        storageLocation: dto.storageLocation ?? null,
         reorderThreshold: dto.reorderThreshold ?? 0,
       }),
     );
     return this.withQuantity(material);
+  }
+
+  /**
+   * Current on-hand valuation at latest purchase cost — the "what's the
+   * fabric on the shelves worth" number for the dashboard.
+   */
+  async valuation(): Promise<
+    Array<
+      MaterialWithQuantity & {
+        lastUnitCost: number | null;
+        lastPurchaseAt: Date | null;
+        currentValue: number;
+      }
+    >
+  > {
+    const materials = await this.findAll();
+    return Promise.all(
+      materials.map(async (material) => {
+        const [lastPurchase] = await this.purchaseRepo.find({
+          where: { material: { id: material.id } },
+          order: { purchasedAt: 'DESC' },
+          take: 1,
+        });
+        const lastUnitCost = lastPurchase?.cost ?? null;
+        return {
+          ...material,
+          lastUnitCost,
+          lastPurchaseAt: lastPurchase?.purchasedAt ?? null,
+          currentValue: lastUnitCost ? lastUnitCost * material.currentQuantity : 0,
+        };
+      }),
+    );
   }
 
   /**
@@ -71,6 +105,8 @@ export class MaterialsService {
           quantity: dto.quantity,
           cost: dto.cost,
           note: dto.note ?? null,
+          supplierName: dto.supplierName ?? null,
+          leadTimeDays: dto.leadTimeDays ?? null,
           recordedBy: actorId,
         }),
       );

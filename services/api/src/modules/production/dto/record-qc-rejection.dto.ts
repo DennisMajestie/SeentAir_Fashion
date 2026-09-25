@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 import { QCDisposition } from '../entities/qc-rejection.entity';
 
 export class RecordQCRejectionDto {
@@ -14,4 +14,9 @@ export class RecordQCRejectionDto {
 
   @IsEnum(QCDisposition)
   disposition: QCDisposition;
+
+  /** QA inspector performing the check. */
+  @IsOptional()
+  @IsUUID()
+  inspectorId?: string;
 }
