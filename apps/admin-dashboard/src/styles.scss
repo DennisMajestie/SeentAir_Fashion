@@ -1159,6 +1159,19 @@ $ops-canvas: var(--obsidian);
 /* Table + right inspector split */
 .side-split { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(270px, 1fr); gap: 1rem; align-items: start;
   @media (max-width: 980px) { grid-template-columns: 1fr; } }
+.list-col { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap;
+  .pager-info { font-size: var(--type-label-sm); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); font-weight: 600; }
+  .pager-nav { display: inline-flex; gap: 3px; flex-wrap: wrap; }
+  .pager-btn { border: 1px solid var(--hairline); background: var(--panel); color: var(--ink-dim);
+    min-height: 32px; min-width: 32px; padding: 0 0.6rem; cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: var(--type-label-sm); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em; border-radius: var(--radius-pill);
+    &:hover:not(:disabled):not(.on) { border-color: var(--hairline-strong); color: var(--ink); }
+    &.on { background: var(--acid); border-color: var(--acid); color: var(--on-acid); }
+    &:disabled { opacity: 0.4; cursor: default; }
+    &:focus-visible { outline: 2px solid var(--acid-ink); outline-offset: 2px; } }
+}
 .inspector { position: sticky; top: 76px; background: var(--panel); border: 1px solid var(--hairline); padding: 0.9rem 1rem;
   @media (max-width: 980px) { position: static; }
   .insp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap;

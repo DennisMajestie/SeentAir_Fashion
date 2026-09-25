@@ -54,20 +54,21 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
     </div>
 
     <div class="ops-toolbar">
-      <span class="search"><input placeholder="Search SKU or material…" [(ngModel)]="query" name="q" aria-label="Search inventory" /></span>
+      <span class="search"><input placeholder="Search SKU or material…" [(ngModel)]="query" name="q" aria-label="Search inventory" (ngModelChange)="queryChanged()" /></span>
       <div class="seg" role="group" aria-label="Item type">
-        <button type="button" [class.on]="view() === 'all'" (click)="view.set('all')">All items <span class="seg-n">{{ summary().length }}</span></button>
-        <button type="button" [class.on]="view() === 'variant'" (click)="view.set('variant')">Finished goods <span class="seg-n">{{ countType('variant') }}</span></button>
-        <button type="button" [class.on]="view() === 'material'" (click)="view.set('material')">Raw materials <span class="seg-n">{{ countType('material') }}</span></button>
+        <button type="button" [class.on]="view() === 'all'" (click)="setView('all')">All items <span class="seg-n">{{ summary().length }}</span></button>
+        <button type="button" [class.on]="view() === 'variant'" (click)="setView('variant')">Finished goods <span class="seg-n">{{ countType('variant') }}</span></button>
+        <button type="button" [class.on]="view() === 'material'" (click)="setView('material')">Raw materials <span class="seg-n">{{ countType('material') }}</span></button>
       </div>
     </div>
 
     <div class="side-split">
+      <div class="list-col">
       <div class="table-scroll">
         <table class="table">
           <thead><tr><th>Item</th><th>Type</th><th>Current</th><th>In / out by movement</th><th>Est. value</th></tr></thead>
           <tbody>
-            @for (s of visible(); track s.itemType + s.itemId) {
+            @for (s of paged(); track s.itemType + s.itemId) {
               <tr class="clickable" [class.sel]="isSelected(s)" (click)="select(s)">
                 <td><strong>{{ labelFor(s.itemType, s.itemId) }}</strong></td>
                 <td><span class="chip" [class.acid]="s.itemType === 'variant'">{{ s.itemType === 'variant' ? 'finished' : 'material' }}</span></td>
@@ -85,6 +86,20 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
             @if (visible().length === 0) { <tr><td colspan="5" class="muted small">No stock rows match.</td></tr> }
           </tbody>
         </table>
+      </div>
+
+      @if (visible().length > 0) {
+        <div class="pager">
+          <span class="pager-info">{{ visible().length }} item{{ visible().length === 1 ? '' : 's' }} · page {{ page() }} of {{ pageCount() }}</span>
+          <div class="pager-nav">
+            <button type="button" class="pager-btn" [disabled]="page() === 1" (click)="page.set(page() - 1)">‹ Prev</button>
+            @for (p of pageNumbers(); track p) {
+              <button type="button" class="pager-btn" [class.on]="p === page()" (click)="page.set(p)">{{ p }}</button>
+            }
+            <button type="button" class="pager-btn" [disabled]="page() >= pageCount()" (click)="page.set(page() + 1)">Next ›</button>
+          </div>
+        </div>
+      }
       </div>
 
       <aside class="inspector">
@@ -165,6 +180,8 @@ export class InventoryAdminPage implements OnInit {
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   readonly view = signal<'all' | 'variant' | 'material'>('all');
+  readonly page = signal(1);
+  readonly pageSize = signal(12);
   readonly wipUnits = signal(0);
   readonly returnsAwaiting = signal(0);
   query = '';
@@ -216,6 +233,24 @@ export class InventoryAdminPage implements OnInit {
       if (this.view() !== 'all' && s.itemType !== this.view()) return false;
       return !q || this.labelFor(s.itemType, s.itemId).toLowerCase().includes(q);
     });
+  }
+
+  setView(v: 'all' | 'variant' | 'material'): void { this.view.set(v); this.page.set(1); }
+  queryChanged(): void { this.page.set(1); }
+
+  paged(): SummaryRow[] {
+    const v = this.visible();
+    const total = Math.max(1, Math.ceil(v.length / this.pageSize()));
+    if (this.page() > total) this.page.set(total);
+    const start = (this.page() - 1) * this.pageSize();
+    return v.slice(start, start + this.pageSize());
+  }
+  pageCount(): number { return Math.max(1, Math.ceil(this.visible().length / this.pageSize())); }
+  pageNumbers(): number[] {
+    const total = this.pageCount();
+    const first = Math.max(1, Math.min(this.page() - 2, total - 4));
+    const last = Math.min(total, first + 4);
+    return Array.from({ length: last - first + 1 }, (_, i) => first + i);
   }
 
   readonly finishedUnits = computed(() =>
