@@ -58,6 +58,25 @@
 
 * { box-sizing: border-box; }
 
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: transparent;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+:root:hover ::-webkit-scrollbar-thumb,
+*:hover::-webkit-scrollbar-thumb {
+  background: var(--hairline-2);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold-strong);
+}
+html { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+html:hover { scrollbar-color: var(--hairline-2) transparent; }
+html:hover * { scrollbar-color: var(--hairline-2) transparent; }
+
 body {
   margin: 0;
   font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
@@ -88,11 +107,6 @@ code { font-family: 'Inter', sans-serif; font-size: 0.85em; color: var(--ink); f
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     border-bottom-color: var(--hairline);
     box-shadow: 0 1px 0 color-mix(in srgb, var(--hairline) 60%, transparent);
-  }
-  .logo {
-    display: inline-flex; align-items: center;
-    text-decoration: none; color: var(--ink);
-    img { display: block; height: 40px; width: auto; object-fit: contain; }
   }
   .top-tabs { display: flex; gap: 0.35rem; align-items: center; margin-left: auto;
     .preview-tab { color: var(--ink-dim); text-decoration: none; font-size: 0.7rem; font-weight: 700;
@@ -1008,13 +1022,14 @@ $ops-canvas: var(--obsidian);
 
 /* Page header: eyebrow, title, meta chips, right-side actions */
 .ops-head {
-  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.6rem 1.2rem; margin-bottom: 1rem;
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 0.6rem 1.2rem; margin-bottom: 1rem;
   .ops-id { flex: 1 1 auto; min-width: 240px;
-    h1 { margin: 0.15rem 0 0.2rem; }
-    .ops-sub { margin: 0; color: var(--ink-dim); font-size: var(--type-body-sm); letter-spacing: 0.02em; }
+    h1 { margin: 7px 0 0; }
+    .ops-sub { display: block; margin: 9px 0 0; color: var(--ink-dim); font-size: var(--type-body-sm); letter-spacing: 0.02em; }
   }
   .ops-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-left: auto; }
 }
+.ops-head + .rule-strip { margin-top: 1.5rem; }
 .live-chip {
   display: inline-flex; align-items: center; gap: 0.4rem; padding: 4px 10px;
   border: 1px solid var(--ok); color: var(--ok); font-size: var(--type-label-sm);

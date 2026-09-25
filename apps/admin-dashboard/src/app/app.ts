@@ -146,9 +146,6 @@ import { environment } from '../environments/environment';
       <div class="app-shell">
         <header class="site-header" [class.scrolled]="scrolled()">
           <div class="header-inner">
-            <a routerLink="/" class="logo" aria-label="SEENTAIR Operations">
-              <img src="assets/logo.jpeg" alt="SEENTAIR" width="200" height="40" />
-            </a>
             <app-search />
             <nav class="top-tabs" aria-label="Other Seentair apps">
               <a class="preview-tab" [href]="environment.storefrontUrl" target="_blank" rel="noopener noreferrer">
