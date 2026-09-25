@@ -116,6 +116,11 @@ export class ApiService {
     );
   }
 
+  /** Starts a password reset — posts regardless of whether the email exists. */
+  forgotPassword(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${API_BASE}/auth/forgot-password`, { email });
+  }
+
   /** Step 2 of a 2FA login — exchanges the challenge token + TOTP code for a session. */
   verify2fa(challengeToken: string, code: string): Observable<{ accessToken: string }> {
     return this.http

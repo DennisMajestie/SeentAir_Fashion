@@ -122,7 +122,7 @@ import { ThemeService } from './theme.service';
                   <button class="affix-btn" type="button"
                     [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
                     (click)="showPassword.set(!showPassword())">
-                    {{ showPassword() ? 'HIDE' : 'SHOW' }}
+                    {{ showPassword() ? 'Hide' : 'Show' }}
                   </button>
                 </div>
                 @if (touched() && !password) {

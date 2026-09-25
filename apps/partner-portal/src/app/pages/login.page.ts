@@ -71,21 +71,36 @@ import { ThemeService } from '../theme.service';
               />
             </label>
             <label class="field">
-              Master passkey
-              <input
-                type="password"
-                name="password"
-                [(ngModel)]="password"
-                required
-                autocomplete="current-password"
-                [disabled]="phase() === 2"
-              />
+              <span class="field-row">
+                <span>Master passkey</span>
+                <button class="link forgot-link" type="button" (click)="forgot()">Forgot?</button>
+              </span>
+              <span class="pw-wrap">
+                <input
+                  [type]="showPassword() ? 'text' : 'password'"
+                  name="password"
+                  [(ngModel)]="password"
+                  required
+                  autocomplete="current-password"
+                  [disabled]="phase() === 2"
+                />
+                <button
+                  class="pw-toggle"
+                  type="button"
+                  [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                  (click)="showPassword.set(!showPassword())"
+                  [disabled]="phase() === 2"
+                >
+                  {{ showPassword() ? 'Hide' : 'Show' }}
+                </button>
+              </span>
             </label>
             <p class="fine">Terminal lease renews automatically over a secure session cookie.</p>
             <button class="cta block" type="submit" [disabled]="busy() || phase() === 2">
               @if (busy() && phase() === 1) { Authorizing… } @else { Authorize access to terminal }
             </button>
             @if (phase() === 1 && error()) { <p class="error">{{ error() }}</p> }
+            @if (phase() === 1 && info()) { <p class="auth-info">{{ info() }}</p> }
           </form>
 
           <form class="phase phase-2" (ngSubmit)="verify()" [class.dimmed]="phase() === 1">
@@ -214,6 +229,21 @@ import { ThemeService } from '../theme.service';
       }
       input.otp { font-size: 1.4rem; letter-spacing: 0.9em; text-align: center; font-weight: 700;
         font-variant-numeric: tabular-nums; padding-left: 1.2rem; }
+      .field-row { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+      .forgot-link { font-size: var(--type-label-sm); letter-spacing: 0.08em; }
+      .pw-wrap { display: block; position: relative;
+        input { padding-right: 4.4rem; }
+        .pw-toggle {
+          position: absolute; top: 50%; right: 0.4rem; transform: translateY(-50%);
+          min-width: 44px; min-height: 34px; padding: 0 0.6rem;
+          border: 1px solid var(--hairline); background: var(--panel); color: var(--ink-dim);
+          border-radius: var(--radius-pill); cursor: pointer;
+          font-family: inherit; font-size: var(--type-label-sm); font-weight: 700;
+          letter-spacing: 0.08em; text-transform: uppercase;
+          &:hover { color: var(--acid-ink); border-color: var(--gold); }
+          &:disabled { opacity: 0.5; cursor: default; } } }
+      .auth-info { margin: 0.6rem 0 0; padding: 0.5rem 0.7rem; font-size: var(--type-body-sm);
+        color: var(--ok); border: 1px solid var(--ok); background: color-mix(in srgb, var(--ok) 8%, var(--panel)); }
       .station-line { margin: 0.8rem 0 1.4rem; text-align: center; color: var(--ink-dim);
         font-size: var(--type-label-sm); text-transform: uppercase; letter-spacing: 0.14em; }
       .auth-kpis .kpi-value.sm { font-size: 0.95rem; }
@@ -233,6 +263,8 @@ export class LoginPage {
   readonly phase = signal<1 | 2>(1);
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
+  readonly info = signal<string | null>(null);
+  readonly showPassword = signal(false);
   private challengeToken: string | null = null;
 
   email = '';
@@ -242,6 +274,7 @@ export class LoginPage {
   signIn(): void {
     if (this.busy() || this.phase() === 2) return;
     this.error.set(null);
+    this.info.set(null);
     this.busy.set(true);
     this.api.login(this.email, this.password).subscribe({
       next: (res) => {
@@ -263,6 +296,7 @@ export class LoginPage {
   verify(): void {
     if (!this.challengeToken || this.busy()) return;
     this.error.set(null);
+    this.info.set(null);
     this.busy.set(true);
     this.api.verify2fa(this.challengeToken, this.code).subscribe({
       next: () => {
@@ -281,6 +315,26 @@ export class LoginPage {
     this.challengeToken = null;
     this.code = '';
     this.error.set(null);
+    this.info.set(null);
+  }
+
+  /** Password reset door — consistent with the other Seentair sign-in forms. */
+  forgot(): void {
+    if (this.phase() === 2) return;
+    this.error.set(null);
+    this.info.set(null);
+    if (!this.emailValid()) {
+      this.error.set('Enter your authorized email first, then tap Forgot.');
+      return;
+    }
+    this.api.forgotPassword(this.email.trim()).subscribe({
+      next: () => this.info.set('If that email is registered, a reset link has been sent.'),
+      error: () => this.info.set('If that email is registered, a reset link has been sent.'),
+    });
+  }
+
+  private emailValid(): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email.trim());
   }
 
   private enter(): void {
