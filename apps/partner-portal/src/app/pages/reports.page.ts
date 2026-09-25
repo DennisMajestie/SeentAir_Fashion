@@ -82,16 +82,16 @@ import { PortalStore } from '../portal.store';
         </section>
 
         <section class="panel">
-          <div class="panel-head"><h2>Profit allocation covenant</h2><span class="panel-note">40 / 40 / 20</span></div>
+          <div class="panel-head"><h2>Profit allocation covenant</h2><span class="panel-note">{{ store.covenantLabel() }}</span></div>
           <div class="donut-wrap compact">
-            <div class="donut small" [style.background]="covenantDonut" role="img"
-                 aria-label="Profit allocation covenant: 40% reinvestment, 40% dividends, 20% reserve">
+            <div class="donut small" [style.background]="covenantDonut()" role="img"
+                 [attr.aria-label]="'Profit allocation covenant: ' + d.config.reinvestmentPct + '% reinvestment, ' + d.config.dividendsPct + '% dividends, ' + d.config.reservePct + '% reserve'">
               <div class="donut-hole"><span>Net profit</span><strong>100%</strong></div>
             </div>
             <div class="legend">
-              <div class="legend-row"><span class="swatch" style="background: var(--ink-dim)"></span>Reinvestment<span class="legend-val">40%</span></div>
-              <div class="legend-row"><span class="swatch" style="background: var(--gold)"></span>Dividends<span class="legend-val">40%</span></div>
-              <div class="legend-row"><span class="swatch" style="background: var(--hairline-2)"></span>Reserve<span class="legend-val">20%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--ink-dim)"></span>Reinvestment<span class="legend-val">{{ d.config.reinvestmentPct }}%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--gold)"></span>Dividends<span class="legend-val">{{ d.config.dividendsPct }}%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--hairline-2)"></span>Reserve<span class="legend-val">{{ d.config.reservePct }}%</span></div>
             </div>
           </div>
         </section>
@@ -140,8 +140,8 @@ import { PortalStore } from '../portal.store';
           <span class="stmt-val">₦{{ d.accountsReports.profit.net | number: '1.0-0' }}</span>
         </div>
         <p class="fine muted">
-          Distributable under the 40 / 40 / 20 covenant once declared for a quarterly period and
-          approval-gated as a fund movement.
+          Distributable under the {{ store.covenantLabel() }} covenant once declared for a quarterly
+          period and approval-gated as a fund movement.
         </p>
       </section>
 
@@ -192,11 +192,22 @@ import { PortalStore } from '../portal.store';
 export class ReportsPage {
   readonly store = inject(PortalStore);
 
-  /** Static confirmed covenant — 40% reinvestment (ink-dim), 40% dividends (gold), 20% reserve. */
-  readonly covenantDonut =
-    'conic-gradient(var(--ink-dim) 0deg 142deg, var(--panel) 142deg 144deg,' +
-    ' var(--gold) 144deg 286deg, var(--panel) 286deg 288deg,' +
-    ' var(--hairline-2) 288deg 358deg, var(--panel) 358deg 360deg)';
+  /** Covenant donut — reinvestment (ink-dim), dividends (gold), reserve, from config. */
+  readonly covenantDonut = computed(() => {
+    const c = this.store.dash()?.config;
+    const reinv = c?.reinvestmentPct ?? 40;
+    const div = c?.dividendsPct ?? 40;
+    const res = c?.reservePct ?? 20;
+    const r1 = reinv * 3.6;
+    const r2 = (reinv + div) * 3.6;
+    const g = 2; // degrees of gap
+    return (
+      `conic-gradient(var(--ink-dim) 0deg ${r1 - g}deg, var(--panel) ${r1 - g}deg ${r1}deg,` +
+      ` var(--gold) ${r1}deg ${r2 - g}deg, var(--panel) ${r2 - g}deg ${r2}deg,` +
+      ` var(--hairline-2) ${r2}deg ${Math.min(360, r2 + res * 3.6) - g}deg,` +
+      ` var(--panel) ${Math.min(360, r2 + res * 3.6) - g}deg 360deg)`
+    );
+  });
 
   readonly expenseRatioPct = computed(() => {
     const p = this.store.dash()?.accountsReports.profit;

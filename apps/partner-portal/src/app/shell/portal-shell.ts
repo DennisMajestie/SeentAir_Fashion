@@ -34,9 +34,25 @@ import { ThemeService } from '../theme.service';
             ><span class="dot ok"></span> 256-Bit Encrypted Investor Terminal</span
           >
           <span class="term-chip">Period: <strong>{{ store.periodLabel() }}</strong></span>
+          @if (store.lastUpdatedLabel(); as synced) {
+            <span class="term-chip">Synced: <strong>{{ synced }}</strong></span>
+          }
         </div>
         <div class="term-right">
           <span class="term-chip status">Status: <strong>Audited Read-Only</strong></span>
+          <button
+            class="refresh-btn"
+            type="button"
+            aria-label="Refresh portfolio data"
+            [attr.title]="store.lastUpdatedLabel() ? 'Last synced ' + store.lastUpdatedLabel() : 'Sync portfolio data'"
+            (click)="refresh()"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-2.7-6.4" />
+              <path d="M21 3v5h-5" />
+            </svg>
+          </button>
           <button
             class="theme-toggle"
             type="button"
@@ -139,6 +155,10 @@ export class PortalShell implements OnInit {
 
   ngOnInit(): void {
     this.store.load();
+  }
+
+  refresh(): void {
+    this.store.refresh();
   }
 
   async signOut(): Promise<void> {

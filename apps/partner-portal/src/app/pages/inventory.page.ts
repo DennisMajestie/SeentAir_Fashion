@@ -1,12 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
+import { InventorySummaryRow, ProductVariantRef } from '../api.service';
 import { PortalStore } from '../portal.store';
 
 /**
  * Screen P5 — Inventory Valuation & Raw Material Reserves. The partner API
- * exposes one audited aggregate (finished-goods units); every valuation and
- * per-category section renders the approved layout with honest empty states.
+ * exposes the audited finished-goods aggregate plus the live event-sourced
+ * per-item stock summary (INVENTORY VIEW) — labelled with product names from
+ * the public catalogue. Valuations stay honest "unvalued" (no ₦ endpoint).
  */
+type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
 @Component({
   selector: 'app-inventory-page',
   imports: [CommonModule],
@@ -40,9 +43,9 @@ import { PortalStore } from '../portal.store';
           <span class="kpi-sub">Valuation follows the next audit cycle</span>
         </div>
         <div class="kpi">
-          <span class="kpi-label">Raw material reserves</span>
-          <span class="kpi-value">Not yet valued</span>
-          <span class="kpi-sub">Cotton &amp; poly lots — mill custody</span>
+          <span class="kpi-label">Raw material holdings</span>
+          <span class="kpi-value">{{ materialUnits() | number }} units</span>
+          <span class="kpi-sub">Live mill lots — cotton, poly &amp; trims</span>
         </div>
         <div class="kpi">
           <span class="kpi-label">Reserved &amp; written off</span>
@@ -57,17 +60,23 @@ import { PortalStore } from '../portal.store';
             <h2>Inventory stock distribution by category</h2>
             <span class="panel-note">Total finished units: {{ d.inventoryVisibility.finishedGoodsUnits | number }}</span>
           </div>
-          <!-- GAP: no per-category stock breakdown endpoint for partners — only the audited total. -->
-          <div class="meter-row">
-            <span>All finished garments</span>
+          <div class="meter-row" style="padding-bottom: 0.55rem">
+            <span><strong>All finished garments</strong></span>
             <div class="meter gold"><div class="meter-fill" style="width: 100%"></div></div>
             <span class="meter-val mono">{{ d.inventoryVisibility.finishedGoodsUnits | number }} units</span>
           </div>
-          <p class="gap-note" style="margin-top: 0.7rem">
-            Category-level distribution (heavyweight tees, hoodies &amp; fleece, cargo &amp;
-            bottoms, overshirts &amp; outerwear, accessories) is not yet published to the partner
-            terminal.
-          </p>
+          @for (row of store.categoryRows(); track row.name) {
+            <div class="meter-row">
+              <span class="wrap">{{ row.name }}</span>
+              <div class="meter"><div class="meter-fill" [style.width.%]="row.pct"></div></div>
+              <span class="meter-val mono">{{ row.units | number }} units · {{ row.pct | number: '1.0-0' }}%</span>
+            </div>
+          } @empty {
+            <p class="gap-note" style="margin-top: 0.7rem">
+              No variant-level stock has been recorded to the ledger yet — the distribution fills
+              as stock movements are posted.
+            </p>
+          }
         </section>
 
         <section class="panel">
@@ -99,15 +108,36 @@ import { PortalStore } from '../portal.store';
               <tr><th class="wrap">Silhouette</th><th>Fabric / spec</th><th class="num-col">Units held</th><th class="num-col">Unit value</th><th class="num-col">Total stock value</th><th>Status</th></tr>
             </thead>
             <tbody>
-              <tr>
-                <!-- GAP: no per-SKU stock register endpoint for partners — table renders its approved
-                     structure with an honest empty state. -->
-                <td colspan="6" class="wrap empty-cell">
-                  No silhouette-level register has been published to partners yet. Line items
-                  appear here per SKU with audited unit counts once released.
-                </td>
-              </tr>
+              @for (row of store.finishedVariantRows(); track row.itemId) {
+                <tr>
+                  <td class="wrap">
+                    <strong>{{ silhouetteLabel(row) }}</strong>
+                    @if (skuLabel(row)) { <span class="sub mono">{{ skuLabel(row) }}</span> }
+                  </td>
+                  <td class="wrap">{{ specLabel(row) }}</td>
+                  <td class="num-col mono">{{ row.currentQuantity | number }}</td>
+                  <td class="num-col"><span class="muted">Unvalued</span></td>
+                  <td class="num-col"><span class="muted">Unvalued</span></td>
+                  <td><span class="chip" [class.ok]="row.currentQuantity > 0">{{ statusLabel(row.currentQuantity) }}</span></td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="wrap empty-cell">
+                    No silhouette-level register is available yet. Line items appear here per SKU
+                    with audited unit counts once stock movements are recorded.
+                  </td>
+                </tr>
+              }
             </tbody>
+            @if (store.finishedVariantRows().length > 0) {
+              <tfoot>
+                <tr>
+                  <td colspan="2">Total finished units on register</td>
+                  <td class="num-col mono">{{ d.inventoryVisibility.finishedGoodsUnits | number }}</td>
+                  <td colspan="3"></td>
+                </tr>
+              </tfoot>
+            }
           </table>
         </div>
       </section>
@@ -142,6 +172,7 @@ import { PortalStore } from '../portal.store';
         strong { font-variant-numeric: tabular-nums; }
         &:last-child { border-bottom: 0; } }
       .empty-cell { color: var(--ink-dim); padding: 1rem 0.8rem; }
+      .sub { display: block; font-size: var(--type-label-sm); color: var(--ink-dim); margin-top: 0.1rem; }
       .floor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
         background: var(--hairline); border: 1px solid var(--hairline); }
       .floor-cell { background: var(--panel-2); padding: 0.65rem 0.75rem; display: flex; flex-direction: column; gap: 0.05rem;
@@ -153,4 +184,27 @@ import { PortalStore } from '../portal.store';
 })
 export class InventoryPage {
   readonly store = inject(PortalStore);
+
+  /** Total raw-material units across live mill lots (quantity, not ₦ — no valuation endpoint). */
+  readonly materialUnits = computed(() => {
+    const rows = this.store.materialRows();
+    return rows.reduce((sum, r) => sum + Math.max(0, r.currentQuantity), 0);
+  });
+
+  silhouetteLabel(row: RegisterRow): string {
+    return row.meta?.name ?? 'Unlabelled item';
+  }
+
+  skuLabel(row: RegisterRow): string {
+    return row.meta?.sku ?? '';
+  }
+
+  specLabel(row: RegisterRow): string {
+    const parts = [row.meta?.colour, row.meta?.size].filter((p): p is string => !!p);
+    return parts.length > 0 ? parts.join(' · ') : '—';
+  }
+
+  statusLabel(quantity: number): string {
+    return quantity > 0 ? 'In stock' : 'Audit flag';
+  }
 }

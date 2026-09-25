@@ -1,11 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { PortalStore } from '../portal.store';
 
 /**
- * Screen P8 — Shareholder Documents & Direct Management Desk. No document or
- * messaging endpoints exist yet; the approved vault + desk layout renders with
- * honest empty states and a disabled composer.
+ * Screen P8 — Shareholder Documents & Direct Management Desk. The corporate
+ * vault has no document endpoint yet (honest empty states); the message desk
+ * shows the live in-platform inbox delivered to this account (notifications).
  */
 @Component({
   selector: 'app-documents-page',
@@ -82,24 +82,43 @@ import { PortalStore } from '../portal.store';
           <section class="panel">
             <div class="panel-head">
               <h2>Message management</h2>
-              <span class="panel-note">Direct desk</span>
+              <span class="panel-note">Secure inbox · {{ inboxCount() }}</span>
             </div>
             <p class="desk-copy">
-              Private shareholder liaison: communications are confidential and routed directly to
-              executive leadership. No customer data or support requests are routed here.
+              Confidential shareholder liaison from the executive desk — communications are routed
+              directly to Seentair leadership. No customer data or support requests are routed
+              here.
             </p>
-            <!-- GAP: no secure-messaging endpoint — thread history and the composer activate when
-                 the messaging module ships; composer renders disabled, never fake threads. -->
-            <p class="gap-note">
-              Secure messaging is not yet enabled on the partner terminal. Message history with the
-              executive desk will appear here.
-            </p>
+            @if (store.messages(); as inbox) {
+              @if (inbox.length > 0) {
+                <div class="inbox" role="list">
+                  @for (m of inbox; track m.id) {
+                    <div class="inbox-row" role="listitem">
+                      <div class="inbox-top">
+                        <span class="chip">{{ channelLabel(m.channel) }}</span>
+                        <time class="inbox-date" [attr.datetime]="m.sentAt">{{ m.sentAt | date: 'MMM d, yyyy · HH:mm' }}</time>
+                      </div>
+                      <p class="inbox-msg">{{ m.message }}</p>
+                      <span class="inbox-type">{{ typeLabel(m.type) }} · {{ statusLabel(m.status) }}</span>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="empty-state">
+                  <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+                  <h2 class="empty-state-title">No messages yet</h2>
+                  <p class="empty-state-sub">Quarterly briefings, distribution notices and desk replies land here.</p>
+                </div>
+              }
+            } @else {
+              <p class="gap-note">Loading secure inbox…</p>
+            }
             <label class="field" for="inquiry">New management inquiry</label>
             <textarea
               id="inquiry"
               rows="4"
               disabled
-              placeholder="Submit an inquiry or governance question to executive management… (not yet enabled)"
+              placeholder="Submitting an inquiry is not yet enabled — reply via your liaison desk contact."
             ></textarea>
             <button class="cta block" type="button" disabled>Send secure message</button>
           </section>
@@ -141,9 +160,41 @@ import { PortalStore } from '../portal.store';
         &:disabled { opacity: 0.55; }
       }
       .doc-main span { white-space: normal; }
+      .inbox { display: flex; flex-direction: column; margin-bottom: 0.8rem; }
+      .inbox-row { border: 1px solid var(--hairline); background: var(--panel-2); padding: 0.65rem 0.75rem;
+        border-radius: var(--radius-field); margin-bottom: 0.5rem;
+        &:last-child { margin-bottom: 0; } }
+      .inbox-top { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem; }
+      .inbox-date { font-size: var(--type-label-sm); color: var(--ink-dim); }
+      .inbox-msg { margin: 0 0 0.35rem; font-size: var(--type-body-sm); }
+      .inbox-type { font-size: var(--type-label-sm); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.08em; }
     `,
   ],
 })
 export class DocumentsPage {
   readonly store = inject(PortalStore);
+
+  readonly inboxCount = computed(() => this.store.messages()?.length ?? 0);
+
+  channelLabel(channel: string): string {
+    if (channel === 'in_platform') return 'Terminal';
+    return channel.charAt(0).toUpperCase() + channel.slice(1);
+  }
+
+  typeLabel(type: string): string {
+    const map: Record<string, string> = {
+      order_status: 'Order update',
+      payment: 'Payment',
+      return: 'Return',
+      approval: 'Approval',
+      generic: 'Notice',
+    };
+    const label: string | undefined = map[type];
+    if (label) return label;
+    return type.replace(/[_-]+/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+  }
+
+  statusLabel(status: string): string {
+    return status === 'sent' ? 'Delivered' : status.charAt(0).toUpperCase() + status.slice(1);
+  }
 }

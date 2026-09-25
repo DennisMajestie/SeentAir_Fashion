@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { RoleName } from '../../common/enums';
+import { AccessLevel, RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { AccountingService } from '../accounting/accounting.service';
 import { ApprovalsService } from '../approvals/approvals.service';
@@ -36,7 +36,14 @@ describe('PartnersService — confirmed profit-sharing model', () => {
     find: jest.fn(async () => []),
   };
   const approvalsService = { assertApproved: jest.fn(async () => undefined) };
-  const accountingService = { record: jest.fn() };
+  const accountingService = {
+    record: jest.fn(),
+    report: jest.fn(async (kind: string) =>
+      kind === 'income'
+        ? { type: 'income', total: 1_000_000, byType: {} }
+        : { type: 'profit', income: 1_000_000, expenditure: 400_000, profit: 600_000, net: 600_000 },
+    ),
+  };
   const config = {
     get: jest.fn((key: string) => {
       const values: Record<string, number> = {
@@ -135,5 +142,32 @@ describe('PartnersService — confirmed profit-sharing model', () => {
     expect(accountingService.record).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'investment', amount: 2_000_000 }),
     );
+  });
+
+  it('exposes the confirmed covenant config on the partner dashboard', async () => {
+    const permissionsService = service['permissionsService'] as unknown as {
+      getAccessLevel: jest.Mock;
+    };
+    permissionsService.getAccessLevel.mockResolvedValue(AccessLevel.VIEW);
+    partnerRepo.findOne.mockResolvedValue({
+      id: 'p1',
+      user: { id: 'u1', name: 'Ada' },
+      equityPercentage: 25,
+      investedAmount: 2_000_000,
+    });
+    const dash = (await service.dashboard('p1', owner)) as unknown as {
+      config: Record<string, number>;
+      investmentInformation: { shares: number; totalShares: number };
+    };
+    expect(dash.config).toEqual({
+      totalShares: 1_000_000,
+      founderSharePct: 60,
+      partnersSharePct: 40,
+      reinvestmentPct: 40,
+      dividendsPct: 40,
+      reservePct: 20,
+    });
+    expect(dash.investmentInformation.shares).toBe(250_000);
+    expect(dash.investmentInformation.totalShares).toBe(1_000_000);
   });
 });

@@ -27,7 +27,18 @@ export interface IncomeReport {
   byType?: Record<string, number>;
 }
 
+/** Confirmed covenant from server configuration (partners.service.ts dashboard). */
+export interface DashboardConfig {
+  totalShares: number;
+  founderSharePct: number;
+  partnersSharePct: number;
+  reinvestmentPct: number;
+  dividendsPct: number;
+  reservePct: number;
+}
+
 export interface PartnerDashboard {
+  config: DashboardConfig;
   businessOverview: { totalIncome: number; profitLoss: ProfitReport };
   investmentInformation: {
     investedAmount: number;
@@ -53,7 +64,43 @@ export interface Me {
   id: string;
   email: string;
   name: string;
+  role: string;
   totpEnabled: boolean;
+}
+
+/** One row of the live event-sourced stock summary (inventory/summary). */
+export interface InventorySummaryRow {
+  itemType: string;
+  itemId: string;
+  currentQuantity: number;
+  byMovementType: Record<string, number>;
+}
+
+/** In-platform message delivered to this partner account (notifications). */
+export interface PartnerMessage {
+  id: string;
+  channel: 'in_platform' | 'sms' | 'whatsapp';
+  type: string;
+  relatedOrderId: string | null;
+  message: string;
+  status: 'sent' | 'failed' | 'skipped';
+  sentAt: string;
+}
+
+/** Public product catalogue compound for labelling variant registers. */
+export interface ProductVariantRef {
+  id: string;
+  sku: string;
+  size: string | null;
+  colour: string | null;
+  /** Added by the store from the owning product row. */
+  name?: string;
+}
+
+export interface ProductRef {
+  id: string;
+  name: string;
+  variants: ProductVariantRef[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -106,5 +153,24 @@ export class ApiService {
 
   dashboard(): Observable<PartnerDashboard> {
     return this.http.get<PartnerDashboard>(`${API_BASE}/partners/me/dashboard`);
+  }
+
+  /** Per-item current stock quantities (partner has INVENTORY VIEW). */
+  inventorySummary(): Observable<InventorySummaryRow[]> {
+    return this.http.get<InventorySummaryRow[]>(`${API_BASE}/inventory/summary`);
+  }
+
+  /** In-platform messages addressed to this account (notifications inbox). */
+  messages(limit = 50): Observable<{ data: PartnerMessage[]; total: number }> {
+    return this.http.get<{ data: PartnerMessage[]; total: number }>(
+      `${API_BASE}/notifications?limit=${limit}`,
+    );
+  }
+
+  /** Public catalogue — used to label variant stock rows with product names. */
+  products(limit = 500): Observable<{ data: ProductRef[]; total: number }> {
+    return this.http.get<{ data: ProductRef[]; total: number }>(
+      `${API_BASE}/products?limit=${limit}`,
+    );
   }
 }

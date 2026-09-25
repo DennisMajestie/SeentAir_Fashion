@@ -139,7 +139,7 @@ import { PortalStore } from '../portal.store';
               <div class="rail-rows">
                 <div class="rail-row"><span>Period</span><strong class="mono">{{ dist.period }}</strong></div>
                 <div class="rail-row"><span>Total profit declared</span><strong>₦{{ dist.totalProfit | number: '1.0-0' }}</strong></div>
-                <div class="rail-row"><span>Dividend pool (40%)</span><strong>₦{{ dist.dividendPool | number: '1.0-0' }}</strong></div>
+                <div class="rail-row"><span>Dividend pool ({{ d.config.dividendsPct }}%)</span><strong>₦{{ dist.dividendPool | number: '1.0-0' }}</strong></div>
                 <!-- GAP: settlement method/date & designated vault are not exposed by the API. -->
                 <div class="rail-row"><span>Settlement details</span><strong>Issued by Seentair HQ</strong></div>
               </div>
@@ -147,7 +147,7 @@ import { PortalStore } from '../portal.store';
               <div class="empty-state">
                 <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
                 <h2 class="empty-state-title">No distributions yet</h2>
-                <p class="empty-state-sub">Dividends are declared quarterly from audited net profit (40 / 40 / 20).</p>
+                <p class="empty-state-sub">Dividends are declared quarterly from audited net profit ({{ store.covenantLabel() }}).</p>
               </div>
             }
           </section>

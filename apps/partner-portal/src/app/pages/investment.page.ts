@@ -5,8 +5,9 @@ import { PortalStore } from '../portal.store';
 /**
  * Screen P3 — My Investment & Equity Structure: registry record, share
  * mechanics, equity distribution donut, capitalization table, capital ledger.
- * Founder 60% / partners 40% split is confirmed company structure (CLAUDE.md),
- * so the "other partners" slice is derived as 40% minus this partner's equity.
+ * Founder/partners split and the share covenant are mirrored from the server
+ * dashboard config, so the "other partners" slice is derived as
+ * the partners' share minus this partner's equity.
  */
 @Component({
   selector: 'app-investment-page',
@@ -59,15 +60,16 @@ import { PortalStore } from '../portal.store';
         </div>
         <p class="how-copy">
           You hold Class A voting ordinary shares in Seentair Limited. Under the shareholder
-          agreement, <strong>40% of quarterly net profit</strong> is distributed into the dividend
-          pool; you receive exactly your equity percentage of every dividend distribution, with
-          <strong>40% reinvested</strong> into production capacity and <strong>20% held in
+          agreement, <strong>{{ d.config.dividendsPct }}% of quarterly net profit</strong> is
+          distributed into the dividend pool; you receive exactly your equity percentage of every
+          dividend distribution, with <strong>{{ d.config.reinvestmentPct }}% reinvested</strong>
+          into production capacity and <strong>{{ d.config.reservePct }}% held in
           reserve</strong>.
         </p>
         <div class="how-grid">
-          <div class="how-cell"><span>Profit retention policy</span><strong>40% Reinvestment</strong></div>
-          <div class="how-cell"><span>Dividend payout pool</span><strong>40% Quarterly net</strong></div>
-          <div class="how-cell"><span>Strategic reserve</span><strong>20% Retained</strong></div>
+          <div class="how-cell"><span>Profit retention policy</span><strong>{{ d.config.reinvestmentPct }}% Reinvestment</strong></div>
+          <div class="how-cell"><span>Dividend payout pool</span><strong>{{ d.config.dividendsPct }}% Quarterly net</strong></div>
+          <div class="how-cell"><span>Strategic reserve</span><strong>{{ d.config.reservePct }}% Retained</strong></div>
           <!-- GAP: liquidation-preference terms are not exposed via the API — copy defers to the agreement. -->
           <div class="how-cell"><span>Liquidation preference</span><strong>Per agreement</strong></div>
         </div>
@@ -81,7 +83,7 @@ import { PortalStore } from '../portal.store';
           </div>
           <div class="donut-wrap">
             <div class="donut" [style.background]="donutBg()" role="img"
-                 [attr.aria-label]="'Equity split: founder 60%, other partners ' + otherPartnersPct() + '%, your holding ' + d.investmentInformation.equityPercentage + '%'">
+                 [attr.aria-label]="'Equity split: founder ' + d.config.founderSharePct + '%, other partners ' + otherPartnersPct() + '%, your holding ' + d.investmentInformation.equityPercentage + '%'">
               <div class="donut-hole">
                 <span>Total</span>
                 <strong>{{ d.investmentInformation.totalShares | number }}</strong>
@@ -92,7 +94,7 @@ import { PortalStore } from '../portal.store';
               <div class="legend-row">
                 <span class="swatch" style="background: var(--ink-dim)"></span>
                 Founder &amp; executive team
-                <span class="legend-val">60.0%</span>
+                <span class="legend-val">{{ d.config.founderSharePct | number: '1.0-1' }}%</span>
               </div>
               <div class="legend-row">
                 <span class="swatch" style="background: var(--hairline-2)"></span>
@@ -111,7 +113,7 @@ import { PortalStore } from '../portal.store';
         <section class="panel">
           <div class="panel-head">
             <h2>Official capitalization table</h2>
-            <span class="panel-note">1,000,000 authorized</span>
+            <span class="panel-note">{{ d.config.totalShares | number }} authorized</span>
           </div>
           <div class="table-scroll">
             <table class="table">
@@ -123,8 +125,8 @@ import { PortalStore } from '../portal.store';
                   <td class="mono">A</td>
                   <td class="wrap">Founder &amp; executive team</td>
                   <td class="num-col mono">{{ founderShares() | number }}</td>
-                  <td class="num-col mono">60.0%</td>
-                  <td>60% of pool</td>
+                  <td class="num-col mono">{{ d.config.founderSharePct | number: '1.0-1' }}%</td>
+                  <td>{{ d.config.founderSharePct }}% of pool</td>
                 </tr>
                 <tr>
                   <td class="mono">A</td>
@@ -216,12 +218,14 @@ export class InvestmentPage {
 
   readonly otherPartnersPct = computed(() => {
     const mine = this.store.dash()?.investmentInformation.equityPercentage ?? 0;
-    return Math.max(0, 40 - mine);
+    const partnersPct = this.store.dash()?.config.partnersSharePct ?? 40;
+    return Math.max(0, partnersPct - mine);
   });
 
   readonly founderShares = computed(() => {
     const total = this.store.dash()?.investmentInformation.totalShares ?? 0;
-    return Math.round(total * 0.6);
+    const founderPct = this.store.dash()?.config.founderSharePct ?? 60;
+    return Math.round(total * (founderPct / 100));
   });
 
   readonly otherPartnersShares = computed(() => {
@@ -233,9 +237,10 @@ export class InvestmentPage {
   /** Conic donut with 2° panel-coloured spacers between segments (mark-spec gaps). */
   readonly donutBg = computed(() => {
     const mine = this.store.dash()?.investmentInformation.equityPercentage ?? 0;
-    const founderEnd = 60 * 3.6;
-    const othersEnd = (60 + this.otherPartnersPct()) * 3.6;
-    const mineEnd = Math.min(360, (60 + this.otherPartnersPct() + mine) * 3.6);
+    const founderPct = this.store.dash()?.config.founderSharePct ?? 60;
+    const founderEnd = founderPct * 3.6;
+    const othersEnd = (founderPct + this.otherPartnersPct()) * 3.6;
+    const mineEnd = Math.min(360, (founderPct + this.otherPartnersPct() + mine) * 3.6);
     const g = 2; // degrees of gap
     return (
       `conic-gradient(var(--ink-dim) 0deg ${founderEnd - g}deg,` +

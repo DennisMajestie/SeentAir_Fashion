@@ -155,6 +155,16 @@ export class PartnersService {
 
     // Aggregates only — never customer PII (client-explicit boundary).
     return {
+      // The confirmed covenant (appendix 17) ships to the portal so the
+      // partner surfaces mirror server configuration, never reinvented values.
+      config: {
+        totalShares: this.cfg('totalShares', 1_000_000),
+        founderSharePct: this.cfg('founderSharePct', 60),
+        partnersSharePct: this.cfg('partnersSharePct', 40),
+        reinvestmentPct: this.cfg('reinvestmentPct', 40),
+        dividendsPct: this.cfg('dividendsPct', 40),
+        reservePct: this.cfg('reservePct', 20),
+      },
       businessOverview: {
         totalIncome: (income as { total: number }).total,
         profitLoss: profit,

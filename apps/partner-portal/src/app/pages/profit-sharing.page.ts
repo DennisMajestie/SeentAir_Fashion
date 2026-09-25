@@ -34,13 +34,13 @@ import { PortalStore } from '../portal.store';
             <p class="rail-kicker">{{ latest.period }} confirmed period · Audit certified &amp; board approved</p>
             <p class="hero-figure">₦{{ latest.totalProfit | number: '1.0-0' }}</p>
             <p class="hero-sub">
-              Total operating profit declared for the period. Your dividend derives from the 40%
-              payout pool at your {{ d.investmentInformation.equityPercentage }}% equity
-              entitlement.
+              Total operating profit declared for the period. Your dividend derives from the
+              {{ d.config.dividendsPct }}% payout pool at your
+              {{ d.investmentInformation.equityPercentage }}% equity entitlement.
             </p>
           </div>
           <div class="hero-cells">
-            <div class="hero-cell"><span>Distribution ratio</span><strong>40% Dividend pool</strong></div>
+            <div class="hero-cell"><span>Distribution ratio</span><strong>{{ d.config.dividendsPct }}% Dividend pool</strong></div>
             <div class="hero-cell"><span>Total issued shares</span><strong>{{ d.investmentInformation.totalShares | number }}</strong></div>
             <div class="hero-cell"><span>Cycle status</span><strong class="ok-ink">Active</strong></div>
             <div class="hero-cell"><span>Settlement currency</span><strong>₦ NGN · Cash</strong></div>
@@ -51,20 +51,20 @@ import { PortalStore } from '../portal.store';
           <div class="panel pool">
             <span class="pool-num">1 · Capital reinvestment</span>
             <strong>₦{{ reinvestment(latest.totalProfit) | number: '1.0-0' }}</strong>
-            <span class="pool-sub">40% covenant — allocated to production capacity, fabric intake and factory flow</span>
-            <div class="meter"><div class="meter-fill" style="width: 40%"></div></div>
+            <span class="pool-sub">{{ d.config.reinvestmentPct }}% covenant — allocated to production capacity, fabric intake and factory flow</span>
+            <div class="meter"><div class="meter-fill" [style.width.%]="d.config.reinvestmentPct"></div></div>
           </div>
           <div class="panel pool accent">
             <span class="pool-num">2 · Dividend payout pool</span>
             <strong>₦{{ latest.dividendPool | number: '1.0-0' }}</strong>
-            <span class="pool-sub">40% covenant — distributed to shareholders as cash dividends</span>
-            <div class="meter gold"><div class="meter-fill" style="width: 40%"></div></div>
+            <span class="pool-sub">{{ d.config.dividendsPct }}% covenant — distributed to shareholders as cash dividends</span>
+            <div class="meter gold"><div class="meter-fill" [style.width.%]="d.config.dividendsPct"></div></div>
           </div>
           <div class="panel pool">
             <span class="pool-num">3 · Strategic reserve fund</span>
             <strong>₦{{ reserve(latest.totalProfit) | number: '1.0-0' }}</strong>
-            <span class="pool-sub">20% covenant — retained against FX volatility and operational contingency</span>
-            <div class="meter"><div class="meter-fill" style="width: 20%"></div></div>
+            <span class="pool-sub">{{ d.config.reservePct }}% covenant — retained against FX volatility and operational contingency</span>
+            <div class="meter"><div class="meter-fill" [style.width.%]="d.config.reservePct"></div></div>
           </div>
         </div>
 
@@ -75,13 +75,13 @@ import { PortalStore } from '../portal.store';
               <span class="panel-note">Of the {{ latest.period }} dividend pool</span>
             </div>
             <div class="meter-row">
-              <span class="wrap">Founder &amp; executive pool — 60%</span>
-              <div class="meter"><div class="meter-fill" style="width: 60%"></div></div>
+              <span class="wrap">Founder &amp; executive pool — {{ d.config.founderSharePct }}%</span>
+              <div class="meter"><div class="meter-fill" [style.width.%]="d.config.founderSharePct"></div></div>
               <span class="meter-val mono">₦{{ founderShare(latest.dividendPool) | number: '1.0-0' }}</span>
             </div>
             <div class="meter-row">
-              <span class="wrap">Outside strategic partners — 40%</span>
-              <div class="meter"><div class="meter-fill" style="width: 40%"></div></div>
+              <span class="wrap">Outside strategic partners — {{ d.config.partnersSharePct }}%</span>
+              <div class="meter"><div class="meter-fill" [style.width.%]="d.config.partnersSharePct"></div></div>
               <span class="meter-val mono">₦{{ latest.dividendPool - founderShare(latest.dividendPool) | number: '1.0-0' }}</span>
             </div>
             <div class="meter-row">
@@ -91,7 +91,7 @@ import { PortalStore } from '../portal.store';
             </div>
             <p class="fine muted">
               Each partner receives their equity percentage applied to the dividend pool; the
-              founder's 60% pool share completes the allocation.
+              founder's {{ d.config.founderSharePct }}% pool share completes the allocation.
             </p>
           </section>
 
@@ -121,7 +121,7 @@ import { PortalStore } from '../portal.store';
           <div class="empty-state">
             <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
             <h2 class="empty-state-title">No distributions yet</h2>
-            <p class="empty-state-sub">Dividends are declared quarterly from audited net profit (40 / 40 / 20).</p>
+            <p class="empty-state-sub">Dividends are declared quarterly from audited net profit ({{ store.covenantLabel() }}).</p>
           </div>
         </section>
       }
@@ -132,12 +132,13 @@ import { PortalStore } from '../portal.store';
           <span class="panel-note">Shareholders' agreement</span>
         </div>
         <p class="how-copy">
-          Under Seentair Limited's shareholder covenant, <strong>40% of certified net quarterly
-          profit</strong> is ring-fenced for cash dividends. Of that pool, <strong>60% accrues to
-          the founder</strong> and each outside partner receives <strong>their equity percentage of
-          the pool</strong>; a further 40% of profit is reinvested and 20% enters the strategic
-          reserve. Distribution occurs automatically on declaration, subject to server-side
-          approval of the fund movement.
+          Under Seentair Limited's shareholder covenant, <strong>{{ d.config.dividendsPct }}% of
+          certified net quarterly profit</strong> is ring-fenced for cash dividends. Of that pool,
+          <strong>{{ d.config.founderSharePct }}% accrues to the founder</strong> and each outside
+          partner receives <strong>their equity percentage of the pool</strong>; a further
+          <strong>{{ d.config.reinvestmentPct }}% of profit</strong> is reinvested and
+          <strong>{{ d.config.reservePct }}%</strong> enters the strategic reserve. Distribution
+          occurs automatically on declaration, subject to server-side approval of the fund movement.
         </p>
       </section>
 
@@ -150,7 +151,7 @@ import { PortalStore } from '../portal.store';
           <div class="table-scroll">
             <table class="table">
               <thead>
-                <tr><th>Quarter</th><th class="num-col">Net certified profit</th><th class="num-col">Dividend pool (40%)</th><th class="num-col">Your payout</th><th>Payment status</th></tr>
+                <tr><th>Quarter</th><th class="num-col">Net certified profit</th><th class="num-col">Dividend pool ({{ d.config.dividendsPct }}%)</th><th class="num-col">Your payout</th><th>Payment status</th></tr>
               </thead>
               <tbody>
                 @for (row of d.profitSharing; track row.period) {
@@ -231,13 +232,13 @@ export class ProfitSharingPage {
     return Math.round(((total * pct) / 100) * 100) / 100;
   }
   reinvestment(total: number): number {
-    return this.covenant(total, 40);
+    return this.covenant(total, this.store.dash()?.config.reinvestmentPct ?? 40);
   }
   reserve(total: number): number {
-    return this.covenant(total, 20);
+    return this.covenant(total, this.store.dash()?.config.reservePct ?? 20);
   }
   founderShare(pool: number): number {
-    return this.covenant(pool, 60);
+    return this.covenant(pool, this.store.dash()?.config.founderSharePct ?? 60);
   }
 
   readonly cashOnCash = computed(() => {

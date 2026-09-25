@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../api.service';
 import { PortalStore } from '../portal.store';
@@ -30,7 +30,7 @@ import { ThemeService } from '../theme.service';
         <div class="rail-rows">
           <div class="rail-row"><span>Account name</span><strong>{{ store.me()?.name ?? '—' }}</strong></div>
           <div class="rail-row"><span>Authorized email</span><strong class="mono">{{ store.me()?.email ?? '—' }}</strong></div>
-          <div class="rail-row"><span>Role</span><strong>Partner / Investor</strong></div>
+          <div class="rail-row"><span>Role</span><strong>{{ roleLabel() }}</strong></div>
           @if (store.dash(); as d) {
             <div class="rail-row"><span>Equity</span><strong>{{ d.investmentInformation.equityPercentage }}% · {{ d.investmentInformation.shares | number }} shares</strong></div>
           }
@@ -126,6 +126,13 @@ export class SettingsPage {
   readonly setup = signal<{ secret: string; otpauthUrl: string } | null>(null);
   readonly message = signal<{ kind: 'ok-msg' | 'error'; text: string } | null>(null);
   code = '';
+
+  /** The role name the API reports for this account (partner_investor → "Partner / Investor"). */
+  readonly roleLabel = computed(() => {
+    const role = this.store.me()?.role ?? '';
+    if (role === 'partner_investor') return 'Partner / Investor';
+    return role ? role.replace(/[_-]+/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) : 'Partner / Investor';
+  });
 
   beginSetup(): void {
     this.busy.set(true);
