@@ -13,6 +13,9 @@ export default () => ({
   },
   mail: {
     smtpHost: process.env.SMTP_HOST ?? '',
+    smtpPort: parseInt(process.env.SMTP_PORT ?? '587', 10),
+    smtpUser: process.env.SMTP_USER ?? '',
+    smtpPassword: process.env.SMTP_PASSWORD ?? '',
     fromAddress: process.env.MAIL_FROM ?? 'no-reply@seentair.com',
     resetUrlBase: process.env.RESET_URL_BASE ?? 'http://localhost:4200/reset-password',
     resetTtlMinutes: parseInt(process.env.RESET_TTL_MINUTES ?? '30', 10),
