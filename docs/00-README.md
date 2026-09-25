@@ -27,6 +27,7 @@ This is the complete documentation set for the Seentair fashion manufacturing & 
 | `project/13-Project-Plan-Development-Phases.md` | Phase summary + dependency notes (details in `phases/`) |
 | `project/14-scope.json` | Machine-readable scope summary, for tooling |
 | `project/15-Design-Specification.md` | Storefront cinematic design direction + Google Stitch brief |
+| `User-Manual.md` | **User manual** — how to use every delivered feature across the storefront, wholesale, admin and partner portals, plus current integration status |
 | `appendix-requirements/` | The approved module-by-module client requirements (26 files) — **authoritative**: where the PRD and appendix disagree, the appendix wins |
 
 ## Suggested reading order for a new team member
