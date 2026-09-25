@@ -58,20 +58,33 @@ export class Phase9AdminGaps1789520000000 implements MigrationInterface {
             CREATE TRIGGER "trg_audit_hash" BEFORE INSERT ON "audit_log_entries"
             FOR EACH ROW EXECUTE FUNCTION seentair_hash_audit_trigger()`);
 
-        // Backfill legacy audit rows so the chain covers the whole ledger.
+        // Backfill legacy audit rows so the chain covers the whole ledger
+        // (recursive CTE: each row hashes the previous row's entry_hash).
         await queryRunner.query(`
-            WITH ordered AS (
+            WITH RECURSIVE chain AS (
                 SELECT id, action, before_state, after_state, "timestamp",
-                       row_number() OVER (ORDER BY "timestamp" ASC, id ASC) AS rn
-                FROM "audit_log_entries"
+                       NULL::varchar(64) AS prev_hash,
+                       seentair_chain_hash(id, NULL, action, before_state, after_state, "timestamp")::varchar(64) AS entry_hash,
+                       1::bigint AS rn
+                FROM (SELECT id, action, before_state, after_state, "timestamp",
+                             row_number() OVER (ORDER BY "timestamp" ASC, id ASC) AS rn
+                      FROM "audit_log_entries") ranked
+                WHERE rn = 1
+                UNION ALL
+                SELECT r.id, r.action, r.before_state, r.after_state, r."timestamp",
+                       c.entry_hash::varchar(64) AS prev_hash,
+                       seentair_chain_hash(r.id, c.entry_hash, r.action, r.before_state, r.after_state, r."timestamp")::varchar(64) AS entry_hash,
+                       r.rn
+                FROM (SELECT id, action, before_state, after_state, "timestamp",
+                             row_number() OVER (ORDER BY "timestamp" ASC, id ASC) AS rn
+                      FROM "audit_log_entries") r
+                JOIN chain c ON c.rn = r.rn - 1
             )
             UPDATE "audit_log_entries" a
-            SET prev_hash = p.entry_hash,
-                entry_hash = seentair_chain_hash(
-                    o.id, p.entry_hash, o.action, o.before_state, o.after_state, o."timestamp")
-            FROM ordered o
-            LEFT JOIN ordered p ON p.rn = o.rn - 1
-            WHERE o.id = a.id`);
+            SET prev_hash = c.prev_hash,
+                entry_hash = c.entry_hash
+            FROM chain c
+            WHERE c.id = a.id`);
 
         await queryRunner.query(`ALTER TABLE "audit_log_entries" ALTER COLUMN "entry_hash" SET NOT NULL`);
         await queryRunner.query(`CREATE UNIQUE INDEX "IDX_audit_entry_hash" ON "audit_log_entries" ("entry_hash")`);
@@ -103,25 +116,44 @@ export class Phase9AdminGaps1789520000000 implements MigrationInterface {
             FOR EACH ROW EXECUTE FUNCTION seentair_hash_movement_trigger()`);
 
         await queryRunner.query(`
-            WITH ordered AS (
+            WITH RECURSIVE chain AS (
                 SELECT id, item_type, item_id, movement_type, quantity_delta, actor_id, reference_id, "timestamp",
-                       row_number() OVER (ORDER BY "timestamp" ASC, id ASC) AS rn
-                FROM "inventory_movements"
+                       NULL::varchar(64) AS prev_hash,
+                       seentair_chain_hash(id, NULL, item_type::text, NULL,
+                           jsonb_build_object(
+                               'itemId', item_id::text,
+                               'movementType', movement_type::text,
+                               'quantityDelta', quantity_delta,
+                               'actorId', actor_id::text,
+                               'referenceId', reference_id),
+                           "timestamp")::varchar(64) AS entry_hash,
+                       1::bigint AS rn
+                FROM (SELECT id, item_type, item_id, movement_type, quantity_delta, actor_id, reference_id, "timestamp",
+                             row_number() OVER (ORDER BY "timestamp" ASC, id ASC) AS rn
+                      FROM "inventory_movements") ranked
+                WHERE rn = 1
+                UNION ALL
+                SELECT r.id, r.item_type, r.item_id, r.movement_type, r.quantity_delta, r.actor_id, r.reference_id, r."timestamp",
+                       c.entry_hash::varchar(64) AS prev_hash,
+                       seentair_chain_hash(r.id, c.entry_hash, r.item_type::text, NULL,
+                           jsonb_build_object(
+                               'itemId', r.item_id::text,
+                               'movementType', r.movement_type::text,
+                               'quantityDelta', r.quantity_delta,
+                               'actorId', r.actor_id::text,
+                               'referenceId', r.reference_id),
+                           r."timestamp")::varchar(64) AS entry_hash,
+                       r.rn
+                FROM (SELECT id, item_type, item_id, movement_type, quantity_delta, actor_id, reference_id, "timestamp",
+                             row_number() OVER (ORDER BY "timestamp" ASC, id ASC) AS rn
+                      FROM "inventory_movements") r
+                JOIN chain c ON c.rn = r.rn - 1
             )
             UPDATE "inventory_movements" a
-            SET prev_hash = p.entry_hash,
-                entry_hash = seentair_chain_hash(
-                    o.id, p.entry_hash, o.item_type::text,
-                    NULL, jsonb_build_object(
-                        'itemId', o.item_id::text,
-                        'movementType', o.movement_type::text,
-                        'quantityDelta', o.quantity_delta,
-                        'actorId', o.actor_id::text,
-                        'referenceId', o.reference_id),
-                    o."timestamp")
-            FROM ordered o
-            LEFT JOIN ordered p ON p.rn = o.rn - 1
-            WHERE o.id = a.id`);
+            SET prev_hash = c.prev_hash,
+                entry_hash = c.entry_hash
+            FROM chain c
+            WHERE c.id = a.id`);
 
         await queryRunner.query(`ALTER TABLE "inventory_movements" ALTER COLUMN "entry_hash" SET NOT NULL`);
         await queryRunner.query(`CREATE UNIQUE INDEX "IDX_movement_entry_hash" ON "inventory_movements" ("entry_hash")`);
