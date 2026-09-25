@@ -333,13 +333,14 @@ code { font-family: 'Inter', sans-serif; font-size: 0.85em; color: var(--ink); f
 
 .sidebar {
   position: fixed; top: 0; left: 0; bottom: 0; z-index: 10;
-  overflow-y: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
   scrollbar-width: thin; scrollbar-color: var(--hairline-2) transparent;
   width: 224px; flex-shrink: 0;
   background: var(--panel); border-right: 1px solid var(--hairline);
-  padding: 1rem 0.8rem 0.8rem; display: flex; flex-direction: column; gap: 0.5rem;
+  padding: 1rem 0.8rem 0rem; display: flex; flex-direction: column;
   .sidebar-logo {
+    flex-shrink: 0;
     display: inline-flex; align-items: center;
     padding: 0.25rem 0.6rem 0.5rem;
     text-decoration: none;
@@ -349,6 +350,10 @@ code { font-family: 'Inter', sans-serif; font-size: 0.85em; color: var(--ink); f
   &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb { background: var(--hairline-2); border-radius: 4px; }
   nav { display: flex; flex-direction: column; gap: 3px;
+    flex: 1; min-height: 0; overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin; scrollbar-color: var(--hairline-2) transparent;
+    padding-bottom: 0.8rem;
     .nav-group {
       display: flex; align-items: center; gap: 0.6rem;
       margin-top: 1.15rem; padding: 0 0.6rem 0.5rem;
