@@ -204,7 +204,7 @@ import { environment } from '../environments/environment';
           ></button>
           <aside id="sidebar" class="sidebar" [class.open]="menuOpen()" aria-label="Operations navigation">
             <a class="sidebar-logo" routerLink="/" (click)="menuOpen.set(false)" aria-label="SEENTAIR Operations">
-              <img src="assets/logo.jpeg" alt="SEENTAIR" width="160" height="32" />
+              <img src="assets/logo.jpeg" alt="SEENTAIR" width="178" height="36" />
             </a>
             <nav>
               <span class="nav-group">Overview</span>
