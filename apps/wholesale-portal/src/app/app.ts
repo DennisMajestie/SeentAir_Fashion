@@ -18,7 +18,7 @@ import { ThemeService } from './theme.service';
     <header class="site-header" [class.scrolled]="scrolled()">
       <div class="wrap-col header-inner">
         <a routerLink="/" class="logo" aria-label="SEENTAIR Wholesale">
-          <img src="assets/logo.jpeg" alt="SEENTAIR" width="160" height="32" />
+          <img src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
         </a>
         @if (api.isLoggedIn) {
           <nav [class.open]="menuOpen()">
@@ -82,7 +82,7 @@ import { ThemeService } from './theme.service';
           <header class="ws-header">
             <div class="wordmark-row">
               <div class="wordmark">
-                <img src="assets/logo.jpeg" alt="SEENTAIR" width="160" height="32" />
+<img src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
                 <span class="chip">WHOLESALE PORTAL</span>
               </div>
               <div class="secure">
@@ -179,13 +179,13 @@ import { ThemeService } from './theme.service';
 
           <div class="status-strip">
             <div class="status-line">
-              <span class="dot"></span><span>Yaba Mill Status: Online</span>
+              <span class="dot"></span><span>Aba Mill Status: Online</span>
             </div>
             <span class="run">RUN 04 // 420GSM FLEECE READY</span>
           </div>
 
           <footer class="auth-footer">
-            <p class="legal">Seentair Garments Nigeria Ltd. Yaba, Lagos. Strictly B2B.</p>
+            <p class="legal">Seentair Garments Nigeria Ltd. Aba, Abia State. Strictly B2B.</p>
             <p class="sub">All industrial pattern rights and batch allocations reserved. Orders processed in Nigerian Naira (&#8358;).</p>
           </footer>
         </section>

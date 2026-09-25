@@ -14,7 +14,7 @@ import { environment } from '../environments/environment';
     <header class="site-header" [class.scrolled]="scrolled()">
       <div class="wrap-col header-inner">
         <a routerLink="/" class="logo" aria-label="SEENTAIR home">
-          <img src="assets/logo.jpeg" alt="SEENTAIR" width="160" height="32" />
+          <img src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
         </a>
         <nav [class.open]="menuOpen()">
           <a routerLink="/shop" (click)="menuOpen.set(false)">Shop</a>
@@ -179,8 +179,8 @@ import { environment } from '../environments/environment';
       <div class="wrap-col">
         <div class="footer-cols">
           <div class="footer-col footer-brand">
-            <span class="logo-footer"><img src="assets/logo.jpeg" alt="SEENTAIR" width="180" height="36" /></span>
-            <p>Streetwear manufactured in-house at our Yaba, Lagos factory — one atelier, no middlemen.</p>
+            <span class="logo-footer"><img src="assets/logo.png" alt="SEENTAIR" width="180" height="36" /></span>
+            <p>Streetwear manufactured in-house at our Aba factory — one atelier, no middlemen.</p>
           </div>
           <nav class="footer-col" aria-label="Shop">
             <h4>Shop</h4>

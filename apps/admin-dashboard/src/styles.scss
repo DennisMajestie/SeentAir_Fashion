@@ -343,7 +343,7 @@ code { font-family: 'Inter', sans-serif; font-size: 0.85em; color: var(--ink); f
     display: inline-flex; align-items: center;
     padding: 0.25rem 0.6rem 0.5rem;
     text-decoration: none;
-    img { display: block; height: 36px; width: auto; object-fit: contain; }
+    img { display: block; height: 75px; width: auto; object-fit: contain; }
   }
   &::-webkit-scrollbar { width: 8px; }
   &::-webkit-scrollbar-track { background: transparent; }

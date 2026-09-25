@@ -39,7 +39,7 @@ import { environment } from '../environments/environment';
           <span class="brand-grid" aria-hidden="true"></span>
           <span class="brand-glow" aria-hidden="true"></span>
           <div class="brand-content">
-            <img class="brand-logo" src="assets/logo.jpeg" alt="SEENTAIR Operations" width="160" height="32" />
+            <img class="brand-logo" src="assets/logo.png" alt="SEENTAIR Operations" width="160" height="32" />
             <h1 class="brand-headline">Run<br /><span>The drop.</span></h1>
           </div>
           <footer class="brand-foot">
@@ -204,7 +204,7 @@ import { environment } from '../environments/environment';
           ></button>
           <aside id="sidebar" class="sidebar" [class.open]="menuOpen()" aria-label="Operations navigation">
             <a class="sidebar-logo" routerLink="/" (click)="menuOpen.set(false)" aria-label="SEENTAIR Operations">
-              <img src="assets/logo.jpeg" alt="SEENTAIR" width="178" height="36" />
+              <img src="assets/logo.png" alt="SEENTAIR" height="75" />
             </a>
             <nav>
               <span class="nav-group">Overview</span>

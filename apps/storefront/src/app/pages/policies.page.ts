@@ -47,7 +47,7 @@ import { RouterLink } from '@angular/router';
           <li>Email — <a href="mailto:hello@seentair.com">hello@seentair.com</a></li>
           <li>WhatsApp — order and dispatch updates arrive there automatically if
             you add your phone number at checkout</li>
-          <li>Atelier — Yaba, Lagos (visits by appointment)</li>
+          <li>Atelier — Aba, Abia State (visits by appointment)</li>
         </ul>
       </section>
     </div>

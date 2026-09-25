@@ -44,7 +44,7 @@ import { ThemeService } from '../theme.service';
       <main class="auth-main">
         <p class="clearance"><span class="dot"></span> Tier-1 institutional clearance required</p>
         <div class="wordmark">
-          <img src="assets/logo.jpeg" alt="SEENTAIR" height="34" />
+          <img src="assets/logo.png" alt="SEENTAIR" height="34" />
           <span class="wordmark-tag">Partners // Portal</span>
         </div>
         <p class="auth-sub">

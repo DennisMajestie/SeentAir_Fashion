@@ -99,7 +99,7 @@ import { PortalStore } from '../portal.store';
 
       <section class="panel statement">
         <div class="letterhead">
-          <img src="assets/logo.jpeg" alt="SEENTAIR" height="24" />
+          <img src="assets/logo.png" alt="SEENTAIR" height="24" />
           <div class="letterhead-meta">
             <strong>Seentair Limited — Aba, Nigeria</strong>
             <span>Interim statement of comprehensive income · continuous ledger basis · {{ store.periodLabel() }}</span>

@@ -18,7 +18,7 @@ import { ThemeService } from '../theme.service';
     <div class="shell">
       <header class="termbar">
         <a routerLink="/overview" class="brand" aria-label="SEENTAIR Partners">
-          <img src="assets/logo.jpeg" alt="SEENTAIR" height="26" />
+          <img src="assets/logo.png" alt="SEENTAIR" height="26" />
           <span class="brand-tag">OPS //<br />PARTNER</span>
         </a>
         <button
