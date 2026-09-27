@@ -10,13 +10,14 @@ import { OrderItem } from './entities/order-item.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order } from './entities/order.entity';
 import { Payment } from './entities/payment.entity';
+import { ProcessedWebhookEvent } from './entities/processed-webhook-event.entity';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { PaystackService } from './paystack.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, Payment, OrderStatusEvent]),
+    TypeOrmModule.forFeature([Order, OrderItem, Payment, OrderStatusEvent, ProcessedWebhookEvent]),
     CatalogueModule,
     InventoryModule,
     UsersModule,

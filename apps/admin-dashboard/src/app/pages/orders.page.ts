@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AdminOrder, ApiService } from '../api.service';
+import { BrandAlertService } from '../brand-alert.service';
 import { downloadCsv } from '../csv.util';
 
 const NEXT_STATUS: Record<string, string> = {
@@ -105,6 +106,65 @@ const NEXT_STATUS: Record<string, string> = {
         </button>
       </div>
     </div>
+
+    <!-- Paid orders the ledger could not fully allocate — money is in, stock is not. -->
+    @if (attention().length > 0) {
+      <section class="panel" style="border-color: var(--warn);">
+        <div class="panel-head">
+          <h2>Needs attention — paid, short on stock</h2>
+          <span class="ph-sub">{{ attention().length }} order(s)</span>
+        </div>
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Short lines</th>
+                <th>Value</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (o of attention(); track o.id) {
+                <tr>
+                  <td>
+                    <code>#{{ o.id.slice(0, 8) }}</code
+                    ><br />
+                    <span class="mini-note">{{ o.createdAt | date: 'MMM d, HH:mm' }}</span>
+                  </td>
+                  <td>{{ o.customer?.name ?? 'walk-in' }}</td>
+                  <td class="small">
+                    @for (it of shortLines(o); track it.id) {
+                      <div>
+                        <code>{{ it.variant.sku }}</code> short {{ it.shortfall }} of
+                        {{ it.quantity }}
+                      </div>
+                    }
+                  </td>
+                  <td class="mono">₦{{ o.totalAmount | number: '1.0-0' }}</td>
+                  <td>
+                    <div class="actions flat">
+                      <button class="cta small" type="button" (click)="allocate(o)">
+                        Allocate from production
+                      </button>
+                      <button class="cta small ghost" type="button" (click)="refund(o)">
+                        Refund
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="mini-note">
+          Allocate retries the short lines against current stock (completed batches land there).
+          Refund releases any allocated units, records the refund in the ledger and cancels the
+          order — then issue the customer's refund in Paystack.
+        </p>
+      </section>
+    }
 
     <div class="table-scroll">
       <table class="table">
@@ -381,7 +441,10 @@ const NEXT_STATUS: Record<string, string> = {
 export class OrdersPage implements OnInit {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly alerts = inject(BrandAlertService);
   readonly orders = signal<AdminOrder[]>([]);
+  /** Paid orders in STOCK_EXCEPTION — loaded on their own so none drop off the latest-100 list. */
+  readonly attention = signal<AdminOrder[]>([]);
   readonly total = signal(0);
   readonly error = signal<string | null>(null);
   readonly message = signal<string | null>(null);
@@ -407,6 +470,46 @@ export class OrdersPage implements OnInit {
     this.api.orders(this.channel || undefined, 100).subscribe((res) => {
       this.orders.set(res.data);
       this.total.set(res.total);
+    });
+    this.api
+      .orders(undefined, 50, 'stock_exception')
+      .subscribe((res) => this.attention.set(res.data));
+  }
+
+  shortLines(o: AdminOrder): NonNullable<AdminOrder['items']> {
+    return (o.items ?? []).filter((it) => (it.shortfall ?? 0) > 0);
+  }
+
+  allocate(o: AdminOrder): void {
+    this.error.set(null);
+    this.api.allocateStockException(o.id).subscribe({
+      next: (res) => {
+        this.message.set(
+          res.status === 'stock_exception'
+            ? 'Partial allocation — some lines are still short.'
+            : 'Stock allocated — order is back in fulfilment.',
+        );
+        this.load();
+      },
+      error: (err) => this.error.set(err?.error?.message ?? 'Allocation failed.'),
+    });
+  }
+
+  async refund(o: AdminOrder): Promise<void> {
+    const ok = await this.alerts.confirm({
+      title: 'Refund this order?',
+      html: `Releases allocated stock, records a ₦${Math.round(o.totalAmount).toLocaleString()} refund in the ledger and cancels #${o.id.slice(0, 8)}. Issue the refund itself in Paystack.`,
+      icon: 'warning',
+      confirm: 'Record refund',
+    });
+    if (!ok) return;
+    this.error.set(null);
+    this.api.refundStockException(o.id).subscribe({
+      next: () => {
+        this.message.set('Refund recorded — order cancelled.');
+        this.load();
+      },
+      error: (err) => this.error.set(err?.error?.message ?? 'Refund failed.'),
     });
   }
 

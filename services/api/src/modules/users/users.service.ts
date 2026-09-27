@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ACCESS_RANK, AccessLevel, ModuleName, RoleName } from '../../common/enums';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PermissionEntryDto } from './dto/update-permissions.dto';
@@ -30,6 +30,11 @@ export class UsersService {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) throw new NotFoundException(`User ${id} not found`);
     return user;
+  }
+
+  /** Staff lookup by role, for internal alerts. */
+  async findByRoles(roles: RoleName[]): Promise<User[]> {
+    return this.userRepo.find({ where: { role: { name: In(roles) } } });
   }
 
   /** For auth only — includes the password hash. */

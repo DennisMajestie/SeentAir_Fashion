@@ -89,7 +89,7 @@ export class InventoryController {
         ApprovalActionType.STOCK_DISPOSAL,
       );
     }
-    return this.inventoryService.record({
+    return this.inventoryService.recordStandalone({
       itemType,
       itemId: variantId,
       movementType: dto.movementType,

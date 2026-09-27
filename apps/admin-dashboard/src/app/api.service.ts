@@ -89,6 +89,8 @@ export interface AdminOrder {
     id: string;
     quantity: number;
     unitPrice: number;
+    /** Units the ledger could not allocate at payment time (stock exception). */
+    shortfall?: number;
     variant: { id: string; sku: string; size?: string | null; colour?: string | null };
   }>;
   shippingAddress?: string | null;
@@ -236,11 +238,25 @@ export class ApiService {
     return this.http.patch(`${API_BASE}/production-batches/${id}/stage`, { stage });
   }
 
-  orders(channel?: string, limit = 50): Observable<{ data: AdminOrder[]; total: number }> {
-    const query = channel ? `&channel=${channel}` : '';
+  orders(
+    channel?: string,
+    limit = 50,
+    status?: string,
+  ): Observable<{ data: AdminOrder[]; total: number }> {
+    const query = (channel ? `&channel=${channel}` : '') + (status ? `&status=${status}` : '');
     return this.http.get<{ data: AdminOrder[]; total: number }>(
       `${API_BASE}/orders?limit=${limit}${query}`,
     );
+  }
+
+  /** Stock exception: retry the short lines against current stock. */
+  allocateStockException(id: string): Observable<AdminOrder> {
+    return this.http.post<AdminOrder>(`${API_BASE}/orders/${id}/stock-exception/allocate`, {});
+  }
+
+  /** Stock exception: release allocated units, record the refund, cancel the order. */
+  refundStockException(id: string): Observable<AdminOrder> {
+    return this.http.post<AdminOrder>(`${API_BASE}/orders/${id}/stock-exception/refund`, {});
   }
 
   order(id: string): Observable<Record<string, unknown>> {

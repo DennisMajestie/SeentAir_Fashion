@@ -23,7 +23,7 @@ import { RecordPaymentDto } from './dto/record-payment.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrderChannel, OrderStatus } from './entities/order.entity';
 import { PaymentMethod } from './entities/payment.entity';
-import { OrdersService } from './orders.service';
+import { OrdersService, PaystackWebhookEvent } from './orders.service';
 import { PaystackService } from './paystack.service';
 
 @ApiTags('Orders')
@@ -121,6 +121,20 @@ export class OrdersController {
     return this.ordersService.tracking(id, user);
   }
 
+  /** Stock exception (paid, short on stock): retry allocation now that stock has landed. */
+  @Post('orders/:id/stock-exception/allocate')
+  @ApiBearerAuth()
+  allocateStock(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.ordersService.allocateStockException(id, user);
+  }
+
+  /** Stock exception: release allocated units, record the refund, close the order. */
+  @Post('orders/:id/stock-exception/refund')
+  @ApiBearerAuth()
+  refundStock(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.ordersService.refundStockException(id, user);
+  }
+
   /** Paystack server-to-server webhook — authenticated by HMAC signature, not JWT. */
   @Public()
   @Post('payments/paystack/webhook')
@@ -131,13 +145,10 @@ export class OrdersController {
   ) {
     const rawBody = req.rawBody?.toString('utf8') ?? '';
     this.paystackService.verifyWebhookSignature(rawBody, signature);
-    const event = JSON.parse(rawBody) as {
-      event: string;
-      data: { reference: string; amount: number };
-    };
-    if (event.event === 'charge.success') {
-      await this.ordersService.confirmPaystackPayment(event.data.reference, event.data.amount);
-    }
-    return { received: true };
+    const event = JSON.parse(rawBody) as PaystackWebhookEvent;
+    // Terminal conditions are recorded and acknowledged (200); only transient
+    // errors surface as non-2xx so that Paystack retries.
+    const { outcome } = await this.ordersService.handlePaystackEvent(event);
+    return { received: true, outcome };
   }
 }

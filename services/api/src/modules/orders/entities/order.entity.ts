@@ -32,11 +32,16 @@ export enum OrderStatus {
   SHIPPED = 'shipped',
   DELIVERED = 'delivered',
   RETURNED = 'returned',
+  /** Paid in full but the ledger could not allocate every line — staff allocate or refund. */
+  STOCK_EXCEPTION = 'stock_exception',
+  /** Closed by a refund before fulfilment; only reachable from STOCK_EXCEPTION. */
+  CANCELLED = 'cancelled',
 }
 
 export enum PaymentStatus {
   UNPAID = 'unpaid',
   PAID = 'paid',
+  REFUNDED = 'refunded',
 }
 
 @Entity('orders')

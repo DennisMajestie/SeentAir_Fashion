@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { createHash } from 'crypto';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { InventoryItemType, InventoryMovement, MovementType } from './inventory-movement.entity';
 
@@ -10,6 +11,28 @@ export interface RecordMovementInput {
   quantityDelta: number;
   actorId: string | null;
   referenceId?: string | null;
+}
+
+/**
+ * Thrown by the ledger guard only. Still a 400 with the same message; the
+ * distinct class lets callers that must commit regardless (a paid order)
+ * catch exactly this case and nothing else.
+ */
+export class InsufficientStockException extends BadRequestException {}
+
+export interface LedgerItem {
+  itemType: InventoryItemType;
+  itemId: string;
+}
+
+/**
+ * 64-bit advisory-lock key for one ledger item: the first 8 bytes of
+ * SHA-256("<itemType>:<itemId>") as a signed bigint. Stable across processes
+ * and Postgres versions; the type prefix keeps a material and a variant that
+ * share an id on different keys.
+ */
+export function ledgerLockKey(itemType: InventoryItemType, itemId: string): bigint {
+  return createHash('sha256').update(`${itemType}:${itemId}`).digest().readBigInt64BE(0);
 }
 
 /**
@@ -25,19 +48,28 @@ export class InventoryService {
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
-  async record(input: RecordMovementInput, manager?: EntityManager): Promise<InventoryMovement> {
+  /**
+   * Write one movement inside the caller's transaction. The manager is
+   * required on purpose: a call from inside a transaction that forgot to pass
+   * it would take the item lock on a second connection and wait on itself for
+   * ever — a hang Postgres cannot detect. Callers with no transaction of their
+   * own use recordStandalone().
+   */
+  async record(input: RecordMovementInput, manager: EntityManager): Promise<InventoryMovement> {
     if (!Number.isInteger(input.quantityDelta) || input.quantityDelta === 0) {
       throw new BadRequestException('quantityDelta must be a non-zero integer');
     }
+    // Serialise the read-then-insert below per item; released with the transaction.
+    await this.lockItems(manager, [input]);
     if (input.quantityDelta < 0) {
       const current = await this.currentQuantity(input.itemType, input.itemId, manager);
       if (current + input.quantityDelta < 0) {
-        throw new BadRequestException(
+        throw new InsufficientStockException(
           `Insufficient stock: current quantity is ${current}, movement of ${input.quantityDelta} refused`,
         );
       }
     }
-    const repo = manager ? manager.getRepository(InventoryMovement) : this.movementRepo;
+    const repo = manager.getRepository(InventoryMovement);
     const movement = repo.create({
       itemType: input.itemType,
       itemId: input.itemId,
@@ -47,6 +79,39 @@ export class InventoryService {
       referenceId: input.referenceId ?? null,
     });
     return repo.save(movement);
+  }
+
+  /** One movement in a transaction of its own — for callers that are not already in one. */
+  async recordStandalone(input: RecordMovementInput): Promise<InventoryMovement> {
+    return this.dataSource.transaction((tx) => this.record(input, tx));
+  }
+
+  /**
+   * Serialise ledger writes per item for the rest of the caller's transaction.
+   * pg_advisory_xact_lock is released with the transaction — commit or rollback
+   * alike — so there is no unlock call and nothing can leak. Keys are taken in
+   * sorted order, so two writers covering the same items can never deadlock by
+   * locking the same pair in opposite order: a caller that writes several items
+   * in one transaction calls this once, up front, before its first record().
+   *
+   * Requires an active transaction. On a plain connection the lock would be
+   * released the moment the statement ended and protect nothing, so that is an
+   * error rather than a silent no-op.
+   */
+  async lockItems(manager: EntityManager, items: LedgerItem[]): Promise<void> {
+    if (!manager.queryRunner?.isTransactionActive) {
+      throw new Error(
+        'InventoryService.lockItems needs an EntityManager inside an active transaction',
+      );
+    }
+    const keys = [...new Set(items.map((i) => ledgerLockKey(i.itemType, i.itemId)))].sort((a, b) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    );
+    if (keys.length === 0) return;
+    // One round-trip: unnest yields the array in order, so the locks are taken sorted.
+    await manager.query('SELECT pg_advisory_xact_lock(k) FROM unnest($1::bigint[]) AS k', [
+      keys.map((k) => k.toString()),
+    ]);
   }
 
   /** Derived, never stored: SUM of all movement deltas for the item. */

@@ -28,4 +28,11 @@ export class OrderItem {
     transformer: numericTransformer,
   })
   unitPrice: number;
+
+  /**
+   * Units of this line the ledger could not allocate at payment time
+   * (0 = fully allocated). Non-zero only while the order is STOCK_EXCEPTION.
+   */
+  @Column({ type: 'integer', default: 0 })
+  shortfall: number;
 }

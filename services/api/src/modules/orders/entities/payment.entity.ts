@@ -36,6 +36,10 @@ export class Payment {
   @JoinColumn({ name: 'order_id' })
   order: Order;
 
+  /** Same column as the relation, readable from a row-locked select that joins nothing. */
+  @Column({ name: 'order_id', type: 'uuid' })
+  orderId: string;
+
   @Column({ type: 'enum', enum: PaymentMethod })
   method: PaymentMethod;
 
