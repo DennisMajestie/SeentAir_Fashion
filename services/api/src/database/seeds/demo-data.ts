@@ -2,7 +2,10 @@ import 'dotenv/config';
 import { AppDataSource } from '../data-source';
 import { Collection } from '../../modules/catalogue/entities/collection.entity';
 import { Product } from '../../modules/catalogue/entities/product.entity';
-import { ProductVariant, AvailabilityStatus } from '../../modules/catalogue/entities/product-variant.entity';
+import {
+  ProductVariant,
+  AvailabilityStatus,
+} from '../../modules/catalogue/entities/product-variant.entity';
 import {
   InventoryMovement,
   InventoryItemType,
@@ -109,7 +112,8 @@ async function ensureDemoData(): Promise<void> {
   for (const p of DEMO_PRODUCTS) {
     if (!collections.has(p.collection)) {
       let collection = await collectionRepo.findOne({ where: { name: p.collection } });
-      if (!collection) collection = await collectionRepo.save(collectionRepo.create({ name: p.collection }));
+      if (!collection)
+        collection = await collectionRepo.save(collectionRepo.create({ name: p.collection }));
       collections.set(p.collection, collection);
     }
   }
@@ -159,7 +163,9 @@ async function ensureDemoData(): Promise<void> {
   }
 
   await AppDataSource.destroy();
-  console.log(`Demo data complete: ${collections.size} collections, ${DEMO_PRODUCTS.length} products, ${variantCount} variants, ${movementCount} stock movements.`);
+  console.log(
+    `Demo data complete: ${collections.size} collections, ${DEMO_PRODUCTS.length} products, ${variantCount} variants, ${movementCount} stock movements.`,
+  );
 }
 
 ensureDemoData().catch((err) => {

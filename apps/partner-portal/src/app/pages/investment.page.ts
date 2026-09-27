@@ -19,8 +19,9 @@ import { PortalStore } from '../portal.store';
           <p class="page-kicker">Investor Registry // Class A Ordinary Shares</p>
           <h1 class="page-title">My Investment &amp; Equity Structure</h1>
           <p class="page-sub">
-            Official shareholder registry record for {{ store.me()?.name ?? 'this partner account' }} —
-            read-only, maintained by Seentair Limited.
+            Official shareholder registry record for
+            {{ store.me()?.name ?? 'this partner account' }} — read-only, maintained by Seentair
+            Limited.
           </p>
         </div>
         <div class="page-head-side">
@@ -32,7 +33,9 @@ import { PortalStore } from '../portal.store';
       <div class="kpi-grid">
         <div class="kpi accent">
           <span class="kpi-label">Total capital invested</span>
-          <span class="kpi-value">₦{{ d.investmentInformation.investedAmount | number: '1.0-0' }}</span>
+          <span class="kpi-value"
+            >₦{{ d.investmentInformation.investedAmount | number: '1.0-0' }}</span
+          >
           <span class="kpi-sub">Fully paid · nominal value on registry</span>
         </div>
         <div class="kpi">
@@ -49,7 +52,9 @@ import { PortalStore } from '../portal.store';
         <div class="kpi">
           <span class="kpi-label">Equity ownership</span>
           <span class="kpi-value">{{ d.investmentInformation.equityPercentage }}%</span>
-          <span class="kpi-sub">Of {{ d.investmentInformation.totalShares | number }} total company shares</span>
+          <span class="kpi-sub"
+            >Of {{ d.investmentInformation.totalShares | number }} total company shares</span
+          >
         </div>
       </div>
 
@@ -62,16 +67,26 @@ import { PortalStore } from '../portal.store';
           You hold Class A voting ordinary shares in Seentair Limited. Under the shareholder
           agreement, <strong>{{ d.config.dividendsPct }}% of quarterly net profit</strong> is
           distributed into the dividend pool; you receive exactly your equity percentage of every
-          dividend distribution, with <strong>{{ d.config.reinvestmentPct }}% reinvested</strong>
-          into production capacity and <strong>{{ d.config.reservePct }}% held in
-          reserve</strong>.
+          dividend distribution, with
+          <strong>{{ d.config.reinvestmentPct }}% reinvested</strong> into production capacity and
+          <strong>{{ d.config.reservePct }}% held in reserve</strong>.
         </p>
         <div class="how-grid">
-          <div class="how-cell"><span>Profit retention policy</span><strong>{{ d.config.reinvestmentPct }}% Reinvestment</strong></div>
-          <div class="how-cell"><span>Dividend payout pool</span><strong>{{ d.config.dividendsPct }}% Quarterly net</strong></div>
-          <div class="how-cell"><span>Strategic reserve</span><strong>{{ d.config.reservePct }}% Retained</strong></div>
+          <div class="how-cell">
+            <span>Profit retention policy</span
+            ><strong>{{ d.config.reinvestmentPct }}% Reinvestment</strong>
+          </div>
+          <div class="how-cell">
+            <span>Dividend payout pool</span
+            ><strong>{{ d.config.dividendsPct }}% Quarterly net</strong>
+          </div>
+          <div class="how-cell">
+            <span>Strategic reserve</span><strong>{{ d.config.reservePct }}% Retained</strong>
+          </div>
           <!-- GAP: liquidation-preference terms are not exposed via the API — copy defers to the agreement. -->
-          <div class="how-cell"><span>Liquidation preference</span><strong>Per agreement</strong></div>
+          <div class="how-cell">
+            <span>Liquidation preference</span><strong>Per agreement</strong>
+          </div>
         </div>
       </section>
 
@@ -82,8 +97,20 @@ import { PortalStore } from '../portal.store';
             <span class="panel-note">Capitalization structure</span>
           </div>
           <div class="donut-wrap">
-            <div class="donut" [style.background]="donutBg()" role="img"
-                 [attr.aria-label]="'Equity split: founder ' + d.config.founderSharePct + '%, other partners ' + otherPartnersPct() + '%, your holding ' + d.investmentInformation.equityPercentage + '%'">
+            <div
+              class="donut"
+              [style.background]="donutBg()"
+              role="img"
+              [attr.aria-label]="
+                'Equity split: founder ' +
+                d.config.founderSharePct +
+                '%, other partners ' +
+                otherPartnersPct() +
+                '%, your holding ' +
+                d.investmentInformation.equityPercentage +
+                '%'
+              "
+            >
               <div class="donut-hole">
                 <span>Total</span>
                 <strong>{{ d.investmentInformation.totalShares | number }}</strong>
@@ -104,7 +131,9 @@ import { PortalStore } from '../portal.store';
               <div class="legend-row">
                 <span class="swatch" style="background: var(--gold)"></span>
                 Your holding ({{ store.firstName() }})
-                <span class="legend-val">{{ d.investmentInformation.equityPercentage | number: '1.0-1' }}%</span>
+                <span class="legend-val"
+                  >{{ d.investmentInformation.equityPercentage | number: '1.0-1' }}%</span
+                >
               </div>
             </div>
           </div>
@@ -118,7 +147,13 @@ import { PortalStore } from '../portal.store';
           <div class="table-scroll">
             <table class="table">
               <thead>
-                <tr><th>Class</th><th>Shareholder group</th><th class="num-col">Shares</th><th class="num-col">Equity</th><th>Dividend rights</th></tr>
+                <tr>
+                  <th>Class</th>
+                  <th>Shareholder group</th>
+                  <th class="num-col">Shares</th>
+                  <th class="num-col">Equity</th>
+                  <th>Dividend rights</th>
+                </tr>
               </thead>
               <tbody>
                 <tr>
@@ -137,9 +172,17 @@ import { PortalStore } from '../portal.store';
                 </tr>
                 <tr class="me-row">
                   <td class="mono">A</td>
-                  <td class="wrap"><strong>{{ store.me()?.name ?? 'You' }} (your holding)</strong></td>
-                  <td class="num-col"><span class="naira">{{ d.investmentInformation.shares | number }}</span></td>
-                  <td class="num-col"><span class="naira">{{ d.investmentInformation.equityPercentage | number: '1.0-1' }}%</span></td>
+                  <td class="wrap">
+                    <strong>{{ store.me()?.name ?? 'You' }} (your holding)</strong>
+                  </td>
+                  <td class="num-col">
+                    <span class="naira">{{ d.investmentInformation.shares | number }}</span>
+                  </td>
+                  <td class="num-col">
+                    <span class="naira"
+                      >{{ d.investmentInformation.equityPercentage | number: '1.0-1' }}%</span
+                    >
+                  </td>
                   <td>{{ d.investmentInformation.equityPercentage }}% of pool</td>
                 </tr>
               </tbody>
@@ -164,7 +207,13 @@ import { PortalStore } from '../portal.store';
         <div class="table-scroll">
           <table class="table">
             <thead>
-              <tr><th>Date</th><th>Transaction purpose / call</th><th class="num-col">Shares issued</th><th class="num-col">Amount subscribed</th><th>Status</th></tr>
+              <tr>
+                <th>Date</th>
+                <th>Transaction purpose / call</th>
+                <th class="num-col">Shares issued</th>
+                <th class="num-col">Amount subscribed</th>
+                <th>Status</th>
+              </tr>
             </thead>
             <tbody>
               <tr>
@@ -172,14 +221,20 @@ import { PortalStore } from '../portal.store';
                 <td class="mono">On registry</td>
                 <td class="wrap">Initial equity injection — founding partner subscription</td>
                 <td class="num-col mono">{{ d.investmentInformation.shares | number }}</td>
-                <td class="num-col mono">₦{{ d.investmentInformation.investedAmount | number: '1.0-0' }}</td>
+                <td class="num-col mono">
+                  ₦{{ d.investmentInformation.investedAmount | number: '1.0-0' }}
+                </td>
                 <td><span class="chip ok">Cleared</span></td>
               </tr>
             </tbody>
             <tfoot>
               <tr>
                 <td colspan="3">Total subscribed capital</td>
-                <td class="num-col"><span class="naira">₦{{ d.investmentInformation.investedAmount | number: '1.0-0' }}</span></td>
+                <td class="num-col">
+                  <span class="naira"
+                    >₦{{ d.investmentInformation.investedAmount | number: '1.0-0' }}</span
+                  >
+                </td>
                 <td>Audited</td>
               </tr>
             </tfoot>
@@ -194,22 +249,50 @@ import { PortalStore } from '../portal.store';
 
       <div class="notice">
         All statements are prepared in accordance with the Companies and Allied Matters Act (CAMA
-        2020). Ownership records are non-disclosable without officer sign-off; this registry view
-        is read-only.
+        2020). Ownership records are non-disclosable without officer sign-off; this registry view is
+        read-only.
       </div>
     }
   `,
   styles: [
     `
-      .how-band { border-top: 2px solid var(--gold); }
-      .how-copy { margin: 0 0 0.9rem; font-size: var(--type-body-sm); max-width: 78ch;
-        strong { color: var(--acid-ink); } }
-      .how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px;
-        background: var(--hairline); border: 1px solid var(--hairline); }
-      .how-cell { background: var(--panel-2); padding: 0.6rem 0.75rem; display: flex; flex-direction: column; gap: 0.1rem;
-        span { font-size: var(--type-label-sm); text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-dim); }
-        strong { font-size: var(--type-body-md); } }
-      .me-row td { background: color-mix(in srgb, var(--gold) 8%, var(--panel)); }
+      .how-band {
+        border-top: 2px solid var(--gold);
+      }
+      .how-copy {
+        margin: 0 0 0.9rem;
+        font-size: var(--type-body-sm);
+        max-width: 78ch;
+        strong {
+          color: var(--acid-ink);
+        }
+      }
+      .how-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 1px;
+        background: var(--hairline);
+        border: 1px solid var(--hairline);
+      }
+      .how-cell {
+        background: var(--panel-2);
+        padding: 0.6rem 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+        span {
+          font-size: var(--type-label-sm);
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          color: var(--ink-dim);
+        }
+        strong {
+          font-size: var(--type-body-md);
+        }
+      }
+      .me-row td {
+        background: color-mix(in srgb, var(--gold) 8%, var(--panel));
+      }
     `,
   ],
 })

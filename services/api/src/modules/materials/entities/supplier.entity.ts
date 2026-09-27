@@ -25,7 +25,14 @@ export class Supplier {
   certified: boolean;
 
   /** 0–100 SLA score (delivery lead-time + quality record). */
-  @Column({ name: 'sla_score', type: 'numeric', precision: 5, scale: 2, nullable: true, transformer: numericTransformer })
+  @Column({
+    name: 'sla_score',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   slaScore: number | null;
 
   /** Quota contract: target units this period. */

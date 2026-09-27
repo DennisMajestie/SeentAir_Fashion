@@ -42,9 +42,9 @@ describe('ApprovalsService', () => {
         actionType: ApprovalActionType.FUND_MOVEMENT,
         status: ApprovalStatus.PENDING,
       });
-      await expect(
-        service.assertApproved('r1', ApprovalActionType.FUND_MOVEMENT),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.assertApproved('r1', ApprovalActionType.FUND_MOVEMENT)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('rejects a request of the wrong action type', async () => {
@@ -53,9 +53,9 @@ describe('ApprovalsService', () => {
         actionType: ApprovalActionType.PURCHASING,
         status: ApprovalStatus.APPROVED,
       });
-      await expect(
-        service.assertApproved('r1', ApprovalActionType.PRICE_CHANGE),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.assertApproved('r1', ApprovalActionType.PRICE_CHANGE)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('passes for an approved request of the right type', async () => {

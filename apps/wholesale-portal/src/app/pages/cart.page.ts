@@ -27,21 +27,36 @@ interface CartGroup {
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <a class="link backlink" routerLink="/catalogue">
-      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span> Bulk cart &amp; checkout
+      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span> Bulk cart &amp;
+      checkout
     </a>
 
     <div class="cart-strip">
-      <span class="left"><span class="dot"></span>
-        Wholesale cart ({{ cart.units() }} units total ·
-        {{ moqMet() ? 'MOQ met' : 'MOQ ' + moq() + ' short by ' + moqShort() }})</span>
+      <span class="left"
+        ><span class="dot"></span> Wholesale cart ({{ cart.units() }} units total ·
+        {{ moqMet() ? 'MOQ met' : 'MOQ ' + moq() + ' short by ' + moqShort() }})</span
+      >
       <span class="chip">Draft batch</span>
     </div>
 
     @if (cart.units() === 0 && !orderResult()) {
       <div class="empty-state">
-        <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+        <span class="empty-state-icon" aria-hidden="true"
+          ><svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
+        ></span>
         <h2 class="empty-state-title">Your draft batch is empty</h2>
-        <p class="empty-state-sub">Build it from the <a class="link" routerLink="/catalogue">catalogue</a>.</p>
+        <p class="empty-state-sub">
+          Build it from the <a class="link" routerLink="/catalogue">catalogue</a>.
+        </p>
       </div>
     }
 
@@ -65,17 +80,23 @@ interface CartGroup {
               <span class="l" style="text-align:right">Allocated units</span>
             </div>
             @for (cw of group.colourways; track cw.colour) {
-              <div style="display:flex; justify-content:space-between; gap: var(--space-md); margin-top: 4px">
+              <div
+                style="display:flex; justify-content:space-between; gap: var(--space-md); margin-top: 4px"
+              >
                 <span>{{ cw.colour }}: {{ cw.breakdown }}</span>
                 <span class="num">{{ cw.pcs }} pcs</span>
               </div>
             }
           </div>
           <div class="oc-top" style="margin-top: var(--space-md); align-items:center">
-            <span class="tabular small">₦{{ group.unitPrice | number: '1.0-2' }} / unit —
-              <strong>₦{{ group.amount | number: '1.0-2' }}</strong></span>
+            <span class="tabular small"
+              >₦{{ group.unitPrice | number: '1.0-2' }} / unit —
+              <strong>₦{{ group.amount | number: '1.0-2' }}</strong></span
+            >
             <span style="display:flex; gap: var(--space-lg)">
-              <a class="link" [routerLink]="['/catalogue', group.productId, 'matrix']">Edit matrix</a>
+              <a class="link" [routerLink]="['/catalogue', group.productId, 'matrix']"
+                >Edit matrix</a
+              >
               <button class="link" (click)="cart.removeProduct(group.productId)">Remove</button>
             </span>
           </div>
@@ -92,8 +113,8 @@ interface CartGroup {
           <div>
             <strong>{{ buyerName() ?? 'Wholesale account' }}</strong>
             <p class="muted small" style="margin: 2px 0 0">
-              Delivery destination and consignee contact are confirmed with the Aba desk
-              once the batch is committed — GIGL dispatch or factory pickup.
+              Delivery destination and consignee contact are confirmed with the Aba desk once the
+              batch is committed — GIGL dispatch or factory pickup.
             </p>
           </div>
           <span class="chip okc">Verified buyer</span>
@@ -109,16 +130,22 @@ interface CartGroup {
       <label class="radio-opt" [class.selected]="freight === 'gigl'">
         <input type="radio" name="freight" value="gigl" [(ngModel)]="freight" />
         <span class="r-body">
-          <span class="r-title"><span>GIGL freight dispatch</span>
-            <span class="r-price muted">Quoted at dispatch</span></span>
-          <span class="r-sub">First-line carrier — doorstep commercial drop with tracked waybill.</span>
+          <span class="r-title"
+            ><span>GIGL freight dispatch</span>
+            <span class="r-price muted">Quoted at dispatch</span></span
+          >
+          <span class="r-sub"
+            >First-line carrier — doorstep commercial drop with tracked waybill.</span
+          >
         </span>
       </label>
       <label class="radio-opt" [class.selected]="freight === 'pickup'">
         <input type="radio" name="freight" value="pickup" [(ngModel)]="freight" />
         <span class="r-body">
-          <span class="r-title"><span>Factory pickup (Aba workshop hub)</span>
-            <span class="r-price">₦0 (Free)</span></span>
+          <span class="r-title"
+            ><span>Factory pickup (Aba workshop hub)</span>
+            <span class="r-price">₦0 (Free)</span></span
+          >
           <span class="r-sub">Collect directly from the Seentair production floor, Aba.</span>
         </span>
       </label>
@@ -127,8 +154,8 @@ interface CartGroup {
         <span class="material-symbols-outlined" aria-hidden="true">gavel</span>
         <div>
           <strong>Seentair factory policy &amp; SLA</strong>
-          Full payment is required before production batch slot allocation and material
-          cutting. No part-payments, cash on delivery, or staggered releases.
+          Full payment is required before production batch slot allocation and material cutting. No
+          part-payments, cash on delivery, or staggered releases.
         </div>
       </div>
 
@@ -137,21 +164,35 @@ interface CartGroup {
       </div>
       <section class="panel">
         <div class="ledger">
-          <div class="lg-row"><span>Garment allocation units</span>
-            <span class="v">{{ cart.units() }} units</span></div>
-          <div class="lg-row"><span>Merchandise subtotal</span>
-            <span class="v">₦{{ cart.amount() | number: '1.0-2' }}</span></div>
+          <div class="lg-row">
+            <span>Garment allocation units</span> <span class="v">{{ cart.units() }} units</span>
+          </div>
+          <div class="lg-row">
+            <span>Merchandise subtotal</span>
+            <span class="v">₦{{ cart.amount() | number: '1.0-2' }}</span>
+          </div>
           @if (tier(); as t) {
-            <div class="lg-row disc"><span>{{ t.name }} wholesale rate</span>
-              <span class="v">{{ t.discountPercent }}% off retail — applied</span></div>
+            <div class="lg-row disc">
+              <span>{{ t.name }} wholesale rate</span>
+              <span class="v">{{ t.discountPercent }}% off retail — applied</span>
+            </div>
           }
           <!-- GAP: freight + any statutory charges appear on the final invoice; no
                quotation endpoint exists to price them here. -->
-          <div class="lg-row"><span>Freight logistics waybill</span>
-            <span class="v muted">On final invoice</span></div>
-          <div class="lg-row total"><span>Total payable<br />
-            <span class="muted" style="font-weight:400; font-size: var(--type-body-sm); text-transform:none; letter-spacing:normal">merchandise commit</span></span>
-            <span class="v">₦{{ cart.amount() | number: '1.0-2' }}</span></div>
+          <div class="lg-row">
+            <span>Freight logistics waybill</span> <span class="v muted">On final invoice</span>
+          </div>
+          <div class="lg-row total">
+            <span
+              >Total payable<br />
+              <span
+                class="muted"
+                style="font-weight:400; font-size: var(--type-body-sm); text-transform:none; letter-spacing:normal"
+                >merchandise commit</span
+              ></span
+            >
+            <span class="v">₦{{ cart.amount() | number: '1.0-2' }}</span>
+          </div>
         </div>
       </section>
 
@@ -166,32 +207,45 @@ interface CartGroup {
         <input type="radio" name="settlement" value="transfer" [(ngModel)]="settlement" />
         <span class="r-body">
           <span class="r-title"><span>Direct corporate bank transfer / POS</span></span>
-          <span class="r-sub">Current live flow — the desk confirms your payment, then the
-            batch enters production.</span>
+          <span class="r-sub"
+            >Current live flow — the desk confirms your payment, then the batch enters
+            production.</span
+          >
         </span>
       </label>
       <label class="radio-opt" [class.selected]="settlement === 'paystack'">
         <input type="radio" name="settlement" value="paystack" [(ngModel)]="settlement" />
         <span class="r-body">
-          <span class="r-title"><span>Paystack direct merchant gateway</span>
-            <span class="r-price muted">Coming online</span></span>
-          <span class="r-sub">Instant confirmation — cards, NIBSS transfer, USSD. Awaiting
-            production keys; the desk will settle this order manually meanwhile.</span>
+          <span class="r-title"
+            ><span>Paystack direct merchant gateway</span>
+            <span class="r-price muted">Coming online</span></span
+          >
+          <span class="r-sub"
+            >Instant confirmation — cards, NIBSS transfer, USSD. Awaiting production keys; the desk
+            will settle this order manually meanwhile.</span
+          >
         </span>
       </label>
 
-      <button class="cta" style="width:100%; margin-top: var(--space-md)"
-        (click)="commit()" [disabled]="!moqMet() || placing()">
+      <button
+        class="cta"
+        style="width:100%; margin-top: var(--space-md)"
+        (click)="commit()"
+        [disabled]="!moqMet() || placing()"
+      >
         <span class="material-symbols-outlined" aria-hidden="true">lock</span>
-        {{ placing() ? 'Committing batch…' : 'Commit batch — ₦' + (cart.amount() | number: '1.0-2') }}
+        {{
+          placing() ? 'Committing batch…' : 'Commit batch — ₦' + (cart.amount() | number: '1.0-2')
+        }}
       </button>
       @if (!moqMet()) {
         <p class="error" style="text-align:center">
-          Minimum order is {{ moq() }} units — you have {{ cart.units() }}.</p>
+          Minimum order is {{ moq() }} units — you have {{ cart.units() }}.
+        </p>
       }
       <p class="muted small" style="text-align:center; margin-top: var(--space-sm)">
-        Full payment upfront confirms the production slot — the cutting floor is notified
-        once the desk verifies settlement.
+        Full payment upfront confirms the production slot — the cutting floor is notified once the
+        desk verifies settlement.
       </p>
     }
 
@@ -200,20 +254,28 @@ interface CartGroup {
         <div class="tagbar"><span>Batch committed</span><span class="success">OK</span></div>
         <p class="apply-copy">
           Order <code>{{ result.id.slice(0, 8).toUpperCase() }}</code> placed —
-          <strong>₦{{ result.totalAmount | number: '1.0-2' }}</strong>.
-          Payment: bank transfer / POS — our team confirms it, then production starts.
+          <strong>₦{{ result.totalAmount | number: '1.0-2' }}</strong
+          >. Payment: bank transfer / POS — our team confirms it, then production starts.
         </p>
         <div class="actions">
-          <a class="cta small" [routerLink]="['/orders', result.id, 'invoice']">View pro-forma invoice</a>
+          <a class="cta small" [routerLink]="['/orders', result.id, 'invoice']"
+            >View pro-forma invoice</a
+          >
           <a class="link" routerLink="/orders">Orders &amp; invoices</a>
         </div>
       </section>
     }
-    @if (error()) { <p class="error">{{ error() }}</p> }
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
 
     <div class="cart-strip" style="margin-top: var(--space-xl)">
-      <span class="left"><span class="material-symbols-outlined" style="font-size:16px"
-        aria-hidden="true">support_agent</span> Need a custom wholesale invoice?</span>
+      <span class="left"
+        ><span class="material-symbols-outlined" style="font-size:16px" aria-hidden="true"
+          >support_agent</span
+        >
+        Need a custom wholesale invoice?</span
+      >
       <a class="link" href="tel:+23418887400">Call hub</a>
     </div>
   `,
@@ -247,8 +309,7 @@ export class CartPage implements OnInit {
         sku: lines[0].sku,
         unitPrice: lines[0].unitPrice,
         units: lines.reduce((n, l) => n + l.quantity, 0),
-        amount:
-          Math.round(lines.reduce((n, l) => n + l.quantity * l.unitPrice, 0) * 100) / 100,
+        amount: Math.round(lines.reduce((n, l) => n + l.quantity * l.unitPrice, 0) * 100) / 100,
         colourways: [...byColour.entries()].map(([colour, cls]) => ({
           colour,
           breakdown: cls.map((l) => `${l.quantity}× ${l.size || 'OS'}`).join(' | '),

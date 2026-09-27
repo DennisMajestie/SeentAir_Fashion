@@ -22,21 +22,47 @@ import { ThemeService } from './theme.service';
         </a>
         @if (api.isLoggedIn) {
           <nav [class.open]="menuOpen()">
-            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="menuOpen.set(false)">Home</a>
-            <a routerLink="/catalogue" routerLinkActive="active" (click)="menuOpen.set(false)">Catalogue</a>
-            <a routerLink="/orders" routerLinkActive="active" (click)="menuOpen.set(false)">Orders</a>
-            <a routerLink="/custom" routerLinkActive="active" (click)="menuOpen.set(false)">Custom</a>
+            <a
+              routerLink="/"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: true }"
+              (click)="menuOpen.set(false)"
+              >Home</a
+            >
+            <a routerLink="/catalogue" routerLinkActive="active" (click)="menuOpen.set(false)"
+              >Catalogue</a
+            >
+            <a routerLink="/orders" routerLinkActive="active" (click)="menuOpen.set(false)"
+              >Orders</a
+            >
+            <a routerLink="/custom" routerLinkActive="active" (click)="menuOpen.set(false)"
+              >Custom</a
+            >
             <button class="link" (click)="menuOpen.set(false); logout()">Sign out</button>
           </nav>
         }
         <div class="header-actions">
           @if (api.isLoggedIn) {
-            <a class="theme-toggle" routerLink="/cart" aria-label="Bulk cart" title="Bulk cart"
-              style="position: relative; text-decoration: none">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <a
+              class="theme-toggle"
+              routerLink="/cart"
+              aria-label="Bulk cart"
+              title="Bulk cart"
+              style="position: relative; text-decoration: none"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
                 <path d="M6 6h15l-1.5 8.5a2 2 0 0 1-2 1.5H8.7a2 2 0 0 1-2-1.6L5 3H2" />
-                <circle cx="9" cy="20" r="1.4" /><circle cx="17" cy="20" r="1.4" />
+                <circle cx="9" cy="20" r="1.4" />
+                <circle cx="17" cy="20" r="1.4" />
               </svg>
               @if (cart.units() > 0) {
                 <span class="cart-badge">{{ cart.units() }}</span>
@@ -46,19 +72,39 @@ import { ThemeService } from './theme.service';
           <button
             class="theme-toggle"
             type="button"
-            [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+            [attr.aria-label]="
+              theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+            "
             [attr.title]="theme.theme() === 'dark' ? 'Light mode' : 'Dark mode'"
             (click)="theme.toggle()"
           >
             @if (theme.theme() === 'dark') {
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
                 <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                <path
+                  d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+                />
               </svg>
             } @else {
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
                 <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
               </svg>
             }
@@ -82,7 +128,7 @@ import { ThemeService } from './theme.service';
           <header class="ws-header">
             <div class="wordmark-row">
               <div class="wordmark">
-<img src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
+                <img src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
                 <span class="chip">WHOLESALE PORTAL</span>
               </div>
               <div class="secure">
@@ -102,9 +148,16 @@ import { ThemeService } from './theme.service';
             <form class="auth-form" (ngSubmit)="signIn()" novalidate>
               <div class="field">
                 <label for="ws-email">Business Email</label>
-                <input id="ws-email" type="email" [(ngModel)]="email" name="email"
-                  autocomplete="email" inputmode="email" placeholder="orders@store.ng"
-                  [attr.aria-invalid]="touched() && !emailValid() ? 'true' : null" />
+                <input
+                  id="ws-email"
+                  type="email"
+                  [(ngModel)]="email"
+                  name="email"
+                  autocomplete="email"
+                  inputmode="email"
+                  placeholder="orders@store.ng"
+                  [attr.aria-invalid]="touched() && !emailValid() ? 'true' : null"
+                />
                 @if (touched() && !emailValid()) {
                   <p class="field-error">Enter a valid email address.</p>
                 }
@@ -116,12 +169,20 @@ import { ThemeService } from './theme.service';
                   <button class="link-inline" type="button" (click)="forgot()">Forgot?</button>
                 </div>
                 <div class="input-affix">
-                  <input id="ws-password" [type]="showPassword() ? 'text' : 'password'"
-                    [(ngModel)]="password" name="password" autocomplete="current-password"
-                    placeholder="••••••••••••" />
-                  <button class="affix-btn" type="button"
+                  <input
+                    id="ws-password"
+                    [type]="showPassword() ? 'text' : 'password'"
+                    [(ngModel)]="password"
+                    name="password"
+                    autocomplete="current-password"
+                    placeholder="••••••••••••"
+                  />
+                  <button
+                    class="affix-btn"
+                    type="button"
                     [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
-                    (click)="showPassword.set(!showPassword())">
+                    (click)="showPassword.set(!showPassword())"
+                  >
                     {{ showPassword() ? 'Hide' : 'Show' }}
                   </button>
                 </div>
@@ -135,14 +196,25 @@ import { ThemeService } from './theme.service';
                 <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
               </button>
 
-              @if (error()) { <p class="auth-error" role="alert">{{ error() }}</p> }
-              @if (info()) { <p class="auth-info" role="status">{{ info() }}</p> }
+              @if (error()) {
+                <p class="auth-error" role="alert">{{ error() }}</p>
+              }
+              @if (info()) {
+                <p class="auth-info" role="status">{{ info() }}</p>
+              }
             </form>
 
             <div class="auth-utilities">
               <button class="link-inline" (click)="forgot()">Forgot password?</button>
               <span class="muted small">|</span>
-              <button class="link-inline" (click)="info.set('Support desk is reached on +234 1 888 7400 during operational hours.')">Trouble logging in?</button>
+              <button
+                class="link-inline"
+                (click)="
+                  info.set('Support desk is reached on +234 1 888 7400 during operational hours.')
+                "
+              >
+                Trouble logging in?
+              </button>
             </div>
             <p class="auth-desk">Direct desk: Aba desk +234 1 888 7400</p>
           </div>
@@ -157,24 +229,59 @@ import { ThemeService } from './theme.service';
               merchandise operators procuring in bulk quantities direct from our Aba factory floor.
             </p>
             <div class="criteria">
-              <div class="crit"><span class="n">01</span><div class="txt">
-                <span class="t">Minimum Batch Size</span>
-                <span class="d">Strict minimum order quantity (MOQ) of 20 units per silhouette.</span></div></div>
-              <div class="crit"><span class="n">02</span><div class="txt">
-                <span class="t">Tiered Manufacturer Rates</span>
-                <span class="d">Live production pricing calibrated directly in Nigerian Naira (&#8358;).</span></div></div>
-              <div class="crit"><span class="n">03</span><div class="txt">
-                <span class="t">CAC &amp; Corporate Verification</span>
-                <span class="d">Requires valid Corporate Affairs Commission (CAC) business credentials.</span></div></div>
-              <div class="crit"><span class="n">04</span><div class="txt">
-                <span class="t">Dedicated Freight &amp; Logistics</span>
-                <span class="d">Priority dispatched via intra-state dispatch &amp; interstate haulage routes.</span></div></div>
+              <div class="crit">
+                <span class="n">01</span>
+                <div class="txt">
+                  <span class="t">Minimum Batch Size</span>
+                  <span class="d"
+                    >Strict minimum order quantity (MOQ) of 20 units per silhouette.</span
+                  >
+                </div>
+              </div>
+              <div class="crit">
+                <span class="n">02</span>
+                <div class="txt">
+                  <span class="t">Tiered Manufacturer Rates</span>
+                  <span class="d"
+                    >Live production pricing calibrated directly in Nigerian Naira (&#8358;).</span
+                  >
+                </div>
+              </div>
+              <div class="crit">
+                <span class="n">03</span>
+                <div class="txt">
+                  <span class="t">CAC &amp; Corporate Verification</span>
+                  <span class="d"
+                    >Requires valid Corporate Affairs Commission (CAC) business credentials.</span
+                  >
+                </div>
+              </div>
+              <div class="crit">
+                <span class="n">04</span>
+                <div class="txt">
+                  <span class="t">Dedicated Freight &amp; Logistics</span>
+                  <span class="d"
+                    >Priority dispatched via intra-state dispatch &amp; interstate haulage
+                    routes.</span
+                  >
+                </div>
+              </div>
             </div>
-            <button class="cta outline" type="button" (click)="info.set('Sign in above, then use \u201CApply for a wholesale account\u201D in the catalogue to submit your application.')">
+            <button
+              class="cta outline"
+              type="button"
+              (click)="
+                info.set(
+                  'Sign in above, then use “Apply for a wholesale account” in the catalogue to submit your application.'
+                )
+              "
+            >
               <span>Apply for Wholesale Access</span>
               <span class="material-symbols-outlined" aria-hidden="true">assignment_ind</span>
             </button>
-            <span class="small muted apply-note">Applications typically vetted within 24 operational hours</span>
+            <span class="small muted apply-note"
+              >Applications typically vetted within 24 operational hours</span
+            >
           </div>
 
           <div class="status-strip">
@@ -186,7 +293,10 @@ import { ThemeService } from './theme.service';
 
           <footer class="auth-footer">
             <p class="legal">Seentair Garments Nigeria Ltd. Aba, Abia State. Strictly B2B.</p>
-            <p class="sub">All industrial pattern rights and batch allocations reserved. Orders processed in Nigerian Naira (&#8358;).</p>
+            <p class="sub">
+              All industrial pattern rights and batch allocations reserved. Orders processed in
+              Nigerian Naira (&#8358;).
+            </p>
           </footer>
         </section>
       } @else {
@@ -199,13 +309,17 @@ import { ThemeService } from './theme.service';
            Custom takes its slot so every live surface stays reachable. -->
       <nav class="tabbar" aria-label="Primary">
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          <span class="material-symbols-outlined" aria-hidden="true">grid_view</span>Home</a>
+          <span class="material-symbols-outlined" aria-hidden="true">grid_view</span>Home</a
+        >
         <a routerLink="/catalogue" routerLinkActive="active">
-          <span class="material-symbols-outlined" aria-hidden="true">storefront</span>Catalogue</a>
+          <span class="material-symbols-outlined" aria-hidden="true">storefront</span>Catalogue</a
+        >
         <a routerLink="/orders" routerLinkActive="active">
-          <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>Orders</a>
+          <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>Orders</a
+        >
         <a routerLink="/custom" routerLinkActive="active">
-          <span class="material-symbols-outlined" aria-hidden="true">design_services</span>Custom</a>
+          <span class="material-symbols-outlined" aria-hidden="true">design_services</span>Custom</a
+        >
       </nav>
     }
   `,

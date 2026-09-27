@@ -16,46 +16,84 @@ import { ApiService, Order } from '../api.service';
             {{ mode() === 'signin' ? 'Welcome back.' : 'Create your account.' }}
           </h1>
           <p class="auth-lede">
-            {{ mode() === 'signin'
-              ? 'Track orders, request returns within 12 hours, and check out faster.'
-              : 'One account for orders, returns and drop notifications. No spam.' }}
+            {{
+              mode() === 'signin'
+                ? 'Track orders, request returns within 12 hours, and check out faster.'
+                : 'One account for orders, returns and drop notifications. No spam.'
+            }}
           </p>
 
           <div class="auth-tabs" role="tablist">
-            <button type="button" role="tab" class="auth-tab"
+            <button
+              type="button"
+              role="tab"
+              class="auth-tab"
               [class.active]="mode() === 'signin'"
               [attr.aria-selected]="mode() === 'signin'"
-              (click)="setMode('signin')">Sign in</button>
-            <button type="button" role="tab" class="auth-tab"
+              (click)="setMode('signin')"
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              role="tab"
+              class="auth-tab"
               [class.active]="mode() === 'register'"
               [attr.aria-selected]="mode() === 'register'"
-              (click)="setMode('register')">Create account</button>
+              (click)="setMode('register')"
+            >
+              Create account
+            </button>
           </div>
 
           <form class="auth-form" (ngSubmit)="submit()" novalidate>
             @if (mode() === 'register') {
               <div class="field">
                 <label for="ac-name">Full name</label>
-                <input id="ac-name" type="text" [(ngModel)]="name" name="name"
-                  autocomplete="name" placeholder="Ada Okereke"
-                  [attr.aria-invalid]="touched() && !nameValid() ? 'true' : null" />
-                @if (touched() && !nameValid()) { <p class="field-error">Tell us your name.</p> }
+                <input
+                  id="ac-name"
+                  type="text"
+                  [(ngModel)]="name"
+                  name="name"
+                  autocomplete="name"
+                  placeholder="Ada Okereke"
+                  [attr.aria-invalid]="touched() && !nameValid() ? 'true' : null"
+                />
+                @if (touched() && !nameValid()) {
+                  <p class="field-error">Tell us your name.</p>
+                }
               </div>
             }
 
             <div class="field">
               <label for="ac-email">Email</label>
-              <input id="ac-email" type="email" [(ngModel)]="email" name="email"
-                autocomplete="email" inputmode="email" placeholder="you@example.com"
-                [attr.aria-invalid]="touched() && !emailValid() ? 'true' : null" />
-              @if (touched() && !emailValid()) { <p class="field-error">Enter a valid email address.</p> }
+              <input
+                id="ac-email"
+                type="email"
+                [(ngModel)]="email"
+                name="email"
+                autocomplete="email"
+                inputmode="email"
+                placeholder="you@example.com"
+                [attr.aria-invalid]="touched() && !emailValid() ? 'true' : null"
+              />
+              @if (touched() && !emailValid()) {
+                <p class="field-error">Enter a valid email address.</p>
+              }
             </div>
 
             @if (mode() === 'register') {
               <div class="field">
                 <label for="ac-phone">Phone <span class="optional">optional</span></label>
-                <input id="ac-phone" type="tel" [(ngModel)]="phone" name="phone"
-                  autocomplete="tel" inputmode="tel" placeholder="080 0000 0000" />
+                <input
+                  id="ac-phone"
+                  type="tel"
+                  [(ngModel)]="phone"
+                  name="phone"
+                  autocomplete="tel"
+                  inputmode="tel"
+                  placeholder="080 0000 0000"
+                />
                 <p class="field-hint">For delivery updates by SMS or WhatsApp.</p>
               </div>
             }
@@ -68,14 +106,21 @@ import { ApiService, Order } from '../api.service';
                 }
               </div>
               <div class="input-affix">
-                <input id="ac-password" [type]="showPassword() ? 'text' : 'password'"
-                  [(ngModel)]="password" name="password"
+                <input
+                  id="ac-password"
+                  [type]="showPassword() ? 'text' : 'password'"
+                  [(ngModel)]="password"
+                  name="password"
                   [autocomplete]="mode() === 'signin' ? 'current-password' : 'new-password'"
                   [placeholder]="mode() === 'signin' ? 'Your password' : 'At least 8 characters'"
-                  [attr.aria-invalid]="touched() && !passwordValid() ? 'true' : null" />
-                <button class="affix-btn" type="button"
+                  [attr.aria-invalid]="touched() && !passwordValid() ? 'true' : null"
+                />
+                <button
+                  class="affix-btn"
+                  type="button"
                   [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
-                  (click)="showPassword.set(!showPassword())">
+                  (click)="showPassword.set(!showPassword())"
+                >
                   {{ showPassword() ? 'Hide' : 'Show' }}
                 </button>
               </div>
@@ -87,13 +132,23 @@ import { ApiService, Order } from '../api.service';
             </div>
 
             <button class="cta auth-submit" type="submit" [disabled]="busy()">
-              {{ busy()
-                ? (mode() === 'signin' ? 'Signing in…' : 'Creating account…')
-                : (mode() === 'signin' ? 'Sign in' : 'Create account') }}
+              {{
+                busy()
+                  ? mode() === 'signin'
+                    ? 'Signing in…'
+                    : 'Creating account…'
+                  : mode() === 'signin'
+                    ? 'Sign in'
+                    : 'Create account'
+              }}
             </button>
 
-            @if (error()) { <p class="auth-error" role="alert">{{ error() }}</p> }
-            @if (info()) { <p class="auth-info" role="status">{{ info() }}</p> }
+            @if (error()) {
+              <p class="auth-error" role="alert">{{ error() }}</p>
+            }
+            @if (info()) {
+              <p class="auth-info" role="status">{{ info() }}</p>
+            }
           </form>
 
           <div class="trust-row auth-trust">
@@ -124,7 +179,9 @@ import { ApiService, Order } from '../api.service';
       } @else {
         @for (order of orders(); track order.id) {
           <a class="order-row" [routerLink]="['/orders', order.id]">
-            <span><code>{{ order.id.slice(0, 8) }}</code></span>
+            <span
+              ><code>{{ order.id.slice(0, 8) }}</code></span
+            >
             <span class="status" [class]="'status ' + order.status">{{
               order.status.replaceAll('_', ' ')
             }}</span>
@@ -138,7 +195,9 @@ import { ApiService, Order } from '../api.service';
 export class AccountPage implements OnInit {
   readonly api = inject(ApiService);
   readonly orders = signal<Order[]>([]);
-  readonly notifications = signal<Array<{ id: string; type: string; message: string; sentAt: string }>>([]);
+  readonly notifications = signal<
+    Array<{ id: string; type: string; message: string; sentAt: string }>
+  >([]);
   readonly error = signal<string | null>(null);
   readonly info = signal<string | null>(null);
   /** 'signin' or 'register' — one card, two jobs. */
@@ -217,16 +276,20 @@ export class AccountPage implements OnInit {
       return;
     }
 
-    this.api.register(this.name.trim(), this.email.trim(), this.phone.trim(), this.password).subscribe({
-      next: done,
-      error: (e: { error?: { message?: string | string[] } }) => {
-        this.busy.set(false);
-        const msg = e?.error?.message;
-        this.error.set(
-          Array.isArray(msg) ? msg[0] : (msg ?? 'Could not create that account. Try a different email.'),
-        );
-      },
-    });
+    this.api
+      .register(this.name.trim(), this.email.trim(), this.phone.trim(), this.password)
+      .subscribe({
+        next: done,
+        error: (e: { error?: { message?: string | string[] } }) => {
+          this.busy.set(false);
+          const msg = e?.error?.message;
+          this.error.set(
+            Array.isArray(msg)
+              ? msg[0]
+              : (msg ?? 'Could not create that account. Try a different email.'),
+          );
+        },
+      });
   }
 
   logout(): void {

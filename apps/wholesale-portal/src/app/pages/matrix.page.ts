@@ -20,11 +20,15 @@ import { CartService } from '../cart.service';
 
     @if (product(); as prod) {
       <section class="panel">
-        <div class="tagbar"><span>Bulk order form</span><span>SKU: {{ prod.variants[0]?.sku }}</span></div>
+        <div class="tagbar">
+          <span>Bulk order form</span><span>SKU: {{ prod.variants[0]?.sku }}</span>
+        </div>
         <h1 style="font-size: var(--type-heading-md)">{{ prod.name }}</h1>
         <p class="meta-line" style="margin: var(--space-xs) 0 0">
           <span class="muted">{{ tierName() }} wholesale:</span>
-          <strong class="tabular" style="color: var(--primary); margin: 0 4px">₦{{ prod.wholesalePrice | number: '1.0-2' }}</strong>
+          <strong class="tabular" style="color: var(--primary); margin: 0 4px"
+            >₦{{ prod.wholesalePrice | number: '1.0-2' }}</strong
+          >
           <span class="muted">/ unit</span>
         </p>
       </section>
@@ -32,7 +36,9 @@ import { CartService } from '../cart.service';
       <div class="section-head" style="margin-top: var(--space-md)">
         <h2>Batch order status</h2>
         <span class="aside tabular">
-          <strong [style.color]="moqShort() > 0 ? 'var(--primary)' : 'var(--ok)'">{{ committedUnits() }}</strong>
+          <strong [style.color]="moqShort() > 0 ? 'var(--primary)' : 'var(--ok)'">{{
+            committedUnits()
+          }}</strong>
           / {{ moq() }} units MOQ
         </span>
       </div>
@@ -41,9 +47,14 @@ import { CartService } from '../cart.service';
         <div class="moq-banner" role="status">
           <span class="material-symbols-outlined" aria-hidden="true">warning</span>
           <div>
-            <strong>Add {{ moqShort() }} more units to meet the {{ moq() }}-unit minimum requirement.</strong>
-            <span class="sub">The count includes the {{ cart.units() }} units already in your draft batch.
-              Your tier price is already applied.</span>
+            <strong
+              >Add {{ moqShort() }} more units to meet the {{ moq() }}-unit minimum
+              requirement.</strong
+            >
+            <span class="sub"
+              >The count includes the {{ cart.units() }} units already in your draft batch. Your
+              tier price is already applied.</span
+            >
           </div>
         </div>
       } @else {
@@ -57,11 +68,19 @@ import { CartService } from '../cart.service';
       }
 
       <div class="scroll-hint">
-        <span><span class="material-symbols-outlined" style="font-size:14px; vertical-align:-2px"
-          aria-hidden="true">swipe</span> Scroll matrix horizontally</span>
+        <span
+          ><span
+            class="material-symbols-outlined"
+            style="font-size:14px; vertical-align:-2px"
+            aria-hidden="true"
+            >swipe</span
+          >
+          Scroll matrix horizontally</span
+        >
         @if (moqShort() > 0) {
           <button class="cta small quiet" (click)="autoFill()">
-            <span class="material-symbols-outlined" aria-hidden="true">bolt</span> +{{ moqShort() }} auto fill
+            <span class="material-symbols-outlined" aria-hidden="true">bolt</span> +{{ moqShort() }}
+            auto fill
           </button>
         }
       </div>
@@ -73,7 +92,9 @@ import { CartService } from '../cart.service';
           <thead>
             <tr>
               <th>Colour</th>
-              @for (size of sizes(); track size) { <th class="num">{{ size }}</th> }
+              @for (size of sizes(); track size) {
+                <th class="num">{{ size }}</th>
+              }
             </tr>
           </thead>
           <tbody>
@@ -86,16 +107,24 @@ import { CartService } from '../cart.service';
                 @for (size of sizes(); track size) {
                   <td class="num">
                     @if (variantFor(colour, size); as v) {
-                      <input type="number" min="0" [(ngModel)]="quantities[v.id]"
-                        [attr.aria-label]="colour + ' size ' + size" />
-                    } @else { <span class="na">—</span> }
+                      <input
+                        type="number"
+                        min="0"
+                        [(ngModel)]="quantities[v.id]"
+                        [attr.aria-label]="colour + ' size ' + size"
+                      />
+                    } @else {
+                      <span class="na">—</span>
+                    }
                   </td>
                 }
               </tr>
             }
             <tr class="sumrow">
               <td>Size sum</td>
-              @for (size of sizes(); track size) { <td class="num">{{ sizeSum(size) }}</td> }
+              @for (size of sizes(); track size) {
+                <td class="num">{{ sizeSum(size) }}</td>
+              }
             </tr>
           </tbody>
         </table>
@@ -121,7 +150,8 @@ import { CartService } from '../cart.service';
       <div class="commit-row">
         <div class="c-cell">
           <span class="c-l">Batch commitment</span>
-          <strong>{{ formUnits() }}</strong> <span class="muted small">/ {{ moq() }} MOQ units</span>
+          <strong>{{ formUnits() }}</strong>
+          <span class="muted small">/ {{ moq() }} MOQ units</span>
         </div>
         <div class="c-cell right">
           <span class="c-l">Estimated total</span>
@@ -130,21 +160,29 @@ import { CartService } from '../cart.service';
       </div>
 
       @if (moqShort() > 0 && formUnits() > 0) {
-        <button class="cta outline" style="width:100%; margin-bottom: var(--space-sm)" (click)="autoFill()">
+        <button
+          class="cta outline"
+          style="width:100%; margin-bottom: var(--space-sm)"
+          (click)="autoFill()"
+        >
           <span class="material-symbols-outlined" aria-hidden="true">auto_fix_high</span>
           + Add {{ moqShort() }} units automatically to meet MOQ
         </button>
       }
       <button class="cta" style="width:100%" (click)="addToOrder()" [disabled]="formUnits() === 0">
         <span class="material-symbols-outlined" aria-hidden="true">
-          {{ moqShort() > 0 ? 'lock' : 'lock_open' }}</span>
+          {{ moqShort() > 0 ? 'lock' : 'lock_open' }}</span
+        >
         {{ moqShort() > 0 ? 'Add to order (need ' + moqShort() + ' more)' : 'Add to order' }}
       </button>
       <p class="muted small" style="text-align:center; margin-top: var(--space-sm)">
-        The {{ moq() }}-unit minimum applies to the whole batch and is re-checked by the factory API.
+        The {{ moq() }}-unit minimum applies to the whole batch and is re-checked by the factory
+        API.
       </p>
     } @else if (missing()) {
-      <p class="error">Product not found in your catalogue. <a class="link" routerLink="/catalogue">Back</a></p>
+      <p class="error">
+        Product not found in your catalogue. <a class="link" routerLink="/catalogue">Back</a>
+      </p>
     } @else {
       <p class="muted">Loading bulk order form…</p>
     }
@@ -218,7 +256,8 @@ export class MatrixPage implements OnInit {
     if (!prod) return 0;
     return (
       Math.round(
-        prod.variants.reduce((n, v) => n + (this.quantities[v.id] || 0) * v.wholesalePrice, 0) * 100,
+        prod.variants.reduce((n, v) => n + (this.quantities[v.id] || 0) * v.wholesalePrice, 0) *
+          100,
       ) / 100
     );
   }

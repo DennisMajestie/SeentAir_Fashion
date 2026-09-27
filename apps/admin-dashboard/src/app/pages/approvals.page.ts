@@ -16,7 +16,10 @@ import { BrandAlertService } from '../brand-alert.service';
       <div class="ops-id">
         <p class="eyebrow">Approvals · who asked & what changed</p>
         <h1>Management approval queue</h1>
-        <p class="ops-sub">Price changes, purchasing, production starts and stock removals wait here — nothing proceeds without a decision.</p>
+        <p class="ops-sub">
+          Price changes, purchasing, production starts and stock removals wait here — nothing
+          proceeds without a decision.
+        </p>
       </div>
       <div class="ops-actions">
         <span class="live-chip">Live</span>
@@ -26,9 +29,15 @@ import { BrandAlertService } from '../brand-alert.service';
 
     <div class="ops-toolbar">
       <div class="seg" role="group" aria-label="Filter pending approvals by type">
-        <button type="button" [class.on]="typeFilter() === ''" (click)="typeFilter.set('')">All <span class="seg-n">{{ approvals().length }}</span></button>
+        <button type="button" [class.on]="typeFilter() === ''" (click)="typeFilter.set('')">
+          All <span class="seg-n">{{ approvals().length }}</span>
+        </button>
         @for (g of groups(); track g.type) {
-          <button type="button" [class.on]="typeFilter() === g.type" (click)="typeFilter.set(g.type)">
+          <button
+            type="button"
+            [class.on]="typeFilter() === g.type"
+            (click)="typeFilter.set(g.type)"
+          >
             {{ g.type.replaceAll('_', ' ') }} <span class="seg-n">{{ g.count }}</span>
           </button>
         }
@@ -37,7 +46,18 @@ import { BrandAlertService } from '../brand-alert.service';
 
     @if (visible().length === 0) {
       <div class="empty-state ok">
-        <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+        <span class="empty-state-icon" aria-hidden="true"
+          ><svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
+        ></span>
         <h2 class="empty-state-title">Nothing pending{{ typeFilter() ? ' for this type' : '' }}</h2>
         <p class="empty-state-sub">Every request has been decided.</p>
       </div>
@@ -48,20 +68,36 @@ import { BrandAlertService } from '../brand-alert.service';
         <div class="panel-head">
           <h2>{{ title(approval.actionType) }}</h2>
           <span class="chip acid">{{ approval.actionType.replaceAll('_', ' ') }}</span>
-          <span class="ph-sub">REF {{ approval.id.slice(0, 8) }} · {{ approval.createdAt | date: 'd MMM y, HH:mm' }} WAT</span>
+          <span class="ph-sub"
+            >REF {{ approval.id.slice(0, 8) }} ·
+            {{ approval.createdAt | date: 'd MMM y, HH:mm' }} WAT</span
+          >
           <span class="ph-end mini-note">Requested by {{ approval.requestedBy.name }}</span>
         </div>
 
         @if (priceChange(approval); as pc) {
           <div class="kpi-bar" style="margin-bottom:0.7rem;">
-            <div class="kpi"><span class="kpi-label">Current price</span><span class="kpi-value">₦{{ pc.from | number: '1.0-0' }}</span><span class="kpi-sub">{{ pc.product }}</span></div>
-            <div class="kpi"><span class="kpi-label">Proposed</span><span class="kpi-value">₦{{ pc.to | number: '1.0-0' }}</span>
-              <span class="kpi-sub delta" [class.plus]="pc.to >= pc.from" [class.minus]="pc.to < pc.from">{{ pc.deltaPct }}% {{ pc.to >= pc.from ? 'increase' : 'decrease' }}</span></div>
+            <div class="kpi">
+              <span class="kpi-label">Current price</span
+              ><span class="kpi-value">₦{{ pc.from | number: '1.0-0' }}</span
+              ><span class="kpi-sub">{{ pc.product }}</span>
+            </div>
+            <div class="kpi">
+              <span class="kpi-label">Proposed</span
+              ><span class="kpi-value">₦{{ pc.to | number: '1.0-0' }}</span>
+              <span
+                class="kpi-sub delta"
+                [class.plus]="pc.to >= pc.from"
+                [class.minus]="pc.to < pc.from"
+                >{{ pc.deltaPct }}% {{ pc.to >= pc.from ? 'increase' : 'decrease' }}</span
+              >
+            </div>
           </div>
         } @else {
           <dl class="kv">
             @for (kv of payloadEntries(approval); track kv[0]) {
-              <dt>{{ kv[0] }}</dt><dd class="wrap-anywhere">{{ kv[1] }}</dd>
+              <dt>{{ kv[0] }}</dt>
+              <dd class="wrap-anywhere">{{ kv[1] }}</dd>
             }
           </dl>
         }
@@ -69,19 +105,34 @@ import { BrandAlertService } from '../brand-alert.service';
         <div class="actions">
           <label class="wide" style="margin:0; text-transform:none; font-weight:600;">
             Written justification for this decision
-            <textarea rows="2" placeholder="Recorded to the audit log — required." [(ngModel)]="justifications[approval.id]" name="j-{{ approval.id }}" aria-label="Justification"></textarea>
+            <textarea
+              rows="2"
+              placeholder="Recorded to the audit log — required."
+              [(ngModel)]="justifications[approval.id]"
+              name="j-{{ approval.id }}"
+              aria-label="Justification"
+            ></textarea>
           </label>
-          <button class="cta small" (click)="decide(approval.id, 'approved')">✓ Approve & execute</button>
+          <button class="cta small" (click)="decide(approval.id, 'approved')">
+            ✓ Approve & execute
+          </button>
           <button class="danger" (click)="decide(approval.id, 'rejected')">✕ Reject</button>
         </div>
       </section>
     }
-    @if (error()) { <p class="error">{{ error() }}</p> }
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
 
     <div class="panel-head" style="margin-top:1.4rem;">
       <h2>Decision history</h2>
       <span class="ph-end">
-        <select class="table-filter" [(ngModel)]="historyFilter" name="hf" (ngModelChange)="loadHistory()">
+        <select
+          class="table-filter"
+          [(ngModel)]="historyFilter"
+          name="hf"
+          (ngModelChange)="loadHistory()"
+        >
           <option value="">all</option>
           <option value="approved">approved</option>
           <option value="rejected">rejected</option>
@@ -89,14 +140,30 @@ import { BrandAlertService } from '../brand-alert.service';
       </span>
     </div>
     <table class="table">
-      <thead><tr><th>Ref</th><th>Action</th><th>Requested by</th><th>Status</th><th>When</th></tr></thead>
+      <thead>
+        <tr>
+          <th>Ref</th>
+          <th>Action</th>
+          <th>Requested by</th>
+          <th>Status</th>
+          <th>When</th>
+        </tr>
+      </thead>
       <tbody>
         @for (h of history(); track h.id) {
           <tr>
             <td class="mono small">{{ h.id.slice(0, 8) }}</td>
             <td>{{ h.actionType.replaceAll('_', ' ') }}</td>
             <td class="small">{{ h.requestedBy.name }}</td>
-            <td><span class="chip" [class.ok]="h.status === 'approved'" [class.bad]="h.status === 'rejected'" [class.warn]="h.status === 'pending'">{{ h.status }}</span></td>
+            <td>
+              <span
+                class="chip"
+                [class.ok]="h.status === 'approved'"
+                [class.bad]="h.status === 'rejected'"
+                [class.warn]="h.status === 'pending'"
+                >{{ h.status }}</span
+              >
+            </td>
             <td class="mono small">{{ h.createdAt | date: 'MMM d, HH:mm' }}</td>
           </tr>
         }
@@ -132,11 +199,16 @@ export class ApprovalsPage implements OnInit {
 
   title(actionType: string): string {
     switch (actionType) {
-      case 'price_change': return 'Target retail price revision';
-      case 'purchasing': return 'Purchase order — raw materials';
-      case 'production_start': return 'Production batch allocation';
-      case 'stock_disposal': return 'Stock removal / write-off';
-      default: return actionType.replaceAll('_', ' ');
+      case 'price_change':
+        return 'Target retail price revision';
+      case 'purchasing':
+        return 'Purchase order — raw materials';
+      case 'production_start':
+        return 'Production batch allocation';
+      case 'stock_disposal':
+        return 'Stock removal / write-off';
+      default:
+        return actionType.replaceAll('_', ' ');
     }
   }
 
@@ -165,7 +237,9 @@ export class ApprovalsPage implements OnInit {
   }
 
   loadHistory(): void {
-    this.api.approvalsHistory(this.historyFilter || undefined).subscribe((res) => this.history.set(res.data));
+    this.api
+      .approvalsHistory(this.historyFilter || undefined)
+      .subscribe((res) => this.history.set(res.data));
   }
 
   async decide(id: string, decision: 'approved' | 'rejected'): Promise<void> {

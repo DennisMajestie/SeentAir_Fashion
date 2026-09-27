@@ -12,8 +12,8 @@ import { ApiService } from '../api.service';
     @if (me(); as profile) {
       <section class="panel">
         <p>
-          Signed in as <strong>{{ profile.name }}</strong>
-          (<code>{{ profile.role }}</code>) — two-factor authentication is
+          Signed in as <strong>{{ profile.name }}</strong> (<code>{{ profile.role }}</code
+          >) — two-factor authentication is
           <strong [class.success]="profile.totpEnabled" [class.error]="!profile.totpEnabled">
             {{ profile.totpEnabled ? 'ON' : 'OFF' }}
           </strong>
@@ -23,8 +23,8 @@ import { ApiService } from '../api.service';
           @if (!setup()) {
             <p class="muted">
               Add a second factor: after setup, signing in also requires a 6-digit code from an
-              authenticator app (Google Authenticator, Authy, 1Password…). Strongly recommended
-              for every staff account.
+              authenticator app (Google Authenticator, Authy, 1Password…). Strongly recommended for
+              every staff account.
             </p>
             <button class="cta" (click)="startSetup()">Set up 2FA</button>
           } @else {
@@ -33,22 +33,37 @@ import { ApiService } from '../api.service';
               <li>Account name: your Seentair email. Key: the secret below.</li>
               <li>Enter the 6-digit code the app shows to finish.</li>
             </ol>
-            <p>Secret: <code>{{ setup()!.secret }}</code></p>
-            <p class="muted small">Or open this link on a device with your authenticator: <code>{{ setup()!.otpauthUrl }}</code></p>
+            <p>
+              Secret: <code>{{ setup()!.secret }}</code>
+            </p>
+            <p class="muted small">
+              Or open this link on a device with your authenticator:
+              <code>{{ setup()!.otpauthUrl }}</code>
+            </p>
             <form (ngSubmit)="enable()">
-              <label class="inline">Code <input [(ngModel)]="code" name="code" inputmode="numeric" maxlength="6" required /></label>
+              <label class="inline"
+                >Code
+                <input [(ngModel)]="code" name="code" inputmode="numeric" maxlength="6" required
+              /></label>
               <button class="cta small" type="submit">Activate 2FA</button>
             </form>
           }
         } @else {
           <p class="muted">Disabling requires a current code and signs out all sessions.</p>
           <form (ngSubmit)="disable()">
-            <label class="inline">Code <input [(ngModel)]="code" name="code" inputmode="numeric" maxlength="6" required /></label>
+            <label class="inline"
+              >Code
+              <input [(ngModel)]="code" name="code" inputmode="numeric" maxlength="6" required
+            /></label>
             <button class="danger small" type="submit">Disable 2FA</button>
           </form>
         }
-        @if (message()) { <p class="success">{{ message() }}</p> }
-        @if (error()) { <p class="error">{{ error() }}</p> }
+        @if (message()) {
+          <p class="success">{{ message() }}</p>
+        }
+        @if (error()) {
+          <p class="error">{{ error() }}</p>
+        }
       </section>
     }
   `,

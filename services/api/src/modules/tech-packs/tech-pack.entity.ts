@@ -30,7 +30,14 @@ export class TechPack {
   @Column({ name: 'target_yield_units', type: 'integer', nullable: true })
   targetYieldUnits: number | null;
 
-  @Column({ name: 'cutting_efficiency_pct', type: 'numeric', precision: 6, scale: 2, nullable: true, transformer: numericTransformer })
+  @Column({
+    name: 'cutting_efficiency_pct',
+    type: 'numeric',
+    precision: 6,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   cuttingEfficiencyPct: number | null;
 
   /** Graded measurements keyed by size (chest/length/sleeve/hip per XS–XXL). */

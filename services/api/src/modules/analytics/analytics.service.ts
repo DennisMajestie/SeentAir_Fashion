@@ -125,11 +125,14 @@ export class AnalyticsService {
       (r) => OPEN_STATUSES.has(r.status) && inWindow(r.created_at, bounds.curStart, bounds.curEnd),
     ).length;
     const priorOpenOrders = rows.filter(
-      (r) => OPEN_STATUSES.has(r.status) && inWindow(r.created_at, bounds.priorStart, bounds.priorEnd),
+      (r) =>
+        OPEN_STATUSES.has(r.status) && inWindow(r.created_at, bounds.priorStart, bounds.priorEnd),
     ).length;
     const statusBreakdown = RANGE_STATUSES.map((s) => ({
       status: s,
-      count: rows.filter((r) => r.status === s && inWindow(r.created_at, bounds.curStart, bounds.curEnd)).length,
+      count: rows.filter(
+        (r) => r.status === s && inWindow(r.created_at, bounds.curStart, bounds.curEnd),
+      ).length,
     }));
 
     return {
@@ -248,19 +251,31 @@ export class AnalyticsService {
         .orderBy('m.timestamp', 'ASC')
         .getRawMany();
     const step = bounds.grain === 'hour' ? 3_600_000 : 86_400_000;
-    const slots = Math.max(1, Math.floor((bounds.curEnd.getTime() - bounds.curStart.getTime()) / step) + 1);
+    const slots = Math.max(
+      1,
+      Math.floor((bounds.curEnd.getTime() - bounds.curStart.getTime()) / step) + 1,
+    );
     const sums = new Map<string, number>();
     let ptr = 0;
     // Seed cumulative quantities with every movement before the window start.
-    while (ptr < rows.length && new Date(rows[ptr].timestamp).getTime() < bounds.curStart.getTime()) {
-      sums.set(rows[ptr].item_id, (sums.get(rows[ptr].item_id) ?? 0) + (Number(rows[ptr].quantity_delta) || 0));
+    while (
+      ptr < rows.length &&
+      new Date(rows[ptr].timestamp).getTime() < bounds.curStart.getTime()
+    ) {
+      sums.set(
+        rows[ptr].item_id,
+        (sums.get(rows[ptr].item_id) ?? 0) + (Number(rows[ptr].quantity_delta) || 0),
+      );
       ptr += 1;
     }
     const out: number[] = [];
     for (let i = 0; i < slots; i++) {
       const edge = Math.min(bounds.curStart.getTime() + (i + 1) * step, bounds.curEnd.getTime());
       while (ptr < rows.length && new Date(rows[ptr].timestamp).getTime() < edge) {
-        sums.set(rows[ptr].item_id, (sums.get(rows[ptr].item_id) ?? 0) + (Number(rows[ptr].quantity_delta) || 0));
+        sums.set(
+          rows[ptr].item_id,
+          (sums.get(rows[ptr].item_id) ?? 0) + (Number(rows[ptr].quantity_delta) || 0),
+        );
         ptr += 1;
       }
       let count = 0;
@@ -276,7 +291,10 @@ export class AnalyticsService {
   /** Cumulative count of time-ordered events at each aligned bucket end. */
   private stateCounts(eventsAsc: number[], bounds: RangeWindow): number[] {
     const step = bounds.grain === 'hour' ? 3_600_000 : 86_400_000;
-    const slots = Math.max(1, Math.floor((bounds.curEnd.getTime() - bounds.curStart.getTime()) / step) + 1);
+    const slots = Math.max(
+      1,
+      Math.floor((bounds.curEnd.getTime() - bounds.curStart.getTime()) / step) + 1,
+    );
     const out: number[] = [];
     let ptr = 0;
     for (let i = 0; i < slots; i++) {
@@ -289,7 +307,11 @@ export class AnalyticsService {
 
   /** Compare-window geometry for a range request. Custom accepts from/to as
       inclusive date strings (YYYY-MM-DD); the selected "to" day is included. */
-  private windowBounds(range: 'today' | '7d' | '30d' | 'custom', from?: string, to?: string): RangeWindow {
+  private windowBounds(
+    range: 'today' | '7d' | '30d' | 'custom',
+    from?: string,
+    to?: string,
+  ): RangeWindow {
     const now = new Date();
     const startOfDay = (d: Date) => {
       const c = new Date(d);
@@ -333,7 +355,12 @@ export class AnalyticsService {
   }
 
   private bucketize(
-    rows: Array<{ created_at: Date; status: string; payment_status: string; total_amount: string | number }>,
+    rows: Array<{
+      created_at: Date;
+      status: string;
+      payment_status: string;
+      total_amount: string | number;
+    }>,
     start: Date,
     end: Date,
     grain: 'hour' | 'day',
@@ -342,14 +369,19 @@ export class AnalyticsService {
     const slots = Math.max(1, Math.floor((end.getTime() - start.getTime()) / step) + 1);
     const buckets: Array<{ label: string; revenue: number; orders: number }> = [];
     for (let i = 0; i < slots; i++) {
-      buckets.push({ label: this.bucketLabel(new Date(start.getTime() + i * step), grain), revenue: 0, orders: 0 });
+      buckets.push({
+        label: this.bucketLabel(new Date(start.getTime() + i * step), grain),
+        revenue: 0,
+        orders: 0,
+      });
     }
     for (const r of rows) {
       const t = new Date(r.created_at).getTime();
       if (Number.isNaN(t) || t < start.getTime() || t >= end.getTime()) continue;
       const i = Math.min(slots - 1, Math.max(0, Math.floor((t - start.getTime()) / step)));
       buckets[i].orders += 1;
-      if (r.payment_status === PaymentStatus.PAID) buckets[i].revenue += Number(r.total_amount) || 0;
+      if (r.payment_status === PaymentStatus.PAID)
+        buckets[i].revenue += Number(r.total_amount) || 0;
     }
     return buckets;
   }
@@ -378,15 +410,14 @@ export class AnalyticsService {
   }
 
   private async groupPaidOrdersBy(column: 'channel' | 'source') {
-    const rows: Array<{ key: string | null; count: string; revenue: string }> =
-      await this.orderRepo
-        .createQueryBuilder('o')
-        .select(`o.${column}`, 'key')
-        .addSelect('COUNT(*)', 'count')
-        .addSelect('SUM(o.total_amount)', 'revenue')
-        .where('o.payment_status = :paid', { paid: PaymentStatus.PAID })
-        .groupBy(`o.${column}`)
-        .getRawMany();
+    const rows: Array<{ key: string | null; count: string; revenue: string }> = await this.orderRepo
+      .createQueryBuilder('o')
+      .select(`o.${column}`, 'key')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect('SUM(o.total_amount)', 'revenue')
+      .where('o.payment_status = :paid', { paid: PaymentStatus.PAID })
+      .groupBy(`o.${column}`)
+      .getRawMany();
     return rows.map((r) => ({
       [column]: r.key ?? 'unattributed',
       orders: parseInt(r.count, 10),

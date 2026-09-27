@@ -109,39 +109,59 @@ export class TiltEnvironmentService {
       --tilt-radius: var(--radius, 16px);
     }
     /* Lifted cards protrude into the grid gap; keep them above their neighbours. */
-    :host(.is-raised) { z-index: 1; }
+    :host(.is-raised) {
+      z-index: 1;
+    }
 
     .tilt-surface {
       position: relative;
       transform-style: preserve-3d;
       border-radius: var(--tilt-radius);
       transition: transform ${SETTLE_MS}ms ${SETTLE_EASE};
-      &.is-active { will-change: transform; }
+      &.is-active {
+        will-change: transform;
+      }
       /* While tracking, a short follow smooths pointer jitter; settle uses the spring. */
-      &.is-tracking { transition: transform 120ms ease-out; }
+      &.is-tracking {
+        transition: transform 120ms ease-out;
+      }
     }
 
     /* Pre-rendered shadow whose opacity tracks tilt magnitude — never animate box-shadow. */
     .tilt-shadow {
-      position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
       opacity: 0;
       box-shadow:
         0 24px 48px -12px rgba(28, 27, 27, 0.35),
         0 8px 16px -8px rgba(28, 27, 27, 0.2);
       transition: opacity ${SETTLE_MS}ms ease;
-      .is-tracking & { transition: opacity 120ms ease-out; }
+      .is-tracking & {
+        transition: opacity 120ms ease-out;
+      }
     }
 
     /* Clipping wrapper so the highlight keeps the card's rounded shape while the
        surface itself stays unclipped (overflow: hidden would flatten preserve-3d). */
     .tilt-glare {
-      position: absolute; inset: 0; overflow: hidden; border-radius: inherit;
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      border-radius: inherit;
       pointer-events: none;
       transition: transform ${SETTLE_MS}ms ${SETTLE_EASE};
-      .is-active & { transform: translateZ(var(--tilt-depth)); }
+      .is-active & {
+        transform: translateZ(var(--tilt-depth));
+      }
     }
     .tilt-glare-spot {
-      position: absolute; left: -50%; top: -50%; width: 200%; height: 200%;
+      position: absolute;
+      left: -50%;
+      top: -50%;
+      width: 200%;
+      height: 200%;
       background: radial-gradient(
         circle at center,
         rgba(255, 255, 255, 0.55) 0%,
@@ -149,24 +169,37 @@ export class TiltEnvironmentService {
         transparent 55%
       );
       opacity: 0;
-      transition: opacity ${SETTLE_MS}ms ease, transform ${SETTLE_MS}ms ${SETTLE_EASE};
-      .is-tracking & { transition: opacity 120ms ease-out, transform 120ms ease-out; }
-      .is-active & { opacity: var(--tilt-glare-opacity, 0.18); }
+      transition:
+        opacity ${SETTLE_MS}ms ease,
+        transform ${SETTLE_MS}ms ${SETTLE_EASE};
+      .is-tracking & {
+        transition:
+          opacity 120ms ease-out,
+          transform 120ms ease-out;
+      }
+      .is-active & {
+        opacity: var(--tilt-glare-opacity, 0.18);
+      }
     }
 
     /* Keyboard focus lands on the projected link; show a ring on the whole card. */
     :host(:has(:focus-visible)) .tilt-surface {
-      outline: 2px solid var(--primary, #8a6a18); outline-offset: 3px;
+      outline: 2px solid var(--primary, #8a6a18);
+      outline-offset: 3px;
     }
     @supports not selector(:has(*)) {
       :host(:focus-within) .tilt-surface {
-        outline: 2px solid var(--primary, #8a6a18); outline-offset: 3px;
+        outline: 2px solid var(--primary, #8a6a18);
+        outline-offset: 3px;
       }
     }
 
     /* Reduced motion: no tilt (gated in JS); a plain shadow fade on hover instead. */
     @media (hover: hover) {
-      :host(.tilt-reduced:hover) .tilt-shadow { opacity: 0.6; transition: opacity 200ms ease; }
+      :host(.tilt-reduced:hover) .tilt-shadow {
+        opacity: 0.6;
+        transition: opacity 200ms ease;
+      }
     }
   `,
 })
@@ -273,12 +306,10 @@ export class SeentairTiltCardComponent {
     const ry = -nx * max;
     const magnitude = Math.min(1, Math.hypot(nx, ny));
 
-    this.surfaceEl.style.transform =
-      `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) translateZ(${this.lift()}px)`;
+    this.surfaceEl.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) translateZ(${this.lift()}px)`;
     this.shadowEl.style.opacity = (0.35 + 0.65 * magnitude).toFixed(3);
     // The spot is 200% of the card, so half its size in % maps to the full card in px.
-    this.glareEl.style.transform =
-      `translate(${((px - 0.5) * 50).toFixed(2)}%, ${((py - 0.5) * 50).toFixed(2)}%)`;
+    this.glareEl.style.transform = `translate(${((px - 0.5) * 50).toFixed(2)}%, ${((py - 0.5) * 50).toFixed(2)}%)`;
   };
 
   private readonly onLeave = (): void => {

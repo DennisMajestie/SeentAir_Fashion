@@ -90,10 +90,7 @@ describe('OrdersService — wholesale rules', () => {
   });
 
   it('applies the tier discount to wholesale order prices', async () => {
-    const order = await service.create(
-      { items: [{ variantId: 'v1', quantity: 20 }] },
-      wholesaler,
-    );
+    const order = await service.create({ items: [{ variantId: 'v1', quantity: 20 }] }, wholesaler);
     // 9000 retail at 15% off → 7650; 20 units → 153000.
     expect(order.items[0].unitPrice).toBe(7650);
     expect(order.totalAmount).toBe(153000);
@@ -144,10 +141,13 @@ describe('OrdersService — wholesale rules', () => {
     ).rejects.toThrow(ForbiddenException);
   });
 
-  it(BadRequestException.name + ': over-stock wholesale orders still fail the stock check', async () => {
-    inventoryService.currentQuantity.mockResolvedValueOnce(10);
-    await expect(
-      service.create({ items: [{ variantId: 'v1', quantity: 25 }] }, wholesaler),
-    ).rejects.toThrow('Insufficient stock');
-  });
+  it(
+    BadRequestException.name + ': over-stock wholesale orders still fail the stock check',
+    async () => {
+      inventoryService.currentQuantity.mockResolvedValueOnce(10);
+      await expect(
+        service.create({ items: [{ variantId: 'v1', quantity: 25 }] }, wholesaler),
+      ).rejects.toThrow('Insufficient stock');
+    },
+  );
 });

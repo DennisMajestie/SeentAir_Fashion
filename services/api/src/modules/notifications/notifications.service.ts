@@ -2,11 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
-import {
-  Notification,
-  NotificationChannel,
-  NotificationStatus,
-} from './notification.entity';
+import { Notification, NotificationChannel, NotificationStatus } from './notification.entity';
 import { TermiiAdapter } from './termii.adapter';
 
 export interface NotifyInput {

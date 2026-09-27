@@ -19,9 +19,27 @@ import { environment } from '../environments/environment';
         <nav [class.open]="menuOpen()">
           <a routerLink="/shop" (click)="menuOpen.set(false)">Shop</a>
           <a routerLink="/account" (click)="menuOpen.set(false)">Account</a>
-          <a [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Wholesale</a>
-          <a [href]="environment.adminUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Admin</a>
-          <a [href]="environment.partnerUrl" target="_blank" rel="noopener noreferrer" (click)="menuOpen.set(false)">Partners</a>
+          <a
+            [href]="environment.wholesaleUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            (click)="menuOpen.set(false)"
+            >Wholesale</a
+          >
+          <a
+            [href]="environment.adminUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            (click)="menuOpen.set(false)"
+            >Admin</a
+          >
+          <a
+            [href]="environment.partnerUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            (click)="menuOpen.set(false)"
+            >Partners</a
+          >
         </nav>
         <!-- Cart lives outside <nav> so it stays reachable at every width,
              next to the menu toggle rather than hidden inside the menu. -->
@@ -29,19 +47,39 @@ import { environment } from '../environments/environment';
           <button
             class="theme-toggle"
             type="button"
-            [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+            [attr.aria-label]="
+              theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+            "
             [attr.title]="theme.theme() === 'dark' ? 'Light mode' : 'Dark mode'"
             (click)="theme.toggle()"
           >
             @if (theme.theme() === 'dark') {
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
                 <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                <path
+                  d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+                />
               </svg>
             } @else {
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
                 <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
               </svg>
             }
@@ -51,34 +89,71 @@ import { environment } from '../environments/environment';
             (mouseenter)="searchOpen.set(true)"
             (mouseleave)="searchOpen.set(false)"
           >
-            <button class="cart-btn" type="button" aria-label="Search products"
-              (click)="openSearch()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <button
+              class="cart-btn"
+              type="button"
+              aria-label="Search products"
+              (click)="openSearch()"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
                 <circle cx="11" cy="11" r="7" />
                 <path d="m20 20-3.5-3.5" />
               </svg>
             </button>
             <div class="mini-panel search-panel" [class.open]="searchOpen()" role="search">
-              <input #si class="search-input" type="search" [value]="searchTerm()"
-                (input)="searchTerm.set(si.value)" autocomplete="off" spellcheck="false"
-                placeholder="Search tees, joggers, hoods…" aria-label="Search products" />
+              <input
+                #si
+                class="search-input"
+                type="search"
+                [value]="searchTerm()"
+                (input)="searchTerm.set(si.value)"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="Search tees, joggers, hoods…"
+                aria-label="Search products"
+              />
               @if (searchResults().length > 0) {
                 <ul class="search-results">
                   @for (r of searchResults(); track r.id) {
                     <li>
-                      <a class="search-item" [routerLink]="['/product', r.id]" (click)="closeSearch()">
-                        <img [src]="r.variants[0]?.imageUrl || 'assets/shop-1.jpg'" [alt]="r.name" />
+                      <a
+                        class="search-item"
+                        [routerLink]="['/product', r.id]"
+                        (click)="closeSearch()"
+                      >
+                        <img
+                          [src]="r.variants[0]?.imageUrl || 'assets/shop-1.jpg'"
+                          [alt]="r.name"
+                        />
                         <span class="si-info">
                           <span class="si-name">{{ r.name }}</span>
-                          <span class="muted small">{{ r.category || 'Seentair' }} · ₦{{ r.basePrice | number: '1.0-0' }}</span>
+                          <span class="muted small"
+                            >{{ r.category || 'Seentair' }} · ₦{{
+                              r.basePrice | number: '1.0-0'
+                            }}</span
+                          >
                         </span>
                       </a>
                     </li>
                   }
                 </ul>
               } @else {
-                <p class="muted small search-empty">{{ searchTerm().trim().length ? 'No matches in the collection.' : 'Type to search the collection.' }}</p>
+                <p class="muted small search-empty">
+                  {{
+                    searchTerm().trim().length
+                      ? 'No matches in the collection.'
+                      : 'Type to search the collection.'
+                  }}
+                </p>
               }
             </div>
           </div>
@@ -87,12 +162,28 @@ import { environment } from '../environments/environment';
             (mouseenter)="wishOpen.set(true)"
             (mouseleave)="wishOpen.set(false)"
           >
-            <button class="cart-btn" type="button" aria-label="Wishlist"
-              [attr.aria-label]="wish.count === 1 ? 'Wishlist, 1 item' : 'Wishlist, ' + wish.count + ' items'"
-              (click)="wishOpen.set(true)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+            <button
+              class="cart-btn"
+              type="button"
+              aria-label="Wishlist"
+              [attr.aria-label]="
+                wish.count === 1 ? 'Wishlist, 1 item' : 'Wishlist, ' + wish.count + ' items'
+              "
+              (click)="wishOpen.set(true)"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path
+                  d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z"
+                />
               </svg>
               @if (wish.count > 0) {
                 <span class="cart-count">{{ wish.count }}</span>
@@ -100,7 +191,9 @@ import { environment } from '../environments/environment';
             </button>
             @if (wish.items().length > 0) {
               <div class="mini-panel" [class.open]="wishOpen()">
-                <h4 class="mini-head">Wishlist <span class="count">[{{ wish.count }}]</span></h4>
+                <h4 class="mini-head">
+                  Wishlist <span class="count">[{{ wish.count }}]</span>
+                </h4>
                 <ul class="mini-items">
                   @for (item of wish.items(); track item.productId) {
                     <li>
@@ -109,12 +202,20 @@ import { environment } from '../environments/environment';
                         <span class="mini-name">{{ item.productName }}</span>
                         <span class="muted small">₦{{ item.price | number: '1.0-0' }}</span>
                       </span>
-                      <button class="mini-remove" type="button" title="Remove from wishlist"
-                        (click)="wish.remove(item.productId)">×</button>
+                      <button
+                        class="mini-remove"
+                        type="button"
+                        title="Remove from wishlist"
+                        (click)="wish.remove(item.productId)"
+                      >
+                        ×
+                      </button>
                     </li>
                   }
                 </ul>
-                <a class="btn btn-primary mini-cta" routerLink="/shop" (click)="wishOpen.set(false)">Shop these pieces</a>
+                <a class="btn btn-primary mini-cta" routerLink="/shop" (click)="wishOpen.set(false)"
+                  >Shop these pieces</a
+                >
               </div>
             }
           </div>
@@ -126,11 +227,21 @@ import { environment } from '../environments/environment';
             <a
               routerLink="/cart"
               class="cart-btn"
-              [attr.aria-label]="cart.count === 1 ? 'Cart, 1 item' : 'Cart, ' + cart.count + ' items'"
+              [attr.aria-label]="
+                cart.count === 1 ? 'Cart, 1 item' : 'Cart, ' + cart.count + ' items'
+              "
               (click)="menuOpen.set(false)"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
                 <path d="M6 8h12l-1 11.2A2 2 0 0 1 15 21H9a2 2 0 0 1-2-1.8L6 8Z" />
                 <path d="M9 8V6.2a3 3 0 0 1 6 0V8" />
               </svg>
@@ -140,16 +251,24 @@ import { environment } from '../environments/environment';
             </a>
             @if (cart.items().length > 0) {
               <div class="mini-panel" [class.open]="cartOpen()">
-                <h4 class="mini-head">Your cart <span class="count">[{{ cart.count }}]</span></h4>
+                <h4 class="mini-head">
+                  Your cart <span class="count">[{{ cart.count }}]</span>
+                </h4>
                 <ul class="mini-items">
                   @for (item of cart.items(); track item.variantId) {
                     <li>
                       <img [src]="item.imageUrl || 'assets/shop-1.jpg'" [alt]="item.productName" />
                       <span class="mini-info">
                         <span class="mini-name">{{ item.productName }}</span>
-                        <span class="muted small">{{ item.size || 'OS' }} · {{ item.colour || '—' }} · ×{{ item.quantity }}</span>
+                        <span class="muted small"
+                          >{{ item.size || 'OS' }} · {{ item.colour || '—' }} · ×{{
+                            item.quantity
+                          }}</span
+                        >
                       </span>
-                      <span class="mini-price">₦{{ item.unitPrice * item.quantity | number: '1.0-0' }}</span>
+                      <span class="mini-price"
+                        >₦{{ item.unitPrice * item.quantity | number: '1.0-0' }}</span
+                      >
                     </li>
                   }
                 </ul>
@@ -157,7 +276,9 @@ import { environment } from '../environments/environment';
                   <span class="muted small">Subtotal</span>
                   <span class="mini-total">₦{{ cart.total | number: '1.0-0' }}</span>
                 </div>
-                <a class="btn btn-primary mini-cta" routerLink="/cart" (click)="cartOpen.set(false)">View cart &amp; checkout</a>
+                <a class="btn btn-primary mini-cta" routerLink="/cart" (click)="cartOpen.set(false)"
+                  >View cart &amp; checkout</a
+                >
               </div>
             }
           </div>
@@ -179,7 +300,9 @@ import { environment } from '../environments/environment';
       <div class="wrap-col">
         <div class="footer-cols">
           <div class="footer-col footer-brand">
-            <span class="logo-footer"><img src="assets/logo.png" alt="SEENTAIR" width="180" height="36" /></span>
+            <span class="logo-footer"
+              ><img src="assets/logo.png" alt="SEENTAIR" width="180" height="36"
+            /></span>
             <p>Streetwear manufactured in-house at our Aba factory — one atelier, no middlemen.</p>
           </div>
           <nav class="footer-col" aria-label="Shop">
@@ -203,9 +326,15 @@ import { environment } from '../environments/environment';
           </nav>
           <nav class="footer-col" aria-label="Business">
             <h4>Business</h4>
-            <a [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer">Wholesale portal</a>
-            <a [href]="environment.adminUrl" target="_blank" rel="noopener noreferrer">Admin dashboard</a>
-            <a [href]="environment.partnerUrl" target="_blank" rel="noopener noreferrer">Partner portal</a>
+            <a [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer"
+              >Wholesale portal</a
+            >
+            <a [href]="environment.adminUrl" target="_blank" rel="noopener noreferrer"
+              >Admin dashboard</a
+            >
+            <a [href]="environment.partnerUrl" target="_blank" rel="noopener noreferrer"
+              >Partner portal</a
+            >
           </nav>
         </div>
         <div class="footer-legal">

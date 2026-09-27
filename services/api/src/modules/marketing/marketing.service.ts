@@ -6,9 +6,7 @@ import { CreateCampaignDto } from './dto/create-campaign.dto';
 
 @Injectable()
 export class MarketingService {
-  constructor(
-    @InjectRepository(Campaign) private readonly campaignRepo: Repository<Campaign>,
-  ) {}
+  constructor(@InjectRepository(Campaign) private readonly campaignRepo: Repository<Campaign>) {}
 
   async create(dto: CreateCampaignDto): Promise<Campaign> {
     if (new Date(dto.endDate) <= new Date(dto.startDate)) {

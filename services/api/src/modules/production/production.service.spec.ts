@@ -14,7 +14,14 @@ import { ProductionTelemetry } from './entities/production-telemetry.entity';
 import { QCDisposition, QCRejection } from './entities/qc-rejection.entity';
 import { ProductionService } from './production.service';
 
-const STAGES = ['Production Planned', 'Cutting', 'Sewing', 'Finishing', 'Quality Control', 'Completed'];
+const STAGES = [
+  'Production Planned',
+  'Cutting',
+  'Sewing',
+  'Finishing',
+  'Quality Control',
+  'Completed',
+];
 
 describe('ProductionService', () => {
   let service: ProductionService;
@@ -39,7 +46,11 @@ describe('ProductionService', () => {
     find: jest.fn(async () => []),
   };
   const costRepo = { findOne: jest.fn(), create: jest.fn((v) => v), save: jest.fn(async (v) => v) };
-  const scanRepo = { create: jest.fn((v) => v), save: jest.fn(async (v) => v), find: jest.fn(async () => []) };
+  const scanRepo = {
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => v),
+    find: jest.fn(async () => []),
+  };
   const telemetryRepo = {
     create: jest.fn((v) => v),
     save: jest.fn(async (v) => v),

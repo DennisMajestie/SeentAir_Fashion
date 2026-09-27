@@ -35,7 +35,9 @@ export class MailAdapter {
         text: body,
       });
     } catch (err) {
-      this.logger.error(`Mail send failed for "${subject}" -> ${to}: ${(err as Error).message ?? err}`);
+      this.logger.error(
+        `Mail send failed for "${subject}" -> ${to}: ${(err as Error).message ?? err}`,
+      );
     }
   }
 

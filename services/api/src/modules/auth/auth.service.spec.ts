@@ -37,7 +37,11 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
   };
   const usersService: Record<string, jest.Mock> = {
     findByEmailWithPassword: jest.fn(async () => user),
-    findById: jest.fn(async () => ({ id: 'u1', status: UserStatus.ACTIVE, role: { name: RoleName.CUSTOMER } })),
+    findById: jest.fn(async () => ({
+      id: 'u1',
+      status: UserStatus.ACTIVE,
+      role: { name: RoleName.CUSTOMER },
+    })),
     findByIdWithTotpSecret: jest.fn(),
     create: jest.fn(),
   };
@@ -112,7 +116,9 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
 
     it('rejects logins while locked — even with the correct password', async () => {
       user.lockedUntil = new Date(Date.now() + 60_000);
-      await expect(service.login('c@x.test', 'CorrectHorse1!')).rejects.toThrow('temporarily locked');
+      await expect(service.login('c@x.test', 'CorrectHorse1!')).rejects.toThrow(
+        'temporarily locked',
+      );
     });
 
     it('a successful login resets the counter and issues tokens', async () => {
@@ -141,7 +147,12 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
     });
 
     it('rotates: old token revoked and linked to its replacement', async () => {
-      refreshRecord = { id: 'jti-old', userId: 'u1', expiresAt: new Date(Date.now() + 10000), revokedAt: null };
+      refreshRecord = {
+        id: 'jti-old',
+        userId: 'u1',
+        expiresAt: new Date(Date.now() + 10000),
+        revokedAt: null,
+      };
       await service.refresh('old-token');
       expect(refreshRepo.update).toHaveBeenCalledWith(
         'jti-old',
@@ -150,7 +161,12 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
     });
 
     it('REUSE of a rotated token revokes the whole session family', async () => {
-      refreshRecord = { id: 'jti-old', userId: 'u1', expiresAt: new Date(Date.now() + 10000), revokedAt: new Date() };
+      refreshRecord = {
+        id: 'jti-old',
+        userId: 'u1',
+        expiresAt: new Date(Date.now() + 10000),
+        revokedAt: new Date(),
+      };
       await expect(service.refresh('stolen-token')).rejects.toThrow('reuse detected');
       expect(refreshRepo.update).toHaveBeenCalledWith(
         { userId: 'u1', revokedAt: expect.anything() },
@@ -258,15 +274,36 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
 
     it('rejects expired, used, or unknown tokens', async () => {
       resetRecord = null;
-      await expect(service.resetPassword('a'.repeat(64), 'NewPass123!')).rejects.toThrow('invalid or has expired');
-      resetRecord = { id: 'r1', userId: 'u1', usedAt: new Date(), expiresAt: new Date(Date.now() + 1000) };
-      await expect(service.resetPassword('a'.repeat(64), 'NewPass123!')).rejects.toThrow('invalid or has expired');
-      resetRecord = { id: 'r1', userId: 'u1', usedAt: null, expiresAt: new Date(Date.now() - 1000) };
-      await expect(service.resetPassword('a'.repeat(64), 'NewPass123!')).rejects.toThrow('invalid or has expired');
+      await expect(service.resetPassword('a'.repeat(64), 'NewPass123!')).rejects.toThrow(
+        'invalid or has expired',
+      );
+      resetRecord = {
+        id: 'r1',
+        userId: 'u1',
+        usedAt: new Date(),
+        expiresAt: new Date(Date.now() + 1000),
+      };
+      await expect(service.resetPassword('a'.repeat(64), 'NewPass123!')).rejects.toThrow(
+        'invalid or has expired',
+      );
+      resetRecord = {
+        id: 'r1',
+        userId: 'u1',
+        usedAt: null,
+        expiresAt: new Date(Date.now() - 1000),
+      };
+      await expect(service.resetPassword('a'.repeat(64), 'NewPass123!')).rejects.toThrow(
+        'invalid or has expired',
+      );
     });
 
     it('a valid reset updates the hash, clears lockout, and revokes all sessions', async () => {
-      resetRecord = { id: 'r1', userId: 'u1', usedAt: null, expiresAt: new Date(Date.now() + 60000) };
+      resetRecord = {
+        id: 'r1',
+        userId: 'u1',
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 60000),
+      };
       await service.resetPassword('b'.repeat(64), 'NewPass123!');
       expect(resetRepo.update).toHaveBeenCalledWith('r1', { usedAt: expect.any(Date) });
       const update = userRepo.update.mock.calls[0][1];

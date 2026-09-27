@@ -22,7 +22,11 @@ describe('CatalogueService — price-change approval gate', () => {
   };
   const emptyRepo = { findOne: jest.fn(), find: jest.fn(), create: jest.fn(), save: jest.fn() };
   const approvalsService = { assertApproved: jest.fn() };
-  const dataSource = { transaction: jest.fn(async (fn: (m: unknown) => Promise<unknown>) => fn({ getRepository: () => emptyRepo })) };
+  const dataSource = {
+    transaction: jest.fn(async (fn: (m: unknown) => Promise<unknown>) =>
+      fn({ getRepository: () => emptyRepo }),
+    ),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();

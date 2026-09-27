@@ -45,7 +45,14 @@ export class DeliveryLeg {
   @Column({ name: 'tracking_ref', type: 'varchar', nullable: true })
   trackingRef: string | null;
 
-  @Column({ name: 'weight_kg', type: 'numeric', precision: 8, scale: 2, nullable: true, transformer: numericTransformer })
+  @Column({
+    name: 'weight_kg',
+    type: 'numeric',
+    precision: 8,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   weightKg: number | null;
 
   @Column({ type: 'varchar', nullable: true })
@@ -66,7 +73,13 @@ export class DeliveryLeg {
   driverPhone: string | null;
 
   /** Quoted delivery cost (weight + location — appendix 14). */
-  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true, transformer: numericTransformer })
+  @Column({
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   cost: number | null;
 
   @Column({ name: 'created_by', type: 'uuid', nullable: true })

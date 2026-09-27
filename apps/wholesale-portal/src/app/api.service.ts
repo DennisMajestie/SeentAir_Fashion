@@ -110,7 +110,9 @@ export class ApiService {
     return this.http.get<{ data: Invoice[]; total: number }>(`${API_BASE}/wholesale/invoices`);
   }
 
-  placeOrder(items: Array<{ variantId: string; quantity: number }>): Observable<{ id: string; totalAmount: number }> {
+  placeOrder(
+    items: Array<{ variantId: string; quantity: number }>,
+  ): Observable<{ id: string; totalAmount: number }> {
     return this.http.post<{ id: string; totalAmount: number }>(`${API_BASE}/orders`, {
       items,
       source: 'wholesale_portal',

@@ -22,8 +22,8 @@ export class CartService {
   readonly lines = signal<CartLine[]>([]);
 
   readonly units = computed(() => this.lines().reduce((n, l) => n + l.quantity, 0));
-  readonly amount = computed(() =>
-    Math.round(this.lines().reduce((n, l) => n + l.quantity * l.unitPrice, 0) * 100) / 100,
+  readonly amount = computed(
+    () => Math.round(this.lines().reduce((n, l) => n + l.quantity * l.unitPrice, 0) * 100) / 100,
   );
 
   /** Merge quantities in (same variant adds up); zero/negative input is ignored. */

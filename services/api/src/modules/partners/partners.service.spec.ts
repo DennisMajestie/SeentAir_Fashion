@@ -41,7 +41,13 @@ describe('PartnersService — confirmed profit-sharing model', () => {
     report: jest.fn(async (kind: string) =>
       kind === 'income'
         ? { type: 'income', total: 1_000_000, byType: {} }
-        : { type: 'profit', income: 1_000_000, expenditure: 400_000, profit: 600_000, net: 600_000 },
+        : {
+            type: 'profit',
+            income: 1_000_000,
+            expenditure: 400_000,
+            profit: 600_000,
+            net: 600_000,
+          },
     ),
   };
   const config = {

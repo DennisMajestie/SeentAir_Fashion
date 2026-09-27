@@ -1,5 +1,12 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { ApiService, Me, PartnerDashboard, InventorySummaryRow, PartnerMessage, ProductVariantRef } from './api.service';
+import {
+  ApiService,
+  Me,
+  PartnerDashboard,
+  InventorySummaryRow,
+  PartnerMessage,
+  ProductVariantRef,
+} from './api.service';
 
 /**
  * One dashboard fetch shared by every page — the API's confirmed
@@ -105,7 +112,8 @@ export class PortalStore {
       },
       error: (err: { error?: { message?: string } }) =>
         this.loadError.set(
-          err?.error?.message ?? 'No partner record is linked to this account yet — contact Seentair.',
+          err?.error?.message ??
+            'No partner record is linked to this account yet — contact Seentair.',
         ),
     });
     this.api.me().subscribe({

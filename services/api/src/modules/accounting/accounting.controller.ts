@@ -55,11 +55,7 @@ export class AccountingController {
 
   @Get('reports/:type')
   @RequireAccess(ModuleName.ACCOUNTING, AccessLevel.VIEW)
-  report(
-    @Param('type') type: ReportType,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-  ) {
+  report(@Param('type') type: ReportType, @Query('from') from?: string, @Query('to') to?: string) {
     return this.accountingService.report(
       type,
       from ? new Date(from) : undefined,

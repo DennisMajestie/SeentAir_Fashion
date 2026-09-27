@@ -1,4 +1,15 @@
-import { IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, IsUrl, IsUUID, Max, Min } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUrl,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class UpsertTechPackDto {
   @IsOptional()

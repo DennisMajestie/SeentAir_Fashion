@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { AccessLevel, ModuleName, RoleName } from '../../common/enums';
@@ -37,8 +33,16 @@ describe('OrdersService — payment rules', () => {
     save: jest.fn(async (v) => v),
     findAndCount: jest.fn(async () => [[], 0]),
   };
-  const paymentRepo = { findOne: jest.fn(), create: jest.fn((v) => v), save: jest.fn(async (v) => v) };
-  const eventRepo = { create: jest.fn((v) => v), save: jest.fn(async (v) => v), find: jest.fn(async () => []) };
+  const paymentRepo = {
+    findOne: jest.fn(),
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => v),
+  };
+  const eventRepo = {
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => v),
+    find: jest.fn(async () => []),
+  };
   const inventoryService = { record: jest.fn(), currentQuantity: jest.fn(async () => 100) };
   const permissionsService = {
     getAccessLevel: jest.fn(async (_role: RoleName, module: ModuleName) => {
@@ -111,7 +115,11 @@ describe('OrdersService — payment rules', () => {
   });
 
   it('full payment confirms the order and decrements stock via ledger movements', async () => {
-    await service.recordOfflinePayment('o1', { method: PaymentMethod.CASH, amount: 17000 }, finance);
+    await service.recordOfflinePayment(
+      'o1',
+      { method: PaymentMethod.CASH, amount: 17000 },
+      finance,
+    );
     expect(order.paymentStatus).toBe(PaymentStatus.PAID);
     expect(order.status).toBe(OrderStatus.ORDER_RECEIVED);
     expect(inventoryService.record).toHaveBeenCalledWith(

@@ -20,6 +20,12 @@ export class OrderItem {
   quantity: number;
 
   /** Price at order time (variant override or product base price) — immutable history. */
-  @Column({ name: 'unit_price', type: 'numeric', precision: 12, scale: 2, transformer: numericTransformer })
+  @Column({
+    name: 'unit_price',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   unitPrice: number;
 }

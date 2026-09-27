@@ -3,7 +3,15 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../api.service';
 
-interface CampaignRow { id: string; name: string; type: string; channel: string | null; discountPercent: number | null; startDate: string; endDate: string; }
+interface CampaignRow {
+  id: string;
+  name: string;
+  type: string;
+  channel: string | null;
+  discountPercent: number | null;
+  startDate: string;
+  endDate: string;
+}
 
 /** Marketing — Stitch layout: campaigns table with type chips, create panel,
     source performance from analytics. */
@@ -15,18 +23,39 @@ interface CampaignRow { id: string; name: string; type: string; channel: string 
 
     <div class="cols">
       <section class="panel lead">
-        <p class="section-label">Campaigns <span class="count">[{{ campaigns().length | number: '2.0' }}]</span></p>
+        <p class="section-label">
+          Campaigns <span class="count">[{{ campaigns().length | number: '2.0' }}]</span>
+        </p>
         <table class="table">
-          <thead><tr><th>Name</th><th>Type</th><th>Channel</th><th>Discount</th><th>Runs</th><th>Live</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Channel</th>
+              <th>Discount</th>
+              <th>Runs</th>
+              <th>Live</th>
+            </tr>
+          </thead>
           <tbody>
             @for (c of campaigns(); track c.id) {
               <tr>
-                <td><strong>{{ c.name }}</strong></td>
-                <td><span class="chip acid">{{ c.type.replaceAll('_', ' ') }}</span></td>
+                <td>
+                  <strong>{{ c.name }}</strong>
+                </td>
+                <td>
+                  <span class="chip acid">{{ c.type.replaceAll('_', ' ') }}</span>
+                </td>
                 <td class="mono small">{{ c.channel || '—' }}</td>
-                <td class="mono">{{ c.discountPercent !== null ? c.discountPercent + '%' : '—' }}</td>
+                <td class="mono">
+                  {{ c.discountPercent !== null ? c.discountPercent + '%' : '—' }}
+                </td>
                 <td class="mono small">{{ c.startDate }} → {{ c.endDate }}</td>
-                <td><span class="chip" [class.ok]="isActive(c)">{{ isActive(c) ? 'ACTIVE' : 'inactive' }}</span></td>
+                <td>
+                  <span class="chip" [class.ok]="isActive(c)">{{
+                    isActive(c) ? 'ACTIVE' : 'inactive'
+                  }}</span>
+                </td>
               </tr>
             }
           </tbody>
@@ -37,7 +66,8 @@ interface CampaignRow { id: string; name: string; type: string; channel: string 
         <p class="section-label">Create campaign</p>
         <form (ngSubmit)="create()">
           <label>Name <input [(ngModel)]="nc.name" name="cname" required /></label>
-          <label>Type
+          <label
+            >Type
             <select [(ngModel)]="nc.type" name="ctype">
               <option value="campaign">campaign</option>
               <option value="promotion">promotion</option>
@@ -45,16 +75,25 @@ interface CampaignRow { id: string; name: string; type: string; channel: string 
               <option value="visibility_boost">visibility boost</option>
             </select>
           </label>
-          <label>Channel <input [(ngModel)]="nc.channel" name="cchan" placeholder="instagram" /></label>
-          <label>Discount % <input type="number" min="0" max="100" [(ngModel)]="nc.discountPercent" name="cdisc" /></label>
-          <label>Start <input type="date" [(ngModel)]="nc.startDate" name="cstart" required /></label>
+          <label
+            >Channel <input [(ngModel)]="nc.channel" name="cchan" placeholder="instagram"
+          /></label>
+          <label
+            >Discount %
+            <input type="number" min="0" max="100" [(ngModel)]="nc.discountPercent" name="cdisc"
+          /></label>
+          <label
+            >Start <input type="date" [(ngModel)]="nc.startDate" name="cstart" required
+          /></label>
           <label>End <input type="date" [(ngModel)]="nc.endDate" name="cend" required /></label>
           <button class="cta small" type="submit">Create</button>
         </form>
       </section>
     </div>
 
-    <p class="section-label">Source performance <span class="count">// where sales come from</span></p>
+    <p class="section-label">
+      Source performance <span class="count">// where sales come from</span>
+    </p>
     <div class="tiles">
       @for (s of sources(); track s.source) {
         <div class="tile">
@@ -64,8 +103,12 @@ interface CampaignRow { id: string; name: string; type: string; channel: string 
         </div>
       }
     </div>
-    @if (message()) { <p class="success">{{ message() }}</p> }
-    @if (error()) { <p class="error">{{ error() }}</p> }
+    @if (message()) {
+      <p class="success">{{ message() }}</p>
+    }
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
   `,
 })
 export class MarketingAdminPage implements OnInit {
@@ -74,9 +117,18 @@ export class MarketingAdminPage implements OnInit {
   readonly sources = signal<Array<{ source: string; orders: number; revenue: number }>>([]);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
-  nc = { name: '', type: 'campaign', channel: '', discountPercent: null as number | null, startDate: '', endDate: '' };
+  nc = {
+    name: '',
+    type: 'campaign',
+    channel: '',
+    discountPercent: null as number | null,
+    startDate: '',
+    endDate: '',
+  };
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+  }
   private load(): void {
     this.api.campaigns().subscribe((res) => this.campaigns.set(res as unknown as CampaignRow[]));
     this.api.dashboard().subscribe((d) => this.sources.set(d.marketingSourcePerformance));
@@ -88,13 +140,22 @@ export class MarketingAdminPage implements OnInit {
   }
 
   create(): void {
-    this.api.createCampaign({
-      name: this.nc.name, type: this.nc.type, channel: this.nc.channel || undefined,
-      discountPercent: this.nc.discountPercent ?? undefined,
-      startDate: this.nc.startDate, endDate: this.nc.endDate,
-    }).subscribe({
-      next: () => { this.message.set('Campaign created.'); this.error.set(null); this.load(); },
-      error: (e) => this.error.set(e?.error?.message ?? 'Create failed — check the dates.'),
-    });
+    this.api
+      .createCampaign({
+        name: this.nc.name,
+        type: this.nc.type,
+        channel: this.nc.channel || undefined,
+        discountPercent: this.nc.discountPercent ?? undefined,
+        startDate: this.nc.startDate,
+        endDate: this.nc.endDate,
+      })
+      .subscribe({
+        next: () => {
+          this.message.set('Campaign created.');
+          this.error.set(null);
+          this.load();
+        },
+        error: (e) => this.error.set(e?.error?.message ?? 'Create failed — check the dates.'),
+      });
   }
 }

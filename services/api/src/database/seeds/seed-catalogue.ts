@@ -60,8 +60,7 @@ function sizeRun(
 const CATALOGUE: SeedProduct[] = [
   {
     name: 'Box Tee',
-    description:
-      '280GSM Aba-loomed cotton. Dropped shoulder, boxy construct, raw-edge neckline.',
+    description: '280GSM Aba-loomed cotton. Dropped shoulder, boxy construct, raw-edge neckline.',
     category: 'tops',
     basePrice: 24000,
     collection: 'Drop 04 — Harmattan',
@@ -109,8 +108,7 @@ const CATALOGUE: SeedProduct[] = [
   },
   {
     name: 'Cargo',
-    description:
-      'Pattern-block cargo in washed ripstop. Bellowed thigh pocket, drawcord hem.',
+    description: 'Pattern-block cargo in washed ripstop. Bellowed thigh pocket, drawcord hem.',
     category: 'bottoms',
     basePrice: 42000,
     collection: 'Drop 04 — Harmattan',
@@ -161,8 +159,7 @@ const CATALOGUE: SeedProduct[] = [
   },
   {
     name: 'Suit — Made to Order',
-    description:
-      'Bespoke two-piece cut to your measurements in the Aba atelier. 3-week lead time.',
+    description: 'Bespoke two-piece cut to your measurements in the Aba atelier. 3-week lead time.',
     category: 'tailoring',
     basePrice: 185000,
     collection: 'Atelier Commission',

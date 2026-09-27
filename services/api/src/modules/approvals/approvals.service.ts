@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ApprovalActionType, ApprovalStatus } from '../../common/enums';
@@ -76,8 +72,7 @@ export class ApprovalsService {
     if (request.requestedBy.id === decider.id) {
       throw new ForbiddenException('Requesters cannot decide their own approval requests');
     }
-    request.status =
-      decision === 'approved' ? ApprovalStatus.APPROVED : ApprovalStatus.REJECTED;
+    request.status = decision === 'approved' ? ApprovalStatus.APPROVED : ApprovalStatus.REJECTED;
     request.approvedBy = await this.usersService.findById(decider.id);
     request.decidedAt = new Date();
     request.justification = justification ?? null;

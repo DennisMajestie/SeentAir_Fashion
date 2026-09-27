@@ -11,26 +11,54 @@ import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, FormsModule, RouterOutlet, RouterLink, RouterLinkActive, AppSearchComponent, AppOpsbarComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    AppSearchComponent,
+    AppOpsbarComponent,
+  ],
   template: `
     @if (!api.isLoggedIn) {
       <main class="login-shell">
         <button
           class="theme-toggle login-theme-toggle"
           type="button"
-          [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+          [attr.aria-label]="
+            theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+          "
           [attr.title]="theme.theme() === 'dark' ? 'Light mode' : 'Dark mode'"
           (click)="theme.toggle()"
         >
           @if (theme.theme() === 'dark') {
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+              focusable="false"
+            >
               <circle cx="12" cy="12" r="4" />
-              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+              <path
+                d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+              />
             </svg>
           } @else {
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+              focusable="false"
+            >
               <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
             </svg>
           }
@@ -39,7 +67,13 @@ import { environment } from '../environments/environment';
           <span class="brand-grid" aria-hidden="true"></span>
           <span class="brand-glow" aria-hidden="true"></span>
           <div class="brand-content">
-            <img class="brand-logo" src="assets/logo.png" alt="SEENTAIR Operations" width="160" height="32" />
+            <img
+              class="brand-logo"
+              src="assets/logo.png"
+              alt="SEENTAIR Operations"
+              width="160"
+              height="32"
+            />
             <h1 class="brand-headline">Run<br /><span>The drop.</span></h1>
           </div>
           <footer class="brand-foot">
@@ -52,36 +86,83 @@ import { environment } from '../environments/environment';
         <section class="auth-col">
           @if (!challengeToken() && resetMode()) {
             <div class="auth-wrap">
-              <form class="auth-card" (ngSubmit)="resetSent() ? submitReset() : sendForgot()" novalidate>
+              <form
+                class="auth-card"
+                (ngSubmit)="resetSent() ? submitReset() : sendForgot()"
+                novalidate
+              >
                 <p class="eyebrow">Staff access</p>
                 <h1>Reset password.</h1>
-                <p class="subtext">{{ resetSent() ? 'Enter the token from your email plus a new password.' : 'We will send a 64-character reset token to your inbox.' }}</p>
+                <p class="subtext">
+                  {{
+                    resetSent()
+                      ? 'Enter the token from your email plus a new password.'
+                      : 'We will send a 64-character reset token to your inbox.'
+                  }}
+                </p>
 
                 @if (!resetSent()) {
                   <label class="field">
                     <span class="field-label">Email</span>
-                    <input type="email" [(ngModel)]="email" name="remail" placeholder="you@seentair.ng" autocomplete="email" required />
-                    @if (errors().email) { <span class="field-err">{{ errors().email }}</span> }
+                    <input
+                      type="email"
+                      [(ngModel)]="email"
+                      name="remail"
+                      placeholder="you@seentair.ng"
+                      autocomplete="email"
+                      required
+                    />
+                    @if (errors().email) {
+                      <span class="field-err">{{ errors().email }}</span>
+                    }
                   </label>
                 } @else {
                   <label class="field">
                     <span class="field-label">Reset token</span>
-                    <input class="mono" [(ngModel)]="resetToken" name="rtoken" placeholder="64 hex chars from the email" required />
+                    <input
+                      class="mono"
+                      [(ngModel)]="resetToken"
+                      name="rtoken"
+                      placeholder="64 hex chars from the email"
+                      required
+                    />
                   </label>
                   <label class="field">
                     <span class="field-label">New password</span>
-                    <input [type]="showPassword ? 'text' : 'password'" [(ngModel)]="newPassword" name="rpass" placeholder="at least 8 characters" autocomplete="new-password" required />
+                    <input
+                      [type]="showPassword ? 'text' : 'password'"
+                      [(ngModel)]="newPassword"
+                      name="rpass"
+                      placeholder="at least 8 characters"
+                      autocomplete="new-password"
+                      required
+                    />
                   </label>
                   <label class="field">
                     <span class="field-label">Confirm new password</span>
-                    <input [type]="showPassword ? 'text' : 'password'" [(ngModel)]="newPassword2" name="rpass2" placeholder="repeat it" autocomplete="new-password" required />
+                    <input
+                      [type]="showPassword ? 'text' : 'password'"
+                      [(ngModel)]="newPassword2"
+                      name="rpass2"
+                      placeholder="repeat it"
+                      autocomplete="new-password"
+                      required
+                    />
                   </label>
                 }
 
-                <button class="cta signin" type="submit" [disabled]="loading()">{{ loading() ? 'Working…' : (resetSent() ? 'Set new password' : 'Send reset token →') }}</button>
+                <button class="cta signin" type="submit" [disabled]="loading()">
+                  {{
+                    loading() ? 'Working…' : resetSent() ? 'Set new password' : 'Send reset token →'
+                  }}
+                </button>
                 <button class="link" type="button" (click)="backToSignin()">Back to sign in</button>
-                @if (formError()) { <p class="field-err form-err">{{ formError() }}</p> }
-                @if (resetMsg()) { <p class="success">{{ resetMsg() }}</p> }
+                @if (formError()) {
+                  <p class="field-err form-err">{{ formError() }}</p>
+                }
+                @if (resetMsg()) {
+                  <p class="success">{{ resetMsg() }}</p>
+                }
               </form>
             </div>
           } @else if (!challengeToken()) {
@@ -101,7 +182,9 @@ import { environment } from '../environments/environment';
                     autocomplete="email"
                     required
                   />
-                  @if (errors().email) { <span class="field-err">{{ errors().email }}</span> }
+                  @if (errors().email) {
+                    <span class="field-err">{{ errors().email }}</span>
+                  }
                 </label>
 
                 <label class="field">
@@ -122,7 +205,9 @@ import { environment } from '../environments/environment';
                       {{ showPassword ? 'Hide' : 'Show' }}
                     </button>
                   </span>
-                  @if (errors().password) { <span class="field-err">{{ errors().password }}</span> }
+                  @if (errors().password) {
+                    <span class="field-err">{{ errors().password }}</span>
+                  }
                 </label>
 
                 <label class="check">
@@ -145,7 +230,9 @@ import { environment } from '../environments/environment';
                     Sign in →
                   }
                 </button>
-                @if (formError()) { <p class="field-err form-err">{{ formError() }}</p> }
+                @if (formError()) {
+                  <p class="field-err form-err">{{ formError() }}</p>
+                }
               </form>
             </div>
           } @else {
@@ -170,7 +257,9 @@ import { environment } from '../environments/environment';
 
                 <button class="cta signin" type="submit">Verify</button>
                 <button class="link" type="button" (click)="challengeToken.set(null)">Back</button>
-                @if (error()) { <p class="field-err form-err">{{ error() }}</p> }
+                @if (error()) {
+                  <p class="field-err form-err">{{ error() }}</p>
+                }
               </form>
             </div>
           }
@@ -182,14 +271,38 @@ import { environment } from '../environments/environment';
           <div class="header-inner">
             <app-search />
             <nav class="top-tabs" aria-label="Other Seentair apps">
-              <a class="preview-tab" [href]="environment.storefrontUrl" target="_blank" rel="noopener noreferrer">
-                <span class="tab-ico" aria-hidden="true">storefront</span>Store<span class="tab-note">Preview</span>
+              <a
+                class="preview-tab"
+                [href]="environment.storefrontUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span class="tab-ico" aria-hidden="true">storefront</span>Store<span
+                  class="tab-note"
+                  >Preview</span
+                >
               </a>
-              <a class="preview-tab" [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer">
-                <span class="tab-ico" aria-hidden="true">inventory_2</span>Wholesale<span class="tab-note">Preview</span>
+              <a
+                class="preview-tab"
+                [href]="environment.wholesaleUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span class="tab-ico" aria-hidden="true">inventory_2</span>Wholesale<span
+                  class="tab-note"
+                  >Preview</span
+                >
               </a>
-              <a class="preview-tab" [href]="environment.partnerUrl" target="_blank" rel="noopener noreferrer">
-                <span class="tab-ico" aria-hidden="true">handshake</span>Partners<span class="tab-note">Preview</span>
+              <a
+                class="preview-tab"
+                [href]="environment.partnerUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span class="tab-ico" aria-hidden="true">handshake</span>Partners<span
+                  class="tab-note"
+                  >Preview</span
+                >
               </a>
             </nav>
             <div class="header-actions">
@@ -197,19 +310,39 @@ import { environment } from '../environments/environment';
               <button
                 class="theme-toggle"
                 type="button"
-                [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+                [attr.aria-label]="
+                  theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+                "
                 [attr.title]="theme.theme() === 'dark' ? 'Light mode' : 'Dark mode'"
                 (click)="theme.toggle()"
               >
                 @if (theme.theme() === 'dark') {
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
                     <circle cx="12" cy="12" r="4" />
-                    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                    <path
+                      d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+                    />
                   </svg>
                 } @else {
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
                     <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
                   </svg>
                 }
@@ -236,42 +369,101 @@ import { environment } from '../environments/environment';
             aria-hidden="true"
             tabindex="-1"
           ></button>
-          <aside id="sidebar" class="sidebar" [class.open]="menuOpen()" aria-label="Operations navigation">
-            <a class="sidebar-logo" routerLink="/" (click)="menuOpen.set(false)" aria-label="SEENTAIR Operations">
+          <aside
+            id="sidebar"
+            class="sidebar"
+            [class.open]="menuOpen()"
+            aria-label="Operations navigation"
+          >
+            <a
+              class="sidebar-logo"
+              routerLink="/"
+              (click)="menuOpen.set(false)"
+              aria-label="SEENTAIR Operations"
+            >
               <img src="assets/logo.png" alt="SEENTAIR" height="75" />
             </a>
             <nav>
               <span class="nav-group">Overview</span>
-              <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">dashboard</span>Dashboard</a>
-              <a routerLink="/approvals" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">fact_check</span>Approvals</a>
+              <a
+                routerLink="/"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{ exact: true }"
+                (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">dashboard</span>Dashboard</a
+              >
+              <a routerLink="/approvals" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">fact_check</span>Approvals</a
+              >
 
               <span class="nav-group">Commerce</span>
-              <a routerLink="/orders" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">shopping_bag</span>Orders</a>
-              <a routerLink="/returns" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">assignment_return</span>Returns</a>
-              <a routerLink="/custom-orders" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">checkroom</span>Custom orders</a>
-              <a routerLink="/wholesale" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">warehouse</span>Wholesale</a>
-              <a routerLink="/messages" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">forum</span>Messages</a>
+              <a routerLink="/orders" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">shopping_bag</span>Orders</a
+              >
+              <a routerLink="/returns" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">assignment_return</span>Returns</a
+              >
+              <a routerLink="/custom-orders" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">checkroom</span>Custom orders</a
+              >
+              <a routerLink="/wholesale" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">warehouse</span>Wholesale</a
+              >
+              <a routerLink="/messages" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">forum</span>Messages</a
+              >
 
               <span class="nav-group">Product</span>
-              <a routerLink="/catalogue" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">grid_view</span>Catalogue</a>
-              <a routerLink="/inventory" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">inventory_2</span>Inventory</a>
-              <a routerLink="/materials" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">layers</span>Materials</a>
-              <a routerLink="/production" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">precision_manufacturing</span>Production</a>
-              <a routerLink="/tech-pack" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">description</span>Tech pack</a>
-              <a routerLink="/floor-kiosk" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">tv</span>Floor kiosk</a>
+              <a routerLink="/catalogue" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">grid_view</span>Catalogue</a
+              >
+              <a routerLink="/inventory" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">inventory_2</span>Inventory</a
+              >
+              <a routerLink="/materials" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">layers</span>Materials</a
+              >
+              <a routerLink="/production" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">precision_manufacturing</span
+                >Production</a
+              >
+              <a routerLink="/tech-pack" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">description</span>Tech pack</a
+              >
+              <a routerLink="/floor-kiosk" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">tv</span>Floor kiosk</a
+              >
 
               <span class="nav-group">Business</span>
-              <a routerLink="/accounting" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">account_balance</span>Accounting</a>
-              <a routerLink="/logistics" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">local_shipping</span>Logistics</a>
-              <a routerLink="/vendors" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">request_quote</span>Procurement</a>
-              <a routerLink="/marketing" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">campaign</span>Marketing</a>
-              <a routerLink="/reviews" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">reviews</span>Reviews</a>
-              <a routerLink="/partners" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">handshake</span>Partners</a>
+              <a routerLink="/accounting" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">account_balance</span>Accounting</a
+              >
+              <a routerLink="/logistics" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">local_shipping</span>Logistics</a
+              >
+              <a routerLink="/vendors" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">request_quote</span>Procurement</a
+              >
+              <a routerLink="/marketing" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">campaign</span>Marketing</a
+              >
+              <a routerLink="/reviews" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">reviews</span>Reviews</a
+              >
+              <a routerLink="/partners" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">handshake</span>Partners</a
+              >
 
               <span class="nav-group">Admin</span>
-              <a routerLink="/staff" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">badge</span>Staff</a>
-              <a routerLink="/audit" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">receipt_long</span>Audit log</a>
-              <a routerLink="/security" routerLinkActive="active" (click)="menuOpen.set(false)"><span class="nav-ico" aria-hidden="true">security</span>Security</a>
+              <a routerLink="/staff" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">badge</span>Staff</a
+              >
+              <a routerLink="/audit" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">receipt_long</span>Audit log</a
+              >
+              <a routerLink="/security" routerLinkActive="active" (click)="menuOpen.set(false)"
+                ><span class="nav-ico" aria-hidden="true">security</span>Security</a
+              >
             </nav>
             <div class="sidebar-foot">
               @if (me(); as profile) {
@@ -304,7 +496,9 @@ export class App implements OnInit, OnDestroy {
   };
   readonly scrolled = signal(false);
   readonly menuOpen = signal(false);
-  readonly me = signal<{ name: string; email: string; role: string; totpEnabled: boolean } | null>(null);
+  readonly me = signal<{ name: string; email: string; role: string; totpEnabled: boolean } | null>(
+    null,
+  );
   readonly error = signal<string | null>(null);
   readonly challengeToken = signal<string | null>(null);
 
@@ -441,13 +635,16 @@ export class App implements OnInit, OnDestroy {
   }
 
   initials(name: string): string {
-    const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean);
+    const parts = String(name ?? '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
     const a = parts[0]?.[0] ?? '';
     const b = parts.length > 1 ? parts[parts.length - 1][0] : '';
     return (`${a}${b}` || 'SE').toUpperCase();
   }
 
-forgot(): void {
+  forgot(): void {
     this.resetMode.set(true);
     this.resetSent.set(false);
     this.resetToken = '';
@@ -468,7 +665,11 @@ forgot(): void {
 
   sendForgot(): void {
     const email = this.email.trim();
-    if (!this.emailRe.test(email)) { this.errors.set({ email: 'Enter a valid email address.' }); this.triggerShake(); return; }
+    if (!this.emailRe.test(email)) {
+      this.errors.set({ email: 'Enter a valid email address.' });
+      this.triggerShake();
+      return;
+    }
     this.errors.set({});
     this.loading.set(true);
     this.api.forgotPassword(email).subscribe({
@@ -480,14 +681,25 @@ forgot(): void {
   private confirmTokenSent(): void {
     this.loading.set(false);
     this.resetSent.set(true);
-    this.resetMsg.set('If that email exists, a reset token is on its way — check your inbox (and spam).');
+    this.resetMsg.set(
+      'If that email exists, a reset token is on its way — check your inbox (and spam).',
+    );
   }
 
   submitReset(): void {
     const token = this.resetToken.trim();
-    if (!/^[0-9a-fA-F]{64}$/.test(token)) { this.formError.set('The token is a 64-character hex string from the email.'); return; }
-    if (this.newPassword.length < 8) { this.formError.set('New password must be at least 8 characters.'); return; }
-    if (this.newPassword !== this.newPassword2) { this.formError.set('Passwords do not match.'); return; }
+    if (!/^[0-9a-fA-F]{64}$/.test(token)) {
+      this.formError.set('The token is a 64-character hex string from the email.');
+      return;
+    }
+    if (this.newPassword.length < 8) {
+      this.formError.set('New password must be at least 8 characters.');
+      return;
+    }
+    if (this.newPassword !== this.newPassword2) {
+      this.formError.set('Passwords do not match.');
+      return;
+    }
     this.formError.set(null);
     this.loading.set(true);
     this.api.resetPassword(token.toLowerCase(), this.newPassword).subscribe({
@@ -501,7 +713,10 @@ forgot(): void {
         this.newPassword = '';
         this.newPassword2 = '';
       },
-      error: () => { this.loading.set(false); this.formError.set('Reset failed — the token may be invalid or already used.'); },
+      error: () => {
+        this.loading.set(false);
+        this.formError.set('Reset failed — the token may be invalid or already used.');
+      },
     });
   }
 

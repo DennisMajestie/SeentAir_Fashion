@@ -1,12 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, EntityManager, FindOptionsWhere, In, Repository } from 'typeorm';
-import {
-  INCOME_TYPES,
-  LedgerEntry,
-  LedgerEntryType,
-  OUTFLOW_TYPES,
-} from './ledger-entry.entity';
+import { INCOME_TYPES, LedgerEntry, LedgerEntryType, OUTFLOW_TYPES } from './ledger-entry.entity';
 
 export interface LedgerRecordInput {
   type: LedgerEntryType;

@@ -13,15 +13,40 @@ interface AttentionRow {
   route: string;
 }
 
-interface ActionRow { label: string; route: string; ico: string; hint: string; }
+interface ActionRow {
+  label: string;
+  route: string;
+  ico: string;
+  hint: string;
+}
 
 const QUICK_ACTIONS: ActionRow[] = [
-  { label: 'New production batch', route: '/production', ico: 'precision_manufacturing', hint: 'Plan a run' },
+  {
+    label: 'New production batch',
+    route: '/production',
+    ico: 'precision_manufacturing',
+    hint: 'Plan a run',
+  },
   { label: 'Add catalogue item', route: '/catalogue', ico: 'add_box', hint: 'New SKU, price' },
-  { label: 'Record material purchase', route: '/materials', ico: 'inventory_2', hint: 'Inward stock' },
-  { label: 'Post ledger entry', route: '/accounting', ico: 'account_balance', hint: 'Manual movement' },
+  {
+    label: 'Record material purchase',
+    route: '/materials',
+    ico: 'inventory_2',
+    hint: 'Inward stock',
+  },
+  {
+    label: 'Post ledger entry',
+    route: '/accounting',
+    ico: 'account_balance',
+    hint: 'Manual movement',
+  },
   { label: 'Create delivery', route: '/logistics', ico: 'local_shipping', hint: 'New waybill' },
-  { label: 'Create custom request', route: '/custom-orders', ico: 'checkroom', hint: 'Bespoke order' },
+  {
+    label: 'Create custom request',
+    route: '/custom-orders',
+    ico: 'checkroom',
+    hint: 'Bespoke order',
+  },
   { label: 'Add staff member', route: '/staff', ico: 'badge', hint: 'Operator account' },
   { label: 'Create wholesale tier', route: '/wholesale', ico: 'warehouse', hint: 'Price band' },
 ];
@@ -54,8 +79,13 @@ const QUICK_ACTIONS: ActionRow[] = [
         @if (bellOpen()) {
           <div class="ops-pop" role="region" aria-label="Needs your attention">
             @for (it of attentionRows(); track it.key) {
-              <a class="ops-pop-item" [class.crit]="it.severity === 'crit'" [class.warn]="it.severity === 'warn'"
-                 routerLink="{{ it.route }}" (click)="close()">
+              <a
+                class="ops-pop-item"
+                [class.crit]="it.severity === 'crit'"
+                [class.warn]="it.severity === 'warn'"
+                routerLink="{{ it.route }}"
+                (click)="close()"
+              >
                 <span class="ops-dot" aria-hidden="true"></span>
                 <span class="ops-pop-ico" aria-hidden="true">{{ it.ico }}</span>
                 <span class="ops-pop-main">
@@ -131,7 +161,9 @@ export class AppOpsbarComponent implements OnInit, OnDestroy {
   }
 
   private refresh(): void {
-    this.api.pendingApprovals().subscribe({ next: (a) => this.approvals.set(a), error: () => undefined });
+    this.api
+      .pendingApprovals()
+      .subscribe({ next: (a) => this.approvals.set(a), error: () => undefined });
     this.api.lowStock().subscribe({ next: (ls) => this.lowStock.set(ls), error: () => undefined });
     this.api.returns().subscribe({
       next: (r) => this.returnList.set(r.data.filter((x) => x.status === 'requested')),
@@ -153,7 +185,15 @@ export class AppOpsbarComponent implements OnInit, OnDestroy {
       });
     }
     if (this.approvals().length > 3) {
-      rows.push({ key: 'a-more', severity: 'info', ico: 'playlist_add', tag: 'More approvals queued', body: `${this.approvals().length - 3} more waiting`, when: '', route: '/approvals' });
+      rows.push({
+        key: 'a-more',
+        severity: 'info',
+        ico: 'playlist_add',
+        tag: 'More approvals queued',
+        body: `${this.approvals().length - 3} more waiting`,
+        when: '',
+        route: '/approvals',
+      });
     }
     const ls = this.lowStock();
     for (const m of (ls?.materials ?? []).slice(0, 2)) {
@@ -168,7 +208,15 @@ export class AppOpsbarComponent implements OnInit, OnDestroy {
       });
     }
     if ((ls?.variants.length ?? 0) > 0) {
-      rows.push({ key: 'v-low', severity: 'warn', ico: 'inventory_2', tag: 'Finished-goods stock low', body: `${ls!.variants.length} SKU(s) at or below ${ls!.variantThreshold}`, when: 'see inventory', route: '/inventory' });
+      rows.push({
+        key: 'v-low',
+        severity: 'warn',
+        ico: 'inventory_2',
+        tag: 'Finished-goods stock low',
+        body: `${ls!.variants.length} SKU(s) at or below ${ls!.variantThreshold}`,
+        when: 'see inventory',
+        route: '/inventory',
+      });
     }
     for (const r of this.returnList().slice(0, 2)) {
       const overdue = new Date(r.returnDeadline).getTime() < Date.now();
@@ -193,7 +241,16 @@ export class AppOpsbarComponent implements OnInit, OnDestroy {
     return Math.min(n, 9);
   });
 
-  toggleBell(): void { this.bellOpen.set(!this.bellOpen()); this.actionsOpen.set(false); }
-  toggleActions(): void { this.actionsOpen.set(!this.actionsOpen()); this.bellOpen.set(false); }
-  close(): void { this.bellOpen.set(false); this.actionsOpen.set(false); }
+  toggleBell(): void {
+    this.bellOpen.set(!this.bellOpen());
+    this.actionsOpen.set(false);
+  }
+  toggleActions(): void {
+    this.actionsOpen.set(!this.actionsOpen());
+    this.bellOpen.set(false);
+  }
+  close(): void {
+    this.bellOpen.set(false);
+    this.actionsOpen.set(false);
+  }
 }

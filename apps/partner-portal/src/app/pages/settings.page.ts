@@ -18,26 +18,42 @@ import { ThemeService } from '../theme.service';
         <p class="page-kicker">Account Controls // Terminal Security</p>
         <h1 class="page-title">Investor Settings</h1>
         <p class="page-sub">
-          Profile record, two-step hardware verification, and terminal preferences for this
-          partner account.
+          Profile record, two-step hardware verification, and terminal preferences for this partner
+          account.
         </p>
       </div>
     </div>
 
     <div class="split-half">
       <section class="panel">
-        <div class="panel-head"><h2>Profile record</h2><span class="panel-note">Read-only</span></div>
+        <div class="panel-head">
+          <h2>Profile record</h2>
+          <span class="panel-note">Read-only</span>
+        </div>
         <div class="rail-rows">
-          <div class="rail-row"><span>Account name</span><strong>{{ store.me()?.name ?? '—' }}</strong></div>
-          <div class="rail-row"><span>Authorized email</span><strong class="mono">{{ store.me()?.email ?? '—' }}</strong></div>
-          <div class="rail-row"><span>Role</span><strong>{{ roleLabel() }}</strong></div>
+          <div class="rail-row">
+            <span>Account name</span><strong>{{ store.me()?.name ?? '—' }}</strong>
+          </div>
+          <div class="rail-row">
+            <span>Authorized email</span
+            ><strong class="mono">{{ store.me()?.email ?? '—' }}</strong>
+          </div>
+          <div class="rail-row">
+            <span>Role</span><strong>{{ roleLabel() }}</strong>
+          </div>
           @if (store.dash(); as d) {
-            <div class="rail-row"><span>Equity</span><strong>{{ d.investmentInformation.equityPercentage }}% · {{ d.investmentInformation.shares | number }} shares</strong></div>
+            <div class="rail-row">
+              <span>Equity</span
+              ><strong
+                >{{ d.investmentInformation.equityPercentage }}% ·
+                {{ d.investmentInformation.shares | number }} shares</strong
+              >
+            </div>
           }
         </div>
         <p class="gap-note" style="margin-top: 0.7rem">
-          Registry changes (name, email, payout instrument) are made by Seentair's company
-          secretary — contact the desk via Documents &amp; Messages.
+          Registry changes (name, email, payout instrument) are made by Seentair's company secretary
+          — contact the desk via Documents &amp; Messages.
         </p>
       </section>
 
@@ -45,20 +61,29 @@ import { ThemeService } from '../theme.service';
         <div class="panel-head">
           <h2>Two-step verification</h2>
           <span class="panel-note">
-            @if (store.me()?.totpEnabled) { Enrolled } @else { Not enrolled }
+            @if (store.me()?.totpEnabled) {
+              Enrolled
+            } @else {
+              Not enrolled
+            }
           </span>
         </div>
 
         @if (store.me()?.totpEnabled) {
           <p class="sec-copy">
-            Two-step hardware verification is <strong>active</strong> on this account. Every
-            sign-in requires a rotating 6-digit code from your authenticator app.
+            Two-step hardware verification is <strong>active</strong> on this account. Every sign-in
+            requires a rotating 6-digit code from your authenticator app.
           </p>
           <label class="field">
             Live code to disable
             <input type="text" inputmode="numeric" maxlength="6" [(ngModel)]="code" name="code" />
           </label>
-          <button class="cta ghost" type="button" [disabled]="busy() || code.length < 6" (click)="disable()">
+          <button
+            class="cta ghost"
+            type="button"
+            [disabled]="busy() || code.length < 6"
+            (click)="disable()"
+          >
             Disable two-step verification
           </button>
         } @else if (setup(); as s) {
@@ -70,7 +95,12 @@ import { ThemeService } from '../theme.service';
             Live 6-digit code
             <input type="text" inputmode="numeric" maxlength="6" [(ngModel)]="code" name="code" />
           </label>
-          <button class="cta" type="button" [disabled]="busy() || code.length < 6" (click)="enable()">
+          <button
+            class="cta"
+            type="button"
+            [disabled]="busy() || code.length < 6"
+            (click)="enable()"
+          >
             Activate two-step verification
           </button>
         } @else {
@@ -82,7 +112,9 @@ import { ThemeService } from '../theme.service';
             Begin enrolment
           </button>
         }
-        @if (message(); as m) { <p [class]="m.kind">{{ m.text }}</p> }
+        @if (message(); as m) {
+          <p [class]="m.kind">{{ m.text }}</p>
+        }
       </section>
 
       <section class="panel">
@@ -94,26 +126,61 @@ import { ThemeService } from '../theme.service';
               Switch to {{ theme.theme() === 'dark' ? 'light' : 'dark' }} mode
             </button>
           </div>
-          <div class="rail-row"><span>Currency display</span><strong>₦ Naira (company configuration)</strong></div>
+          <div class="rail-row">
+            <span>Currency display</span><strong>₦ Naira (company configuration)</strong>
+          </div>
         </div>
       </section>
     </div>
   `,
   styles: [
     `
-      .rail-rows { display: flex; flex-direction: column; }
-      .rail-row { display: flex; justify-content: space-between; gap: 0.8rem; padding: 0.5rem 0;
-        border-bottom: 1px solid var(--hairline); font-size: var(--type-body-sm); align-items: center;
-        span { color: var(--ink-dim); }
-        strong { text-align: right; overflow-wrap: anywhere; }
-        &:last-child { border-bottom: 0; } }
-      .sec-copy { margin: 0 0 0.7rem; font-size: var(--type-body-sm);
-        strong { color: var(--ok); } }
-      .secret-box { border: 1px dashed var(--hairline-2); background: var(--panel-2);
-        padding: 0.6rem 0.7rem; font-size: var(--type-body-md); letter-spacing: 0.12em;
-        overflow-wrap: anywhere; margin-bottom: 0.4rem; }
-      .ok-msg { color: var(--ok); font-size: var(--type-body-sm); }
-      .error { font-size: var(--type-body-sm); }
+      .rail-rows {
+        display: flex;
+        flex-direction: column;
+      }
+      .rail-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.8rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--hairline);
+        font-size: var(--type-body-sm);
+        align-items: center;
+        span {
+          color: var(--ink-dim);
+        }
+        strong {
+          text-align: right;
+          overflow-wrap: anywhere;
+        }
+        &:last-child {
+          border-bottom: 0;
+        }
+      }
+      .sec-copy {
+        margin: 0 0 0.7rem;
+        font-size: var(--type-body-sm);
+        strong {
+          color: var(--ok);
+        }
+      }
+      .secret-box {
+        border: 1px dashed var(--hairline-2);
+        background: var(--panel-2);
+        padding: 0.6rem 0.7rem;
+        font-size: var(--type-body-md);
+        letter-spacing: 0.12em;
+        overflow-wrap: anywhere;
+        margin-bottom: 0.4rem;
+      }
+      .ok-msg {
+        color: var(--ok);
+        font-size: var(--type-body-sm);
+      }
+      .error {
+        font-size: var(--type-body-sm);
+      }
     `,
   ],
 })
@@ -131,7 +198,9 @@ export class SettingsPage {
   readonly roleLabel = computed(() => {
     const role = this.store.me()?.role ?? '';
     if (role === 'partner_investor') return 'Partner / Investor';
-    return role ? role.replace(/[_-]+/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) : 'Partner / Investor';
+    return role
+      ? role.replace(/[_-]+/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
+      : 'Partner / Investor';
   });
 
   beginSetup(): void {
@@ -144,7 +213,10 @@ export class SettingsPage {
       },
       error: (err: { error?: { message?: string } }) => {
         this.busy.set(false);
-        this.message.set({ kind: 'error', text: err?.error?.message ?? 'Enrolment could not be started.' });
+        this.message.set({
+          kind: 'error',
+          text: err?.error?.message ?? 'Enrolment could not be started.',
+        });
       },
     });
   }

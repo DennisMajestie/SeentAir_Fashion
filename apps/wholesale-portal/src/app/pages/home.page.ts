@@ -28,8 +28,12 @@ import { pill } from '../status-pill';
       </div>
       <div class="id-tier">
         @if (pricing(); as p) {
-          <span><strong>{{ p.tier?.name ?? 'Standard tier' }}</strong>
-            @if (p.tier) { · {{ p.tier.discountPercent }}% off retail rate active }</span>
+          <span
+            ><strong>{{ p.tier?.name ?? 'Standard tier' }}</strong>
+            @if (p.tier) {
+              · {{ p.tier.discountPercent }}% off retail rate active
+            }
+          </span>
           <a class="link" routerLink="/catalogue">Tier details</a>
         } @else {
           <span>Wholesale account awaiting approval — apply from the catalogue.</span>
@@ -40,27 +44,44 @@ import { pill } from '../status-pill';
 
     <div class="kpi-grid">
       <div class="kpi">
-        <div class="k-head"><span>Open orders</span>
-          <span class="material-symbols-outlined" aria-hidden="true">calendar_today</span></div>
-        <div class="k-value"><strong>{{ two(openOrders()) }}</strong><span class="k-sub">Active</span></div>
-      </div>
-      <div class="kpi">
-        <div class="k-head"><span>Awaiting pay</span>
-          <span class="material-symbols-outlined" aria-hidden="true">warning</span></div>
-        <div class="k-value" [class.alert]="awaitingPay() > 0">
-          <strong>{{ two(awaitingPay()) }}</strong>
-          @if (awaitingPay() > 0) { <span class="chip accent">Action req</span> }
-          @else { <span class="k-sub">Clear</span> }
+        <div class="k-head">
+          <span>Open orders</span>
+          <span class="material-symbols-outlined" aria-hidden="true">calendar_today</span>
+        </div>
+        <div class="k-value">
+          <strong>{{ two(openOrders()) }}</strong
+          ><span class="k-sub">Active</span>
         </div>
       </div>
       <div class="kpi">
-        <div class="k-head"><span>In transit</span>
-          <span class="material-symbols-outlined" aria-hidden="true">local_shipping</span></div>
-        <div class="k-value"><strong>{{ two(inTransit()) }}</strong><span class="k-sub">GIGL dispatch</span></div>
+        <div class="k-head">
+          <span>Awaiting pay</span>
+          <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+        </div>
+        <div class="k-value" [class.alert]="awaitingPay() > 0">
+          <strong>{{ two(awaitingPay()) }}</strong>
+          @if (awaitingPay() > 0) {
+            <span class="chip accent">Action req</span>
+          } @else {
+            <span class="k-sub">Clear</span>
+          }
+        </div>
       </div>
       <div class="kpi">
-        <div class="k-head"><span>Last order</span>
-          <span class="material-symbols-outlined" aria-hidden="true">event</span></div>
+        <div class="k-head">
+          <span>In transit</span>
+          <span class="material-symbols-outlined" aria-hidden="true">local_shipping</span>
+        </div>
+        <div class="k-value">
+          <strong>{{ two(inTransit()) }}</strong
+          ><span class="k-sub">GIGL dispatch</span>
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="k-head">
+          <span>Last order</span>
+          <span class="material-symbols-outlined" aria-hidden="true">event</span>
+        </div>
         <div class="k-value">
           @if (lastOrder(); as last) {
             <strong style="font-size: 1rem">{{ last.createdAt | date: 'dd MMM yyyy' }}</strong>
@@ -80,21 +101,38 @@ import { pill } from '../status-pill';
 
     @if (notices().length > 0) {
       <section class="panel">
-        <div class="tagbar"><span>Desk notices</span><span>{{ notices().length }}</span></div>
+        <div class="tagbar">
+          <span>Desk notices</span><span>{{ notices().length }}</span>
+        </div>
         @for (n of notices(); track n.id) {
-          <p class="small"><span class="status">{{ n.type.replaceAll('_', ' ') }}</span>
-            {{ n.message }} <span class="muted">({{ n.sentAt | date: 'short' }})</span></p>
+          <p class="small">
+            <span class="status">{{ n.type.replaceAll('_', ' ') }}</span> {{ n.message }}
+            <span class="muted">({{ n.sentAt | date: 'short' }})</span>
+          </p>
         }
       </section>
     }
 
     <div class="section-head">
-      <h2>Recent orders <span class="chip">{{ invoices().length }}</span></h2>
+      <h2>
+        Recent orders <span class="chip">{{ invoices().length }}</span>
+      </h2>
       <a class="link" routerLink="/orders">View all orders</a>
     </div>
     @if (invoices().length === 0) {
       <div class="empty-state">
-        <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+        <span class="empty-state-icon" aria-hidden="true"
+          ><svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
+        ></span>
         <h2 class="empty-state-title">No orders yet</h2>
         <p class="empty-state-sub">Your first wholesale batch will appear here.</p>
       </div>
@@ -112,17 +150,23 @@ import { pill } from '../status-pill';
         </div>
         <div class="oc-line">
           <span><span class="l">Volume</span>{{ units(invoice) }} units</span>
-          <span class="num"><span class="l">Subtotal</span>₦{{ invoice.totalAmount | number: '1.0-2' }}</span>
+          <span class="num"
+            ><span class="l">Subtotal</span>₦{{ invoice.totalAmount | number: '1.0-2' }}</span
+          >
         </div>
         <div class="oc-actions">
           <button class="cta small outline" (click)="reorder(invoice.orderId)">
             <span class="material-symbols-outlined" aria-hidden="true">sync</span> Reorder batch
           </button>
-          <a class="cta small quiet" [routerLink]="['/orders', invoice.orderId, 'invoice']">Manifest</a>
+          <a class="cta small quiet" [routerLink]="['/orders', invoice.orderId, 'invoice']"
+            >Manifest</a
+          >
         </div>
       </article>
     }
-    @if (message()) { <p class="success">{{ message() }}</p> }
+    @if (message()) {
+      <p class="success">{{ message() }}</p>
+    }
 
     <div class="section-head">
       <h2>Billing &amp; invoices</h2>
@@ -133,19 +177,26 @@ import { pill } from '../status-pill';
         <div class="oc-top">
           <div>
             <span class="oc-id">INV-{{ invoice.orderId.slice(0, 8).toUpperCase() }}</span>
-            <span class="oc-meta">{{ paid(invoice) ? 'Settled amount' : 'Amount due' }}
-              — ₦{{ invoice.totalAmount | number: '1.0-2' }}</span>
+            <span class="oc-meta"
+              >{{ paid(invoice) ? 'Settled amount' : 'Amount due' }} — ₦{{
+                invoice.totalAmount | number: '1.0-2'
+              }}</span
+            >
           </div>
-          <div style="display:flex; flex-direction:column; align-items:flex-end; gap: var(--space-sm)">
+          <div
+            style="display:flex; flex-direction:column; align-items:flex-end; gap: var(--space-sm)"
+          >
             @if (paid(invoice)) {
               <span class="chip okc">Paid · {{ payMethod(invoice) }}</span>
               <a class="cta small quiet" [routerLink]="['/orders', invoice.orderId, 'invoice']">
-                <span class="material-symbols-outlined" aria-hidden="true">download</span> Download PDF
+                <span class="material-symbols-outlined" aria-hidden="true">download</span> Download
+                PDF
               </a>
             } @else {
               <span class="chip accent">{{ invoice.paymentStatus.replaceAll('_', ' ') }}</span>
               <a class="cta small" [routerLink]="['/orders', invoice.orderId, 'invoice']">
-                <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span> View invoice
+                <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span> View
+                invoice
               </a>
             }
           </div>
@@ -175,7 +226,11 @@ import { pill } from '../status-pill';
           <span class="material-symbols-outlined" aria-hidden="true">call</span> +234 1 888 7400
         </a>
         <!-- GAP: no verified WhatsApp business line yet (Termii/Twilio decision pending) -->
-        <button class="cta small quiet" disabled title="WhatsApp desk line pending messaging-provider setup">
+        <button
+          class="cta small quiet"
+          disabled
+          title="WhatsApp desk line pending messaging-provider setup"
+        >
           <span class="material-symbols-outlined" aria-hidden="true">chat</span> WhatsApp desk
         </button>
       </div>
@@ -189,16 +244,16 @@ export class HomePage implements OnInit {
   readonly pricing = signal<Pricing | null>(null);
   readonly approved = signal(false);
   readonly invoices = signal<Invoice[]>([]);
-  readonly notices = signal<Array<{ id: string; type: string; message: string; sentAt: string }>>([]);
+  readonly notices = signal<Array<{ id: string; type: string; message: string; sentAt: string }>>(
+    [],
+  );
   readonly message = signal<string | null>(null);
 
   readonly recent = computed(() => this.invoices().slice(0, 3));
   readonly openOrders = computed(
     () => this.invoices().filter((i) => !/delivered|cancelled|completed/.test(i.status)).length,
   );
-  readonly awaitingPay = computed(
-    () => this.invoices().filter((i) => !this.paid(i)).length,
-  );
+  readonly awaitingPay = computed(() => this.invoices().filter((i) => !this.paid(i)).length);
   readonly inTransit = computed(
     () => this.invoices().filter((i) => /shipped|transit|dispatch|out_for/.test(i.status)).length,
   );
@@ -213,7 +268,9 @@ export class HomePage implements OnInit {
       },
       error: () => this.approved.set(false),
     });
-    this.api.invoices().subscribe({ next: (r) => this.invoices.set(r.data), error: () => undefined });
+    this.api
+      .invoices()
+      .subscribe({ next: (r) => this.invoices.set(r.data), error: () => undefined });
     this.api.notifications().subscribe({
       next: (r) => this.notices.set(r.data.slice(0, 3)),
       error: () => undefined,
@@ -239,7 +296,9 @@ export class HomePage implements OnInit {
   reorder(orderId: string): void {
     this.api.reorder(orderId).subscribe({
       next: (order) =>
-        this.message.set(`Reorder placed: ${order.id.slice(0, 8)} — repriced at your current tier.`),
+        this.message.set(
+          `Reorder placed: ${order.id.slice(0, 8)} — repriced at your current tier.`,
+        ),
       error: (err) => this.message.set(err?.error?.message ?? 'Reorder failed.'),
     });
   }

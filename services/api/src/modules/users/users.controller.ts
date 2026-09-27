@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
@@ -29,10 +39,7 @@ export class UsersController {
   /** Replace one role's whole permission set. */
   @Put('roles/:roleName/permissions')
   @RequireAccess(ModuleName.STAFF_ACCESS, AccessLevel.FULL)
-  updateRolePermissions(
-    @Param('roleName') roleName: string,
-    @Body() dto: UpdatePermissionsDto,
-  ) {
+  updateRolePermissions(@Param('roleName') roleName: string, @Body() dto: UpdatePermissionsDto) {
     return this.usersService.updateRolePermissions(roleName as never, dto.permissions);
   }
 

@@ -32,7 +32,9 @@ export class TermiiAdapter {
     });
     const body = (await response.json()) as { message_id?: string; message?: string };
     if (!response.ok || !body.message_id) {
-      throw new ServiceUnavailableException(`Termii send failed: ${body.message ?? response.statusText}`);
+      throw new ServiceUnavailableException(
+        `Termii send failed: ${body.message ?? response.statusText}`,
+      );
     }
     return { providerRef: body.message_id };
   }

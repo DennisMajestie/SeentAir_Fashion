@@ -27,7 +27,13 @@ export class Product {
   category: string | null;
 
   /** Currency is configuration (Open Question #6) — amounts are currency-agnostic numbers. */
-  @Column({ name: 'base_price', type: 'numeric', precision: 12, scale: 2, transformer: numericTransformer })
+  @Column({
+    name: 'base_price',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   basePrice: number;
 
   @ManyToOne(() => Collection, (collection) => collection.products, { nullable: true, eager: true })

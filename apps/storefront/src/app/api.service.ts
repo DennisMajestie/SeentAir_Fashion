@@ -54,10 +54,13 @@ export class ApiService {
     return this.http.get<Product>(`${API_BASE}/products/${id}`);
   }
 
-  reviews(productId: string): Observable<{ data: Array<{ rating: number; comment: string | null }>; total: number }> {
-    return this.http.get<{ data: Array<{ rating: number; comment: string | null }>; total: number }>(
-      `${API_BASE}/products/${productId}/reviews`,
-    );
+  reviews(
+    productId: string,
+  ): Observable<{ data: Array<{ rating: number; comment: string | null }>; total: number }> {
+    return this.http.get<{
+      data: Array<{ rating: number; comment: string | null }>;
+      total: number;
+    }>(`${API_BASE}/products/${productId}/reviews`);
   }
 
   // --- Auth ---
@@ -102,7 +105,10 @@ export class ApiService {
   }
 
   // --- Orders ---
-  createOrder(items: Array<{ variantId: string; quantity: number }>, source?: string): Observable<Order> {
+  createOrder(
+    items: Array<{ variantId: string; quantity: number }>,
+    source?: string,
+  ): Observable<Order> {
     return this.http.post<Order>(`${API_BASE}/orders`, { items, source });
   }
 
@@ -134,11 +140,23 @@ export class ApiService {
   }
 
   notifications(): Observable<{
-    data: Array<{ id: string; type: string; message: string; sentAt: string; relatedOrderId: string | null }>;
+    data: Array<{
+      id: string;
+      type: string;
+      message: string;
+      sentAt: string;
+      relatedOrderId: string | null;
+    }>;
     total: number;
   }> {
     return this.http.get<{
-      data: Array<{ id: string; type: string; message: string; sentAt: string; relatedOrderId: string | null }>;
+      data: Array<{
+        id: string;
+        type: string;
+        message: string;
+        sentAt: string;
+        relatedOrderId: string | null;
+      }>;
       total: number;
     }>(`${API_BASE}/notifications`);
   }
@@ -152,7 +170,12 @@ export class ApiService {
     return this.http.post(`${API_BASE}/returns`, { orderId, variantId, quantity, reason });
   }
 
-  submitReview(orderId: string, variantId: string, rating: number, comment: string): Observable<unknown> {
+  submitReview(
+    orderId: string,
+    variantId: string,
+    rating: number,
+    comment: string,
+  ): Observable<unknown> {
     return this.http.post(`${API_BASE}/orders/${orderId}/review`, {
       variantId,
       rating,

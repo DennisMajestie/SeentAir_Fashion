@@ -5,9 +5,27 @@ import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../api.service';
 import { downloadCsv } from '../csv.util';
 
-interface SummaryRow { itemType: string; itemId: string; currentQuantity: number; byMovementType: Record<string, number>; }
-interface MovementRow { id: string; movementType: string; quantityDelta: number; timestamp: string; referenceId: string | null; actorId?: string | null; }
-interface VariantInfo { sku: string; product: string; price: number; size: string | null; colour: string | null; }
+interface SummaryRow {
+  itemType: string;
+  itemId: string;
+  currentQuantity: number;
+  byMovementType: Record<string, number>;
+}
+interface MovementRow {
+  id: string;
+  movementType: string;
+  quantityDelta: number;
+  timestamp: string;
+  referenceId: string | null;
+  actorId?: string | null;
+}
+interface VariantInfo {
+  sku: string;
+  product: string;
+  price: number;
+  size: string | null;
+  colour: string | null;
+}
 
 /** A8 — Inventory valuation & stock depository with the immutable movement
     ledger. Stock is NEVER edited directly: every figure derives from
@@ -20,15 +38,22 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
       <div class="ops-id">
         <p class="eyebrow">Operations · Inventory</p>
         <h1>Inventory & stock levels</h1>
-        <p class="ops-sub">Live stock levels with a full history of every change in and out. Stock is never edited directly.</p>
+        <p class="ops-sub">
+          Live stock levels with a full history of every change in and out. Stock is never edited
+          directly.
+        </p>
       </div>
       <div class="ops-actions">
         <span class="live-chip">Live</span>
         <button class="cta small ghost" type="button" (click)="exportCsv()">Export CSV</button>
-        <button class="cta small ghost" type="button" (click)="verifyLedger()">Verify ledger</button>
+        <button class="cta small ghost" type="button" (click)="verifyLedger()">
+          Verify ledger
+        </button>
         @if (ledgerVerify(); as lv) {
           <span class="chip" [class.ok]="lv.broken === 0" [class.bad]="lv.broken > 0">
-            ledger {{ lv.broken === 0 ? 'sealed' : lv.broken + ' broken' }} · {{ lv.valid }}/{{ lv.total }}
+            ledger {{ lv.broken === 0 ? 'sealed' : lv.broken + ' broken' }} · {{ lv.valid }}/{{
+              lv.total
+            }}
           </span>
         }
       </div>
@@ -37,19 +62,29 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
     @if (ledgerVerify(); as lv) {
       <div class="rule-strip" [style.borderColor]="lv.broken > 0 ? 'var(--danger)' : ''">
         <strong>Ledger hash-chain</strong> — every movement is SHA-256 bound to the previous one.
-        @if (lv.broken === 0) { All {{ lv.total }} entries verify; stock history has not been tampered with. }
-        @else { {{ lv.broken }} of {{ lv.total }} entries fail verification. }
-        @if (lv.headHash) { <code class="mono">{{ lv.headHash }}</code> }
+        @if (lv.broken === 0) {
+          All {{ lv.total }} entries verify; stock history has not been tampered with.
+        } @else {
+          {{ lv.broken }} of {{ lv.total }} entries fail verification.
+        }
+        @if (lv.headHash) {
+          <code class="mono">{{ lv.headHash }}</code>
+        }
       </div>
     }
 
-    <p class="rule-strip">EVERY CHANGE IS RECORDED // stock moves only through logged entries — removing stock needs approval.</p>
+    <p class="rule-strip">
+      EVERY CHANGE IS RECORDED // stock moves only through logged entries — removing stock needs
+      approval.
+    </p>
 
     <div class="kpi-bar">
       <div class="kpi">
         <span class="kpi-label">Finished goods</span>
         <span class="kpi-value">{{ finishedUnits() | number }} <small>units</small></span>
-        <span class="kpi-sub">est. ₦{{ finishedValue() | number: '1.0-0' }} at current retail prices</span>
+        <span class="kpi-sub"
+          >est. ₦{{ finishedValue() | number: '1.0-0' }} at current retail prices</span
+        >
       </div>
       <div class="kpi">
         <span class="kpi-label">Raw materials</span>
@@ -69,62 +104,127 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
     </div>
 
     <div class="ops-toolbar">
-      <span class="search"><input placeholder="Search SKU or material…" [(ngModel)]="query" name="q" aria-label="Search inventory" (ngModelChange)="queryChanged()" /></span>
+      <span class="search"
+        ><input
+          placeholder="Search SKU or material…"
+          [(ngModel)]="query"
+          name="q"
+          aria-label="Search inventory"
+          (ngModelChange)="queryChanged()"
+      /></span>
       <div class="seg" role="group" aria-label="Item type">
-        <button type="button" [class.on]="view() === 'all'" (click)="setView('all')">All items <span class="seg-n">{{ summary().length }}</span></button>
-        <button type="button" [class.on]="view() === 'variant'" (click)="setView('variant')">Finished goods <span class="seg-n">{{ countType('variant') }}</span></button>
-        <button type="button" [class.on]="view() === 'material'" (click)="setView('material')">Raw materials <span class="seg-n">{{ countType('material') }}</span></button>
+        <button type="button" [class.on]="view() === 'all'" (click)="setView('all')">
+          All items <span class="seg-n">{{ summary().length }}</span>
+        </button>
+        <button type="button" [class.on]="view() === 'variant'" (click)="setView('variant')">
+          Finished goods <span class="seg-n">{{ countType('variant') }}</span>
+        </button>
+        <button type="button" [class.on]="view() === 'material'" (click)="setView('material')">
+          Raw materials <span class="seg-n">{{ countType('material') }}</span>
+        </button>
       </div>
     </div>
 
     <div class="side-split">
       <div class="list-col">
-      <div class="table-scroll">
-        <table class="table">
-          <thead><tr><th>Item</th><th>Type</th><th>Current</th><th>In / out by movement</th><th>Est. value</th></tr></thead>
-          <tbody>
-            @for (s of paged(); track s.itemType + s.itemId) {
-              <tr class="clickable" [class.sel]="isSelected(s)" (click)="select(s)">
-                <td><strong>{{ labelFor(s.itemType, s.itemId) }}</strong></td>
-                <td><span class="chip" [class.acid]="s.itemType === 'variant'">{{ s.itemType === 'variant' ? 'finished' : 'material' }}</span></td>
-                <td class="mono">{{ s.currentQuantity | number }}</td>
-                <td class="small muted mono">
-                  @for (kv of entries(s.byMovementType); track kv[0]) {
-                    <span class="chip gap-end" [class.warn]="kv[1] < 0">{{ kv[0] }} {{ kv[1] > 0 ? '+' : '' }}{{ kv[1] }}</span>
-                  }
-                </td>
-                <td class="mono">
-                  @if (valueOf(s) !== null) { ₦{{ valueOf(s) | number: '1.0-0' }} } @else { <span class="muted">—</span> }
-                </td>
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Type</th>
+                <th>Current</th>
+                <th>In / out by movement</th>
+                <th>Est. value</th>
               </tr>
-            }
-            @if (visible().length === 0) { <tr><td colspan="5" class="muted small">No stock rows match.</td></tr> }
-          </tbody>
-        </table>
-      </div>
-
-      @if (visible().length > 0) {
-        <div class="pager">
-          <span class="pager-info">{{ visible().length }} item{{ visible().length === 1 ? '' : 's' }} · page {{ page() }} of {{ pageCount() }}</span>
-          <div class="pager-nav">
-            <button type="button" class="pager-btn" [disabled]="page() === 1" (click)="page.set(page() - 1)">‹ Prev</button>
-            @for (p of pageNumbers(); track p) {
-              <button type="button" class="pager-btn" [class.on]="p === page()" (click)="page.set(p)">{{ p }}</button>
-            }
-            <button type="button" class="pager-btn" [disabled]="page() >= pageCount()" (click)="page.set(page() + 1)">Next ›</button>
-          </div>
+            </thead>
+            <tbody>
+              @for (s of paged(); track s.itemType + s.itemId) {
+                <tr class="clickable" [class.sel]="isSelected(s)" (click)="select(s)">
+                  <td>
+                    <strong>{{ labelFor(s.itemType, s.itemId) }}</strong>
+                  </td>
+                  <td>
+                    <span class="chip" [class.acid]="s.itemType === 'variant'">{{
+                      s.itemType === 'variant' ? 'finished' : 'material'
+                    }}</span>
+                  </td>
+                  <td class="mono">{{ s.currentQuantity | number }}</td>
+                  <td class="small muted mono">
+                    @for (kv of entries(s.byMovementType); track kv[0]) {
+                      <span class="chip gap-end" [class.warn]="kv[1] < 0"
+                        >{{ kv[0] }} {{ kv[1] > 0 ? '+' : '' }}{{ kv[1] }}</span
+                      >
+                    }
+                  </td>
+                  <td class="mono">
+                    @if (valueOf(s) !== null) {
+                      ₦{{ valueOf(s) | number: '1.0-0' }}
+                    } @else {
+                      <span class="muted">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+              @if (visible().length === 0) {
+                <tr>
+                  <td colspan="5" class="muted small">No stock rows match.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
-      }
+
+        @if (visible().length > 0) {
+          <div class="pager">
+            <span class="pager-info"
+              >{{ visible().length }} item{{ visible().length === 1 ? '' : 's' }} · page
+              {{ page() }} of {{ pageCount() }}</span
+            >
+            <div class="pager-nav">
+              <button
+                type="button"
+                class="pager-btn"
+                [disabled]="page() === 1"
+                (click)="page.set(page() - 1)"
+              >
+                ‹ Prev
+              </button>
+              @for (p of pageNumbers(); track p) {
+                <button
+                  type="button"
+                  class="pager-btn"
+                  [class.on]="p === page()"
+                  (click)="page.set(p)"
+                >
+                  {{ p }}
+                </button>
+              }
+              <button
+                type="button"
+                class="pager-btn"
+                [disabled]="page() >= pageCount()"
+                (click)="page.set(page() + 1)"
+              >
+                Next ›
+              </button>
+            </div>
+          </div>
+        }
       </div>
 
       <aside class="inspector">
         @if (selected(); as s) {
           <div class="insp-head">
             <h2>{{ labelFor(s.itemType, s.itemId) }}</h2>
-            <span class="chip" [class.acid]="s.itemType === 'variant'">{{ s.itemType === 'variant' ? 'finished goods' : 'raw material' }}</span>
+            <span class="chip" [class.acid]="s.itemType === 'variant'">{{
+              s.itemType === 'variant' ? 'finished goods' : 'raw material'
+            }}</span>
           </div>
           @if (variantInfo(s); as vi) {
-            <p class="ops-sub" style="margin:0 0 0.5rem;">{{ vi.product }} · {{ vi.colour || '—' }} · size {{ vi.size || '—' }}</p>
+            <p class="ops-sub" style="margin:0 0 0.5rem;">
+              {{ vi.product }} · {{ vi.colour || '—' }} · size {{ vi.size || '—' }}
+            </p>
           }
           <div class="kpi-bar" style="margin-bottom:0.8rem;">
             <div class="kpi">
@@ -141,68 +241,144 @@ interface VariantInfo { sku: string; product: string; price: number; size: strin
             }
           </div>
 
-          <div class="panel-head"><h2>Stock movement history</h2><span class="ph-sub">latest first</span></div>
+          <div class="panel-head">
+            <h2>Stock movement history</h2>
+            <span class="ph-sub">latest first</span>
+          </div>
           <table class="table">
-            <thead><tr><th>When</th><th>Type</th><th>Δ</th><th>Reference</th></tr></thead>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Type</th>
+                <th>Δ</th>
+                <th>Reference</th>
+              </tr>
+            </thead>
             <tbody>
               @for (m of movementRows(); track m.id) {
                 <tr>
                   <td class="mono small">{{ m.timestamp | date: 'MMM d, HH:mm' }}</td>
-                  <td><span class="chip" [class.acid]="m.quantityDelta > 0" [class.warn]="m.quantityDelta < 0">{{ m.movementType }}</span></td>
-                  <td class="mono delta" [class.plus]="m.quantityDelta > 0" [class.minus]="m.quantityDelta < 0">{{ m.quantityDelta > 0 ? '+' : '' }}{{ m.quantityDelta }}</td>
+                  <td>
+                    <span
+                      class="chip"
+                      [class.acid]="m.quantityDelta > 0"
+                      [class.warn]="m.quantityDelta < 0"
+                      >{{ m.movementType }}</span
+                    >
+                  </td>
+                  <td
+                    class="mono delta"
+                    [class.plus]="m.quantityDelta > 0"
+                    [class.minus]="m.quantityDelta < 0"
+                  >
+                    {{ m.quantityDelta > 0 ? '+' : '' }}{{ m.quantityDelta }}
+                  </td>
                   <td class="mono small muted">{{ m.referenceId?.slice(0, 12) || '—' }}</td>
                 </tr>
               }
-              @if (movementRows().length === 0) { <tr><td colspan="4" class="muted small">No movements yet.</td></tr> }
+              @if (movementRows().length === 0) {
+                <tr>
+                  <td colspan="4" class="muted small">No movements yet.</td>
+                </tr>
+              }
             </tbody>
           </table>
 
           <div class="gap-sep"></div>
-          <div class="panel-head"><h2>Stock check digest</h2><span class="ph-sub">book vs actual</span>
-            <span class="ph-end"><button class="cta small ghost" type="button" (click)="stockCheck()">Run stock check</button></span>
+          <div class="panel-head">
+            <h2>Stock check digest</h2>
+            <span class="ph-sub">book vs actual</span>
+            <span class="ph-end"
+              ><button class="cta small ghost" type="button" (click)="stockCheck()">
+                Run stock check
+              </button></span
+            >
           </div>
           @if (digest(); as d) {
             <div class="kpi-bar" style="margin-bottom:0.8rem;">
-              <div class="kpi"><span class="kpi-label">Book quantity</span><span class="kpi-value">{{ d.expectedQuantity | number }}</span><span class="kpi-sub">sum of all movements</span></div>
-              <div class="kpi"><span class="kpi-label">Recorded current</span><span class="kpi-value">{{ d.currentQuantity | number }}</span><span class="kpi-sub">ledger running balance</span></div>
-              <div class="kpi" [class.kpi-action]="d.runningBalance !== d.currentQuantity"><span class="kpi-label">Variance</span><span class="kpi-value" [class.delta.plus]="d.runningBalance === d.currentQuantity" [class.delta.minus]="d.runningBalance !== d.currentQuantity">{{ d.runningBalance - d.currentQuantity }}</span><span class="kpi-sub">investigate if non-zero</span></div>
+              <div class="kpi">
+                <span class="kpi-label">Book quantity</span
+                ><span class="kpi-value">{{ d.expectedQuantity | number }}</span
+                ><span class="kpi-sub">sum of all movements</span>
+              </div>
+              <div class="kpi">
+                <span class="kpi-label">Recorded current</span
+                ><span class="kpi-value">{{ d.currentQuantity | number }}</span
+                ><span class="kpi-sub">ledger running balance</span>
+              </div>
+              <div class="kpi" [class.kpi-action]="d.runningBalance !== d.currentQuantity">
+                <span class="kpi-label">Variance</span
+                ><span
+                  class="kpi-value"
+                  [class.delta.plus]="d.runningBalance === d.currentQuantity"
+                  [class.delta.minus]="d.runningBalance !== d.currentQuantity"
+                  >{{ d.runningBalance - d.currentQuantity }}</span
+                ><span class="kpi-sub">investigate if non-zero</span>
+              </div>
             </div>
           }
 
           @if (s.itemType === 'material') {
             <div class="gap-sep"></div>
-            <div class="panel-head"><h2>Storage map</h2><span class="ph-sub">warehouse book</span></div>
+            <div class="panel-head">
+              <h2>Storage map</h2>
+              <span class="ph-sub">warehouse book</span>
+            </div>
             @if (materialMeta(s.itemId); as mm) {
               <dl class="kv">
-                <dt>Category</dt><dd>{{ mm.category || '—' }}</dd>
-                <dt>Bay / rack location</dt><dd class="mono">{{ mm.storageLocation || '—' }}</dd>
+                <dt>Category</dt>
+                <dd>{{ mm.category || '—' }}</dd>
+                <dt>Bay / rack location</dt>
+                <dd class="mono">{{ mm.storageLocation || '—' }}</dd>
               </dl>
-            } @else { <p class="muted small">No location recorded for this material.</p> }
+            } @else {
+              <p class="muted small">No location recorded for this material.</p>
+            }
           }
 
           <div class="gap-sep"></div>
-          <div class="panel-head"><h2>Request stock adjustment</h2><span class="ph-sub">needs approval</span></div>
-          <p class="muted small">Add stock = correction in. Remove stock = taking it out — removal needs approval.</p>
+          <div class="panel-head">
+            <h2>Request stock adjustment</h2>
+            <span class="ph-sub">needs approval</span>
+          </div>
+          <p class="muted small">
+            Add stock = correction in. Remove stock = taking it out — removal needs approval.
+          </p>
           <form (ngSubmit)="adjust()">
-            <label>Change (±) <input type="number" [(ngModel)]="adj.delta" name="adelta" required /></label>
-            <label>Reference note <input [(ngModel)]="adj.reference" name="aref" placeholder="stocktake correction…" /></label>
+            <label
+              >Change (±) <input type="number" [(ngModel)]="adj.delta" name="adelta" required
+            /></label>
+            <label
+              >Reference note
+              <input [(ngModel)]="adj.reference" name="aref" placeholder="stocktake correction…"
+            /></label>
             <div class="actions">
               @if (adj.delta < 0 && !adj.approvalRequestId) {
-                <button class="cta small ghost" type="button" (click)="requestDisposalApproval()">Request removal approval</button>
+                <button class="cta small ghost" type="button" (click)="requestDisposalApproval()">
+                  Request removal approval
+                </button>
               } @else {
-                @if (adj.approvalRequestId) { <span class="chip acid">req {{ adj.approvalRequestId.slice(0, 8) }}</span> }
+                @if (adj.approvalRequestId) {
+                  <span class="chip acid">req {{ adj.approvalRequestId.slice(0, 8) }}</span>
+                }
                 <button class="cta small" type="submit">Record movement</button>
               }
             </div>
           </form>
         } @else {
-          <p class="muted small">Select a stock row to see its movement history and make changes.</p>
+          <p class="muted small">
+            Select a stock row to see its movement history and make changes.
+          </p>
         }
       </aside>
     </div>
 
-    @if (message()) { <p class="success">{{ message() }}</p> }
-    @if (error()) { <p class="error">{{ error() }}</p> }
+    @if (message()) {
+      <p class="success">{{ message() }}</p>
+    }
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
   `,
 })
 export class InventoryAdminPage implements OnInit {
@@ -220,24 +396,49 @@ export class InventoryAdminPage implements OnInit {
   readonly pageSize = signal(12);
   readonly wipUnits = signal(0);
   readonly returnsAwaiting = signal(0);
-  readonly ledgerVerify = signal<{ total: number; valid: number; broken: number; headHash: string | null } | null>(null);
-  readonly digest = signal<{ currentQuantity: number; expectedQuantity: number; runningBalance: number; materialCount: number } | null>(null);
+  readonly ledgerVerify = signal<{
+    total: number;
+    valid: number;
+    broken: number;
+    headHash: string | null;
+  } | null>(null);
+  readonly digest = signal<{
+    currentQuantity: number;
+    expectedQuantity: number;
+    runningBalance: number;
+    materialCount: number;
+  } | null>(null);
   query = '';
   adj = { delta: 0, reference: '', approvalRequestId: '' };
   private readonly labels = signal<Map<string, string>>(new Map());
   private readonly variants = signal<Map<string, VariantInfo>>(new Map());
-  private readonly materialLocations = signal<Map<string, { category: string | null; storageLocation: string | null }>>(new Map());
+  private readonly materialLocations = signal<
+    Map<string, { category: string | null; storageLocation: string | null }>
+  >(new Map());
 
   ngOnInit(): void {
     this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
     this.api.products().subscribe((res) => {
       const labels = new Map(this.labels());
       const variants = new Map(this.variants());
-      for (const p of res.data as unknown as Array<{ name: string; basePrice: number; variants: Array<{ id: string; sku: string; size: string | null; colour: string | null; priceOverride: number | null }> }>) {
+      for (const p of res.data as unknown as Array<{
+        name: string;
+        basePrice: number;
+        variants: Array<{
+          id: string;
+          sku: string;
+          size: string | null;
+          colour: string | null;
+          priceOverride: number | null;
+        }>;
+      }>) {
         for (const v of p.variants ?? []) {
           labels.set(`variant:${v.id}`, v.sku);
           variants.set(v.id, {
-            sku: v.sku, product: p.name, size: v.size, colour: v.colour,
+            sku: v.sku,
+            product: p.name,
+            size: v.size,
+            colour: v.colour,
             price: v.priceOverride ?? p.basePrice,
           });
         }
@@ -248,9 +449,17 @@ export class InventoryAdminPage implements OnInit {
     this.api.materials().subscribe((mats) => {
       const labels = new Map(this.labels());
       const meta = new Map(this.materialLocations());
-      for (const m of mats as unknown as Array<{ id: string; name: string; category: string | null; storageLocation: string | null }>) {
+      for (const m of mats as unknown as Array<{
+        id: string;
+        name: string;
+        category: string | null;
+        storageLocation: string | null;
+      }>) {
         labels.set(`material:${m.id}`, m.name);
-        meta.set(m.id, { category: m.category ?? null, storageLocation: m.storageLocation ?? null });
+        meta.set(m.id, {
+          category: m.category ?? null,
+          storageLocation: m.storageLocation ?? null,
+        });
       }
       this.labels.set(labels);
       this.materialLocations.set(meta);
@@ -258,16 +467,26 @@ export class InventoryAdminPage implements OnInit {
     this.api.inventorySummary().subscribe((s) => this.summary.set(s));
     this.api.batches().subscribe((res) => {
       const last = res.stages[res.stages.length - 1];
-      this.wipUnits.set(res.data.filter((b) => b.stage !== last).reduce((sum, b) => sum + b.quantity, 0));
+      this.wipUnits.set(
+        res.data.filter((b) => b.stage !== last).reduce((sum, b) => sum + b.quantity, 0),
+      );
     });
-    this.api.returns().subscribe((res) => this.returnsAwaiting.set(res.data.filter((r) => r.status === 'requested').length));
+    this.api
+      .returns()
+      .subscribe((res) =>
+        this.returnsAwaiting.set(res.data.filter((r) => r.status === 'requested').length),
+      );
   }
 
   labelFor(type: string, id: string): string {
     return this.labels().get(`${type}:${id}`) ?? id.slice(0, 8);
   }
-  entries(record: Record<string, number>): Array<[string, number]> { return Object.entries(record); }
-  countType(t: string): number { return this.summary().filter((s) => s.itemType === t).length; }
+  entries(record: Record<string, number>): Array<[string, number]> {
+    return Object.entries(record);
+  }
+  countType(t: string): number {
+    return this.summary().filter((s) => s.itemType === t).length;
+  }
 
   visible(): SummaryRow[] {
     const q = this.query.trim().toLowerCase();
@@ -277,8 +496,13 @@ export class InventoryAdminPage implements OnInit {
     });
   }
 
-  setView(v: 'all' | 'variant' | 'material'): void { this.view.set(v); this.page.set(1); }
-  queryChanged(): void { this.page.set(1); }
+  setView(v: 'all' | 'variant' | 'material'): void {
+    this.view.set(v);
+    this.page.set(1);
+  }
+  queryChanged(): void {
+    this.page.set(1);
+  }
 
   paged(): SummaryRow[] {
     const v = this.visible();
@@ -287,7 +511,9 @@ export class InventoryAdminPage implements OnInit {
     const start = (this.page() - 1) * this.pageSize();
     return v.slice(start, start + this.pageSize());
   }
-  pageCount(): number { return Math.max(1, Math.ceil(this.visible().length / this.pageSize())); }
+  pageCount(): number {
+    return Math.max(1, Math.ceil(this.visible().length / this.pageSize()));
+  }
   pageNumbers(): number[] {
     const total = this.pageCount();
     const first = Math.max(1, Math.min(this.page() - 2, total - 4));
@@ -296,11 +522,17 @@ export class InventoryAdminPage implements OnInit {
   }
 
   readonly finishedUnits = computed(() =>
-    this.summary().filter((s) => s.itemType === 'variant').reduce((sum, s) => sum + s.currentQuantity, 0));
-  readonly materialSkus = computed(() => this.summary().filter((s) => s.itemType === 'material').length);
+    this.summary()
+      .filter((s) => s.itemType === 'variant')
+      .reduce((sum, s) => sum + s.currentQuantity, 0),
+  );
+  readonly materialSkus = computed(
+    () => this.summary().filter((s) => s.itemType === 'material').length,
+  );
   readonly finishedValue = computed(() => {
     const variants = this.variants();
-    return this.summary().filter((s) => s.itemType === 'variant')
+    return this.summary()
+      .filter((s) => s.itemType === 'variant')
       .reduce((sum, s) => sum + s.currentQuantity * (variants.get(s.itemId)?.price ?? 0), 0);
   });
 
@@ -319,7 +551,12 @@ export class InventoryAdminPage implements OnInit {
   }
 
   select(s: SummaryRow): void {
-    if (this.isSelected(s)) { this.selected.set(null); this.movementRows.set([]); this.currentQty.set(null); return; }
+    if (this.isSelected(s)) {
+      this.selected.set(null);
+      this.movementRows.set([]);
+      this.currentQty.set(null);
+      return;
+    }
     this.selected.set(s);
     this.adj = { delta: 0, reference: '', approvalRequestId: '' };
     this.loadMovements();
@@ -348,9 +585,18 @@ export class InventoryAdminPage implements OnInit {
   requestDisposalApproval(): void {
     const sel = this.selected();
     if (!sel) return;
-    this.api.createApproval('stock_disposal', { item: this.labelFor(sel.itemType, sel.itemId), delta: this.adj.delta, note: this.adj.reference })
+    this.api
+      .createApproval('stock_disposal', {
+        item: this.labelFor(sel.itemType, sel.itemId),
+        delta: this.adj.delta,
+        note: this.adj.reference,
+      })
       .subscribe({
-        next: (r) => { this.adj.approvalRequestId = r.id; this.message.set('Removal approval requested — Management decides in the queue.'); this.error.set(null); },
+        next: (r) => {
+          this.adj.approvalRequestId = r.id;
+          this.message.set('Removal approval requested — Management decides in the queue.');
+          this.error.set(null);
+        },
         error: (e) => this.error.set(e?.error?.message ?? 'Request failed.'),
       });
   }
@@ -358,24 +604,32 @@ export class InventoryAdminPage implements OnInit {
   adjust(): void {
     const sel = this.selected();
     if (!sel) return;
-    this.api.recordMovement(sel.itemId, sel.itemType as 'variant' | 'material', {
-      movementType: 'adjustment', quantityDelta: Number(this.adj.delta),
-      referenceId: this.adj.reference || undefined,
-      approvalRequestId: this.adj.approvalRequestId || undefined,
-    }).subscribe({
-      next: () => {
-        this.adj = { delta: 0, reference: '', approvalRequestId: '' };
-        this.message.set('Movement recorded.'); this.error.set(null);
-        this.loadMovements();
-        this.api.inventorySummary().subscribe((s) => this.summary.set(s));
-      },
-      error: (e) => this.error.set(e?.error?.message ?? 'Refused — removals need an approved request.'),
-    });
+    this.api
+      .recordMovement(sel.itemId, sel.itemType as 'variant' | 'material', {
+        movementType: 'adjustment',
+        quantityDelta: Number(this.adj.delta),
+        referenceId: this.adj.reference || undefined,
+        approvalRequestId: this.adj.approvalRequestId || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.adj = { delta: 0, reference: '', approvalRequestId: '' };
+          this.message.set('Movement recorded.');
+          this.error.set(null);
+          this.loadMovements();
+          this.api.inventorySummary().subscribe((s) => this.summary.set(s));
+        },
+        error: (e) =>
+          this.error.set(e?.error?.message ?? 'Refused — removals need an approved request.'),
+      });
   }
 
   verifyLedger(): void {
     this.api.inventoryLedgerVerify().subscribe({
-      next: (res) => { this.ledgerVerify.set(res); this.error.set(null); },
+      next: (res) => {
+        this.ledgerVerify.set(res);
+        this.error.set(null);
+      },
       error: (e) => this.error.set(e?.error?.message ?? 'Ledger verification failed.'),
     });
   }
@@ -384,7 +638,10 @@ export class InventoryAdminPage implements OnInit {
     const sel = this.selected();
     if (!sel) return;
     this.api.stockCheckDigest(sel.itemType as 'variant' | 'material', sel.itemId).subscribe({
-      next: (res) => { this.digest.set(res); this.error.set(null); },
+      next: (res) => {
+        this.digest.set(res);
+        this.error.set(null);
+      },
       error: (e) => this.error.set(e?.error?.message ?? 'Stock check failed.'),
     });
   }

@@ -21,11 +21,7 @@ export class ProductionController {
 
   @Get()
   @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.VIEW)
-  findAll(
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
-    @Query('stage') stage?: string,
-  ) {
+  findAll(@Query('page') page = '1', @Query('limit') limit = '20', @Query('stage') stage?: string) {
     return this.productionService.findAll(parseInt(page, 10), parseInt(limit, 10), stage);
   }
 

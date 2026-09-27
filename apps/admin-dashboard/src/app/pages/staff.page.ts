@@ -4,11 +4,26 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { ApiService, AuditEntry } from '../api.service';
 
-interface UserRow { id: string; name: string; email: string; phone?: string | null; status: string; totpEnabled: boolean; role: { name: string }; }
+interface UserRow {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  status: string;
+  totpEnabled: boolean;
+  role: { name: string };
+}
 
 const ROLES = [
-  'business_owner_admin', 'management', 'sales', 'inventory',
-  'production', 'finance_accounting', 'partner_investor', 'wholesaler', 'customer',
+  'business_owner_admin',
+  'management',
+  'sales',
+  'inventory',
+  'production',
+  'finance_accounting',
+  'partner_investor',
+  'wholesaler',
+  'customer',
 ];
 
 const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
@@ -25,21 +40,43 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
       <div class="ops-id">
         <p class="eyebrow">Admin · Access control</p>
         <h1>Staff directory & access roles</h1>
-        <p class="ops-sub">Manage staff and operational clearance levels — least privilege by default.</p>
+        <p class="ops-sub">
+          Manage staff and operational clearance levels — least privilege by default.
+        </p>
       </div>
       <div class="ops-actions">
-        <button class="cta small" type="button" (click)="showInvite.set(!showInvite())">{{ showInvite() ? 'Close' : '★ Invite new staff member' }}</button>
+        <button class="cta small" type="button" (click)="showInvite.set(!showInvite())">
+          {{ showInvite() ? 'Close' : '★ Invite new staff member' }}
+        </button>
       </div>
     </div>
 
     <div class="kpi-bar">
-      <div class="kpi"><span class="kpi-label">Total headcount</span><span class="kpi-value">{{ users().length }}</span><span class="kpi-sub">accounts enrolled</span></div>
-      <div class="kpi"><span class="kpi-label">Active</span><span class="kpi-value">{{ activeCount() }}</span><span class="kpi-sub">{{ users().length - activeCount() }} inactive/suspended</span></div>
-      <div class="kpi"><span class="kpi-label">2FA enforced</span><span class="kpi-value">{{ totpCount() }}<small>/{{ users().length }}</small></span><span class="kpi-sub">with 2FA on</span></div>
-      <div class="kpi"><span class="kpi-label">Roles in use</span><span class="kpi-value">{{ rolesInUse() }}</span><span class="kpi-sub">of {{ roles.length }} set up</span></div>
+      <div class="kpi">
+        <span class="kpi-label">Total headcount</span
+        ><span class="kpi-value">{{ users().length }}</span
+        ><span class="kpi-sub">accounts enrolled</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Active</span><span class="kpi-value">{{ activeCount() }}</span
+        ><span class="kpi-sub">{{ users().length - activeCount() }} inactive/suspended</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">2FA enforced</span
+        ><span class="kpi-value"
+          >{{ totpCount() }}<small>/{{ users().length }}</small></span
+        ><span class="kpi-sub">with 2FA on</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Roles in use</span><span class="kpi-value">{{ rolesInUse() }}</span
+        ><span class="kpi-sub">of {{ roles.length }} set up</span>
+      </div>
     </div>
 
-    <p class="rule-strip">START SAFE // new staff start view-only and you give them more access as needed. Turn on 2FA for every account (Security page).</p>
+    <p class="rule-strip">
+      START SAFE // new staff start view-only and you give them more access as needed. Turn on 2FA
+      for every account (Security page).
+    </p>
 
     @if (showInvite()) {
       <section class="panel">
@@ -48,10 +85,16 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
           <label>Name <input [(ngModel)]="nu.name" name="uname" required /></label>
           <label>Email <input type="email" [(ngModel)]="nu.email" name="uemail" required /></label>
           <label>Phone <input [(ngModel)]="nu.phone" name="uphone" /></label>
-          <label>Temporary password <input [(ngModel)]="nu.password" name="upass" required minlength="8" /></label>
-          <label>Role
+          <label
+            >Temporary password
+            <input [(ngModel)]="nu.password" name="upass" required minlength="8"
+          /></label>
+          <label
+            >Role
             <select [(ngModel)]="nu.role" name="urole" required>
-              @for (r of roles; track r) { <option [value]="r">{{ r.replaceAll('_', ' ') }}</option> }
+              @for (r of roles; track r) {
+                <option [value]="r">{{ r.replaceAll('_', ' ') }}</option>
+              }
             </select>
           </label>
           <div class="wide"><button class="cta small" type="submit">Create account</button></div>
@@ -60,11 +103,23 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
     }
 
     <div class="ops-toolbar">
-      <span class="search"><input placeholder="Search by staff name, email or role…" [(ngModel)]="query" name="q" aria-label="Search staff" /></span>
+      <span class="search"
+        ><input
+          placeholder="Search by staff name, email or role…"
+          [(ngModel)]="query"
+          name="q"
+          aria-label="Search staff"
+      /></span>
       <div class="seg" role="group" aria-label="Role filter">
-        <button type="button" [class.on]="roleFilter() === ''" (click)="roleFilter.set('')">All staff <span class="seg-n">{{ users().length }}</span></button>
+        <button type="button" [class.on]="roleFilter() === ''" (click)="roleFilter.set('')">
+          All staff <span class="seg-n">{{ users().length }}</span>
+        </button>
         @for (g of roleGroups(); track g.role) {
-          <button type="button" [class.on]="roleFilter() === g.role" (click)="roleFilter.set(g.role)">
+          <button
+            type="button"
+            [class.on]="roleFilter() === g.role"
+            (click)="roleFilter.set(g.role)"
+          >
             {{ g.role.replaceAll('_', ' ') }} <span class="seg-n">{{ g.count }}</span>
           </button>
         }
@@ -74,22 +129,52 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
     <div class="side-split">
       <div class="table-scroll">
         <table class="table">
-          <thead><tr><th>Staff name</th><th>Contact</th><th>Role / designation</th><th>Status</th><th>2FA</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Staff name</th>
+              <th>Contact</th>
+              <th>Role / designation</th>
+              <th>Status</th>
+              <th>2FA</th>
+            </tr>
+          </thead>
           <tbody>
             @for (u of visible(); track u.id) {
               <tr class="clickable" [class.sel]="selectedId() === u.id" (click)="inspect(u.id)">
                 <td>
                   <span class="chip acid" style="margin-right:0.4rem;">{{ initials(u.name) }}</span>
-                  <strong>{{ u.name }}</strong><br />
+                  <strong>{{ u.name }}</strong
+                  ><br />
                   <span class="muted small mono">{{ u.id.slice(0, 8) }}</span>
                 </td>
-                <td class="small">{{ u.email }}<br /><span class="muted mono">{{ u.phone || '—' }}</span></td>
-                <td><span class="chip" [class.acid]="u.role.name !== 'customer'">{{ u.role.name.replaceAll('_', ' ') }}</span></td>
-                <td><span class="chip" [class.ok]="u.status === 'active'" [class.bad]="u.status !== 'active'">{{ u.status }}</span></td>
-                <td><span class="chip" [class.ok]="u.totpEnabled" [class.warn]="!u.totpEnabled">{{ u.totpEnabled ? 'ON' : 'OFF' }}</span></td>
+                <td class="small">
+                  {{ u.email }}<br /><span class="muted mono">{{ u.phone || '—' }}</span>
+                </td>
+                <td>
+                  <span class="chip" [class.acid]="u.role.name !== 'customer'">{{
+                    u.role.name.replaceAll('_', ' ')
+                  }}</span>
+                </td>
+                <td>
+                  <span
+                    class="chip"
+                    [class.ok]="u.status === 'active'"
+                    [class.bad]="u.status !== 'active'"
+                    >{{ u.status }}</span
+                  >
+                </td>
+                <td>
+                  <span class="chip" [class.ok]="u.totpEnabled" [class.warn]="!u.totpEnabled">{{
+                    u.totpEnabled ? 'ON' : 'OFF'
+                  }}</span>
+                </td>
               </tr>
             }
-            @if (visible().length === 0) { <tr><td colspan="5" class="muted small">No staff match.</td></tr> }
+            @if (visible().length === 0) {
+              <tr>
+                <td colspan="5" class="muted small">No staff match.</td>
+              </tr>
+            }
           </tbody>
         </table>
       </div>
@@ -102,28 +187,51 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
           </div>
           @if (detail(); as d) {
             <dl class="kv">
-              <dt>Account id</dt><dd><code class="wrap-anywhere">{{ d['id'] }}</code></dd>
-              <dt>Email</dt><dd>{{ u.email }}</dd>
-              <dt>Status</dt><dd>{{ u.status }}</dd>
-              <dt>Created</dt><dd>{{ dt(d['createdAt']) | date: 'medium' }}</dd>
-              <dt>Last login</dt><dd>{{ d['lastLoginAt'] ? (dt(d['lastLoginAt']) | date: 'medium') : 'never' }}</dd>
-              <dt>2FA</dt><dd>{{ u.totpEnabled ? 'on' : 'off' }}</dd>
+              <dt>Account id</dt>
+              <dd>
+                <code class="wrap-anywhere">{{ d['id'] }}</code>
+              </dd>
+              <dt>Email</dt>
+              <dd>{{ u.email }}</dd>
+              <dt>Status</dt>
+              <dd>{{ u.status }}</dd>
+              <dt>Created</dt>
+              <dd>{{ dt(d['createdAt']) | date: 'medium' }}</dd>
+              <dt>Last login</dt>
+              <dd>{{ d['lastLoginAt'] ? (dt(d['lastLoginAt']) | date: 'medium') : 'never' }}</dd>
+              <dt>2FA</dt>
+              <dd>{{ u.totpEnabled ? 'on' : 'off' }}</dd>
             </dl>
           } @else {
             <p class="muted small">Loading account record…</p>
           }
 
           <div class="gap-sep"></div>
-          <div class="panel-head"><h2>Permission matrix</h2><span class="ph-sub">dot-matrix view · edit by role</span></div>
+          <div class="panel-head">
+            <h2>Permission matrix</h2>
+            <span class="ph-sub">dot-matrix view · edit by role</span>
+          </div>
           <div class="actions" style="margin-bottom:0.6rem;">
-            <select [(ngModel)]="mRole" name="mrole" class="table-filter" (ngModelChange)="setMatrixRole()">
-              @for (r of matrix(); track r.id) { <option [value]="r.name">{{ r.name.replaceAll('_', ' ') }}</option> }
+            <select
+              [(ngModel)]="mRole"
+              name="mrole"
+              class="table-filter"
+              (ngModelChange)="setMatrixRole()"
+            >
+              @for (r of matrix(); track r.id) {
+                <option [value]="r.name">{{ r.name.replaceAll('_', ' ') }}</option>
+              }
             </select>
             <button class="cta small" (click)="saveMatrix()">Save role permissions</button>
           </div>
           @if (draftModules().length > 0) {
             <table class="table">
-              <thead><tr><th>Module</th><th>Level</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Module</th>
+                  <th>Level</th>
+                </tr>
+              </thead>
               <tbody>
                 @for (mod of draftModules(); track mod) {
                   <tr>
@@ -131,7 +239,14 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
                     <td>
                       <span class="seg" role="group" aria-label="{{ mod }}">
                         @for (lv of ACCESS_LEVELS; track lv) {
-                          <button type="button" [class.on]="edit[mod] === lv" [disabled]="mod === 'staff_access' && lv === 'none'" (click)="setLevel(mod, lv)">{{ lv.slice(0, 1).toUpperCase() }}</button>
+                          <button
+                            type="button"
+                            [class.on]="edit[mod] === lv"
+                            [disabled]="mod === 'staff_access' && lv === 'none'"
+                            (click)="setLevel(mod, lv)"
+                          >
+                            {{ lv.slice(0, 1).toUpperCase() }}
+                          </button>
                         }
                       </span>
                     </td>
@@ -139,16 +254,24 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
                 }
               </tbody>
             </table>
-            <p class="muted small" style="margin-top:0.5rem;">STAFF_ACCESS cannot drop below view — the owner is never locked out. A dot is VIEW-to-FULL (N → none, O → own, V → view, A → approve, F → full).</p>
+            <p class="muted small" style="margin-top:0.5rem;">
+              STAFF_ACCESS cannot drop below view — the owner is never locked out. A dot is
+              VIEW-to-FULL (N → none, O → own, V → view, A → approve, F → full).
+            </p>
           } @else {
             <p class="muted small">Loading permission matrix…</p>
           }
 
           <div class="panel-head" style="margin-top:0.9rem;"><h2>Role & clearance</h2></div>
-          <p class="muted small">Each staff member can only see and do what their role allows — this is enforced automatically.</p>
+          <p class="muted small">
+            Each staff member can only see and do what their role allows — this is enforced
+            automatically.
+          </p>
           <div class="actions">
             <select [(ngModel)]="roleChoice[u.id]" [name]="'r' + u.id" class="table-filter">
-              @for (r of roles; track r) { <option [value]="r">{{ r.replaceAll('_', ' ') }}</option> }
+              @for (r of roles; track r) {
+                <option [value]="r">{{ r.replaceAll('_', ' ') }}</option>
+              }
             </select>
             <button class="cta small" (click)="changeRole(u)">Save role permissions</button>
           </div>
@@ -157,11 +280,17 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
         }
 
         <div class="gap-sep"></div>
-        <div class="panel-head"><h2>Latest permission logs</h2><span class="ph-sub">from the audit log</span></div>
+        <div class="panel-head">
+          <h2>Latest permission logs</h2>
+          <span class="ph-sub">from the audit log</span>
+        </div>
         @if (permLogs().length > 0) {
           <ul class="activity">
             @for (e of permLogs(); track e.id) {
-              <li><time>{{ e.timestamp | date: 'MMM d, HH:mm' }}</time><span class="act-action">{{ e.action }}</span></li>
+              <li>
+                <time>{{ e.timestamp | date: 'MMM d, HH:mm' }}</time
+                ><span class="act-action">{{ e.action }}</span>
+              </li>
             }
           </ul>
         } @else {
@@ -170,8 +299,12 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
       </aside>
     </div>
 
-    @if (message()) { <p class="success">{{ message() }}</p> }
-    @if (error()) { <p class="error">{{ error() }}</p> }
+    @if (message()) {
+      <p class="success">{{ message() }}</p>
+    }
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
   `,
 })
 export class StaffAdminPage implements OnInit {
@@ -186,7 +319,9 @@ export class StaffAdminPage implements OnInit {
   readonly selectedId = signal<string | null>(null);
   readonly detail = signal<Record<string, unknown> | null>(null);
   readonly permLogs = signal<AuditEntry[]>([]);
-  readonly matrix = signal<Array<{ id: string; name: string; permissions: Array<{ module: string; accessLevel: string }> }>>([]);
+  readonly matrix = signal<
+    Array<{ id: string; name: string; permissions: Array<{ module: string; accessLevel: string }> }>
+  >([]);
   readonly ACCESS_LEVELS = ACCESS_LEVELS;
   readonly draftModules = computed(() => {
     const seen = new Set<string>();
@@ -223,7 +358,12 @@ export class StaffAdminPage implements OnInit {
     const rf = this.roleFilter();
     return this.users().filter((u) => {
       if (rf && u.role.name !== rf) return false;
-      return !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.role.name.includes(q);
+      return (
+        !q ||
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.role.name.includes(q)
+      );
     });
   }
 
@@ -233,20 +373,35 @@ export class StaffAdminPage implements OnInit {
   }
 
   initials(name: string): string {
-    const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean);
-    return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || 'SE';
+    const parts = String(name ?? '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    return (
+      (
+        (parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')
+      ).toUpperCase() || 'SE'
+    );
   }
-  dt(v: unknown): string | null { return v ? String(v) : null; }
+  dt(v: unknown): string | null {
+    return v ? String(v) : null;
+  }
 
   inspect(id: string): void {
-    if (this.selectedId() === id) { this.selectedId.set(null); this.detail.set(null); return; }
+    if (this.selectedId() === id) {
+      this.selectedId.set(null);
+      this.detail.set(null);
+      return;
+    }
     this.selectedId.set(id);
     this.detail.set(null);
     this.api.user(id).subscribe({
       next: (u) => {
         this.detail.set(u);
         const roleName = (u['role'] as Record<string, unknown> | null)?.['name'];
-        this.loadMatrix(roleName ? String(roleName) : String((u as unknown as UserRow).role.name ?? ''));
+        this.loadMatrix(
+          roleName ? String(roleName) : String((u as unknown as UserRow).role.name ?? ''),
+        );
       },
       error: (e) => this.error.set(e?.error?.message ?? 'Could not load that account.'),
     });
@@ -272,8 +427,30 @@ export class StaffAdminPage implements OnInit {
   }
 
   private saveOrder(seen: Set<string>): string[] {
-    const preference = ['manufacturing', 'raw_materials', 'catalogue', 'inventory', 'retail_orders', 'wholesale_orders', 'custom_orders', 'payments', 'returns', 'accounting', 'logistics', 'marketing', 'analytics', 'partners', 'staff_access', 'approvals_audit', 'communication'];
-    return [...seen].sort((a, b) => { const ia = preference.indexOf(a); const ib = preference.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
+    const preference = [
+      'manufacturing',
+      'raw_materials',
+      'catalogue',
+      'inventory',
+      'retail_orders',
+      'wholesale_orders',
+      'custom_orders',
+      'payments',
+      'returns',
+      'accounting',
+      'logistics',
+      'marketing',
+      'analytics',
+      'partners',
+      'staff_access',
+      'approvals_audit',
+      'communication',
+    ];
+    return [...seen].sort((a, b) => {
+      const ia = preference.indexOf(a);
+      const ib = preference.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
   }
 
   setMatrixRole(prefer?: string): void {
@@ -294,31 +471,61 @@ export class StaffAdminPage implements OnInit {
 
   saveMatrix(): void {
     const role = this.mRole;
-    if (!role) { this.error.set('Pick a role first.'); return; }
-    const permissions = Object.entries(this.edit).map(([module, accessLevel]) => ({ module, accessLevel }));
-    if (!permissions.some((p) => p.module === 'staff_access' && ['view', 'approve', 'full', 'own'].includes(p.accessLevel))) {
+    if (!role) {
+      this.error.set('Pick a role first.');
+      return;
+    }
+    const permissions = Object.entries(this.edit).map(([module, accessLevel]) => ({
+      module,
+      accessLevel,
+    }));
+    if (
+      !permissions.some(
+        (p) =>
+          p.module === 'staff_access' && ['view', 'approve', 'full', 'own'].includes(p.accessLevel),
+      )
+    ) {
       this.error.set('STAFF_ACCESS must keep at least view access — raise it and try again.');
       return;
     }
     this.api.updateRolePermissions(role, permissions).subscribe({
-      next: () => { this.message.set(`${role.replaceAll('_', ' ')} permission row updated.`); this.error.set(null); },
+      next: () => {
+        this.message.set(`${role.replaceAll('_', ' ')} permission row updated.`);
+        this.error.set(null);
+      },
       error: (e) => this.error.set(e?.error?.message ?? 'Permission update failed.'),
     });
   }
 
   create(): void {
-    this.api.createUser({
-      name: this.nu.name, email: this.nu.email, phone: this.nu.phone || undefined,
-      password: this.nu.password, role: this.nu.role,
-    }).subscribe({
-      next: () => { this.showInvite.set(false); this.message.set('Account created — share the temporary password securely and have them change it via Forgot password.'); this.error.set(null); this.load(); },
-      error: (e) => this.error.set(e?.error?.message ?? 'Create failed.'),
-    });
+    this.api
+      .createUser({
+        name: this.nu.name,
+        email: this.nu.email,
+        phone: this.nu.phone || undefined,
+        password: this.nu.password,
+        role: this.nu.role,
+      })
+      .subscribe({
+        next: () => {
+          this.showInvite.set(false);
+          this.message.set(
+            'Account created — share the temporary password securely and have them change it via Forgot password.',
+          );
+          this.error.set(null);
+          this.load();
+        },
+        error: (e) => this.error.set(e?.error?.message ?? 'Create failed.'),
+      });
   }
 
   changeRole(u: UserRow): void {
     this.api.changeRole(u.id, this.roleChoice[u.id]).subscribe({
-      next: () => { this.message.set(`${u.name} is now ${this.roleChoice[u.id].replaceAll('_', ' ')}.`); this.error.set(null); this.load(); },
+      next: () => {
+        this.message.set(`${u.name} is now ${this.roleChoice[u.id].replaceAll('_', ' ')}.`);
+        this.error.set(null);
+        this.load();
+      },
       error: (e) => this.error.set(e?.error?.message ?? 'Role change failed.'),
     });
   }

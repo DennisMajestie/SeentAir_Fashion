@@ -1,4 +1,11 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { numericTransformer } from '../../../common/numeric.transformer';
 import { RawMaterial } from '../../materials/entities/raw-material.entity';
 import { ProductVariant } from './product-variant.entity';

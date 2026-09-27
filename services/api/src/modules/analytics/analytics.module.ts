@@ -14,7 +14,14 @@ import { AnalyticsService } from './analytics.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, ProductionBatch, ApprovalRequest, RawMaterial, InventoryMovement]),
+    TypeOrmModule.forFeature([
+      Order,
+      OrderItem,
+      ProductionBatch,
+      ApprovalRequest,
+      RawMaterial,
+      InventoryMovement,
+    ]),
     AccountingModule,
     InventoryModule,
     MaterialsModule,

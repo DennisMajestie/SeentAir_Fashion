@@ -44,7 +44,8 @@ export class AuditService {
       .skip((page - 1) * limit)
       .take(limit);
     if (options.actorId) qb.andWhere('entry.actor_id = :actorId', { actorId: options.actorId });
-    if (options.action) qb.andWhere('entry.action ILIKE :action', { action: `%${options.action}%` });
+    if (options.action)
+      qb.andWhere('entry.action ILIKE :action', { action: `%${options.action}%` });
     if (options.from) qb.andWhere('entry.timestamp >= :from', { from: options.from });
     if (options.to) qb.andWhere('entry.timestamp <= :to', { to: options.to });
     const [data, total] = await qb.getManyAndCount();

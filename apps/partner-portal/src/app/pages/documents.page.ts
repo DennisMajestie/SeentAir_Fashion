@@ -37,7 +37,9 @@ import { PortalStore } from '../portal.store';
         </div>
         <div class="kpi">
           <span class="kpi-label">Capital on registry</span>
-          <span class="kpi-value">₦{{ d.investmentInformation.investedAmount | number: '1.0-0' }}</span>
+          <span class="kpi-value"
+            >₦{{ d.investmentInformation.investedAmount | number: '1.0-0' }}</span
+          >
           <span class="kpi-sub">Subscribed &amp; fully paid</span>
         </div>
         <div class="kpi">
@@ -54,27 +56,76 @@ import { PortalStore } from '../portal.store';
             <span class="panel-note">Format: digital cert PDF</span>
           </div>
 
-          <p class="num-head"><span class="num">1.</span> Shareholder &amp; governance agreements <span class="tail">0 records</span></p>
+          <p class="num-head">
+            <span class="num">1.</span> Shareholder &amp; governance agreements
+            <span class="tail">0 records</span>
+          </p>
           <!-- GAP: no document-library endpoint — executed agreements, CAC forms and share
                certificates appear here as downloadable rows once the API ships one. -->
           <div class="empty-state">
-            <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+            <span class="empty-state-icon" aria-hidden="true"
+              ><svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
+            ></span>
             <h2 class="empty-state-title">No documents yet</h2>
-            <p class="empty-state-sub">Your shareholders' agreement, CAC filings and share certificate appear here once released.</p>
+            <p class="empty-state-sub">
+              Your shareholders' agreement, CAC filings and share certificate appear here once
+              released.
+            </p>
           </div>
 
-          <p class="num-head"><span class="num">2.</span> Quarterly investor letters &amp; briefings <span class="tail">0 records</span></p>
+          <p class="num-head">
+            <span class="num">2.</span> Quarterly investor letters &amp; briefings
+            <span class="tail">0 records</span>
+          </p>
           <div class="empty-state">
-            <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+            <span class="empty-state-icon" aria-hidden="true"
+              ><svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
+            ></span>
             <h2 class="empty-state-title">No letters yet</h2>
-            <p class="empty-state-sub">The Managing Director's quarterly letters are filed here with each distribution cycle.</p>
+            <p class="empty-state-sub">
+              The Managing Director's quarterly letters are filed here with each distribution cycle.
+            </p>
           </div>
 
-          <p class="num-head"><span class="num">3.</span> Tax &amp; statutory filings <span class="tail">0 records</span></p>
+          <p class="num-head">
+            <span class="num">3.</span> Tax &amp; statutory filings
+            <span class="tail">0 records</span>
+          </p>
           <div class="empty-state">
-            <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+            <span class="empty-state-icon" aria-hidden="true"
+              ><svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
+            ></span>
             <h2 class="empty-state-title">No filings yet</h2>
-            <p class="empty-state-sub">Withholding-tax credit notes and statutory receipts are deposited here.</p>
+            <p class="empty-state-sub">
+              Withholding-tax credit notes and statutory receipts are deposited here.
+            </p>
           </div>
         </section>
 
@@ -86,8 +137,7 @@ import { PortalStore } from '../portal.store';
             </div>
             <p class="desk-copy">
               Confidential shareholder liaison from the executive desk — communications are routed
-              directly to Seentair leadership. No customer data or support requests are routed
-              here.
+              directly to Seentair leadership. No customer data or support requests are routed here.
             </p>
             @if (store.messages(); as inbox) {
               @if (inbox.length > 0) {
@@ -96,18 +146,35 @@ import { PortalStore } from '../portal.store';
                     <div class="inbox-row" role="listitem">
                       <div class="inbox-top">
                         <span class="chip">{{ channelLabel(m.channel) }}</span>
-                        <time class="inbox-date" [attr.datetime]="m.sentAt">{{ m.sentAt | date: 'MMM d, yyyy · HH:mm' }}</time>
+                        <time class="inbox-date" [attr.datetime]="m.sentAt">{{
+                          m.sentAt | date: 'MMM d, yyyy · HH:mm'
+                        }}</time>
                       </div>
                       <p class="inbox-msg">{{ m.message }}</p>
-                      <span class="inbox-type">{{ typeLabel(m.type) }} · {{ statusLabel(m.status) }}</span>
+                      <span class="inbox-type"
+                        >{{ typeLabel(m.type) }} · {{ statusLabel(m.status) }}</span
+                      >
                     </div>
                   }
                 </div>
               } @else {
                 <div class="empty-state">
-                  <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+                  <span class="empty-state-icon" aria-hidden="true"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
+                  ></span>
                   <h2 class="empty-state-title">No messages yet</h2>
-                  <p class="empty-state-sub">Quarterly briefings, distribution notices and desk replies land here.</p>
+                  <p class="empty-state-sub">
+                    Quarterly briefings, distribution notices and desk replies land here.
+                  </p>
                 </div>
               }
             } @else {
@@ -132,8 +199,10 @@ import { PortalStore } from '../portal.store';
               <span class="doc-ico">§</span>
               <div class="doc-main">
                 <strong>Legal &amp; Secretarial Secretariat</strong>
-                <span>For physical AGM proxies, share re-allotments, or direct trust deeds, lodge
-                  a governance query via the direct desk once enabled.</span>
+                <span
+                  >For physical AGM proxies, share re-allotments, or direct trust deeds, lodge a
+                  governance query via the direct desk once enabled.</span
+                >
               </div>
             </div>
           </section>
@@ -149,25 +218,75 @@ import { PortalStore } from '../portal.store';
   `,
   styles: [
     `
-      .kpi.mini { padding: 0.6rem 0.8rem; }
-      .kpi-value.sm { font-size: 0.95rem; }
-      .desk-copy { margin: 0 0 0.7rem; font-size: var(--type-body-sm); color: var(--ink-dim); }
-      label.field { margin-bottom: 0.2rem; }
-      textarea {
-        display: block; width: 100%; resize: vertical; padding: 0.6rem; margin: 0.3rem 0 0.7rem;
-        background: var(--obsidian); border: 1px solid var(--hairline); color: var(--ink);
-        font-family: inherit; font-size: var(--type-body-sm); border-radius: var(--radius-field);
-        &:disabled { opacity: 0.55; }
+      .kpi.mini {
+        padding: 0.6rem 0.8rem;
       }
-      .doc-main span { white-space: normal; }
-      .inbox { display: flex; flex-direction: column; margin-bottom: 0.8rem; }
-      .inbox-row { border: 1px solid var(--hairline); background: var(--panel-2); padding: 0.65rem 0.75rem;
-        border-radius: var(--radius-field); margin-bottom: 0.5rem;
-        &:last-child { margin-bottom: 0; } }
-      .inbox-top { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem; }
-      .inbox-date { font-size: var(--type-label-sm); color: var(--ink-dim); }
-      .inbox-msg { margin: 0 0 0.35rem; font-size: var(--type-body-sm); }
-      .inbox-type { font-size: var(--type-label-sm); color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+      .kpi-value.sm {
+        font-size: 0.95rem;
+      }
+      .desk-copy {
+        margin: 0 0 0.7rem;
+        font-size: var(--type-body-sm);
+        color: var(--ink-dim);
+      }
+      label.field {
+        margin-bottom: 0.2rem;
+      }
+      textarea {
+        display: block;
+        width: 100%;
+        resize: vertical;
+        padding: 0.6rem;
+        margin: 0.3rem 0 0.7rem;
+        background: var(--obsidian);
+        border: 1px solid var(--hairline);
+        color: var(--ink);
+        font-family: inherit;
+        font-size: var(--type-body-sm);
+        border-radius: var(--radius-field);
+        &:disabled {
+          opacity: 0.55;
+        }
+      }
+      .doc-main span {
+        white-space: normal;
+      }
+      .inbox {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 0.8rem;
+      }
+      .inbox-row {
+        border: 1px solid var(--hairline);
+        background: var(--panel-2);
+        padding: 0.65rem 0.75rem;
+        border-radius: var(--radius-field);
+        margin-bottom: 0.5rem;
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+      .inbox-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.35rem;
+      }
+      .inbox-date {
+        font-size: var(--type-label-sm);
+        color: var(--ink-dim);
+      }
+      .inbox-msg {
+        margin: 0 0 0.35rem;
+        font-size: var(--type-body-sm);
+      }
+      .inbox-type {
+        font-size: var(--type-label-sm);
+        color: var(--ink-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
     `,
   ],
 })

@@ -33,12 +33,16 @@ const RETURN_WINDOW_MS = 12 * 3_600_000;
           <div class="step-card" [class.done]="i < stepIndex()" [class.current]="i === stepIndex()">
             <p class="s-idx">STEP {{ i + 1 | number: '2.0' }}</p>
             <p class="s-name">{{ step.name }}</p>
-            <p class="s-state">{{ i < stepIndex() ? '■ COMPLETE' : i === stepIndex() ? '▶ CURRENT' : '· PENDING' }}</p>
+            <p class="s-state">
+              {{ i < stepIndex() ? '■ COMPLETE' : i === stepIndex() ? '▶ CURRENT' : '· PENDING' }}
+            </p>
           </div>
         }
       </div>
       @if (o.status === 'returned') {
-        <p class="rule-strip">This order was returned. The resolution is recorded in the history below.</p>
+        <p class="rule-strip">
+          This order was returned. The resolution is recorded in the history below.
+        </p>
       }
 
       <div class="checkout-cols">
@@ -48,7 +52,9 @@ const RETURN_WINDOW_MS = 12 * 3_600_000;
             <div class="audit-row">
               <p class="a-time">{{ event.createdAt | date: 'medium' }}</p>
               <p class="a-status">{{ event.status.replaceAll('_', ' ') }}</p>
-              @if (event.note) { <p class="muted small">{{ event.note }}</p> }
+              @if (event.note) {
+                <p class="muted small">{{ event.note }}</p>
+              }
             </div>
           }
 
@@ -64,18 +70,25 @@ const RETURN_WINDOW_MS = 12 * 3_600_000;
                   <option [ngValue]="2">★★☆☆☆</option>
                   <option [ngValue]="1">★☆☆☆☆</option>
                 </select>
-                <input [(ngModel)]="comments[item.variant.id]" [name]="'c' + item.variant.id" placeholder="Say something (optional)" />
+                <input
+                  [(ngModel)]="comments[item.variant.id]"
+                  [name]="'c' + item.variant.id"
+                  placeholder="Say something (optional)"
+                />
                 <button class="cta small" type="submit">Submit review</button>
               </form>
             }
-            @if (reviewMessage()) { <p class="success">{{ reviewMessage() }}</p> }
+            @if (reviewMessage()) {
+              <p class="success">{{ reviewMessage() }}</p>
+            }
           }
 
           @if (returnEligible()) {
             <p class="section-label">Request a return</p>
             <p class="rule-strip">
               Returns must be requested within 12 hours of delivery — this window closes
-              {{ returnDeadline() | date: 'shortTime' }}. The physical return is due within 24 hours of the request.
+              {{ returnDeadline() | date: 'shortTime' }}. The physical return is due within 24 hours
+              of the request.
             </p>
             @for (item of o.items; track item.variant.id) {
               <form class="review-form" (ngSubmit)="requestReturn(item.variant.id, item.quantity)">
@@ -89,17 +102,28 @@ const RETURN_WINDOW_MS = 12 * 3_600_000;
                 <button class="cta small ghost" type="submit">Request return</button>
               </form>
             }
-            @if (returnMessage()) { <p class="success">{{ returnMessage() }}</p> }
-            @if (returnError()) { <p class="error">{{ returnError() }}</p> }
+            @if (returnMessage()) {
+              <p class="success">{{ returnMessage() }}</p>
+            }
+            @if (returnError()) {
+              <p class="error">{{ returnError() }}</p>
+            }
           }
         </div>
 
         <aside>
-          <p class="section-label">Manifest <span class="count">[{{ o.items.length | number: '2.0' }}]</span></p>
+          <p class="section-label">
+            Manifest <span class="count">[{{ o.items.length | number: '2.0' }}]</span>
+          </p>
           @for (item of o.items; track item.variant.id) {
             <div class="manifest-row">
               @if (item.variant.imageUrl) {
-                <img class="m-thumb" [src]="item.variant.imageUrl" [alt]="item.variant.sku" loading="lazy" />
+                <img
+                  class="m-thumb"
+                  [src]="item.variant.imageUrl"
+                  [alt]="item.variant.sku"
+                  loading="lazy"
+                />
               } @else {
                 <div class="m-thumb m-thumb-monogram" aria-hidden="true">•</div>
               }
@@ -178,10 +202,16 @@ export class OrderPage implements OnInit {
     const order = this.order();
     if (!order) return;
     this.api
-      .submitReview(order.id, variantId, this.ratings[variantId] ?? 5, this.comments[variantId] ?? '')
+      .submitReview(
+        order.id,
+        variantId,
+        this.ratings[variantId] ?? 5,
+        this.comments[variantId] ?? '',
+      )
       .subscribe({
         next: () => this.reviewMessage.set('Thanks! Your review is in — it appears once approved.'),
-        error: (err) => this.reviewMessage.set(err?.error?.message ?? 'Could not submit the review.'),
+        error: (err) =>
+          this.reviewMessage.set(err?.error?.message ?? 'Could not submit the review.'),
       });
   }
 

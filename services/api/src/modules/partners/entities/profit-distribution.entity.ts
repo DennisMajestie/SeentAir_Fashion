@@ -16,16 +16,40 @@ export class ProfitDistribution {
   @Column({ unique: true })
   period: string;
 
-  @Column({ name: 'total_profit', type: 'numeric', precision: 14, scale: 2, transformer: numericTransformer })
+  @Column({
+    name: 'total_profit',
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   totalProfit: number;
 
-  @Column({ name: 'reinvestment_amount', type: 'numeric', precision: 14, scale: 2, transformer: numericTransformer })
+  @Column({
+    name: 'reinvestment_amount',
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   reinvestmentAmount: number;
 
-  @Column({ name: 'dividend_pool', type: 'numeric', precision: 14, scale: 2, transformer: numericTransformer })
+  @Column({
+    name: 'dividend_pool',
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   dividendPool: number;
 
-  @Column({ name: 'reserve_amount', type: 'numeric', precision: 14, scale: 2, transformer: numericTransformer })
+  @Column({
+    name: 'reserve_amount',
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   reserveAmount: number;
 
   /** { founderCeo: n, partners: [{partnerId, name, equityPercentage, amount}] } */

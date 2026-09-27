@@ -25,7 +25,9 @@ interface Stage {
   selector: 'app-tracking',
   imports: [CommonModule, RouterLink],
   template: `
-    <div style="display:flex; justify-content:space-between; align-items:center; gap: var(--space-sm); flex-wrap:wrap">
+    <div
+      style="display:flex; justify-content:space-between; align-items:center; gap: var(--space-sm); flex-wrap:wrap"
+    >
       <a class="link backlink" routerLink="/orders">
         <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span> Back to orders
       </a>
@@ -36,22 +38,37 @@ interface Stage {
       <section class="panel">
         <div class="tagbar">
           <span>Wholesale freight tracking</span>
-          <span class="status" [class]="'status ' + pill(status())">{{ status().replaceAll('_', ' ') }}</span>
+          <span class="status" [class]="'status ' + pill(status())">{{
+            status().replaceAll('_', ' ')
+          }}</span>
         </div>
-        <h1 style="font-size: var(--type-heading-md)">Order #SNT-{{ orderId().slice(0, 8).toUpperCase() }}</h1>
+        <h1 style="font-size: var(--type-heading-md)">
+          Order #SNT-{{ orderId().slice(0, 8).toUpperCase() }}
+        </h1>
         <div class="meta-grid" style="margin-bottom:0">
-          <div class="mg"><span class="m-l">Current status</span>
-            <span class="m-v">{{ status().replaceAll('_', ' ') }}</span></div>
-          <div class="mg"><span class="m-l">Last event</span>
-            <span class="m-v">{{ lastEventAt() ? (lastEventAt() | date: 'dd MMM, HH:mm') : '—' }}</span></div>
-          <div class="mg"><span class="m-l">Batch volume</span>
-            <span class="m-v">{{ invoice() ? units(invoice()!) + ' garment units' : '—' }}</span></div>
+          <div class="mg">
+            <span class="m-l">Current status</span>
+            <span class="m-v">{{ status().replaceAll('_', ' ') }}</span>
+          </div>
+          <div class="mg">
+            <span class="m-l">Last event</span>
+            <span class="m-v">{{
+              lastEventAt() ? (lastEventAt() | date: 'dd MMM, HH:mm') : '—'
+            }}</span>
+          </div>
+          <div class="mg">
+            <span class="m-l">Batch volume</span>
+            <span class="m-v">{{ invoice() ? units(invoice()!) + ' garment units' : '—' }}</span>
+          </div>
           <!-- GAP: consignee destination address awaits the buyer address-book module -->
-          <div class="mg"><span class="m-l">Destination</span>
-            <span class="m-v">Confirmed with desk</span></div>
+          <div class="mg">
+            <span class="m-l">Destination</span> <span class="m-v">Confirmed with desk</span>
+          </div>
         </div>
         <div class="actions">
-          <a class="link" [routerLink]="['/orders', orderId(), 'invoice']">Manifest &amp; invoice</a>
+          <a class="link" [routerLink]="['/orders', orderId(), 'invoice']"
+            >Manifest &amp; invoice</a
+          >
         </div>
       </section>
 
@@ -59,17 +76,27 @@ interface Stage {
            adapter — the corridor panel states the real route policy instead. -->
       <section class="panel">
         <div class="tagbar">
-          <span><span class="material-symbols-outlined" style="font-size:14px; vertical-align:-2px"
-            aria-hidden="true">route</span> Logistics freight corridor</span>
+          <span
+            ><span
+              class="material-symbols-outlined"
+              style="font-size:14px; vertical-align:-2px"
+              aria-hidden="true"
+              >route</span
+            >
+            Logistics freight corridor</span
+          >
           <span>Aba — nationwide</span>
         </div>
-        <div class="leg-row" style="display:flex; justify-content:space-between; gap: var(--space-md); font-size: var(--type-body-sm); color: var(--muted)">
+        <div
+          class="leg-row"
+          style="display:flex; justify-content:space-between; gap: var(--space-md); font-size: var(--type-body-sm); color: var(--muted)"
+        >
           <span>Interstate transit vector</span>
           <span class="chip dark">Carrier: GIGL</span>
         </div>
         <p class="muted small" style="margin: var(--space-sm) 0 0">
-          Batches dispatch from the Aba workshop onto the GIGL national freight network.
-          Waybill telemetry appears here as the carrier integration comes online.
+          Batches dispatch from the Aba workshop onto the GIGL national freight network. Waybill
+          telemetry appears here as the carrier integration comes online.
         </p>
       </section>
 
@@ -79,19 +106,32 @@ interface Stage {
       </div>
       <div class="timeline">
         @for (stage of stages; track stage.label; let idx = $index) {
-          <div class="tl-step" [class.done]="stageState(idx) === 'done'"
+          <div
+            class="tl-step"
+            [class.done]="stageState(idx) === 'done'"
             [class.current]="stageState(idx) === 'current'"
-            [class.pending]="stageState(idx) === 'pending'">
+            [class.pending]="stageState(idx) === 'pending'"
+          >
             <span class="tl-dot">
               <span class="material-symbols-outlined" aria-hidden="true">
-                {{ stageState(idx) === 'done' ? 'check' : stageState(idx) === 'current' ? 'sync' : 'schedule' }}
+                {{
+                  stageState(idx) === 'done'
+                    ? 'check'
+                    : stageState(idx) === 'current'
+                      ? 'sync'
+                      : 'schedule'
+                }}
               </span>
             </span>
             <div class="tl-card">
               <div class="tl-head">
                 <span>{{ stage.label }}</span>
                 <span class="tl-when">
-                  {{ stageEvent(idx) ? (stageEvent(idx)!.createdAt | date: 'dd MMM, HH:mm') : 'Pending' }}
+                  {{
+                    stageEvent(idx)
+                      ? (stageEvent(idx)!.createdAt | date: 'dd MMM, HH:mm')
+                      : 'Pending'
+                  }}
                 </span>
               </div>
               <p class="tl-note">
@@ -103,11 +143,15 @@ interface Stage {
       </div>
       @if (extraEvents().length > 0) {
         <section class="panel">
-          <div class="tagbar"><span>Additional ledger events</span><span>{{ extraEvents().length }}</span></div>
+          <div class="tagbar">
+            <span>Additional ledger events</span><span>{{ extraEvents().length }}</span>
+          </div>
           @for (event of extraEvents(); track event.createdAt) {
-            <p class="small"><strong>{{ event.status.replaceAll('_', ' ') }}</strong>
-              — {{ event.note ?? 'recorded' }}
-              <span class="muted">({{ event.createdAt | date: 'medium' }})</span></p>
+            <p class="small">
+              <strong>{{ event.status.replaceAll('_', ' ') }}</strong> —
+              {{ event.note ?? 'recorded' }}
+              <span class="muted">({{ event.createdAt | date: 'medium' }})</span>
+            </p>
           }
         </section>
       }
@@ -120,12 +164,25 @@ interface Stage {
            awaits the GIGL adapter's shipment API — one honest leg is shown. -->
       <div class="leg-card">
         <div class="leg-head">
-          <span><span class="material-symbols-outlined" style="font-size:14px; vertical-align:-2px"
-            aria-hidden="true">local_shipping</span> Factory dispatch via GIGL</span>
-          <span class="chip" [class.okc]="delivered()">{{ delivered() ? 'Delivered' : legStatus() }}</span>
+          <span
+            ><span
+              class="material-symbols-outlined"
+              style="font-size:14px; vertical-align:-2px"
+              aria-hidden="true"
+              >local_shipping</span
+            >
+            Factory dispatch via GIGL</span
+          >
+          <span class="chip" [class.okc]="delivered()">{{
+            delivered() ? 'Delivered' : legStatus()
+          }}</span>
         </div>
-        <div class="leg-row"><span>Assigned carrier</span><span class="v">GIGL (first-line, pluggable)</span></div>
-        <div class="leg-row"><span>Route vector</span><span class="v">Aba workshop → consignee hub</span></div>
+        <div class="leg-row">
+          <span>Assigned carrier</span><span class="v">GIGL (first-line, pluggable)</span>
+        </div>
+        <div class="leg-row">
+          <span>Route vector</span><span class="v">Aba workshop → consignee hub</span>
+        </div>
         <div class="leg-ref">
           <span>Tracking waybill</span>
           <span class="v">Issued at dispatch</span>
@@ -140,7 +197,9 @@ interface Stage {
         <section class="panel">
           @for (item of inv.items; track item.sku) {
             <div class="oc-line" style="margin-top: 0; margin-bottom: var(--space-sm)">
-              <span><code>{{ item.sku }}</code></span>
+              <span
+                ><code>{{ item.sku }}</code></span
+              >
               <span class="num">{{ item.quantity }}×</span>
             </div>
           }
@@ -158,20 +217,27 @@ interface Stage {
         <span class="material-symbols-outlined" aria-hidden="true">assignment_return</span>
         <div>
           <strong>Return policy notice</strong>
-          Return requests must be submitted within 12 hours of confirmed delivery and are
-          completed within 24 hours. Custom production batches are non-returnable.
+          Return requests must be submitted within 12 hours of confirmed delivery and are completed
+          within 24 hours. Custom production batches are non-returnable.
         </div>
       </div>
       <!-- GAP: returns intake endpoint not exposed to the portal yet — the desk
            handles the 12-hour window by phone; button stays locked. -->
-      <button class="cta quiet" style="width:100%" disabled
-        [title]="delivered() ? 'Returns are handled by the desk — call the hub' : 'Available upon delivery'">
+      <button
+        class="cta quiet"
+        style="width:100%"
+        disabled
+        [title]="
+          delivered() ? 'Returns are handled by the desk — call the hub' : 'Available upon delivery'
+        "
+      >
         <span class="material-symbols-outlined" aria-hidden="true">lock</span>
         Request return {{ delivered() ? '(call the hub)' : '(available upon delivery)' }}
       </button>
     } @else if (failed()) {
-      <p class="error">Tracking unavailable for this order.
-        <a class="link" routerLink="/orders">Back to orders</a></p>
+      <p class="error">
+        Tracking unavailable for this order. <a class="link" routerLink="/orders">Back to orders</a>
+      </p>
     } @else {
       <p class="muted">Loading freight tracking…</p>
     }
@@ -193,7 +259,8 @@ export class TrackingPage implements OnInit {
     {
       key: /received|verified|confirmed|paid/,
       label: 'Order received & verified',
-      fallbackNote: 'Payment verification pending — the batch is allocated once the desk confirms settlement.',
+      fallbackNote:
+        'Payment verification pending — the batch is allocated once the desk confirms settlement.',
     },
     {
       key: /processing|production|packaging|packing|qc/,

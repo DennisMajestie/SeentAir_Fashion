@@ -139,9 +139,13 @@ export class LogisticsService {
 
   // --- Pricing (weight + location) ---
 
-  async quote(weightKg: number, zone: string): Promise<{ zone: string; weightKg: number; cost: number }> {
+  async quote(
+    weightKg: number,
+    zone: string,
+  ): Promise<{ zone: string; weightKg: number; cost: number }> {
     const pricing = await this.pricingRepo.findOne({ where: { zone } });
-    if (!pricing) throw new BadRequestException(`No delivery pricing configured for zone '${zone}'`);
+    if (!pricing)
+      throw new BadRequestException(`No delivery pricing configured for zone '${zone}'`);
     const cost = Math.round((pricing.baseFee + pricing.pricePerKg * weightKg) * 100) / 100;
     return { zone, weightKg, cost };
   }

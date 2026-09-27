@@ -3,8 +3,20 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../api.service';
 
-interface VariantRow { id: string; sku: string; size: string | null; colour: string | null; priceOverride: number | null; }
-interface ProductRow { id: string; name: string; category: string | null; basePrice: number; variants: VariantRow[]; }
+interface VariantRow {
+  id: string;
+  sku: string;
+  size: string | null;
+  colour: string | null;
+  priceOverride: number | null;
+}
+interface ProductRow {
+  id: string;
+  name: string;
+  category: string | null;
+  basePrice: number;
+  variants: VariantRow[];
+}
 
 /** A7 — Silhouette pattern & tech pack editor. Bound to the TechPacks API:
     per-variant spec with graded measurements, protocols, DXF link and a
@@ -20,12 +32,31 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
         <p class="ops-sub">Cutting, fabric needs and measurement details for each product.</p>
       </div>
       <div class="ops-actions">
-        <select class="table-filter" [(ngModel)]="selectedId" name="prod" (ngModelChange)="select()">
+        <select
+          class="table-filter"
+          [(ngModel)]="selectedId"
+          name="prod"
+          (ngModelChange)="select()"
+        >
           <option value="">— choose a product —</option>
-          @for (p of products(); track p.id) { <option [value]="p.id">{{ p.name }}</option> }
+          @for (p of products(); track p.id) {
+            <option [value]="p.id">{{ p.name }}</option>
+          }
         </select>
-        <select class="table-filter" [(ngModel)]="variantId" name="variant" (ngModelChange)="loadPack()">
-          @for (v of variants(); track v.id) { <option [value]="v.id">{{ v.sku }} @if (v.size || v.colour) { · {{ variantLabel(v) }} }</option> }
+        <select
+          class="table-filter"
+          [(ngModel)]="variantId"
+          name="variant"
+          (ngModelChange)="loadPack()"
+        >
+          @for (v of variants(); track v.id) {
+            <option [value]="v.id">
+              {{ v.sku }}
+              @if (v.size || v.colour) {
+                · {{ variantLabel(v) }}
+              }
+            </option>
+          }
         </select>
       </div>
     </div>
@@ -33,17 +64,31 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
     @if (selected(); as p) {
       <div class="ops-actions" style="justify-content:flex-end; margin:0 0 0.9rem;">
         @if (!pack()) {
-          <button class="cta small" type="button" (click)="createPack()" [disabled]="!variantId">Create tech pack</button>
+          <button class="cta small" type="button" (click)="createPack()" [disabled]="!variantId">
+            Create tech pack
+          </button>
         } @else {
-          <span class="chip" [class.ok]="pack()?.['status'] === 'approved'" [class.warn]="pack()?.['status'] !== 'approved'">{{ pack()?.['status'] }} · rev {{ pack()?.['revision'] }}</span>
-          <button class="cta small" type="button" (click)="saveDraft()">Save revision {{ nextRev() }}</button>
+          <span
+            class="chip"
+            [class.ok]="pack()?.['status'] === 'approved'"
+            [class.warn]="pack()?.['status'] !== 'approved'"
+            >{{ pack()?.['status'] }} · rev {{ pack()?.['revision'] }}</span
+          >
+          <button class="cta small" type="button" (click)="saveDraft()">
+            Save revision {{ nextRev() }}
+          </button>
           @if (pack()?.['status'] !== 'approved') {
-            <button class="cta small" type="button" (click)="approvePack()">Submit for management approval</button>
+            <button class="cta small" type="button" (click)="approvePack()">
+              Submit for management approval
+            </button>
           }
         }
       </div>
 
-      <p class="rule-strip">LOCKED SPEC // every save snapshots a new revision; only an approved pack becomes the shop-floor reference.</p>
+      <p class="rule-strip">
+        LOCKED SPEC // every save snapshots a new revision; only an approved pack becomes the
+        shop-floor reference.
+      </p>
 
       <div class="kpi-bar">
         <div class="kpi">
@@ -56,31 +101,67 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
             <span class="kpi-sub">no production batch costs for this product yet</span>
           }
         </div>
-        <div class="kpi"><span class="kpi-label">Retail price</span><span class="kpi-value">₦{{ p.basePrice | number: '1.0-0' }}</span><span class="kpi-sub">current catalogue base price</span></div>
+        <div class="kpi">
+          <span class="kpi-label">Retail price</span
+          ><span class="kpi-value">₦{{ p.basePrice | number: '1.0-0' }}</span
+          ><span class="kpi-sub">current catalogue base price</span>
+        </div>
         <div class="kpi">
           <span class="kpi-label">Target yield</span>
-          <span class="kpi-value">{{ pack()?.['targetYieldUnits'] ?? '—' }}<small> / {{ pack()?.['cuttingEfficiencyPct'] != null ? pack()?.['cuttingEfficiencyPct'] + '%' : '—' }}</small></span>
+          <span class="kpi-value"
+            >{{ pack()?.['targetYieldUnits'] ?? '—'
+            }}<small>
+              /
+              {{
+                pack()?.['cuttingEfficiencyPct'] != null
+                  ? pack()?.['cuttingEfficiencyPct'] + '%'
+                  : '—'
+              }}</small
+            ></span
+          >
           <span class="kpi-sub">units / cutting efficiency</span>
         </div>
-        <div class="kpi"><span class="kpi-label">Size run</span><span class="kpi-value">{{ p.variants.length }}</span><span class="kpi-sub">sizes & colours registered</span></div>
+        <div class="kpi">
+          <span class="kpi-label">Size run</span
+          ><span class="kpi-value">{{ p.variants.length }}</span
+          ><span class="kpi-sub">sizes & colours registered</span>
+        </div>
       </div>
 
       <div class="ops-grid">
         <div>
           <section class="panel flat">
-            <div class="panel-head"><h2>Graded garment measurement specification</h2><span class="ph-sub">points of measure</span></div>
+            <div class="panel-head">
+              <h2>Graded garment measurement specification</h2>
+              <span class="ph-sub">points of measure</span>
+            </div>
             @if (graded(); as gm) {
               @if (measurementRows(gm).length > 0) {
                 <table class="table">
-                  <thead><tr><th>POM</th>@for (s of sizeCols(gm); track $index) { <th>{{ s }}</th> }</tr></thead>
+                  <thead>
+                    <tr>
+                      <th>POM</th>
+                      @for (s of sizeCols(gm); track $index) {
+                        <th>{{ s }}</th>
+                      }
+                    </tr>
+                  </thead>
                   <tbody>
                     @for (row of measurementRows(gm); track $index) {
-                      <tr><td class="small">{{ row.pom }}</td>@for (cell of row.cells; track $index) { <td class="mono">{{ cell }}</td> }</tr>
+                      <tr>
+                        <td class="small">{{ row.pom }}</td>
+                        @for (cell of row.cells; track $index) {
+                          <td class="mono">{{ cell }}</td>
+                        }
+                      </tr>
                     }
                   </tbody>
                 </table>
               } @else {
-                <p class="muted small">Measurement object present but empty — open the editor and record points of measure.</p>
+                <p class="muted small">
+                  Measurement object present but empty — open the editor and record points of
+                  measure.
+                </p>
               }
             } @else {
               <p class="muted small">No graded measurement set yet.</p>
@@ -89,24 +170,44 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
 
           <section class="panel flat">
             <div class="panel-head"><h2>Seam, thread & laydown protocol</h2></div>
-            <p class="muted small">Stitch density, thread matching and thermal-conditioning SOPs.</p>
+            <p class="muted small">
+              Stitch density, thread matching and thermal-conditioning SOPs.
+            </p>
             <div class="kv">
-              <dt>Stitch protocol</dt><dd class="wrap-anywhere" style="white-space:pre-wrap;">{{ pack()?.['stitchProtocol'] || '—' }}</dd>
-              <dt>Laydown protocol</dt><dd class="wrap-anywhere" style="white-space:pre-wrap;">{{ pack()?.['laydownProtocol'] || '—' }}</dd>
+              <dt>Stitch protocol</dt>
+              <dd class="wrap-anywhere" style="white-space:pre-wrap;">
+                {{ pack()?.['stitchProtocol'] || '—' }}
+              </dd>
+              <dt>Laydown protocol</dt>
+              <dd class="wrap-anywhere" style="white-space:pre-wrap;">
+                {{ pack()?.['laydownProtocol'] || '—' }}
+              </dd>
             </div>
           </section>
 
           <section class="panel flat">
-            <div class="panel-head"><h2>Sizes & colours</h2><span class="ph-sub">live catalogue data</span></div>
+            <div class="panel-head">
+              <h2>Sizes & colours</h2>
+              <span class="ph-sub">live catalogue data</span>
+            </div>
             <table class="table">
-              <thead><tr><th>SKU</th><th>Size</th><th>Colour</th><th>Price ₦</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Size</th>
+                  <th>Colour</th>
+                  <th>Price ₦</th>
+                </tr>
+              </thead>
               <tbody>
                 @for (v of variants(); track v.id) {
                   <tr>
-                    <td><code>{{ v.sku }}</code></td>
+                    <td>
+                      <code>{{ v.sku }}</code>
+                    </td>
                     <td class="mono">{{ v.size || '—' }}</td>
                     <td>{{ v.colour || '—' }}</td>
-                    <td class="mono">₦{{ (v.priceOverride ?? p.basePrice) | number: '1.0-0' }}</td>
+                    <td class="mono">₦{{ v.priceOverride ?? p.basePrice | number: '1.0-0' }}</td>
                   </tr>
                 }
               </tbody>
@@ -114,25 +215,74 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
           </section>
 
           <section class="panel">
-            <div class="panel-head"><h2>Spec editor</h2><span class="ph-sub">edits a revision</span>
-              <span class="ph-end"><button class="cta small ghost" type="button" (click)="editing.set(!editing())">{{ editing() ? 'Close' : 'Edit spec' }}</button></span>
+            <div class="panel-head">
+              <h2>Spec editor</h2>
+              <span class="ph-sub">edits a revision</span>
+              <span class="ph-end"
+                ><button class="cta small ghost" type="button" (click)="editing.set(!editing())">
+                  {{ editing() ? 'Close' : 'Edit spec' }}
+                </button></span
+              >
             </div>
             @if (editing()) {
               <form class="form-grid" (ngSubmit)="saveDraft()">
-                <label>Silhouette <input [(ngModel)]="edit.silhouette" name="tpSil" placeholder="relaxed tee" /></label>
-                <label>Target yield (units) <input type="number" min="0" [(ngModel)]="edit.targetYieldUnits" name="tpYield" /></label>
-                <label>Cutting efficiency % <input type="number" min="0" max="100" [(ngModel)]="edit.cuttingEfficiencyPct" name="tpEff" /></label>
-                <label>DXF / pattern file <input [(ngModel)]="edit.dxfUrl" name="tpDxf" placeholder="s3://patterns/silktee.dxf" /></label>
-                <label class="wide">Graded measurements (JSON, keyed by size)
-                  <textarea rows="4" [(ngModel)]="edit.measurementsJson" name="tpMeas" class="code-window" placeholder='{"S":{"chest":52,"body_length":68},"M":{"chest":54,"body_length":70}}'></textarea>
+                <label
+                  >Silhouette
+                  <input [(ngModel)]="edit.silhouette" name="tpSil" placeholder="relaxed tee"
+                /></label>
+                <label
+                  >Target yield (units)
+                  <input type="number" min="0" [(ngModel)]="edit.targetYieldUnits" name="tpYield"
+                /></label>
+                <label
+                  >Cutting efficiency %
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    [(ngModel)]="edit.cuttingEfficiencyPct"
+                    name="tpEff"
+                /></label>
+                <label
+                  >DXF / pattern file
+                  <input
+                    [(ngModel)]="edit.dxfUrl"
+                    name="tpDxf"
+                    placeholder="s3://patterns/silktee.dxf"
+                /></label>
+                <label class="wide"
+                  >Graded measurements (JSON, keyed by size)
+                  <textarea
+                    rows="4"
+                    [(ngModel)]="edit.measurementsJson"
+                    name="tpMeas"
+                    class="code-window"
+                    placeholder='{"S":{"chest":52,"body_length":68},"M":{"chest":54,"body_length":70}}'
+                  ></textarea>
                 </label>
-                <label class="wide">Stitch protocol
-                  <textarea rows="2" [(ngModel)]="edit.stitchProtocol" name="tpStitch" placeholder="NE3.5 12 S.P.I., poly-needle double chain…"></textarea>
+                <label class="wide"
+                  >Stitch protocol
+                  <textarea
+                    rows="2"
+                    [(ngModel)]="edit.stitchProtocol"
+                    name="tpStitch"
+                    placeholder="NE3.5 12 S.P.I., poly-needle double chain…"
+                  ></textarea>
                 </label>
-                <label class="wide">Laydown protocol
-                  <textarea rows="2" [(ngModel)]="edit.laydownProtocol" name="tpLay" placeholder="4-way stretch on the cross…"></textarea>
+                <label class="wide"
+                  >Laydown protocol
+                  <textarea
+                    rows="2"
+                    [(ngModel)]="edit.laydownProtocol"
+                    name="tpLay"
+                    placeholder="4-way stretch on the cross…"
+                  ></textarea>
                 </label>
-                <div class="wide"><button class="cta small" type="submit" [disabled]="!pack()">Save revision</button></div>
+                <div class="wide">
+                  <button class="cta small" type="submit" [disabled]="!pack()">
+                    Save revision
+                  </button>
+                </div>
               </form>
             }
           </section>
@@ -143,30 +293,58 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
             <div class="panel-head"><h2>CAD pattern & marker diagram</h2></div>
             @if (pack()?.['dxfUrl']; as url) {
               <p class="mini-note">DXF master on file</p>
-              <a class="link wrap-anywhere" [href]="hrefOf(url)" target="_blank" rel="noopener">{{ url }}</a>
+              <a class="link wrap-anywhere" [href]="hrefOf(url)" target="_blank" rel="noopener">{{
+                url
+              }}</a>
             } @else {
-              <div style="border:1px dashed var(--hairline-2); padding:1.4rem 1rem; text-align:center;">
+              <div
+                style="border:1px dashed var(--hairline-2); padding:1.4rem 1rem; text-align:center;"
+              >
                 <p class="mini-note">No DXF asset linked</p>
-                <p class="muted small" style="margin:0.3rem 0 0;">Add the CAD / Gerber cut-pattern address in the spec editor.</p>
+                <p class="muted small" style="margin:0.3rem 0 0;">
+                  Add the CAD / Gerber cut-pattern address in the spec editor.
+                </p>
               </div>
             }
           </section>
 
           <section class="panel flat">
-            <div class="panel-head"><h2>Bill of materials (BOM) cost matrix</h2><span class="ph-sub">per unit · line items live on the Catalogue page</span></div>
+            <div class="panel-head">
+              <h2>Bill of materials (BOM) cost matrix</h2>
+              <span class="ph-sub">per unit · line items live on the Catalogue page</span>
+            </div>
             @if (unitCost() !== null) {
               <table class="table">
                 <tbody>
-                  <tr><td>Raw materials</td><td class="mono">₦{{ perUnit('materialCost') | number: '1.0-2' }}</td></tr>
-                  <tr><td>Sewing & assembly</td><td class="mono">₦{{ perUnit('sewingCost') | number: '1.0-2' }}</td></tr>
-                  <tr><td>Branding & hardware</td><td class="mono">₦{{ perUnit('brandingCost') | number: '1.0-2' }}</td></tr>
-                  <tr><td>Packaging</td><td class="mono">₦{{ perUnit('packagingCost') | number: '1.0-2' }}</td></tr>
-                  <tr><td><strong>Total standard unit cost</strong></td><td class="mono"><strong class="naira">₦{{ unitCost() | number: '1.0-2' }}</strong></td></tr>
+                  <tr>
+                    <td>Raw materials</td>
+                    <td class="mono">₦{{ perUnit('materialCost') | number: '1.0-2' }}</td>
+                  </tr>
+                  <tr>
+                    <td>Sewing & assembly</td>
+                    <td class="mono">₦{{ perUnit('sewingCost') | number: '1.0-2' }}</td>
+                  </tr>
+                  <tr>
+                    <td>Branding & hardware</td>
+                    <td class="mono">₦{{ perUnit('brandingCost') | number: '1.0-2' }}</td>
+                  </tr>
+                  <tr>
+                    <td>Packaging</td>
+                    <td class="mono">₦{{ perUnit('packagingCost') | number: '1.0-2' }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Total standard unit cost</strong></td>
+                    <td class="mono">
+                      <strong class="naira">₦{{ unitCost() | number: '1.0-2' }}</strong>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
               <p class="mini-note">Based on the latest production batch of this product.</p>
             } @else {
-              <p class="muted small">No batch costs yet — record one in Production to fill this in.</p>
+              <p class="muted small">
+                No batch costs yet — record one in Production to fill this in.
+              </p>
             }
             <a class="link" href="/catalogue">Edit per-unit BOM on Catalogue</a>
           </section>
@@ -178,7 +356,9 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
                 @for (r of revisions(); track r['id']) {
                   <li>
                     <time>rev {{ r['revision'] }}</time>
-                    <span class="act-action">{{ snapStatus(r) }} · {{ dt(r['createdAt']) | date: 'MMM d' }}</span>
+                    <span class="act-action"
+                      >{{ snapStatus(r) }} · {{ dt(r['createdAt']) | date: 'MMM d' }}</span
+                    >
                   </li>
                 }
               </ul>
@@ -192,8 +372,12 @@ interface ProductRow { id: string; name: string; category: string | null; basePr
       <p class="muted">Choose a product above to see its technical details.</p>
     }
 
-    @if (message()) { <p class="success">{{ message() }}</p> }
-    @if (error()) { <p class="error">{{ error() }}</p> }
+    @if (message()) {
+      <p class="success">{{ message() }}</p>
+    }
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
   `,
 })
 export class TechPackPage implements OnInit {
@@ -210,7 +394,15 @@ export class TechPackPage implements OnInit {
   readonly variants = computed(() => this.selected()?.variants ?? []);
   selectedId = '';
   variantId = '';
-  edit = { silhouette: '', targetYieldUnits: null as number | null, cuttingEfficiencyPct: null as number | null, dxfUrl: '', measurementsJson: '', stitchProtocol: '', laydownProtocol: '' };
+  edit = {
+    silhouette: '',
+    targetYieldUnits: null as number | null,
+    cuttingEfficiencyPct: null as number | null,
+    dxfUrl: '',
+    measurementsJson: '',
+    stitchProtocol: '',
+    laydownProtocol: '',
+  };
   private cost: Record<string, unknown> | null = null;
   private costQty = 0;
 
@@ -236,7 +428,10 @@ export class TechPackPage implements OnInit {
     this.variantId = '';
     if (!p) return;
     const first = p.variants[0];
-    if (first) { this.variantId = first.id; this.loadPack(); }
+    if (first) {
+      this.variantId = first.id;
+      this.loadPack();
+    }
     const skus = new Set(p.variants.map((v) => v.sku));
     this.api.batches().subscribe((res) => {
       const mine = res.data.filter((b) => skus.has(b.variant.sku));
@@ -258,12 +453,22 @@ export class TechPackPage implements OnInit {
 
   loadPack(): void {
     const vid = this.variantId;
-    if (!vid) { this.pack.set(null); this.revisions.set([]); return; }
+    if (!vid) {
+      this.pack.set(null);
+      this.revisions.set([]);
+      return;
+    }
     this.pack.set(null);
     this.editing.set(false);
     this.api.techPacks().subscribe({
       next: (rows) => {
-        const found = (rows ?? []).find((r) => String((r['variant'] as Record<string, unknown> | null)?.['id'] ?? r['variantId'] ?? '') === vid) ?? null;
+        const found =
+          (rows ?? []).find(
+            (r) =>
+              String(
+                (r['variant'] as Record<string, unknown> | null)?.['id'] ?? r['variantId'] ?? '',
+              ) === vid,
+          ) ?? null;
         this.pack.set(found);
         this.syncEdit(found);
         if (found) {
@@ -281,14 +486,24 @@ export class TechPackPage implements OnInit {
 
   private syncEdit(found: Record<string, unknown> | null): void {
     if (!found) {
-      this.edit = { silhouette: '', targetYieldUnits: null, cuttingEfficiencyPct: null, dxfUrl: '', measurementsJson: '', stitchProtocol: '', laydownProtocol: '' };
+      this.edit = {
+        silhouette: '',
+        targetYieldUnits: null,
+        cuttingEfficiencyPct: null,
+        dxfUrl: '',
+        measurementsJson: '',
+        stitchProtocol: '',
+        laydownProtocol: '',
+      };
       return;
     }
     const gm = found['gradedMeasurements'] as Record<string, unknown> | null | undefined;
     this.edit = {
       silhouette: String(found['silhouette'] ?? ''),
-      targetYieldUnits: found['targetYieldUnits'] != null ? Number(found['targetYieldUnits']) : null,
-      cuttingEfficiencyPct: found['cuttingEfficiencyPct'] != null ? Number(found['cuttingEfficiencyPct']) : null,
+      targetYieldUnits:
+        found['targetYieldUnits'] != null ? Number(found['targetYieldUnits']) : null,
+      cuttingEfficiencyPct:
+        found['cuttingEfficiencyPct'] != null ? Number(found['cuttingEfficiencyPct']) : null,
       dxfUrl: String(found['dxfUrl'] ?? ''),
       measurementsJson: gm ? JSON.stringify(gm, null, 2) : '',
       stitchProtocol: String(found['stitchProtocol'] ?? ''),
@@ -319,29 +534,51 @@ export class TechPackPage implements OnInit {
   }
 
   createPack(): void {
-    if (!this.variantId) { this.error.set('Pick a variant first.'); return; }
+    if (!this.variantId) {
+      this.error.set('Pick a variant first.');
+      return;
+    }
     this.api.createTechPack({ variantId: this.variantId, ...this.payload() }).subscribe({
-      next: (pack) => { this.pack.set(pack); this.syncEdit(pack); this.revisions.set([]); this.ok('Tech pack created on draft revision 1.'); },
+      next: (pack) => {
+        this.pack.set(pack);
+        this.syncEdit(pack);
+        this.revisions.set([]);
+        this.ok('Tech pack created on draft revision 1.');
+      },
       error: (e) => this.error.set(e?.error?.message ?? 'Create failed.'),
     });
   }
 
   saveDraft(): void {
     const pack = this.pack();
-    if (!pack) { this.error.set('Create the tech pack first.'); return; }
+    if (!pack) {
+      this.error.set('Create the tech pack first.');
+      return;
+    }
     const body = this.payload();
     if (!body['gradedMeasurements'] && this.edit.measurementsJson.trim()) return;
     this.api.updateTechPack(pack['id'] as string, body).subscribe({
-      next: (updated) => { this.pack.set(updated); this.syncEdit(updated); this.reloadRevisions(pack['id'] as string); this.ok(`Saved — revision ${updated?.['revision'] ?? '?'} snapshotted.`); },
+      next: (updated) => {
+        this.pack.set(updated);
+        this.syncEdit(updated);
+        this.reloadRevisions(pack['id'] as string);
+        this.ok(`Saved — revision ${updated?.['revision'] ?? '?'} snapshotted.`);
+      },
       error: (e) => this.error.set(e?.error?.message ?? 'Save failed.'),
     });
   }
 
   approvePack(): void {
     const pack = this.pack();
-    if (!pack) { this.error.set('Create the tech pack first.'); return; }
+    if (!pack) {
+      this.error.set('Create the tech pack first.');
+      return;
+    }
     this.api.approveTechPack(pack['id'] as string).subscribe({
-      next: (updated) => { this.pack.set(updated); this.ok('Approved — this pack is now the shop-floor reference.'); },
+      next: (updated) => {
+        this.pack.set(updated);
+        this.ok('Approved — this pack is now the shop-floor reference.');
+      },
       error: (e) => this.error.set(e?.error?.message ?? 'Approval failed.'),
     });
   }
@@ -395,11 +632,20 @@ export class TechPackPage implements OnInit {
 
   snapStatus(r: Record<string, unknown>): string {
     const s = r['snapshot'];
-    return typeof s === 'object' && s !== null ? String((s as Record<string, unknown>)['status'] ?? 'snapshot') : 'snapshot';
+    return typeof s === 'object' && s !== null
+      ? String((s as Record<string, unknown>)['status'] ?? 'snapshot')
+      : 'snapshot';
   }
 
-  dt(v: unknown): string | null { return v ? String(v) : null; }
-  hrefOf(v: unknown): string { return v ? String(v) : '#'; }
+  dt(v: unknown): string | null {
+    return v ? String(v) : null;
+  }
+  hrefOf(v: unknown): string {
+    return v ? String(v) : '#';
+  }
 
-  private ok(msg: string): void { this.message.set(msg); this.error.set(null); }
+  private ok(msg: string): void {
+    this.message.set(msg);
+    this.error.set(null);
+  }
 }

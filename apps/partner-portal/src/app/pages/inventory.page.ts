@@ -20,8 +20,8 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
           <p class="page-kicker">Ledger Asset Register // Warehouse &amp; Mill Holdings</p>
           <h1 class="page-title">Inventory Valuation &amp; Raw Material Reserves</h1>
           <p class="page-sub">
-            Audited warehouse and mill holdings for the Seentair garment factory, Aba —
-            aggregate telemetry only, derived from event-sourced stock movements.
+            Audited warehouse and mill holdings for the Seentair garment factory, Aba — aggregate
+            telemetry only, derived from event-sourced stock movements.
           </p>
         </div>
         <div class="page-head-side">
@@ -58,23 +58,29 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
         <section class="panel">
           <div class="panel-head">
             <h2>Inventory stock distribution by category</h2>
-            <span class="panel-note">Total finished units: {{ d.inventoryVisibility.finishedGoodsUnits | number }}</span>
+            <span class="panel-note"
+              >Total finished units: {{ d.inventoryVisibility.finishedGoodsUnits | number }}</span
+            >
           </div>
           <div class="meter-row" style="padding-bottom: 0.55rem">
             <span><strong>All finished garments</strong></span>
             <div class="meter gold"><div class="meter-fill" style="width: 100%"></div></div>
-            <span class="meter-val mono">{{ d.inventoryVisibility.finishedGoodsUnits | number }} units</span>
+            <span class="meter-val mono"
+              >{{ d.inventoryVisibility.finishedGoodsUnits | number }} units</span
+            >
           </div>
           @for (row of store.categoryRows(); track row.name) {
             <div class="meter-row">
               <span class="wrap">{{ row.name }}</span>
               <div class="meter"><div class="meter-fill" [style.width.%]="row.pct"></div></div>
-              <span class="meter-val mono">{{ row.units | number }} units · {{ row.pct | number: '1.0-0' }}%</span>
+              <span class="meter-val mono"
+                >{{ row.units | number }} units · {{ row.pct | number: '1.0-0' }}%</span
+              >
             </div>
           } @empty {
             <p class="gap-note" style="margin-top: 0.7rem">
-              No variant-level stock has been recorded to the ledger yet — the distribution fills
-              as stock movements are posted.
+              No variant-level stock has been recorded to the ledger yet — the distribution fills as
+              stock movements are posted.
             </p>
           }
         </section>
@@ -105,20 +111,33 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
         <div class="table-scroll">
           <table class="table">
             <thead>
-              <tr><th class="wrap">Silhouette</th><th>Fabric / spec</th><th class="num-col">Units held</th><th class="num-col">Unit value</th><th class="num-col">Total stock value</th><th>Status</th></tr>
+              <tr>
+                <th class="wrap">Silhouette</th>
+                <th>Fabric / spec</th>
+                <th class="num-col">Units held</th>
+                <th class="num-col">Unit value</th>
+                <th class="num-col">Total stock value</th>
+                <th>Status</th>
+              </tr>
             </thead>
             <tbody>
               @for (row of store.finishedVariantRows(); track row.itemId) {
                 <tr>
                   <td class="wrap">
                     <strong>{{ silhouetteLabel(row) }}</strong>
-                    @if (skuLabel(row)) { <span class="sub mono">{{ skuLabel(row) }}</span> }
+                    @if (skuLabel(row)) {
+                      <span class="sub mono">{{ skuLabel(row) }}</span>
+                    }
                   </td>
                   <td class="wrap">{{ specLabel(row) }}</td>
                   <td class="num-col mono">{{ row.currentQuantity | number }}</td>
                   <td class="num-col"><span class="muted">Unvalued</span></td>
                   <td class="num-col"><span class="muted">Unvalued</span></td>
-                  <td><span class="chip" [class.ok]="row.currentQuantity > 0">{{ statusLabel(row.currentQuantity) }}</span></td>
+                  <td>
+                    <span class="chip" [class.ok]="row.currentQuantity > 0">{{
+                      statusLabel(row.currentQuantity)
+                    }}</span>
+                  </td>
                 </tr>
               } @empty {
                 <tr>
@@ -133,7 +152,9 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
               <tfoot>
                 <tr>
                   <td colspan="2">Total finished units on register</td>
-                  <td class="num-col mono">{{ d.inventoryVisibility.finishedGoodsUnits | number }}</td>
+                  <td class="num-col mono">
+                    {{ d.inventoryVisibility.finishedGoodsUnits | number }}
+                  </td>
                   <td colspan="3"></td>
                 </tr>
               </tfoot>
@@ -149,10 +170,18 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
         </div>
         <!-- GAP: no raw-material lot endpoint (mill reserves, GSM lots, dye buffers). -->
         <div class="floor-grid">
-          <div class="floor-cell"><span>Cotton reserves</span><strong>—</strong><em>Not yet published</em></div>
-          <div class="floor-cell"><span>Poly &amp; blend lots</span><strong>—</strong><em>Not yet published</em></div>
-          <div class="floor-cell"><span>Trims &amp; branding stock</span><strong>—</strong><em>Not yet published</em></div>
-          <div class="floor-cell"><span>Packaging reserves</span><strong>—</strong><em>Not yet published</em></div>
+          <div class="floor-cell">
+            <span>Cotton reserves</span><strong>—</strong><em>Not yet published</em>
+          </div>
+          <div class="floor-cell">
+            <span>Poly &amp; blend lots</span><strong>—</strong><em>Not yet published</em>
+          </div>
+          <div class="floor-cell">
+            <span>Trims &amp; branding stock</span><strong>—</strong><em>Not yet published</em>
+          </div>
+          <div class="floor-cell">
+            <span>Packaging reserves</span><strong>—</strong><em>Not yet published</em>
+          </div>
         </div>
       </section>
 
@@ -165,20 +194,65 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
   `,
   styles: [
     `
-      .rail-rows { display: flex; flex-direction: column; }
-      .rail-row { display: flex; justify-content: space-between; gap: 0.8rem; padding: 0.45rem 0;
-        border-bottom: 1px solid var(--hairline); font-size: var(--type-body-sm);
-        span { color: var(--ink-dim); }
-        strong { font-variant-numeric: tabular-nums; }
-        &:last-child { border-bottom: 0; } }
-      .empty-cell { color: var(--ink-dim); padding: 1rem 0.8rem; }
-      .sub { display: block; font-size: var(--type-label-sm); color: var(--ink-dim); margin-top: 0.1rem; }
-      .floor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
-        background: var(--hairline); border: 1px solid var(--hairline); }
-      .floor-cell { background: var(--panel-2); padding: 0.65rem 0.75rem; display: flex; flex-direction: column; gap: 0.05rem;
-        span { font-size: var(--type-label-sm); text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-dim); }
-        strong { font-size: 1.15rem; }
-        em { font-style: normal; font-size: var(--type-label-sm); color: var(--ink-dim); } }
+      .rail-rows {
+        display: flex;
+        flex-direction: column;
+      }
+      .rail-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.8rem;
+        padding: 0.45rem 0;
+        border-bottom: 1px solid var(--hairline);
+        font-size: var(--type-body-sm);
+        span {
+          color: var(--ink-dim);
+        }
+        strong {
+          font-variant-numeric: tabular-nums;
+        }
+        &:last-child {
+          border-bottom: 0;
+        }
+      }
+      .empty-cell {
+        color: var(--ink-dim);
+        padding: 1rem 0.8rem;
+      }
+      .sub {
+        display: block;
+        font-size: var(--type-label-sm);
+        color: var(--ink-dim);
+        margin-top: 0.1rem;
+      }
+      .floor-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1px;
+        background: var(--hairline);
+        border: 1px solid var(--hairline);
+      }
+      .floor-cell {
+        background: var(--panel-2);
+        padding: 0.65rem 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.05rem;
+        span {
+          font-size: var(--type-label-sm);
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          color: var(--ink-dim);
+        }
+        strong {
+          font-size: 1.15rem;
+        }
+        em {
+          font-style: normal;
+          font-size: var(--type-label-sm);
+          color: var(--ink-dim);
+        }
+      }
     `,
   ],
 })

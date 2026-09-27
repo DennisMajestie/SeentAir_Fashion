@@ -8,10 +8,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PermissionsService } from '../users/permissions.service';
 import { UsersService } from '../users/users.service';
 import { CustomOrdersService } from './custom-orders.service';
-import {
-  CustomOrderRequest,
-  CustomOrderStatus,
-} from './entities/custom-order-request.entity';
+import { CustomOrderRequest, CustomOrderStatus } from './entities/custom-order-request.entity';
 import { Quotation } from './entities/quotation.entity';
 import { SampleApproval } from './entities/sample-approval.entity';
 
@@ -27,8 +24,16 @@ describe('CustomOrdersService — flow gates', () => {
     save: jest.fn(async (v) => v),
     findAndCount: jest.fn(async () => [[], 0]),
   };
-  const quotationRepo = { findOne: jest.fn(), create: jest.fn((v) => v), save: jest.fn(async (v) => v) };
-  const sampleRepo = { findOne: jest.fn(), create: jest.fn((v) => v), save: jest.fn(async (v) => v) };
+  const quotationRepo = {
+    findOne: jest.fn(),
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => v),
+  };
+  const sampleRepo = {
+    findOne: jest.fn(),
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => v),
+  };
   const accountingService = { record: jest.fn() };
 
   beforeEach(async () => {

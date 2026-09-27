@@ -1,10 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import {
-  InventoryItemType,
-  MovementType,
-} from '../inventory/inventory-movement.entity';
+import { InventoryItemType, MovementType } from '../inventory/inventory-movement.entity';
 import { InventoryService } from '../inventory/inventory.service';
 import { AccountingService } from '../accounting/accounting.service';
 import { LedgerEntryType } from '../accounting/ledger-entry.entity';

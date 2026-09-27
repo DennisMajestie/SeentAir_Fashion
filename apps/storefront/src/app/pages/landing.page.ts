@@ -31,11 +31,11 @@ const CATEGORY_LABELS: Record<string, string> = {
 interface Stage {
   image: string;
   index: string;
-  act: string;      // "[ACT 01: ORIGIN FORM]"
-  line1: string;    // black headline line
-  line2: string;    // vermilion headline line
-  caption: string;  // short description under the title
-  tag: string;      // small card tag, e.g. "₦ CURATED"
+  act: string; // "[ACT 01: ORIGIN FORM]"
+  line1: string; // black headline line
+  line2: string; // vermilion headline line
+  caption: string; // short description under the title
+  tag: string; // small card tag, e.g. "₦ CURATED"
   /** Vertical cover anchor (0=top … 1=bottom). Per-frame headroom trim. */
   posY?: number;
 }
@@ -79,69 +79,87 @@ interface DemoReview {
   imports: [CommonModule, RouterLink, ProductCardComponent, SeentairTiltCardComponent],
   template: `
     <section class="dressing-scroll" #scrollRoot>
-        <div class="dressing-stage">
-          <div class="stage-frame">
-            <!-- One persistent scene: the bare mannequin never swaps; garments
+      <div class="dressing-stage">
+        <div class="stage-frame">
+          <!-- One persistent scene: the bare mannequin never swaps; garments
                  are layered onto it by the canvas. The stack below only
                  crossfades if the panel engine cannot start. -->
-            @for (stage of stages; track stage.image; let i = $index) {
-              <img
-                class="stage-image"
-                [class.active]="i === 0 || (engineBroken() && i <= activeStage())"
-                [src]="'assets/' + (i === 0 ? baseImage() : stage.image)"
-                [alt]="stage.line1"
-                [loading]="i === 0 ? 'eager' : 'lazy'"
-                [style.object-position]="'center ' + (i === 0 ? basePosY() : (stage.posY ?? 0.1)) * 100 + '%'"
-              />
-            }
-          </div>
-          <canvas class="stage-canvas" #particleCanvas></canvas>
-          <div class="hero-wrap">
-            <div class="hero-grid">
-              <div class="hero-main">
-                <h1 class="stage-label rise">{{ stages[activeStage()].line1 }}@if (stages[activeStage()].line2) { <em>{{ stages[activeStage()].line2 }}</em> }</h1>
-                <p class="stage-lede rise">{{ stages[activeStage()].caption }}</p>
-                <div class="hero-actions rise">
-                  <a class="btn btn-primary" routerLink="/shop">Shop Now</a>
-                </div>
-                <div class="trust-row rise">
-                  <span>Full payment</span>
-                  <span>Tracked dispatch</span>
-                  <span>12h returns</span>
-                </div>
-              </div>
-              <aside class="hero-card rise">
-                <p class="card-kicker">Seentair - Drop 04</p>
-                <p class="card-tag">{{ stages[activeStage()].tag }}</p>
-                <span class="card-rule"></span>
-                <p class="card-title">{{ stages[activeStage()].line1 }}@if (stages[activeStage()].line2) { {{ stages[activeStage()].line2 }} }</p>
-                <p class="card-desc">{{ stages[activeStage()].caption }}</p>
-              </aside>
-            </div>
-            <div
-              class="hero-slider rise"
-              [class.paused]="paused()"
-              (mouseenter)="pauseAuto()"
-              (mouseleave)="resumeAuto()"
-            >
-              <button type="button" class="slider-arrow" (click)="prev()" aria-label="Previous act">←</button>
-              <div class="slider-track">
-                @for (stage of stages; track stage.index; let i = $index) {
-                  <button
-                    type="button"
-                    class="slider-seg"
-                    [class.active]="i === activeStage()"
-                    [attr.aria-label]="'Go to act ' + (i + 1)"
-                    (click)="goTo(i)"
-                  ><span class="fill"></span></button>
+          @for (stage of stages; track stage.image; let i = $index) {
+            <img
+              class="stage-image"
+              [class.active]="i === 0 || (engineBroken() && i <= activeStage())"
+              [src]="'assets/' + (i === 0 ? baseImage() : stage.image)"
+              [alt]="stage.line1"
+              [loading]="i === 0 ? 'eager' : 'lazy'"
+              [style.object-position]="
+                'center ' + (i === 0 ? basePosY() : (stage.posY ?? 0.1)) * 100 + '%'
+              "
+            />
+          }
+        </div>
+        <canvas class="stage-canvas" #particleCanvas></canvas>
+        <div class="hero-wrap">
+          <div class="hero-grid">
+            <div class="hero-main">
+              <h1 class="stage-label rise">
+                {{ stages[activeStage()].line1 }}
+                @if (stages[activeStage()].line2) {
+                  <em>{{ stages[activeStage()].line2 }}</em>
                 }
+              </h1>
+              <p class="stage-lede rise">{{ stages[activeStage()].caption }}</p>
+              <div class="hero-actions rise">
+                <a class="btn btn-primary" routerLink="/shop">Shop Now</a>
               </div>
-              <span class="slider-count">[{{ stages[activeStage()].index }} / 05]</span>
-              <button type="button" class="slider-arrow" (click)="next()" aria-label="Next act">→</button>
+              <div class="trust-row rise">
+                <span>Full payment</span>
+                <span>Tracked dispatch</span>
+                <span>12h returns</span>
+              </div>
             </div>
+            <aside class="hero-card rise">
+              <p class="card-kicker">Seentair - Drop 04</p>
+              <p class="card-tag">{{ stages[activeStage()].tag }}</p>
+              <span class="card-rule"></span>
+              <p class="card-title">
+                {{ stages[activeStage()].line1 }}
+                @if (stages[activeStage()].line2) {
+                  {{ stages[activeStage()].line2 }}
+                }
+              </p>
+              <p class="card-desc">{{ stages[activeStage()].caption }}</p>
+            </aside>
+          </div>
+          <div
+            class="hero-slider rise"
+            [class.paused]="paused()"
+            (mouseenter)="pauseAuto()"
+            (mouseleave)="resumeAuto()"
+          >
+            <button type="button" class="slider-arrow" (click)="prev()" aria-label="Previous act">
+              ←
+            </button>
+            <div class="slider-track">
+              @for (stage of stages; track stage.index; let i = $index) {
+                <button
+                  type="button"
+                  class="slider-seg"
+                  [class.active]="i === activeStage()"
+                  [attr.aria-label]="'Go to act ' + (i + 1)"
+                  (click)="goTo(i)"
+                >
+                  <span class="fill"></span>
+                </button>
+              }
+            </div>
+            <span class="slider-count">[{{ stages[activeStage()].index }} / 05]</span>
+            <button type="button" class="slider-arrow" (click)="next()" aria-label="Next act">
+              →
+            </button>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
     <div class="trust-strip" aria-label="Store promises">
       <span class="trust-item">Full payment</span>
@@ -164,7 +182,11 @@ interface DemoReview {
               <app-product-card [product]="p" [index]="i" [rating]="ratingOf(p.id)" />
             }
           </div>
-          <p class="center"><a class="view-all" routerLink="/shop">View all products <span class="arrow" aria-hidden="true">→</span></a></p>
+          <p class="center">
+            <a class="view-all" routerLink="/shop"
+              >View all products <span class="arrow" aria-hidden="true">→</span></a
+            >
+          </p>
         }
       </div>
     </section>
@@ -189,7 +211,9 @@ interface DemoReview {
                     [alt]="p.name"
                     loading="lazy"
                   />
-                  <span class="tilt-price" data-depth="1">₦{{ p.basePrice | number: '1.0-2' }}</span>
+                  <span class="tilt-price" data-depth="1"
+                    >₦{{ p.basePrice | number: '1.0-2' }}</span
+                  >
                   <span class="tilt-caption">
                     <strong>{{ p.name }}</strong>
                     <span class="muted small">{{ p.category || 'Seentair' }}</span>
@@ -216,7 +240,11 @@ interface DemoReview {
               <app-product-card [product]="p" [index]="i" [rating]="ratingOf(p.id)" />
             }
           </div>
-          <p class="center"><a class="view-all" routerLink="/shop">View all products <span class="arrow" aria-hidden="true">→</span></a></p>
+          <p class="center">
+            <a class="view-all" routerLink="/shop"
+              >View all products <span class="arrow" aria-hidden="true">→</span></a
+            >
+          </p>
         }
       </div>
     </section>
@@ -284,7 +312,13 @@ interface DemoReview {
           <p class="muted">Private lookbooks and drop alerts before they go public.</p>
         </div>
         <form class="newsletter-form" (submit)="subscribe(mailInput.value); mailInput.value = ''">
-          <input #mailInput type="email" required placeholder="you@example.com" aria-label="Email address" />
+          <input
+            #mailInput
+            type="email"
+            required
+            placeholder="you@example.com"
+            aria-label="Email address"
+          />
           <button class="btn btn-primary" type="submit">Subscribe</button>
         </form>
         @if (subscribed()) {
@@ -306,26 +340,52 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private autoInterval: ReturnType<typeof setInterval> | undefined;
 
   readonly stages: Stage[] = [
-    { image: 'series-1.jpg', index: '01', act: '[ACT 01 / QUALITY FIRST]',
-      line1: 'QUALITY STREETWEAR.', line2: '',
-      caption: 'Honest fabric, honest price - cut and sewn in our single in-house atelier, no middlemen.',
-      tag: '₦ ORIGINAL' },
-    { image: 'series-2.jpg', index: '02', act: '[ACT 02 / THE BOX TEE]',
-      line1: 'THE BOX TEE.', line2: '',
+    {
+      image: 'series-1.jpg',
+      index: '01',
+      act: '[ACT 01 / QUALITY FIRST]',
+      line1: 'QUALITY STREETWEAR.',
+      line2: '',
+      caption:
+        'Honest fabric, honest price - cut and sewn in our single in-house atelier, no middlemen.',
+      tag: '₦ ORIGINAL',
+    },
+    {
+      image: 'series-2.jpg',
+      index: '02',
+      act: '[ACT 02 / THE BOX TEE]',
+      line1: 'THE BOX TEE.',
+      line2: '',
       caption: '280GSM Aba-loomed cotton. Boxy fit, strong seams, made for everyday.',
-      tag: 'BOX FIT - 280 GSM' },
-    { image: 'series-3.jpg', index: '03', act: '[ACT 03 / THE JOGGER]',
-      line1: 'THE JOGGER.', line2: '',
+      tag: 'BOX FIT - 280 GSM',
+    },
+    {
+      image: 'series-3.jpg',
+      index: '03',
+      act: '[ACT 03 / THE JOGGER]',
+      line1: 'THE JOGGER.',
+      line2: '',
       caption: 'Heavyweight terry, tapered leg, dust-resistant - street-ready in any weather.',
-      tag: 'TAPERED - 30-36' },
-    { image: 'series-4.jpg', index: '04', act: '[ACT 04 / THE QUALITY HOODIE]',
-      line1: 'THE QUALITY HOODIE.', line2: '',
+      tag: 'TAPERED - 30-36',
+    },
+    {
+      image: 'series-4.jpg',
+      index: '04',
+      act: '[ACT 04 / THE QUALITY HOODIE]',
+      line1: 'THE QUALITY HOODIE.',
+      line2: '',
       caption: 'Raw edges, heavyweight terry. Thick, warm, built to last.',
-      tag: 'HOOD - S-XXL' },
-    { image: 'series-5.jpg', index: '05', act: '[ACT 05 / THE FULL LOOK]',
-      line1: 'THE FULL LOOK.', line2: '',
+      tag: 'HOOD - S-XXL',
+    },
+    {
+      image: 'series-5.jpg',
+      index: '05',
+      act: '[ACT 05 / THE FULL LOOK]',
+      line1: 'THE FULL LOOK.',
+      line2: '',
       caption: 'Drop 04 stacked head to toe. Edition of 180 pieces - catch it before it sells out.',
-      tag: 'LIMITED - 3 ITEMS' },
+      tag: 'LIMITED - 3 ITEMS',
+    },
   ];
 
   readonly activeStage = signal(0);
@@ -402,7 +462,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       .sort((a, b) => {
         const ia = CATEGORY_ORDER.indexOf(a[0]);
         const ib = CATEGORY_ORDER.indexOf(b[0]);
-        return ((ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)) || a[0].localeCompare(b[0]);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a[0].localeCompare(b[0]);
       })
       .map(([name, c]) => ({
         name,
@@ -414,21 +474,69 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   /** Demo review cards for the auto-playing marquee (shown until the API
       starts returning real review comments). */
   readonly demoReviews: DemoReview[] = [
-    { name: 'Chidi O.', product: 'Box Tee', rating: 5, comment: 'The drop shoulder sits perfectly. Received in Lagos in two days, straight from the atelier.' },
-    { name: 'Amara E.', product: 'Jogger', rating: 5, comment: 'Heavyweight terry that actually holds its shape. Bought two, wearing the first now.' },
-    { name: 'Tunde A.', product: 'Hoodie', rating: 4, comment: 'Raw edges done right. Sizing guide was spot on — same one I got in store.' },
-    { name: 'Zainab K.', product: 'Box Tee', rating: 5, comment: 'Quality like the showroom pieces. Full payment upfront, no regrets at all.' },
-    { name: 'Femi B.', product: 'Jogger', rating: 5, comment: 'Fits the way the lookbook showed it. Edges are clean, seams are straight.' },
-    { name: 'Ngozi U.', product: 'Hoodie', rating: 4, comment: 'Dust-resistant claim is real — wore it fieldside. Restocking colours soon, I hope.' },
-    { name: 'Ibrahim S.', product: 'Box Tee', rating: 5, comment: '280GSM feels substantial without being stiff. My new everyday piece.' },
-    { name: 'Tobi D.', product: 'Jogger', rating: 5, comment: 'Easy returns process too — I sized up and swapped within a day of delivery.' },
+    {
+      name: 'Chidi O.',
+      product: 'Box Tee',
+      rating: 5,
+      comment:
+        'The drop shoulder sits perfectly. Received in Lagos in two days, straight from the atelier.',
+    },
+    {
+      name: 'Amara E.',
+      product: 'Jogger',
+      rating: 5,
+      comment:
+        'Heavyweight terry that actually holds its shape. Bought two, wearing the first now.',
+    },
+    {
+      name: 'Tunde A.',
+      product: 'Hoodie',
+      rating: 4,
+      comment: 'Raw edges done right. Sizing guide was spot on — same one I got in store.',
+    },
+    {
+      name: 'Zainab K.',
+      product: 'Box Tee',
+      rating: 5,
+      comment: 'Quality like the showroom pieces. Full payment upfront, no regrets at all.',
+    },
+    {
+      name: 'Femi B.',
+      product: 'Jogger',
+      rating: 5,
+      comment: 'Fits the way the lookbook showed it. Edges are clean, seams are straight.',
+    },
+    {
+      name: 'Ngozi U.',
+      product: 'Hoodie',
+      rating: 4,
+      comment: 'Dust-resistant claim is real — wore it fieldside. Restocking colours soon, I hope.',
+    },
+    {
+      name: 'Ibrahim S.',
+      product: 'Box Tee',
+      rating: 5,
+      comment: '280GSM feels substantial without being stiff. My new everyday piece.',
+    },
+    {
+      name: 'Tobi D.',
+      product: 'Jogger',
+      rating: 5,
+      comment: 'Easy returns process too — I sized up and swapped within a day of delivery.',
+    },
   ];
   readonly subscribed = signal(false);
   readonly emailError = signal(false);
   /** productId → average rating + review count (public reviews endpoint). */
   readonly ratings = signal<Map<string, { avg: number; count: number }>>(new Map());
 
-  private readonly fallbacks = ['shop-1.jpg', 'shop-2.jpg', 'shop-3.jpg', 'shop-5.jpg', 'shop-6.jpg'];
+  private readonly fallbacks = [
+    'shop-1.jpg',
+    'shop-2.jpg',
+    'shop-3.jpg',
+    'shop-5.jpg',
+    'shop-6.jpg',
+  ];
 
   // --- particle engine state ---
   private ctx: CanvasRenderingContext2D | null = null;
@@ -448,8 +556,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private engineFailed = false;
   private ticking = false;
   private lastDrawnKey = '';
-  private readonly isMobile =
-    typeof window !== 'undefined' && window.innerWidth < 640;
+  private readonly isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
   private readonly onScroll = () => {
     if (this.ticking) return;
@@ -502,7 +609,9 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       products.map((p) =>
         this.api.reviews(p.id).pipe(
           map((r) => ({ id: p.id, rows: r.data })),
-          catchError(() => of({ id: p.id, rows: [] as Array<{ rating: number; comment: string | null }> })),
+          catchError(() =>
+            of({ id: p.id, rows: [] as Array<{ rating: number; comment: string | null }> }),
+          ),
         ),
       ),
     ).subscribe((results) => {
@@ -547,8 +656,14 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     if (!hero) return;
     const rect = hero.getBoundingClientRect();
     if (rect.top > window.innerHeight || rect.bottom < 0) return;
-    if (e.key === 'ArrowRight') { this.next(); e.preventDefault(); }
-    if (e.key === 'ArrowLeft') { this.prev(); e.preventDefault(); }
+    if (e.key === 'ArrowRight') {
+      this.next();
+      e.preventDefault();
+    }
+    if (e.key === 'ArrowLeft') {
+      this.prev();
+      e.preventDefault();
+    }
   };
 
   private startAutoAdvance(): void {
@@ -615,7 +730,8 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     if (this.baseImage() !== 'series-1.jpg') this.baseImage.set('series-1.jpg');
-    if (this.basePosY() !== (this.stages[0].posY ?? 0.1)) this.basePosY.set(this.stages[0].posY ?? 0.1);
+    if (this.basePosY() !== (this.stages[0].posY ?? 0.1))
+      this.basePosY.set(this.stages[0].posY ?? 0.1);
 
     const dressed = walkEnd > 0 ? (progress - walkEnd) / (1 - walkEnd) : progress;
     const segments = this.stages.length - 1; // 4 transitions
@@ -774,8 +890,14 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       this.piecesByPair = [];
       for (let i = 0; i < frames.length - 1; i++) {
         const built = this.buildGarmentPanels(
-          frames[i], frames[i + 1], images[i + 1], sampleW, sampleH,
-          this.stages[i + 1].posY ?? 0.1, shifts[i], shifts[i + 1],
+          frames[i],
+          frames[i + 1],
+          images[i + 1],
+          sampleW,
+          sampleH,
+          this.stages[i + 1].posY ?? 0.1,
+          shifts[i],
+          shifts[i + 1],
         );
         this.garments.push(built.garment);
         this.piecesByPair.push(built.pieces);
@@ -827,8 +949,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       let rowHits = 0;
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
-        const d =
-          Math.abs(f[i] - bg[0]) + Math.abs(f[i + 1] - bg[1]) + Math.abs(f[i + 2] - bg[2]);
+        const d = Math.abs(f[i] - bg[0]) + Math.abs(f[i + 1] - bg[1]) + Math.abs(f[i + 2] - bg[2]);
         if (d > 45) {
           sumX += x;
           count++;
@@ -878,8 +999,10 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         // Reference-space diff: read each frame at its registered offset.
-        const xp = x - prevShift.dx, yp = y - prevShift.dy;
-        const xn = x - nextShift.dx, yn = y - nextShift.dy;
+        const xp = x - prevShift.dx,
+          yp = y - prevShift.dy;
+        const xn = x - nextShift.dx,
+          yn = y - nextShift.dy;
         if (xp < 0 || xp >= w || yp < 0 || yp >= h) continue;
         if (xn < 0 || xn >= w || yn < 0 || yn >= h) continue;
         const ip = (yp * w + xp) * 4;
@@ -897,12 +1020,22 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     scored.length = Math.max(40, Math.floor(scored.length * 0.75));
 
     // Outlier pruning about the score-weighted centroid (kills background flecks).
-    let cx = 0, cy = 0, wsum = 0;
-    for (const c of scored) { cx += c.x * c.score; cy += c.y * c.score; wsum += c.score; }
-    cx /= wsum; cy /= wsum;
+    let cx = 0,
+      cy = 0,
+      wsum = 0;
+    for (const c of scored) {
+      cx += c.x * c.score;
+      cy += c.y * c.score;
+      wsum += c.score;
+    }
+    cx /= wsum;
+    cy /= wsum;
     const dists = scored.map((c) => Math.hypot(c.x - cx, c.y - cy));
     const meanD = dists.reduce((s, d) => s + d, 0) / dists.length;
-    let minX = w, minY = h, maxX = 0, maxY = 0;
+    let minX = w,
+      minY = h,
+      maxX = 0,
+      maxY = 0;
     scored.forEach((c, i) => {
       if (dists[i] < meanD * 1.45) {
         mask[c.y * w + c.x] = 1;
@@ -922,13 +1055,23 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       const stack: number[] = [];
       const push = (x: number, y: number) => {
         const i = y * w + x;
-        if (!outside[i] && !mask[i]) { outside[i] = 1; stack.push(i); }
+        if (!outside[i] && !mask[i]) {
+          outside[i] = 1;
+          stack.push(i);
+        }
       };
-      for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
-      for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+      for (let x = 0; x < w; x++) {
+        push(x, 0);
+        push(x, h - 1);
+      }
+      for (let y = 0; y < h; y++) {
+        push(0, y);
+        push(w - 1, y);
+      }
       while (stack.length) {
         const i = stack.pop()!;
-        const x = i % w, y = (i / w) | 0;
+        const x = i % w,
+          y = (i / w) | 0;
         if (x > 0) push(x - 1, y);
         if (x < w - 1) push(x + 1, y);
         if (y > 0) push(x, y - 1);
@@ -941,7 +1084,8 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       for (let y = 1; y < h - 1; y++) {
         for (let x = 1; x < w - 1; x++) {
           const i = y * w + x;
-          if (!mask[i] && (mask[i - 1] || mask[i + 1] || mask[i - w] || mask[i + w])) dilated[i] = 1;
+          if (!mask[i] && (mask[i - 1] || mask[i + 1] || mask[i - w] || mask[i + w]))
+            dilated[i] = 1;
         }
       }
       mask.set(dilated);
@@ -952,7 +1096,10 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     garment.width = this.canvasW;
     garment.height = this.canvasH;
     const gctx = garment.getContext('2d')!;
-    const scale = Math.max(this.canvasW / nextImg.naturalWidth, this.canvasH / nextImg.naturalHeight);
+    const scale = Math.max(
+      this.canvasW / nextImg.naturalWidth,
+      this.canvasH / nextImg.naturalHeight,
+    );
     const dw = nextImg.naturalWidth * scale;
     const dh = nextImg.naturalHeight * scale;
     // Draw the source frame at its registered offset so its garment sits
@@ -971,10 +1118,14 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     const mdata = mctx.createImageData(w, h);
     for (let i = 0; i < mask.length; i++) {
       // Slight dilation: a pixel survives if it or a neighbour is fabric.
-      const x = i % w, y = (i / w) | 0;
-      const on = mask[i] ||
-        (x > 0 && mask[i - 1]) || (x < w - 1 && mask[i + 1]) ||
-        (y > 0 && mask[i - w]) || (y < h - 1 && mask[i + w]);
+      const x = i % w,
+        y = (i / w) | 0;
+      const on =
+        mask[i] ||
+        (x > 0 && mask[i - 1]) ||
+        (x < w - 1 && mask[i + 1]) ||
+        (y > 0 && mask[i - w]) ||
+        (y < h - 1 && mask[i + w]);
       mdata.data[i * 4 + 3] = on ? 255 : 0;
     }
     mctx.putImageData(mdata, 0, 0);
@@ -987,8 +1138,10 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     // -- 3. cut the garment into pattern-piece panels --
     const sx = this.canvasW / w;
     const sy = this.canvasH / h;
-    const bx = minX * sx, by = minY * sy;
-    const bw = (maxX - minX + 1) * sx, bh = (maxY - minY + 1) * sy;
+    const bx = minX * sx,
+      by = minY * sy;
+    const bw = (maxX - minX + 1) * sx,
+      bh = (maxY - minY + 1) * sy;
     const cols = this.isMobile ? 2 : 3;
     const rows = 3;
     // Jittered node grid → organic, cut-by-hand panel shapes.
@@ -1010,16 +1163,24 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const poly: Array<[number, number]> = [
-          nodes[r][c], nodes[r][c + 1], nodes[r + 1][c + 1], nodes[r + 1][c],
+          nodes[r][c],
+          nodes[r][c + 1],
+          nodes[r + 1][c + 1],
+          nodes[r + 1][c],
         ];
         // Keep only panels that actually contain fabric (≥ 6% coverage).
-        let hit = 0, total = 0;
+        let hit = 0,
+          total = 0;
         for (let iy = 0; iy < 5; iy++) {
           for (let ix = 0; ix < 5; ix++) {
-            const px = poly[0][0] + ((poly[1][0] - poly[0][0]) * (ix + 0.5)) / 5 +
-                       ((poly[3][0] - poly[0][0]) * (iy + 0.5)) / 5;
-            const py = poly[0][1] + ((poly[1][1] - poly[0][1]) * (ix + 0.5)) / 5 +
-                       ((poly[3][1] - poly[0][1]) * (iy + 0.5)) / 5;
+            const px =
+              poly[0][0] +
+              ((poly[1][0] - poly[0][0]) * (ix + 0.5)) / 5 +
+              ((poly[3][0] - poly[0][0]) * (iy + 0.5)) / 5;
+            const py =
+              poly[0][1] +
+              ((poly[1][1] - poly[0][1]) * (ix + 0.5)) / 5 +
+              ((poly[3][1] - poly[0][1]) * (iy + 0.5)) / 5;
             const mx = Math.min(w - 1, Math.max(0, Math.round(px / sx)));
             const my = Math.min(h - 1, Math.max(0, Math.round(py / sy)));
             total++;
@@ -1033,9 +1194,11 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
         let dxn = pcx - centerX;
         let dyn = pcy - centerY;
         const len = Math.hypot(dxn, dyn) || 1;
-        dxn /= len; dyn /= len;
+        dxn /= len;
+        dyn /= len;
         const jitter = (Math.random() - 0.5) * 0.9;
-        const cos = Math.cos(jitter), sin = Math.sin(jitter);
+        const cos = Math.cos(jitter),
+          sin = Math.sin(jitter);
         const ex = dxn * cos - dyn * sin;
         const ey = dxn * sin + dyn * cos;
         const dist = explodeR * (0.5 + Math.random() * 0.6);

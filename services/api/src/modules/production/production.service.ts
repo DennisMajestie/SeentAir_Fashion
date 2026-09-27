@@ -134,7 +134,10 @@ export class ProductionService {
   }
 
   /** Upsert the four confirmed cost components for a batch. */
-  async recordCost(batchId: string, dto: RecordCostDto): Promise<ProductionCost & { totalCost: number }> {
+  async recordCost(
+    batchId: string,
+    dto: RecordCostDto,
+  ): Promise<ProductionCost & { totalCost: number }> {
     const batch = await this.findById(batchId);
     let cost = await this.costRepo.findOne({ where: { batch: { id: batchId } } });
     if (!cost) {
@@ -217,11 +220,7 @@ export class ProductionService {
   }
 
   /** Operator scan at a stage gate. */
-  async recordScan(
-    batchId: string,
-    dto: RecordScanDto,
-    actorId: string,
-  ): Promise<BatchScanEvent> {
+  async recordScan(batchId: string, dto: RecordScanDto, actorId: string): Promise<BatchScanEvent> {
     const batch = await this.findById(batchId);
     return this.scanRepo.save(
       this.scanRepo.create({

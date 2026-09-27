@@ -12,7 +12,14 @@ import tseslint from 'typescript-eslint';
  */
 export default tseslint.config(
   {
-    ignores: ['**/node_modules/', '**/dist/', '**/coverage/', '**/.angular/', '**/out-tsc/', '.claude/'],
+    ignores: [
+      '**/node_modules/',
+      '**/dist/',
+      '**/coverage/',
+      '**/.angular/',
+      '**/out-tsc/',
+      '.claude/',
+    ],
   },
 
   // Every TypeScript file: NestJS API, workers, shared packages and the Angular apps.

@@ -44,7 +44,9 @@ export class WholesaleService {
   async apply(user: AuthenticatedUser): Promise<WholesaleAccount> {
     const existing = await this.findByUserId(user.id);
     if (existing) {
-      throw new ConflictException(`A wholesale account already exists (status: ${existing.status})`);
+      throw new ConflictException(
+        `A wholesale account already exists (status: ${existing.status})`,
+      );
     }
     return this.accountRepo.save(
       this.accountRepo.create({
@@ -73,7 +75,11 @@ export class WholesaleService {
     return account;
   }
 
-  async review(id: string, dto: ReviewAccountDto, reviewer: AuthenticatedUser): Promise<WholesaleAccount> {
+  async review(
+    id: string,
+    dto: ReviewAccountDto,
+    reviewer: AuthenticatedUser,
+  ): Promise<WholesaleAccount> {
     const account = await this.findById(id);
     account.status = dto.status;
     account.reviewedBy = reviewer.id;

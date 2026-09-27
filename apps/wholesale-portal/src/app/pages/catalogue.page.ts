@@ -20,21 +20,25 @@ import { CartService } from '../cart.service';
       <section class="panel">
         <div class="tagbar"><span>Wholesale account required</span><span>B2B</span></div>
         <p class="apply-copy">
-          Wholesale ordering needs an approved account (minimum order quantity applies).
-          Apply below — our team reviews applications and assigns your price tier.
+          Wholesale ordering needs an approved account (minimum order quantity applies). Apply below
+          — our team reviews applications and assigns your price tier.
         </p>
         <button class="cta" (click)="apply()" [disabled]="applied()">
-          {{ applied() ? 'Application submitted — pending review' : 'Apply for a wholesale account' }}
+          {{
+            applied() ? 'Application submitted — pending review' : 'Apply for a wholesale account'
+          }}
         </button>
-        @if (error()) { <p class="error">{{ error() }}</p> }
+        @if (error()) {
+          <p class="error">{{ error() }}</p>
+        }
       </section>
     } @else if (pricing(); as p) {
       <div class="policy-strip" style="margin-top: var(--space-md)">
         <span class="material-symbols-outlined" aria-hidden="true">inventory</span>
         <div style="flex:1">
           <strong>MOQ threshold policy</strong>
-          Minimum Order Quantity: {{ p.moq }} units across the catalogue.
-          Mix &amp; match sizes and colours accepted.
+          Minimum Order Quantity: {{ p.moq }} units across the catalogue. Mix &amp; match sizes and
+          colours accepted.
         </div>
         <span class="chip soft">{{ p.tier?.name ?? 'Standard tier' }}</span>
       </div>
@@ -42,8 +46,13 @@ import { CartService } from '../cart.service';
       <div class="search-row">
         <div class="search-box">
           <span class="material-symbols-outlined" aria-hidden="true">search</span>
-          <input type="search" [(ngModel)]="query" name="q"
-            placeholder="Search SKU, garment silhouette, fabric spec…" aria-label="Search catalogue" />
+          <input
+            type="search"
+            [(ngModel)]="query"
+            name="q"
+            placeholder="Search SKU, garment silhouette, fabric spec…"
+            aria-label="Search catalogue"
+          />
         </div>
       </div>
 
@@ -111,9 +120,15 @@ import { CartService } from '../cart.service';
           <div class="size-grid">
             @for (v of quickVariants(product); track v.id) {
               <div class="sz">
-                <span class="s-l" [title]="v.size + ' / ' + v.colour">{{ v.size || 'OS' }} · {{ v.colour }}</span>
-                <input type="number" min="0" [(ngModel)]="quantities[v.id]"
-                  [attr.aria-label]="product.name + ' ' + v.size + ' ' + v.colour" />
+                <span class="s-l" [title]="v.size + ' / ' + v.colour"
+                  >{{ v.size || 'OS' }} · {{ v.colour }}</span
+                >
+                <input
+                  type="number"
+                  min="0"
+                  [(ngModel)]="quantities[v.id]"
+                  [attr.aria-label]="product.name + ' ' + v.size + ' ' + v.colour"
+                />
               </div>
             }
           </div>
@@ -124,7 +139,11 @@ import { CartService } from '../cart.service';
             </p>
           }
 
-          <button class="cta pc-cta" (click)="addToOrder(product)" [disabled]="productUnits(product) === 0">
+          <button
+            class="cta pc-cta"
+            (click)="addToOrder(product)"
+            [disabled]="productUnits(product) === 0"
+          >
             <span class="material-symbols-outlined" aria-hidden="true">factory</span>
             <span>Add to bulk order</span>
             <span class="count">{{ productUnits(product) }} pcs</span>
@@ -144,12 +163,18 @@ import { CartService } from '../cart.service';
               <span class="db-amount">₦{{ cart.amount() | number: '1.0-2' }}</span>
             </div>
           </div>
-          <a class="cta small" routerLink="/cart">Review order
-            <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
+          <a class="cta small" routerLink="/cart"
+            >Review order
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a
+          >
         </div>
       }
-      @if (message()) { <p class="success">{{ message() }}</p> }
-      @if (error()) { <p class="error">{{ error() }}</p> }
+      @if (message()) {
+        <p class="success">{{ message() }}</p>
+      }
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
     } @else {
       <p class="muted">Loading catalogue…</p>
     }

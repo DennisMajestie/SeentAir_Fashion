@@ -12,17 +12,29 @@ import { ApiService } from '../api.service';
     <form class="auth-box" (ngSubmit)="submit()">
       <h1>Set a new password</h1>
       @if (!token) {
-        <p class="error">This reset link is incomplete — request a new one from your <a routerLink="/account">account page</a>.</p>
+        <p class="error">
+          This reset link is incomplete — request a new one from your
+          <a routerLink="/account">account page</a>.
+        </p>
       } @else if (done()) {
         <p class="success">{{ done() }}</p>
         <a class="cta" routerLink="/account">Sign in</a>
       } @else {
         <label>
           New password (min 8 characters)
-          <input type="password" [(ngModel)]="password" name="password" required minlength="8" autocomplete="new-password" />
+          <input
+            type="password"
+            [(ngModel)]="password"
+            name="password"
+            required
+            minlength="8"
+            autocomplete="new-password"
+          />
         </label>
         <button class="cta" type="submit" [disabled]="password.length < 8">Update password</button>
-        @if (error()) { <p class="error">{{ error() }}</p> }
+        @if (error()) {
+          <p class="error">{{ error() }}</p>
+        }
       }
     </form>
   `,

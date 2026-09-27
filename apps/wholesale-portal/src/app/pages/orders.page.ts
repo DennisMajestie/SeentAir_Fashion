@@ -16,15 +16,24 @@ import { pill } from '../status-pill';
   template: `
     <section class="panel">
       <div class="tagbar">
-        <span><span class="material-symbols-outlined" style="font-size:14px; vertical-align:-2px"
-          aria-hidden="true">receipt_long</span> Procurement log</span>
+        <span
+          ><span
+            class="material-symbols-outlined"
+            style="font-size:14px; vertical-align:-2px"
+            aria-hidden="true"
+            >receipt_long</span
+          >
+          Procurement log</span
+        >
         <span>{{ today | date: 'MMM yyyy' }}</span>
       </div>
       <div class="stat-grid" style="margin:0">
         <div class="stat">
           <span class="s-label">Active commitments</span>
           <strong class="tabular">₦{{ activeCommitments() | number: '1.0-2' }}</strong>
-          <span class="s-sub">{{ openBatches() }} batch{{ openBatches() === 1 ? '' : 'es' }} in pipeline</span>
+          <span class="s-sub"
+            >{{ openBatches() }} batch{{ openBatches() === 1 ? '' : 'es' }} in pipeline</span
+          >
         </div>
         <div class="stat">
           <span class="s-label">Lifetime volume</span>
@@ -48,8 +57,13 @@ import { pill } from '../status-pill';
     <div class="search-row">
       <div class="search-box">
         <span class="material-symbols-outlined" aria-hidden="true">search</span>
-        <input type="search" [(ngModel)]="query" name="q"
-          placeholder="Filter by order #, SKU…" aria-label="Filter orders" />
+        <input
+          type="search"
+          [(ngModel)]="query"
+          name="q"
+          placeholder="Filter by order #, SKU…"
+          aria-label="Filter orders"
+        />
       </div>
       <select [(ngModel)]="range" name="range" aria-label="Date range">
         <option value="90">Last 90 days</option>
@@ -65,12 +79,19 @@ import { pill } from '../status-pill';
       <article class="ordercard">
         <div class="oc-top">
           <div>
-            <span class="oc-id">#SNT-{{ invoice.orderId.slice(0, 8).toUpperCase() }}
-              @if (!isPaid(invoice)) { <span class="chip accent">Action req</span> }
-              @else if (isDelivered(invoice)) { <span class="chip">Archived</span> }
-              @else { <span class="chip soft">Batch run</span> }
+            <span class="oc-id"
+              >#SNT-{{ invoice.orderId.slice(0, 8).toUpperCase() }}
+              @if (!isPaid(invoice)) {
+                <span class="chip accent">Action req</span>
+              } @else if (isDelivered(invoice)) {
+                <span class="chip">Archived</span>
+              } @else {
+                <span class="chip soft">Batch run</span>
+              }
             </span>
-            <span class="oc-meta">{{ invoice.createdAt | date: 'dd MMM yyyy' }} · Factory batch</span>
+            <span class="oc-meta"
+              >{{ invoice.createdAt | date: 'dd MMM yyyy' }} · Factory batch</span
+            >
           </div>
           <div class="oc-amount">
             <strong>₦{{ invoice.totalAmount | number: '1.0-2' }}</strong>
@@ -82,15 +103,23 @@ import { pill } from '../status-pill';
           <span>
             <span class="l">Batch contents</span>
             @for (item of invoice.items; track item.sku) {
-              <span class="small">{{ item.quantity }}× <code>{{ item.sku }}</code>
-                @if (!$last) { · } </span>
+              <span class="small"
+                >{{ item.quantity }}× <code>{{ item.sku }}</code>
+                @if (!$last) {
+                  ·
+                }
+              </span>
             }
           </span>
         </div>
 
         <div class="oc-chips">
           <span class="status" [class]="'status ' + pill(invoice.paymentStatus)">
-            {{ isPaid(invoice) ? 'Paid · ' + payMethod(invoice) : invoice.paymentStatus.replaceAll('_', ' ') }}
+            {{
+              isPaid(invoice)
+                ? 'Paid · ' + payMethod(invoice)
+                : invoice.paymentStatus.replaceAll('_', ' ')
+            }}
           </span>
           <span class="status" [class]="'status ' + pill(invoice.status)">
             {{ invoice.status.replaceAll('_', ' ') }}
@@ -102,7 +131,8 @@ import { pill } from '../status-pill';
             <!-- GAP: no payment-slip upload endpoint — the desk verifies transfers;
                  the pro-forma stands in for the reference's UPLOAD SLIP action. -->
             <a class="cta small" [routerLink]="['/orders', invoice.orderId, 'invoice']">
-              <span class="material-symbols-outlined" aria-hidden="true">description</span> Pro-forma
+              <span class="material-symbols-outlined" aria-hidden="true">description</span>
+              Pro-forma
             </a>
             <button class="cta small quiet" (click)="reorder(invoice.orderId)">Reorder</button>
           } @else if (!isDelivered(invoice)) {
@@ -120,7 +150,8 @@ import { pill } from '../status-pill';
               <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span> Manifest
             </a>
             <a class="cta small quiet" [routerLink]="['/orders', invoice.orderId, 'invoice']">
-              <span class="material-symbols-outlined" aria-hidden="true">download</span> Invoice (PDF)
+              <span class="material-symbols-outlined" aria-hidden="true">download</span> Invoice
+              (PDF)
             </a>
             <button class="cta small outline" (click)="reorder(invoice.orderId)">
               <span class="material-symbols-outlined" aria-hidden="true">sync</span> Reorder batch
@@ -129,16 +160,26 @@ import { pill } from '../status-pill';
         </div>
       </article>
     }
-    @if (message()) { <p class="success">{{ message() }}</p> }
+    @if (message()) {
+      <p class="success">{{ message() }}</p>
+    }
 
-    <button class="cta outline" style="width:100%; margin-top: var(--space-lg)"
-      (click)="exportCsv()" [disabled]="invoices().length === 0">
+    <button
+      class="cta outline"
+      style="width:100%; margin-top: var(--space-lg)"
+      (click)="exportCsv()"
+      [disabled]="invoices().length === 0"
+    >
       <span class="material-symbols-outlined" aria-hidden="true">table_view</span>
       Export batch statement (CSV)
     </button>
     <p class="muted small" style="text-align:center; margin-top: var(--space-sm)">
-      <span class="material-symbols-outlined" style="font-size:13px; vertical-align:-2px"
-        aria-hidden="true">lock</span>
+      <span
+        class="material-symbols-outlined"
+        style="font-size:13px; vertical-align:-2px"
+        aria-hidden="true"
+        >lock</span
+      >
       Statements are generated from the live order ledger — every movement is audit-logged.
     </p>
   `,
@@ -160,9 +201,7 @@ export class OrdersPage implements OnInit {
       .reduce((n, i) => n + i.totalAmount, 0),
   );
   readonly openBatches = computed(() => this.invoices().filter((i) => !this.isDelivered(i)).length);
-  readonly lifetimeUnits = computed(() =>
-    this.invoices().reduce((n, i) => n + this.units(i), 0),
-  );
+  readonly lifetimeUnits = computed(() => this.invoices().reduce((n, i) => n + this.units(i), 0));
   readonly statusCounts = computed(() => {
     const counts = new Map<string, number>();
     for (const i of this.invoices()) counts.set(i.status, (counts.get(i.status) ?? 0) + 1);
@@ -185,8 +224,7 @@ export class OrdersPage implements OnInit {
 
   filtered(): Invoice[] {
     const q = this.query.trim().toLowerCase();
-    const cutoff =
-      this.range === 'all' ? 0 : Date.now() - Number(this.range) * 24 * 60 * 60 * 1000;
+    const cutoff = this.range === 'all' ? 0 : Date.now() - Number(this.range) * 24 * 60 * 60 * 1000;
     return this.invoices().filter((i) => {
       if (this.statusFilter() && i.status !== this.statusFilter()) return false;
       if (new Date(i.createdAt).getTime() < cutoff) return false;
@@ -217,7 +255,9 @@ export class OrdersPage implements OnInit {
   reorder(orderId: string): void {
     this.api.reorder(orderId).subscribe({
       next: (order) => {
-        this.message.set(`Reorder placed: ${order.id.slice(0, 8)} — repriced at your current tier.`);
+        this.message.set(
+          `Reorder placed: ${order.id.slice(0, 8)} — repriced at your current tier.`,
+        );
         this.api.invoices().subscribe((res) => this.invoices.set(res.data));
       },
       error: (err) => this.message.set(err?.error?.message ?? 'Reorder failed.'),
@@ -227,7 +267,17 @@ export class OrdersPage implements OnInit {
   /** Real export: the visible ledger, one row per invoice line. */
   exportCsv(): void {
     const rows = [
-      ['order_id', 'created_at', 'status', 'payment_status', 'sku', 'quantity', 'unit_price', 'line_total', 'order_total'],
+      [
+        'order_id',
+        'created_at',
+        'status',
+        'payment_status',
+        'sku',
+        'quantity',
+        'unit_price',
+        'line_total',
+        'order_total',
+      ],
       ...this.invoices().flatMap((i) =>
         i.items.map((item) => [
           i.orderId,

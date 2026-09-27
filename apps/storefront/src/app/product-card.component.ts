@@ -37,21 +37,40 @@ export const SWATCHES: Record<string, string> = {
           [alt]="product().name"
           loading="lazy"
         />
-        @if (badge(product()); as b) { <span class="badge" [class.badge-out]="b === 'Sold out'">{{ b }}</span> }
-        <button class="heart-btn" type="button"
+        @if (badge(product()); as b) {
+          <span class="badge" [class.badge-out]="b === 'Sold out'">{{ b }}</span>
+        }
+        <button
+          class="heart-btn"
+          type="button"
           [class.active]="wishlist.has(product().id)"
           [attr.aria-pressed]="wishlist.has(product().id)"
-          [attr.aria-label]="(wishlist.has(product().id) ? 'Remove ' : 'Add ') + product().name + ' to wishlist'"
-          (click)="$event.preventDefault(); $event.stopPropagation(); wishlist.toggle(product())">
-          <svg viewBox="0 0 24 24" [attr.fill]="wishlist.has(product().id) ? 'currentColor' : 'none'"
-               stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
-               aria-hidden="true" focusable="false">
-            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+          [attr.aria-label]="
+            (wishlist.has(product().id) ? 'Remove ' : 'Add ') + product().name + ' to wishlist'
+          "
+          (click)="$event.preventDefault(); $event.stopPropagation(); wishlist.toggle(product())"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            [attr.fill]="wishlist.has(product().id) ? 'currentColor' : 'none'"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z"
+            />
           </svg>
         </button>
         @if (!isSoldOut(product())) {
-          <button class="quickadd-btn" type="button"
-            (click)="$event.preventDefault(); $event.stopPropagation(); toggleQuickAdd(product())">
+          <button
+            class="quickadd-btn"
+            type="button"
+            (click)="$event.preventDefault(); $event.stopPropagation(); toggleQuickAdd(product())"
+          >
             {{ quickAddId() === product().id ? 'Close' : '+ Quick add' }}
           </button>
         }
@@ -62,8 +81,12 @@ export const SWATCHES: Record<string, string> = {
           @if (coloursOf(product()).length > 1) {
             <div class="qa-row">
               @for (c of coloursOf(product()); track c) {
-                <button class="swatch-btn" [class.active]="qaColour() === c" [title]="c"
-                  (click)="qaColour.set(c)">
+                <button
+                  class="swatch-btn"
+                  [class.active]="qaColour() === c"
+                  [title]="c"
+                  (click)="qaColour.set(c)"
+                >
                   <span class="swatch" [style.background]="swatch(c)"></span>
                 </button>
               }
@@ -71,9 +94,13 @@ export const SWATCHES: Record<string, string> = {
           }
           <div class="qa-row">
             @for (s of sizesOf(product()); track s) {
-              <button class="size-chip"
+              <button
+                class="size-chip"
                 [disabled]="!isBuyable(product(), s, qaColour())"
-                (click)="quickAdd(product(), s)">{{ s }}</button>
+                (click)="quickAdd(product(), s)"
+              >
+                {{ s }}
+              </button>
             }
           </div>
         </div>
@@ -94,7 +121,10 @@ export const SWATCHES: Record<string, string> = {
         </div>
         <p class="price">₦{{ product().basePrice | number: '1.0-2' }}</p>
         @if (rating(); as r) {
-          <p class="stars-line" [attr.aria-label]="r.avg + ' out of 5 from ' + r.count + ' reviews'">
+          <p
+            class="stars-line"
+            [attr.aria-label]="r.avg + ' out of 5 from ' + r.count + ' reviews'"
+          >
             <span class="stars">{{ starString(r.avg) }}</span>
             <span class="muted small">{{ r.avg | number: '1.1-1' }} ({{ r.count }})</span>
           </p>
@@ -116,7 +146,13 @@ export class ProductCardComponent implements OnDestroy {
   readonly addedId = signal<string | null>(null);
   private addedTimer: ReturnType<typeof setTimeout> | undefined;
 
-  private readonly fallbacks = ['shop-1.jpg', 'shop-2.jpg', 'shop-3.jpg', 'shop-5.jpg', 'shop-6.jpg'];
+  private readonly fallbacks = [
+    'shop-1.jpg',
+    'shop-2.jpg',
+    'shop-3.jpg',
+    'shop-5.jpg',
+    'shop-6.jpg',
+  ];
 
   ngOnDestroy(): void {
     clearTimeout(this.addedTimer);
@@ -135,7 +171,8 @@ export class ProductCardComponent implements OnDestroy {
     const order = ['S', 'M', 'L', 'XL', 'XXL', 'OS', 'Bespoke'];
     return [...new Set(p.variants.map((v) => v.size).filter((s): s is string => !!s))].sort(
       (a, b) => {
-        const ia = order.indexOf(a), ib = order.indexOf(b);
+        const ia = order.indexOf(a),
+          ib = order.indexOf(b);
         return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
       },
     );
@@ -144,15 +181,20 @@ export class ProductCardComponent implements OnDestroy {
     const sizes = this.sizesOf(p);
     const colours = this.coloursOf(p);
     const sizePart =
-      sizes.length === 0 ? '' :
-      sizes.length === 1 && (sizes[0] === 'OS' || sizes[0] === 'Bespoke')
-        ? (sizes[0] === 'OS' ? 'One size' : 'Made to measure')
-        : `${sizes[0]}–${sizes[sizes.length - 1]}`;
+      sizes.length === 0
+        ? ''
+        : sizes.length === 1 && (sizes[0] === 'OS' || sizes[0] === 'Bespoke')
+          ? sizes[0] === 'OS'
+            ? 'One size'
+            : 'Made to measure'
+          : `${sizes[0]}–${sizes[sizes.length - 1]}`;
     const colourPart = colours.length > 1 ? `${colours.length} colours` : '';
     return [sizePart, colourPart].filter(Boolean).join(' · ');
   }
   isSoldOut(p: Product): boolean {
-    return p.variants.length > 0 && p.variants.every((v) => v.availabilityStatus === 'out_of_stock');
+    return (
+      p.variants.length > 0 && p.variants.every((v) => v.availabilityStatus === 'out_of_stock')
+    );
   }
   badge(p: Product): string | null {
     if (this.isSoldOut(p)) return 'Sold out';
@@ -175,9 +217,7 @@ export class ProductCardComponent implements OnDestroy {
   }
   private variantFor(p: Product, size: string, colour: string | null): ProductVariant | null {
     return (
-      p.variants.find(
-        (v) => v.size === size && (colour === null || v.colour === colour),
-      ) ?? null
+      p.variants.find((v) => v.size === size && (colour === null || v.colour === colour)) ?? null
     );
   }
   isBuyable(p: Product, size: string, colour: string | null): boolean {

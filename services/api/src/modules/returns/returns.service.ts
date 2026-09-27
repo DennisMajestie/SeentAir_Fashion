@@ -100,8 +100,7 @@ export class ReturnsService {
     if (ACCESS_RANK[access] < ACCESS_RANK[AccessLevel.OWN]) {
       throw new ForbiddenException('No returns access');
     }
-    const where =
-      access === AccessLevel.OWN ? { order: { customer: { id: user.id } } } : {};
+    const where = access === AccessLevel.OWN ? { order: { customer: { id: user.id } } } : {};
     const [data, total] = await this.returnRepo.findAndCount({
       where,
       order: { requestedAt: 'DESC' },

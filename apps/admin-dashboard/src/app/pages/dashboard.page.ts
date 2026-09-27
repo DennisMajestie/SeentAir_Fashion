@@ -1,10 +1,29 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { AdminOrder, AnalyticsRange, ApiService, Approval, AuditEntry, Dashboard, LowStock } from '../api.service';
+import {
+  AdminOrder,
+  AnalyticsRange,
+  ApiService,
+  Approval,
+  AuditEntry,
+  Dashboard,
+  LowStock,
+} from '../api.service';
 
-interface SellerRow { sku: string; productName: string; unitsSold: number; revenue: number }
-interface ChartPoint { x: number; y: number; date: string; label: string; value: number }
+interface SellerRow {
+  sku: string;
+  productName: string;
+  unitsSold: number;
+  revenue: number;
+}
+interface ChartPoint {
+  x: number;
+  y: number;
+  date: string;
+  label: string;
+  value: number;
+}
 
 /** Analytics-range control (folded into the approved A1 layout). */
 const RANGE_KEYS: Array<{ key: AnalyticsRange; label: string }> = [
@@ -40,7 +59,9 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
       </div>
       <div class="ops-actions">
         <span class="live-chip">Live sync</span>
-        <button class="cta small ghost" type="button" (click)="exportSheet()">Export daily operations sheet</button>
+        <button class="cta small ghost" type="button" (click)="exportSheet()">
+          Export daily operations sheet
+        </button>
         <a class="cta small" routerLink="/production">New batch request</a>
       </div>
     </div>
@@ -55,17 +76,28 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
       </div>
       @if (range() === 'custom') {
         <div class="range custom-range" role="group" aria-label="Custom range">
-          <label class="range-field">From
-            <input type="date" [value]="fromDate()" (change)="fromDate.set($any($event.target).value)" />
+          <label class="range-field"
+            >From
+            <input
+              type="date"
+              [value]="fromDate()"
+              (change)="fromDate.set($any($event.target).value)"
+            />
           </label>
-          <label class="range-field">To
-            <input type="date" [value]="toDate()" (change)="toDate.set($any($event.target).value)" />
+          <label class="range-field"
+            >To
+            <input
+              type="date"
+              [value]="toDate()"
+              (change)="toDate.set($any($event.target).value)"
+            />
           </label>
           <button type="button" class="cta small" (click)="load()">Apply</button>
         </div>
       }
       @if (loadError(); as err) {
-        <p class="range-note error" role="alert">{{ err }}
+        <p class="range-note error" role="alert">
+          {{ err }}
           <button type="button" class="link" (click)="load()">Retry</button>
         </p>
       }
@@ -80,29 +112,61 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
           <span class="kpi-value">₦{{ d.salesToday.revenue | number: '1.0-0' }}</span>
           <span class="kpi-sub">{{ d.salesToday.orders }} paid order(s) since midnight</span>
           @let revDelta = delta(d.metrics.revenue, d.metrics.priorRevenue);
-          <span class="delta" [class.plus]="revDelta.cls === 'plus'" [class.minus]="revDelta.cls === 'minus'">{{ revDelta.text }} vs prior period</span>
-          <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none" role="img" aria-label="Revenue trend for the selected range">
+          <span
+            class="delta"
+            [class.plus]="revDelta.cls === 'plus'"
+            [class.minus]="revDelta.cls === 'minus'"
+            >{{ revDelta.text }} vs prior period</span
+          >
+          <svg
+            class="spark"
+            viewBox="0 0 100 26"
+            preserveAspectRatio="none"
+            role="img"
+            aria-label="Revenue trend for the selected range"
+          >
             <polyline class="spark-line" [attr.points]="sparkPoints(revenueTrend())"></polyline>
           </svg>
           <span class="kpi-minis">
             @for (c of topChannels(); track c.channel) {
-              <span class="chip">{{ c.channel.replaceAll('_', ' ') }} ₦{{ c.revenue | number: '1.0-0' }}</span>
+              <span class="chip"
+                >{{ c.channel.replaceAll('_', ' ') }} ₦{{ c.revenue | number: '1.0-0' }}</span
+              >
             }
           </span>
         </div>
         <div class="kpi">
           <span class="kpi-label">Net position</span>
-          <span class="kpi-value" [class.error]="d.profitLoss.net < 0">₦{{ d.profitLoss.net | number: '1.0-0' }}</span>
-          <span class="kpi-sub">in ₦{{ d.profitLoss.income | number: '1.0-0' }} · out ₦{{ d.profitLoss.expenditure | number: '1.0-0' }}</span>
-          <span class="meter" [class.danger]="d.profitLoss.net < 0"><i [style.width]="incomeShare(d)"></i></span>
+          <span class="kpi-value" [class.error]="d.profitLoss.net < 0"
+            >₦{{ d.profitLoss.net | number: '1.0-0' }}</span
+          >
+          <span class="kpi-sub"
+            >in ₦{{ d.profitLoss.income | number: '1.0-0' }} · out ₦{{
+              d.profitLoss.expenditure | number: '1.0-0'
+            }}</span
+          >
+          <span class="meter" [class.danger]="d.profitLoss.net < 0"
+            ><i [style.width]="incomeShare(d)"></i
+          ></span>
         </div>
         <div class="kpi">
           <span class="kpi-label">Orders today</span>
           <span class="kpi-value">{{ d.salesToday.orders }}</span>
           <span class="kpi-sub">{{ transitCount() }} dispatch leg(s) in transit</span>
           @let odDelta = delta(d.metrics.openOrders, d.metrics.priorOpenOrders);
-          <span class="delta" [class.plus]="odDelta.cls === 'plus'" [class.minus]="odDelta.cls === 'minus'">{{ odDelta.text }} vs prior period</span>
-          <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none" role="img" aria-label="Open orders trend for the selected range">
+          <span
+            class="delta"
+            [class.plus]="odDelta.cls === 'plus'"
+            [class.minus]="odDelta.cls === 'minus'"
+            >{{ odDelta.text }} vs prior period</span
+          >
+          <svg
+            class="spark"
+            viewBox="0 0 100 26"
+            preserveAspectRatio="none"
+            role="img"
+            aria-label="Open orders trend for the selected range"
+          >
             <polyline class="spark-line" [attr.points]="sparkPoints(orderTrend())"></polyline>
           </svg>
           <span class="kpi-minis">
@@ -120,11 +184,22 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
             @for (g of approvalGroups(); track g.type) {
               <span class="chip acid">{{ g.count }} {{ g.type.replaceAll('_', ' ') }}</span>
             }
-            @if (approvalGroups().length === 0) { <span class="chip ok">Queue clear</span> }
+            @if (approvalGroups().length === 0) {
+              <span class="chip ok">Queue clear</span>
+            }
           </span>
           @if (d.trends.approvals.length > 1) {
-            <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none" role="img" aria-label="Pending approvals trend for the selected range">
-              <polyline class="spark-line" [attr.points]="sparkPoints(d.trends.approvals)"></polyline>
+            <svg
+              class="spark"
+              viewBox="0 0 100 26"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label="Pending approvals trend for the selected range"
+            >
+              <polyline
+                class="spark-line"
+                [attr.points]="sparkPoints(d.trends.approvals)"
+              ></polyline>
             </svg>
           }
           <a class="cta small" routerLink="/approvals">Review approvals</a>
@@ -133,76 +208,144 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
 
       <div class="ops-grid">
         <section class="panel flat">
-            <div class="panel-head">
-              <span class="gold-bullet" aria-hidden="true"></span>
-              <h2>Sales performance</h2>
-              <span class="ph-sub">gross paid-order revenue · {{ rangeLabel() }}</span>
-              <span class="ph-end naira stat-md">₦{{ chartTotal() | number: '1.0-0' }}</span>
-            </div>
+          <div class="panel-head">
+            <span class="gold-bullet" aria-hidden="true"></span>
+            <h2>Sales performance</h2>
+            <span class="ph-sub">gross paid-order revenue · {{ rangeLabel() }}</span>
+            <span class="ph-end naira stat-md">₦{{ chartTotal() | number: '1.0-0' }}</span>
+          </div>
           @if (chartPoints().length > 1) {
             <div class="chart-wrap" (mouseleave)="hoverIdx.set(null)">
-              <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none" role="img"
-                   aria-label="Paid-order revenue by bucket for the selected range"
-                   (mousemove)="onChartMove($event)">
+              <svg
+                [attr.viewBox]="'0 0 ' + W + ' ' + H"
+                preserveAspectRatio="none"
+                role="img"
+                aria-label="Paid-order revenue by bucket for the selected range"
+                (mousemove)="onChartMove($event)"
+              >
                 <!-- recessive grid -->
                 @for (gy of gridYs; track gy) {
-                  <line [attr.x1]="PAD" [attr.x2]="W - PAD" [attr.y1]="gy" [attr.y2]="gy"
-                        stroke="var(--hairline)" stroke-width="1" />
+                  <line
+                    [attr.x1]="PAD"
+                    [attr.x2]="W - PAD"
+                    [attr.y1]="gy"
+                    [attr.y2]="gy"
+                    stroke="var(--hairline)"
+                    stroke-width="1"
+                  />
                 }
                 <path [attr.d]="areaPath()" fill="var(--gold)" opacity="0.16" />
-                <path [attr.d]="linePath()" fill="none" stroke="var(--acid-ink)" stroke-width="2"
-                      stroke-linejoin="round" stroke-linecap="round" />
+                <path
+                  [attr.d]="linePath()"
+                  fill="none"
+                  stroke="var(--acid-ink)"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                  stroke-linecap="round"
+                />
                 @if (peak(); as p) {
-                  <circle [attr.cx]="p.x" [attr.cy]="p.y" r="4" fill="var(--acid-ink)" stroke="var(--panel)" stroke-width="2" />
+                  <circle
+                    [attr.cx]="p.x"
+                    [attr.cy]="p.y"
+                    r="4"
+                    fill="var(--acid-ink)"
+                    stroke="var(--panel)"
+                    stroke-width="2"
+                  />
                 }
                 @if (hoverPoint(); as hp) {
-                  <line [attr.x1]="hp.x" [attr.x2]="hp.x" [attr.y1]="PAD" [attr.y2]="H - PAD_B"
-                        stroke="var(--hairline-2)" stroke-width="1" />
-                  <circle [attr.cx]="hp.x" [attr.cy]="hp.y" r="4" fill="var(--acid-ink)" stroke="var(--panel)" stroke-width="2" />
+                  <line
+                    [attr.x1]="hp.x"
+                    [attr.x2]="hp.x"
+                    [attr.y1]="PAD"
+                    [attr.y2]="H - PAD_B"
+                    stroke="var(--hairline-2)"
+                    stroke-width="1"
+                  />
+                  <circle
+                    [attr.cx]="hp.x"
+                    [attr.cy]="hp.y"
+                    r="4"
+                    fill="var(--acid-ink)"
+                    stroke="var(--panel)"
+                    stroke-width="2"
+                  />
                 }
               </svg>
               @if (hoverPoint(); as hp) {
-                <div class="chart-tip" [style.left.%]="(hp.x / W) * 100" [style.top.%]="(hp.y / H) * 100">
+                <div
+                  class="chart-tip"
+                  [style.left.%]="(hp.x / W) * 100"
+                  [style.top.%]="(hp.y / H) * 100"
+                >
                   {{ hp.label }} · ₦{{ hp.value | number: '1.0-0' }}
                 </div>
               }
               <div class="panel row-flat" style="display:flex;justify-content:space-between;">
                 <span class="mini-note">{{ chartPoints()[0].label }}</span>
-                @if (peak(); as p) { <span class="mini-note acid-text">Peak {{ p.label }} · ₦{{ p.value | number: '1.0-0' }}</span> }
+                @if (peak(); as p) {
+                  <span class="mini-note acid-text"
+                    >Peak {{ p.label }} · ₦{{ p.value | number: '1.0-0' }}</span
+                  >
+                }
                 <span class="mini-note">{{ chartPoints()[chartPoints().length - 1].label }}</span>
               </div>
             </div>
-            <p class="muted small">Totals and the change from the previous period are calculated automatically for
-              {{ rangeLabel() }}. No data is invented.</p>
+            <p class="muted small">
+              Totals and the change from the previous period are calculated automatically for
+              {{ rangeLabel() }}. No data is invented.
+            </p>
           } @else {
             <p class="muted">Not enough paid orders in {{ rangeLabel() }} to draw the trend yet.</p>
           }
 
           <div class="combo-summary" aria-label="Revenue and order volume for the selected period">
             <span class="mini-note" style="margin-bottom:0.3rem;">
-              <span class="gold-bullet inline" aria-hidden="true"></span> Gross paid revenue (gold) · order volume (gray)
+              <span class="gold-bullet inline" aria-hidden="true"></span> Gross paid revenue (gold)
+              · order volume (gray)
             </span>
             @let ordersMax = comboOrdersMax();
             @let revMax = comboRevMax();
-            <svg viewBox="0 0 260 110" preserveAspectRatio="none" role="img"
-                 aria-label="Combo chart: gold line = revenue paid, gray bars = paid orders per period">
+            <svg
+              viewBox="0 0 260 110"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label="Combo chart: gold line = revenue paid, gray bars = paid orders per period"
+            >
               @for (g of comboGridYs(110); track g) {
-                <line [attr.x1]="0" [attr.x2]="260" [attr.y1]="g" [attr.y2]="g"
-                      stroke="var(--hairline)" stroke-width="1" />
+                <line
+                  [attr.x1]="0"
+                  [attr.x2]="260"
+                  [attr.y1]="g"
+                  [attr.y2]="g"
+                  stroke="var(--hairline)"
+                  stroke-width="1"
+                />
               }
               @for (c of d.series; track c.label; let i = $index) {
-                <rect [attr.x]="8 + i * (250 / d.series.length)"
-                      [attr.width]="(250 / d.series.length) * 0.5"
-                      [attr.y]="100 - (ordersMax > 0 ? (c.orders / ordersMax) * 92 : 0)"
-                      [attr.height]="ordersMax > 0 ? (c.orders / ordersMax) * 92 : 0"
-                      fill="var(--acid-ink)" opacity="0.5" />
+                <rect
+                  [attr.x]="8 + i * (250 / d.series.length)"
+                  [attr.width]="(250 / d.series.length) * 0.5"
+                  [attr.y]="100 - (ordersMax > 0 ? (c.orders / ordersMax) * 92 : 0)"
+                  [attr.height]="ordersMax > 0 ? (c.orders / ordersMax) * 92 : 0"
+                  fill="var(--acid-ink)"
+                  opacity="0.5"
+                />
               }
-              <polyline class="combo-line"
-                        [attr.points]="comboRevPoints(d.series, revMax)"></polyline>
+              <polyline
+                class="combo-line"
+                [attr.points]="comboRevPoints(d.series, revMax)"
+              ></polyline>
             </svg>
-            <span class="mini-note" style="margin-top:0.3rem;display:flex;justify-content:space-between;">
+            <span
+              class="mini-note"
+              style="margin-top:0.3rem;display:flex;justify-content:space-between;"
+            >
               <span>{{ d.series[0].label }}</span>
-              <span>₦{{ comboRevTotal() | number: '1.0-0' }} rev · {{ comboOrdersTotal() | number }} orders</span>
+              <span
+                >₦{{ comboRevTotal() | number: '1.0-0' }} rev ·
+                {{ comboOrdersTotal() | number }} orders</span
+              >
               <span>{{ d.series[d.series.length - 1].label }}</span>
             </span>
           </div>
@@ -211,11 +354,15 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
               <div class="cl-row">
                 <span class="cl-mark" [class.m2]="i === 1" [class.m3]="i === 2"></span>
                 <span class="cl-name">{{ row.channel.replaceAll('_', ' ') }}</span>
-                <span class="cl-val">₦{{ row.revenue | number: '1.0-0' }} · {{ row.orders }} orders</span>
+                <span class="cl-val"
+                  >₦{{ row.revenue | number: '1.0-0' }} · {{ row.orders }} orders</span
+                >
                 <span class="cl-share">{{ share(d.salesByChannel, row.revenue) }}% share</span>
               </div>
             }
-            @if (d.salesByChannel.length === 0) { <p class="muted small">No paid sales recorded yet.</p> }
+            @if (d.salesByChannel.length === 0) {
+              <p class="muted small">No paid sales recorded yet.</p>
+            }
           </div>
         </section>
 
@@ -229,15 +376,28 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
             @if (dashboard(); as d) {
               @if (d.statusBreakdown.length > 0) {
                 <div class="donut-wrap">
-                  <svg viewBox="0 0 220 120" role="img" class="donut"
-                       aria-label="Paid-order status breakdown for the selected range">
+                  <svg
+                    viewBox="0 0 220 120"
+                    role="img"
+                    class="donut"
+                    aria-label="Paid-order status breakdown for the selected range"
+                  >
                     @for (sb of d.statusBreakdown; track sb.status; let i = $index) {
-                      <circle cx="60" cy="60" [attr.r]="ringR" fill="none"
-                              [attr.stroke]="statusColor(i)"
-                              stroke-width="14"
-                              [attr.stroke-dasharray]="ringTotal() > 0 ? ((sb.count / ringTotal()) * ringC()) + ' ' + ringC() : '0 ' + ringC()"
-                              [attr.stroke-dashoffset]="-ringSegmentOffset(i)"
-                              transform="rotate(-90 60 60)" />
+                      <circle
+                        cx="60"
+                        cy="60"
+                        [attr.r]="ringR"
+                        fill="none"
+                        [attr.stroke]="statusColor(i)"
+                        stroke-width="14"
+                        [attr.stroke-dasharray]="
+                          ringTotal() > 0
+                            ? (sb.count / ringTotal()) * ringC() + ' ' + ringC()
+                            : '0 ' + ringC()
+                        "
+                        [attr.stroke-dashoffset]="-ringSegmentOffset(i)"
+                        transform="rotate(-90 60 60)"
+                      />
                     }
                   </svg>
                   <div class="donut-center">
@@ -267,8 +427,14 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
             </div>
             <div class="attention">
               @for (a of attention(); track a.key) {
-                <div class="att-item" [class.crit]="a.severity === 'crit'" [class.warn]="a.severity === 'warn'">
-                  <span class="att-tag">{{ a.tag }} <span>{{ a.when }}</span></span>
+                <div
+                  class="att-item"
+                  [class.crit]="a.severity === 'crit'"
+                  [class.warn]="a.severity === 'warn'"
+                >
+                  <span class="att-tag"
+                    >{{ a.tag }} <span>{{ a.when }}</span></span
+                  >
                   <p class="att-body" [innerText]="a.body"></p>
                   <span class="att-act">
                     <a class="link" [routerLink]="a.route">{{ a.action }}</a>
@@ -277,7 +443,18 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
               }
               @if (attention().length === 0) {
                 <div class="empty-state ok">
-                  <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
+                  <span class="empty-state-icon" aria-hidden="true"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
+                  ></span>
                   <h2 class="empty-state-title">All clear</h2>
                   <p class="empty-state-sub">Nothing needs your attention right now.</p>
                 </div>
@@ -291,13 +468,17 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
               <h2>Recent activity</h2>
               <a class="link ph-end" routerLink="/audit">Audit log</a>
             </div>
-            @if (activity().length === 0) { <p class="muted small">No recent activity.</p> }
+            @if (activity().length === 0) {
+              <p class="muted small">No recent activity.</p>
+            }
             <ul class="activity">
               @for (entry of activity(); track entry.id) {
                 <li>
                   <time [attr.datetime]="entry.timestamp">{{ formatTime(entry.timestamp) }}</time>
                   <span class="gold-bullet inline" aria-hidden="true"></span>
-                  <span class="act-action" [attr.title]="entry.action">{{ feedPhrase(entry.action) }}</span>
+                  <span class="act-action" [attr.title]="entry.action">{{
+                    feedPhrase(entry.action)
+                  }}</span>
                 </li>
               }
             </ul>
@@ -311,57 +492,99 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
             @if (dashboard(); as d) {
               @let maxOrders = comboOrdersMax();
               <div class="combo-wrap">
-                <svg viewBox="0 0 260 110" preserveAspectRatio="none" role="img" class="combo"
-                     aria-label="Paid revenue (gold line) and paid order count (gray bars) by period for the selected range">
+                <svg
+                  viewBox="0 0 260 110"
+                  preserveAspectRatio="none"
+                  role="img"
+                  class="combo"
+                  aria-label="Paid revenue (gold line) and paid order count (gray bars) by period for the selected range"
+                >
                   @for (gy of comboGridYs(); track gy) {
-                    <line [attr.x1]="'0'" [attr.x2]="'260'" [attr.y1]="gy" [attr.y2]="gy"
-                          stroke="var(--hairline)" stroke-width="1" />
+                    <line
+                      [attr.x1]="'0'"
+                      [attr.x2]="'260'"
+                      [attr.y1]="gy"
+                      [attr.y2]="gy"
+                      stroke="var(--hairline)"
+                      stroke-width="1"
+                    />
                   }
                   @for (b of d.series; track b.label; let i = $index) {
-                    <rect [attr.x]="8 + i * (250 / d.series.length)"
-                          [attr.width]="(250 / d.series.length) * 0.55"
-                          [attr.y]="100 - (maxOrders > 0 ? (b.orders / maxOrders) * 90 : 0)"
-                          [attr.height]="maxOrders > 0 ? (b.orders / maxOrders) * 90 : 0"
-                          fill="var(--acid-ink)" opacity="0.45" />
+                    <rect
+                      [attr.x]="8 + i * (250 / d.series.length)"
+                      [attr.width]="(250 / d.series.length) * 0.55"
+                      [attr.y]="100 - (maxOrders > 0 ? (b.orders / maxOrders) * 90 : 0)"
+                      [attr.height]="maxOrders > 0 ? (b.orders / maxOrders) * 90 : 0"
+                      fill="var(--acid-ink)"
+                      opacity="0.45"
+                    />
                   }
-                  <path [attr.d]="comboRevPath()" fill="none" stroke="var(--gold)" stroke-width="2"
-                        stroke-linejoin="round" stroke-linecap="round" />
+                  <path
+                    [attr.d]="comboRevPath()"
+                    fill="none"
+                    stroke="var(--gold)"
+                    stroke-width="2"
+                    stroke-linejoin="round"
+                    stroke-linecap="round"
+                  />
                   @if (comboPeak(); as cp) {
-                    <circle [attr.cx]="cp.x" [attr.cy]="cp.y" r="4" fill="var(--gold)"
-                            stroke="var(--panel)" stroke-width="2" />
+                    <circle
+                      [attr.cx]="cp.x"
+                      [attr.cy]="cp.y"
+                      r="4"
+                      fill="var(--gold)"
+                      stroke="var(--panel)"
+                      stroke-width="2"
+                    />
                   }
                 </svg>
-                <span class="mini-note" style="display:flex;justify-content:space-between;margin:0.3rem 0 0;">
-                  <span class="gold-bullet inline" aria-hidden="true"></span> Paid revenue (gold line)
+                <span
+                  class="mini-note"
+                  style="display:flex;justify-content:space-between;margin:0.3rem 0 0;"
+                >
+                  <span class="gold-bullet inline" aria-hidden="true"></span> Paid revenue (gold
+                  line)
                   <span>·</span>
                   <span>Paid orders (gray bars)</span>
                 </span>
               </div>
-              <p class="muted small">Both series come from the same source as the chart above —
-                for the selected period.</p>
+              <p class="muted small">
+                Both series come from the same source as the chart above — for the selected period.
+              </p>
             }
           </section>
         </aside>
 
-      <div class="cols">
-        <section class="panel flat">
-          <div class="panel-head">
-            <span class="gold-bullet" aria-hidden="true"></span>
-            <h2>Order status — live</h2>
-            <span class="chp-end">{{ statusBreakdownTotal() | number }} paid</span>
-          </div>
+        <div class="cols">
+          <section class="panel flat">
+            <div class="panel-head">
+              <span class="gold-bullet" aria-hidden="true"></span>
+              <h2>Order status — live</h2>
+              <span class="chp-end">{{ statusBreakdownTotal() | number }} paid</span>
+            </div>
             @if (dashboard(); as d) {
               @if (d.statusBreakdown.length > 0) {
                 <div class="ring-wrap">
                   <div class="ring">
-                    <svg viewBox="0 0 200 200" role="img" aria-label="Current paid-order status ring">
+                    <svg
+                      viewBox="0 0 200 200"
+                      role="img"
+                      aria-label="Current paid-order status ring"
+                    >
                       @for (sb of d.statusBreakdown; track sb.status; let i = $index) {
-                        <circle cx="100" cy="100" r="72" fill="none"
-                                [attr.stroke]="statusColor(i)"
-                                stroke-width="14"
-                                [attr.stroke-dasharray]="ringTotal() > 0 ? ((sb.count / ringTotal()) * 100) + ' ' + 100 : '0 100'"
-                                [attr.stroke-dashoffset]="-ringSegmentOffsetPct(i)"
-                                transform="rotate(-90 100 100)" />
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r="72"
+                          fill="none"
+                          [attr.stroke]="statusColor(i)"
+                          stroke-width="14"
+                          [attr.stroke-dasharray]="
+                            ringTotal() > 0 ? (sb.count / ringTotal()) * 100 + ' ' + 100 : '0 100'
+                          "
+                          [attr.stroke-dashoffset]="-ringSegmentOffsetPct(i)"
+                          transform="rotate(-90 100 100)"
+                        />
                       }
                     </svg>
                   </div>
@@ -383,106 +606,167 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
                 <p class="muted small">No paid orders in the selected range yet.</p>
               }
             }
-</section>
+          </section>
 
-        <section class="panel">
-          <div class="panel-head">
-            <h2>Manufacturing floor active pipeline</h2>
-            <span class="ph-sub">real-time batches across the factory stages</span>
-            <span class="ph-end">
-              <span class="mini-note">Active volume {{ activeUnits() | number }} pcs</span>
-              <a class="link" routerLink="/production">Open production board</a>
-            </span>
-          </div>
-          <div class="pipeline">
-            @for (s of pipeline(); track s.stage; let i = $index) {
-              <div class="stage-cell" [class.hot]="s.units > 0">
-                <span class="st-idx">{{ (i + 1) | number: '2.0' }} · {{ s.stage }}</span>
-                <p class="st-count">{{ s.units | number }} <small>pcs</small></p>
-                <span class="st-sub">{{ s.batches }} batch(es)</span>
-              </div>
-            }
-            @if (pipeline().length === 0) {
-              <div class="empty-state">
-                <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg></span>
-                <h2 class="empty-state-title">No production batches yet</h2>
-                <p class="empty-state-sub">New batches appear here once production starts.</p>
-              </div>
-            }
-          </div>
-        </section>
-      </div>
-
-      <div class="cols">
-        <section class="panel flat">
-          <div class="panel-head"><h2>Best sellers</h2><span class="ph-sub">paid orders, all-time</span></div>
-          <table class="table">
-            <thead><tr><th>Product / SKU</th><th>Sold</th><th>Revenue</th></tr></thead>
-            <tbody>
-              @for (row of bestSellers(); track row.sku) {
-                <tr>
-                  <td><strong>{{ row.productName }}</strong><br /><code class="small">{{ row.sku }}</code></td>
-                  <td class="mono">{{ row.unitsSold }}</td>
-                  <td class="mono">₦{{ row.revenue | number: '1.0-0' }}</td>
-                </tr>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Manufacturing floor active pipeline</h2>
+              <span class="ph-sub">real-time batches across the factory stages</span>
+              <span class="ph-end">
+                <span class="mini-note">Active volume {{ activeUnits() | number }} pcs</span>
+                <a class="link" routerLink="/production">Open production board</a>
+              </span>
+            </div>
+            <div class="pipeline">
+              @for (s of pipeline(); track s.stage; let i = $index) {
+                <div class="stage-cell" [class.hot]="s.units > 0">
+                  <span class="st-idx">{{ i + 1 | number: '2.0' }} · {{ s.stage }}</span>
+                  <p class="st-count">{{ s.units | number }} <small>pcs</small></p>
+                  <span class="st-sub">{{ s.batches }} batch(es)</span>
+                </div>
               }
-              @if (bestSellers().length === 0) { <tr><td colspan="3" class="muted small">No paid sales yet.</td></tr> }
-            </tbody>
-          </table>
-        </section>
+              @if (pipeline().length === 0) {
+                <div class="empty-state">
+                  <span class="empty-state-icon" aria-hidden="true"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
+                  ></span>
+                  <h2 class="empty-state-title">No production batches yet</h2>
+                  <p class="empty-state-sub">New batches appear here once production starts.</p>
+                </div>
+              }
+            </div>
+          </section>
+        </div>
 
-        <section class="panel flat">
-          <div class="panel-head"><h2>Slow movers</h2><span class="ph-sub">fewest units sold</span></div>
-          <!-- GAP: warehouse aging & capital-locked value need stock-age data the API doesn't track;
+        <div class="cols">
+          <section class="panel flat">
+            <div class="panel-head">
+              <h2>Best sellers</h2>
+              <span class="ph-sub">paid orders, all-time</span>
+            </div>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Product / SKU</th>
+                  <th>Sold</th>
+                  <th>Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of bestSellers(); track row.sku) {
+                  <tr>
+                    <td>
+                      <strong>{{ row.productName }}</strong
+                      ><br /><code class="small">{{ row.sku }}</code>
+                    </td>
+                    <td class="mono">{{ row.unitsSold }}</td>
+                    <td class="mono">₦{{ row.revenue | number: '1.0-0' }}</td>
+                  </tr>
+                }
+                @if (bestSellers().length === 0) {
+                  <tr>
+                    <td colspan="3" class="muted small">No paid sales yet.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </section>
+
+          <section class="panel flat">
+            <div class="panel-head">
+              <h2>Slow movers</h2>
+              <span class="ph-sub">fewest units sold</span>
+            </div>
+            <!-- GAP: warehouse aging & capital-locked value need stock-age data the API doesn't track;
                this ranks real sales (direction=slow) instead of inventing aging figures. -->
-          <table class="table">
-            <thead><tr><th>Product / SKU</th><th>Sold</th><th>Revenue</th></tr></thead>
-            <tbody>
-              @for (row of slowMovers(); track row.sku) {
+            <table class="table">
+              <thead>
                 <tr>
-                  <td><strong>{{ row.productName }}</strong><br /><code class="small">{{ row.sku }}</code></td>
-                  <td class="mono">{{ row.unitsSold }}</td>
-                  <td class="mono">₦{{ row.revenue | number: '1.0-0' }}</td>
+                  <th>Product / SKU</th>
+                  <th>Sold</th>
+                  <th>Revenue</th>
                 </tr>
-              }
-              @if (slowMovers().length === 0) { <tr><td colspan="3" class="muted small">No paid sales yet.</td></tr> }
-            </tbody>
-          </table>
-          <a class="link" routerLink="/catalogue">Review catalogue</a>
-        </section>
+              </thead>
+              <tbody>
+                @for (row of slowMovers(); track row.sku) {
+                  <tr>
+                    <td>
+                      <strong>{{ row.productName }}</strong
+                      ><br /><code class="small">{{ row.sku }}</code>
+                    </td>
+                    <td class="mono">{{ row.unitsSold }}</td>
+                    <td class="mono">₦{{ row.revenue | number: '1.0-0' }}</td>
+                  </tr>
+                }
+                @if (slowMovers().length === 0) {
+                  <tr>
+                    <td colspan="3" class="muted small">No paid sales yet.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            <a class="link" routerLink="/catalogue">Review catalogue</a>
+          </section>
 
-        <section class="panel flat">
-          <div class="panel-head"><h2>Critical materials reserve</h2></div>
-          @if (lowStock(); as ls) {
-            @for (m of ls.materials; track m.id) {
-              <div class="att-item crit" style="margin-bottom:0.5rem;">
-                <span class="att-tag">Below threshold</span>
-                <p class="att-body"><strong>{{ m.name }}</strong> — {{ m.currentQuantity }} {{ m.unit }} left (min {{ m.reorderThreshold }})</p>
-              </div>
+          <section class="panel flat">
+            <div class="panel-head"><h2>Critical materials reserve</h2></div>
+            @if (lowStock(); as ls) {
+              @for (m of ls.materials; track m.id) {
+                <div class="att-item crit" style="margin-bottom:0.5rem;">
+                  <span class="att-tag">Below threshold</span>
+                  <p class="att-body">
+                    <strong>{{ m.name }}</strong> — {{ m.currentQuantity }} {{ m.unit }} left (min
+                    {{ m.reorderThreshold }})
+                  </p>
+                </div>
+              }
+              @for (v of ls.variants.slice(0, 5); track v.variantId) {
+                <div class="att-item warn" style="margin-bottom:0.5rem;">
+                  <span class="att-tag">Finished goods thin</span>
+                  <p class="att-body">
+                    <strong>{{ skuFor(v.variantId) }}</strong> — {{ v.currentQuantity }} unit(s)
+                    left (low-stock level {{ ls.variantThreshold }})
+                  </p>
+                </div>
+              }
+              @if (ls.variants.length > 5) {
+                <p class="mini-note">
+                  +{{ ls.variants.length - 5 }} more size(s) at or below the low-stock level — full
+                  list on the Inventory page.
+                </p>
+              }
+              @if (ls.materials.length === 0 && ls.variants.length === 0) {
+                <p class="success small">Nothing needs reordering.</p>
+              }
+              <a class="link" routerLink="/materials">Trigger POs in raw materials</a>
+              @if (d.trends.lowStock.length > 1) {
+                <svg
+                  class="spark"
+                  viewBox="0 0 100 26"
+                  preserveAspectRatio="none"
+                  role="img"
+                  aria-label="Low stock trend for the selected range"
+                >
+                  <polyline
+                    class="spark-line"
+                    [attr.points]="sparkPoints(d.trends.lowStock)"
+                  ></polyline>
+                </svg>
+              }
+            } @else {
+              <p class="muted small">Loading reserve levels…</p>
             }
-            @for (v of ls.variants.slice(0, 5); track v.variantId) {
-              <div class="att-item warn" style="margin-bottom:0.5rem;">
-                <span class="att-tag">Finished goods thin</span>
-                <p class="att-body"><strong>{{ skuFor(v.variantId) }}</strong> — {{ v.currentQuantity }} unit(s) left (low-stock level {{ ls.variantThreshold }})</p>
-              </div>
-            }
-            @if (ls.variants.length > 5) {
-              <p class="mini-note">+{{ ls.variants.length - 5 }} more size(s) at or below the low-stock level — full list on the Inventory page.</p>
-            }
-            @if (ls.materials.length === 0 && ls.variants.length === 0) {
-              <p class="success small">Nothing needs reordering.</p>
-            }
-            <a class="link" routerLink="/materials">Trigger POs in raw materials</a>
-            @if (d.trends.lowStock.length > 1) {
-              <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none" role="img" aria-label="Low stock trend for the selected range">
-                <polyline class="spark-line" [attr.points]="sparkPoints(d.trends.lowStock)"></polyline>
-              </svg>
-            }
-          } @else {
-            <p class="muted small">Loading reserve levels…</p>
-          }
-        </section>
-      </div>
+          </section>
+        </div>
       </div>
     } @else {
       <div class="kpi-bar" aria-hidden="true">
@@ -498,11 +782,19 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
         <section class="panel flat">
           <span class="skeleton line" [style.width]="'42%'"></span>
           <span class="skeleton" style="height:180px;margin-top:0.6rem;"></span>
-          @for (w of skeletonBars; track w) { <span class="skeleton track" [style.width]="w" style="margin-top:0.5rem;"></span> }
+          @for (w of skeletonBars; track w) {
+            <span class="skeleton track" [style.width]="w" style="margin-top:0.5rem;"></span>
+          }
         </section>
         <section class="panel flat">
           <span class="skeleton line" [style.width]="'46%'"></span>
-          @for (row of skeletonRows; track row) { <span class="skeleton line" [style.width]="(90 - row * 7) + '%'" style="margin-top:0.7rem;"></span> }
+          @for (row of skeletonRows; track row) {
+            <span
+              class="skeleton line"
+              [style.width]="90 - row * 7 + '%'"
+              style="margin-top:0.7rem;"
+            ></span>
+          }
         </section>
       </div>
     }
@@ -543,10 +835,17 @@ export class DashboardPage implements OnInit {
   readonly PAD_B = 24;
   readonly gridYs = [10, 55, 100, 145, 186];
 
-  readonly today = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }).format(new Date());
+  readonly today = new Intl.DateTimeFormat('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date());
   readonly shiftLabel = (() => {
     const h = new Date().getHours();
-    return h >= 7 && h < 19 ? 'Day shift window (07:00–19:00 WAT)' : 'After-hours window (19:00–07:00 WAT)';
+    return h >= 7 && h < 19
+      ? 'Day shift window (07:00–19:00 WAT)'
+      : 'After-hours window (19:00–07:00 WAT)';
   })();
 
   ngOnInit(): void {
@@ -558,11 +857,18 @@ export class DashboardPage implements OnInit {
     this.api.lowStock().subscribe((ls) => this.lowStock.set(ls));
     this.api.auditLog({ limit: 6 }).subscribe((log) => this.activity.set(log.data.slice(0, 6)));
     this.api.pendingApprovals().subscribe((a) => this.pendingList.set(a));
-    this.api.orders(undefined, 200).subscribe((res) => { this.recentOrders.set(res.data); this.ordersTotal.set(res.total); });
+    this.api.orders(undefined, 200).subscribe((res) => {
+      this.recentOrders.set(res.data);
+      this.ordersTotal.set(res.total);
+    });
     this.api.returns().subscribe((res) => {
       const requested = res.data.filter((r) => r.status === 'requested');
       this.pendingReturns.set(requested.length);
-      if (requested[0]) this.firstReturn.set({ sku: requested[0].variant.sku, deadline: requested[0].returnDeadline });
+      if (requested[0])
+        this.firstReturn.set({
+          sku: requested[0].variant.sku,
+          deadline: requested[0].returnDeadline,
+        });
     });
     this.api.deliveries().subscribe((res) => {
       const rows = res.data as Array<Record<string, unknown>>;
@@ -595,19 +901,22 @@ export class DashboardPage implements OnInit {
       return;
     }
     this.loadError.set(null);
-    const payload = range === 'custom'
-      ? this.api.dashboard('custom', this.fromDate(), this.toDate())
-      : this.api.dashboard(range);
+    const payload =
+      range === 'custom'
+        ? this.api.dashboard('custom', this.fromDate(), this.toDate())
+        : this.api.dashboard(range);
     payload.subscribe({
       next: (d) => this.dashboard.set(d),
-      error: (e) => this.loadError.set(e instanceof Error ? e.message : 'Could not load the overview.'),
+      error: (e) =>
+        this.loadError.set(e instanceof Error ? e.message : 'Could not load the overview.'),
     });
   }
 
   /** Approvals grouped by action type for the executive-action KPI. */
   readonly approvalGroups = computed(() => {
     const counts = new Map<string, number>();
-    for (const a of this.pendingList()) counts.set(a.actionType, (counts.get(a.actionType) ?? 0) + 1);
+    for (const a of this.pendingList())
+      counts.set(a.actionType, (counts.get(a.actionType) ?? 0) + 1);
     return [...counts.entries()].map(([type, count]) => ({ type, count }));
   });
 
@@ -636,7 +945,9 @@ export class DashboardPage implements OnInit {
   });
 
   readonly linePath = computed(() =>
-    this.chartPoints().map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' '),
+    this.chartPoints()
+      .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+      .join(' '),
   );
   readonly areaPath = computed(() => {
     const pts = this.chartPoints();
@@ -661,44 +972,67 @@ export class DashboardPage implements OnInit {
     const pts = this.chartPoints();
     if (pts.length === 0) return;
     let nearest = 0;
-    for (let i = 1; i < pts.length; i++) if (Math.abs(pts[i].x - x) < Math.abs(pts[nearest].x - x)) nearest = i;
+    for (let i = 1; i < pts.length; i++)
+      if (Math.abs(pts[i].x - x) < Math.abs(pts[nearest].x - x)) nearest = i;
     this.hoverIdx.set(nearest);
   }
 
   /** Escalation rail — every item derives from a live queue. */
   readonly attention = computed(() => {
-    const items: Array<{ key: string; tag: string; body: string; action: string; route: string; severity: 'crit' | 'warn' | 'info'; when: string }> = [];
+    const items: Array<{
+      key: string;
+      tag: string;
+      body: string;
+      action: string;
+      route: string;
+      severity: 'crit' | 'warn' | 'info';
+      when: string;
+    }> = [];
     const d = this.dashboard();
     for (const m of (d?.inventory.lowStockMaterials ?? []).slice(0, 2)) {
       items.push({
-        key: `mat-${m.name}`, tag: 'Low-stock alert', severity: 'crit', when: 'now',
+        key: `mat-${m.name}`,
+        tag: 'Low-stock alert',
+        severity: 'crit',
+        when: 'now',
         body: `${m.name} — ${m.currentQuantity} left, reorder threshold ${m.reorderThreshold}`,
-        action: 'Order re-supply', route: '/materials',
+        action: 'Order re-supply',
+        route: '/materials',
       });
     }
     for (const a of this.pendingList().slice(0, 2)) {
       items.push({
-        key: `apr-${a.id}`, tag: 'Pending approval', severity: 'warn',
+        key: `apr-${a.id}`,
+        tag: 'Pending approval',
+        severity: 'warn',
         when: this.formatTime(a.createdAt),
         body: `${a.actionType.replaceAll('_', ' ')} — requested by ${a.requestedBy.name}`,
-        action: 'Review & authorise', route: '/approvals',
+        action: 'Review & authorise',
+        route: '/approvals',
       });
     }
     const fr = this.firstReturn();
     if (this.pendingReturns() > 0 && fr) {
       items.push({
-        key: 'returns', tag: 'Return awaiting inspection', severity: 'warn',
+        key: 'returns',
+        tag: 'Return awaiting inspection',
+        severity: 'warn',
         when: `due ${this.formatTime(fr.deadline)}`,
         body: `${this.pendingReturns()} request(s) in the queue — next: ${fr.sku}`,
-        action: 'Open inspection desk', route: '/returns',
+        action: 'Open inspection desk',
+        route: '/returns',
       });
     }
     const t = this.transitFirst();
     if (t) {
       items.push({
-        key: 'transit', tag: 'Dispatch in transit', severity: 'info', when: 'live',
+        key: 'transit',
+        tag: 'Dispatch in transit',
+        severity: 'info',
+        when: 'live',
         body: `${String(t['carrier'] ?? 'carrier')} leg ${String(t['legNumber'] ?? '')} — ${String(t['trackingRef'] ?? 'no tracking ref')}`,
-        action: 'View haulage', route: '/logistics',
+        action: 'View haulage',
+        route: '/logistics',
       });
     }
     return items.slice(0, 4);
@@ -710,12 +1044,18 @@ export class DashboardPage implements OnInit {
   readonly pipeline = computed(() => {
     const order = this.stageOrder();
     const m = this.stageUnits();
-    return order.map((stage) => ({ stage, units: m.get(stage)?.units ?? 0, batches: m.get(stage)?.batches ?? 0 }));
+    return order.map((stage) => ({
+      stage,
+      units: m.get(stage)?.units ?? 0,
+      batches: m.get(stage)?.batches ?? 0,
+    }));
   });
   readonly activeUnits = computed(() => {
     const order = this.stageOrder();
     const last = order[order.length - 1];
-    return this.pipeline().filter((s) => s.stage !== last).reduce((sum, s) => sum + s.units, 0);
+    return this.pipeline()
+      .filter((s) => s.stage !== last)
+      .reduce((sum, s) => sum + s.units, 0);
   });
 
   constructor() {
@@ -798,11 +1138,17 @@ export class DashboardPage implements OnInit {
     return [10, 55, 100, 145, 186];
   }
 
-  comboRevPoints(series: Array<{ label: string; revenue: number; orders: number }>, revMax: number): string {
+  comboRevPoints(
+    series: Array<{ label: string; revenue: number; orders: number }>,
+    revMax: number,
+  ): string {
     const n = series.length;
     if (n === 0) return '';
     return series
-      .map((p, i) => `${(8 + (i * 244) / (n - 1)).toFixed(1)},${(102 - (p.revenue / (revMax > 0 ? revMax : 1)) * 94).toFixed(1)}`)
+      .map(
+        (p, i) =>
+          `${(8 + (i * 244) / (n - 1)).toFixed(1)},${(102 - (p.revenue / (revMax > 0 ? revMax : 1)) * 94).toFixed(1)}`,
+      )
       .join(' ');
   }
 
@@ -821,11 +1167,18 @@ export class DashboardPage implements OnInit {
     if (series.length === 0) return null;
     const max = Math.max(...series.map((p) => p.revenue), 1);
     let peakI = 0;
-    for (let i = 1; i < series.length; i++) if (series[i].revenue > series[peakI].revenue) peakI = i;
+    for (let i = 1; i < series.length; i++)
+      if (series[i].revenue > series[peakI].revenue) peakI = i;
     const n = series.length;
     const x = 8 + (peakI * 244) / (n - 1);
     const y = 102 - (series[peakI].revenue / max) * 94;
-    return { x, y, date: series[peakI].label, label: series[peakI].label, value: series[peakI].revenue };
+    return {
+      x,
+      y,
+      date: series[peakI].label,
+      label: series[peakI].label,
+      value: series[peakI].revenue,
+    };
   });
 
   comboOrdersTotal(): number {
@@ -904,6 +1257,11 @@ export class DashboardPage implements OnInit {
   formatTime(ts: string): string {
     const d = new Date(ts);
     if (Number.isNaN(d.getTime())) return ts;
-    return new Intl.DateTimeFormat('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(d);
+    return new Intl.DateTimeFormat('en-GB', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(d);
   }
 }

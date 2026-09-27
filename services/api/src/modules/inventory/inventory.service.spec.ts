@@ -1,11 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
-import {
-  InventoryItemType,
-  InventoryMovement,
-  MovementType,
-} from './inventory-movement.entity';
+import { InventoryItemType, InventoryMovement, MovementType } from './inventory-movement.entity';
 import { InventoryService } from './inventory.service';
 
 describe('InventoryService (the movement ledger)', () => {
@@ -30,9 +26,7 @@ describe('InventoryService (the movement ledger)', () => {
     find: jest.fn(async () => []),
   };
   const dataSource = {
-    query: jest.fn(async () => [
-      { total: '0', valid: '0', broken: '0', head_hash: null },
-    ]),
+    query: jest.fn(async () => [{ total: '0', valid: '0', broken: '0', head_hash: null }]),
   };
 
   beforeEach(async () => {

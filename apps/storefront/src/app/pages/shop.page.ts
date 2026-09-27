@@ -39,7 +39,10 @@ function collectionKey(name: string): string {
       <div class="hero-body">
         <p class="page-kicker">Collection 04 / Aba</p>
         <h1>Harmattan Drop</h1>
-        <p>Heavyweight French terry, raw-edge seams, and dust-resistant tailoring engineered for dry season winds.</p>
+        <p>
+          Heavyweight French terry, raw-edge seams, and dust-resistant tailoring engineered for dry
+          season winds.
+        </p>
       </div>
     </div>
 
@@ -57,7 +60,11 @@ function collectionKey(name: string): string {
         All products [{{ all().length | number: '2.0' }}]
       </button>
       @for (cat of categories(); track cat.name) {
-        <button class="pill" [class.active]="category() === cat.name" (click)="category.set(cat.name)">
+        <button
+          class="pill"
+          [class.active]="category() === cat.name"
+          (click)="category.set(cat.name)"
+        >
           {{ cat.label }} [{{ cat.count | number: '2.0' }}]
         </button>
       }
@@ -66,9 +73,13 @@ function collectionKey(name: string): string {
     @if (collections().length > 1) {
       <div class="pill-bar collection-bar">
         <span class="filter-label">Collection</span>
-        <button class="pill" [class.active]="collection() === null" (click)="collection.set(null)">All</button>
+        <button class="pill" [class.active]="collection() === null" (click)="collection.set(null)">
+          All
+        </button>
         @for (c of collections(); track c) {
-          <button class="pill" [class.active]="collection() === c" (click)="collection.set(c)">{{ c }}</button>
+          <button class="pill" [class.active]="collection() === c" (click)="collection.set(c)">
+            {{ c }}
+          </button>
         }
       </div>
     }
@@ -77,16 +88,25 @@ function collectionKey(name: string): string {
       <div class="filter-group">
         <span class="filter-label">Size</span>
         @for (s of allSizes(); track s) {
-          <button class="size-chip" [class.active]="size() === s"
-            (click)="size.set(size() === s ? null : s)">{{ s }}</button>
+          <button
+            class="size-chip"
+            [class.active]="size() === s"
+            (click)="size.set(size() === s ? null : s)"
+          >
+            {{ s }}
+          </button>
         }
       </div>
       <div class="filter-group">
         <span class="filter-label">Colour</span>
         @for (c of allColours(); track c) {
-          <button class="swatch-btn" [class.active]="colour() === c"
-            [attr.aria-label]="'Filter by ' + c" [title]="c"
-            (click)="colour.set(colour() === c ? null : c)">
+          <button
+            class="swatch-btn"
+            [class.active]="colour() === c"
+            [attr.aria-label]="'Filter by ' + c"
+            [title]="c"
+            (click)="colour.set(colour() === c ? null : c)"
+          >
             <span class="swatch" [style.background]="swatch(c)"></span>
           </button>
         }
@@ -156,7 +176,7 @@ export class ShopPage implements OnInit {
     const names = [...counts.keys()].sort((a, b) => {
       const ia = CATEGORY_ORDER.indexOf(a);
       const ib = CATEGORY_ORDER.indexOf(b);
-      return ((ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)) || a.localeCompare(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
     });
     return names.map((name) => ({
       name,
@@ -167,29 +187,40 @@ export class ShopPage implements OnInit {
 
   readonly collections = computed(() => {
     const names = [
-      ...new Set(this.all().map((p) => p.collection?.name).filter((n): n is string => !!n)),
+      ...new Set(
+        this.all()
+          .map((p) => p.collection?.name)
+          .filter((n): n is string => !!n),
+      ),
     ].sort((a, b) => {
       const ia = COLLECTION_ORDER.indexOf(collectionKey(a));
       const ib = COLLECTION_ORDER.indexOf(collectionKey(b));
-      return ((ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)) || collectionKey(a).localeCompare(collectionKey(b));
+      return (
+        (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || collectionKey(a).localeCompare(collectionKey(b))
+      );
     });
     return names;
   });
   readonly allSizes = computed(() => {
     const order = ['S', 'M', 'L', 'XL', 'XXL', 'OS'];
     const set = new Set(
-      this.all().flatMap((p) => p.variants.map((v) => v.size)).filter((s): s is string => !!s),
+      this.all()
+        .flatMap((p) => p.variants.map((v) => v.size))
+        .filter((s): s is string => !!s),
     );
     return [...set].sort((a, b) => {
-      const ia = order.indexOf(a), ib = order.indexOf(b);
+      const ia = order.indexOf(a),
+        ib = order.indexOf(b);
       return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
     });
   });
-  readonly allColours = computed(() =>
-    [...new Set(
-      this.all().flatMap((p) => p.variants.map((v) => v.colour)).filter((c): c is string => !!c),
-    )],
-  );
+  readonly allColours = computed(() => [
+    ...new Set(
+      this.all()
+        .flatMap((p) => p.variants.map((v) => v.colour))
+        .filter((c): c is string => !!c),
+    ),
+  ]);
 
   readonly filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
@@ -203,7 +234,12 @@ export class ShopPage implements OnInit {
       if (size && !p.variants.some((v) => v.size === size)) return false;
       if (colour && !p.variants.some((v) => v.colour === colour)) return false;
       if (!q) return true;
-      const haystack = [p.name, p.description ?? '', p.category ?? '', ...p.variants.map((v) => v.sku)]
+      const haystack = [
+        p.name,
+        p.description ?? '',
+        p.category ?? '',
+        ...p.variants.map((v) => v.sku),
+      ]
         .join(' ')
         .toLowerCase();
       return haystack.includes(q);
@@ -221,7 +257,13 @@ export class ShopPage implements OnInit {
     () => !!(this.category() || this.collection() || this.size() || this.colour() || this.query()),
   );
 
-  private readonly fallbacks = ['shop-1.jpg', 'shop-2.jpg', 'shop-3.jpg', 'shop-5.jpg', 'shop-6.jpg'];
+  private readonly fallbacks = [
+    'shop-1.jpg',
+    'shop-2.jpg',
+    'shop-3.jpg',
+    'shop-5.jpg',
+    'shop-6.jpg',
+  ];
 
   ngOnInit(): void {
     const fromQuery = this.route.snapshot.queryParamMap.get('category');

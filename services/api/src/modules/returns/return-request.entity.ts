@@ -39,7 +39,14 @@ export class ReturnRequest {
   quantity: number;
 
   /** Expected refund (₦): order-item unit price × quantity, exposed at request time. */
-  @Column({ name: 'refund_amount', type: 'numeric', precision: 12, scale: 2, nullable: true, transformer: numericTransformer })
+  @Column({
+    name: 'refund_amount',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   refundAmount: number | null;
 
   /** Customer-submitted/intake photos documenting the returned item. */

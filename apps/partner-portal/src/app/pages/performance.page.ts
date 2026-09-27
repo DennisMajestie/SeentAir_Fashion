@@ -46,8 +46,11 @@ import { PortalStore } from '../portal.store';
         <div class="kpi" [class.negative]="(store.netMarginPct() ?? 0) < 0">
           <span class="kpi-label">Net margin</span>
           <span class="kpi-value">
-            @if (store.netMarginPct() !== null) { {{ store.netMarginPct() | number: '1.0-1' }}% }
-            @else { — }
+            @if (store.netMarginPct() !== null) {
+              {{ store.netMarginPct() | number: '1.0-1' }}%
+            } @else {
+              —
+            }
           </span>
           <span class="kpi-sub">Net profit as a share of revenue</span>
         </div>
@@ -64,7 +67,9 @@ import { PortalStore } from '../portal.store';
               @for (row of incomeRows(); track row.label) {
                 <div class="meter-row">
                   <span class="wrap">{{ row.label }}</span>
-                  <div class="meter gold"><div class="meter-fill" [style.width.%]="row.pct"></div></div>
+                  <div class="meter gold">
+                    <div class="meter-fill" [style.width.%]="row.pct"></div>
+                  </div>
                   <span class="meter-val mono">₦{{ row.amount | number: '1.0-0' }}</span>
                 </div>
               }
@@ -102,7 +107,9 @@ import { PortalStore } from '../portal.store';
             all-time net margin is
             @if (store.netMarginPct() !== null) {
               <strong>{{ store.netMarginPct() | number: '1.0-1' }}%</strong>.
-            } @else { not yet computable (no income recorded). }
+            } @else {
+              not yet computable (no income recorded).
+            }
           </p>
         </section>
       </div>
@@ -128,8 +135,8 @@ import { PortalStore } from '../portal.store';
           </div>
           <!-- GAP: no product-level revenue endpoint for partners (aggregates-only boundary). -->
           <p class="gap-note">
-            Product-level revenue ranking is not yet shared. When released it is strictly
-            anonymized SKU telemetry — never customer-level data.
+            Product-level revenue ranking is not yet shared. When released it is strictly anonymized
+            SKU telemetry — never customer-level data.
           </p>
         </section>
       </div>
@@ -141,10 +148,18 @@ import { PortalStore } from '../portal.store';
         </div>
         <div class="floor-grid">
           <!-- GAP: no production/QC telemetry endpoint (batches, output pcs, defect rate, QC outcomes). -->
-          <div class="floor-cell"><span>Completed batches</span><strong>—</strong><em>Not yet published</em></div>
-          <div class="floor-cell"><span>Output</span><strong>—</strong><em>Not yet published</em></div>
-          <div class="floor-cell"><span>Defect rate</span><strong>—</strong><em>Not yet published</em></div>
-          <div class="floor-cell"><span>QC repaired / burned</span><strong>—</strong><em>Reason-coded at QC</em></div>
+          <div class="floor-cell">
+            <span>Completed batches</span><strong>—</strong><em>Not yet published</em>
+          </div>
+          <div class="floor-cell">
+            <span>Output</span><strong>—</strong><em>Not yet published</em>
+          </div>
+          <div class="floor-cell">
+            <span>Defect rate</span><strong>—</strong><em>Not yet published</em>
+          </div>
+          <div class="floor-cell">
+            <span>QC repaired / burned</span><strong>—</strong><em>Reason-coded at QC</em>
+          </div>
         </div>
         <p class="fine muted">
           Confirmed production flow: Planned → Cutting → Sewing → Finishing → QC → Completed.
@@ -161,13 +176,37 @@ import { PortalStore } from '../portal.store';
   `,
   styles: [
     `
-      .meter-list { margin-bottom: 0.6rem; }
-      .floor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
-        background: var(--hairline); border: 1px solid var(--hairline); }
-      .floor-cell { background: var(--panel-2); padding: 0.65rem 0.75rem; display: flex; flex-direction: column; gap: 0.05rem;
-        span { font-size: var(--type-label-sm); text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-dim); }
-        strong { font-size: 1.15rem; }
-        em { font-style: normal; font-size: var(--type-label-sm); color: var(--ink-dim); } }
+      .meter-list {
+        margin-bottom: 0.6rem;
+      }
+      .floor-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1px;
+        background: var(--hairline);
+        border: 1px solid var(--hairline);
+      }
+      .floor-cell {
+        background: var(--panel-2);
+        padding: 0.65rem 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.05rem;
+        span {
+          font-size: var(--type-label-sm);
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          color: var(--ink-dim);
+        }
+        strong {
+          font-size: 1.15rem;
+        }
+        em {
+          font-style: normal;
+          font-size: var(--type-label-sm);
+          color: var(--ink-dim);
+        }
+      }
     `,
   ],
 })

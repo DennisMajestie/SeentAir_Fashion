@@ -11,9 +11,21 @@ export class DeliveryPricing {
   @Column({ unique: true })
   zone: string;
 
-  @Column({ name: 'base_fee', type: 'numeric', precision: 12, scale: 2, transformer: numericTransformer })
+  @Column({
+    name: 'base_fee',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   baseFee: number;
 
-  @Column({ name: 'price_per_kg', type: 'numeric', precision: 12, scale: 2, transformer: numericTransformer })
+  @Column({
+    name: 'price_per_kg',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   pricePerKg: number;
 }

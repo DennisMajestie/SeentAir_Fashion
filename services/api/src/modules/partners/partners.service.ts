@@ -51,7 +51,9 @@ export class PartnersService {
   async create(dto: CreatePartnerDto, actor: AuthenticatedUser): Promise<Partner> {
     const user = await this.usersService.findById(dto.userId);
     if (user.role.name !== RoleName.PARTNER_INVESTOR) {
-      throw new BadRequestException('Partner records require a user with the partner_investor role');
+      throw new BadRequestException(
+        'Partner records require a user with the partner_investor role',
+      );
     }
     const existing = await this.partnerRepo.findOne({ where: { user: { id: dto.userId } } });
     if (existing) throw new ConflictException('This user is already a partner');

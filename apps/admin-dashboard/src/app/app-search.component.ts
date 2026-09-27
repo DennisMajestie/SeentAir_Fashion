@@ -25,7 +25,8 @@ interface GsGroup {
   items: GsItem[];
 }
 
-type GsRow = { kind: 'label'; label: string; idx: number } | { kind: 'item'; item: GsItem; idx: number };
+type GsRow =
+  { kind: 'label'; label: string; idx: number } | { kind: 'item'; item: GsItem; idx: number };
 
 interface PageRef {
   title: string;
@@ -36,27 +37,132 @@ interface PageRef {
 
 const PAGES: PageRef[] = [
   { title: 'Dashboard', route: '/', icon: 'dashboard', keywords: 'home overview kpis at a glance' },
-  { title: 'Approvals', route: '/approvals', icon: 'fact_check', keywords: 'approve pending request queue decide management' },
-  { title: 'Orders', route: '/orders', icon: 'shopping_bag', keywords: 'sales fulfilment dispatch shipping order status' },
-  { title: 'Returns', route: '/returns', icon: 'assignment_return', keywords: 'refund sla quarantine inspection return window' },
-  { title: 'Custom orders', route: '/custom-orders', icon: 'checkroom', keywords: 'custom bespoke quote quotation design request progress' },
-  { title: 'Wholesale', route: '/wholesale', icon: 'warehouse', keywords: 'tier discount business account apply moq buy' },
-  { title: 'Messages', route: '/messages', icon: 'forum', keywords: 'customer chat support sms conversation' },
-  { title: 'Catalogue', route: '/catalogue', icon: 'grid_view', keywords: 'product sku collection price edit' },
-  { title: 'Inventory', route: '/inventory', icon: 'inventory_2', keywords: 'stock valuation movement ledger units' },
-  { title: 'Materials', route: '/materials', icon: 'layers', keywords: 'raw material fabric thread threshold purchase usage' },
-  { title: 'Production', route: '/production', icon: 'precision_manufacturing', keywords: 'kanban batch sewing cutting stage plan schedule' },
-  { title: 'Tech pack', route: '/tech-pack', icon: 'description', keywords: 'pattern silhouette spec measurements sizing garment' },
-  { title: 'Floor kiosk', route: '/floor-kiosk', icon: 'tv', keywords: 'factory station scanning qc cutting sewing' },
-  { title: 'Accounting', route: '/accounting', icon: 'account_balance', keywords: 'money ledger naira income expense profit report' },
-  { title: 'Logistics', route: '/logistics', icon: 'local_shipping', keywords: 'delivery waybill shipment gigl haulage zones' },
-  { title: 'Procurement', route: '/vendors', icon: 'request_quote', keywords: 'vendor supplier mill request order inventory restock' },
-  { title: 'Marketing', route: '/marketing', icon: 'campaign', keywords: 'campaign promo sms source code offer' },
-  { title: 'Reviews', route: '/reviews', icon: 'reviews', keywords: 'review moderation publish rating stars' },
-  { title: 'Partners', route: '/partners', icon: 'handshake', keywords: 'investor distribution dividend equity shares' },
-  { title: 'Staff', route: '/staff', icon: 'badge', keywords: 'user employee team role access two factor' },
-  { title: 'Audit log', route: '/audit', icon: 'receipt_long', keywords: 'log history trail activity changes' },
-  { title: 'Security', route: '/security', icon: 'security', keywords: '2fa two factor setup verification authenticator' },
+  {
+    title: 'Approvals',
+    route: '/approvals',
+    icon: 'fact_check',
+    keywords: 'approve pending request queue decide management',
+  },
+  {
+    title: 'Orders',
+    route: '/orders',
+    icon: 'shopping_bag',
+    keywords: 'sales fulfilment dispatch shipping order status',
+  },
+  {
+    title: 'Returns',
+    route: '/returns',
+    icon: 'assignment_return',
+    keywords: 'refund sla quarantine inspection return window',
+  },
+  {
+    title: 'Custom orders',
+    route: '/custom-orders',
+    icon: 'checkroom',
+    keywords: 'custom bespoke quote quotation design request progress',
+  },
+  {
+    title: 'Wholesale',
+    route: '/wholesale',
+    icon: 'warehouse',
+    keywords: 'tier discount business account apply moq buy',
+  },
+  {
+    title: 'Messages',
+    route: '/messages',
+    icon: 'forum',
+    keywords: 'customer chat support sms conversation',
+  },
+  {
+    title: 'Catalogue',
+    route: '/catalogue',
+    icon: 'grid_view',
+    keywords: 'product sku collection price edit',
+  },
+  {
+    title: 'Inventory',
+    route: '/inventory',
+    icon: 'inventory_2',
+    keywords: 'stock valuation movement ledger units',
+  },
+  {
+    title: 'Materials',
+    route: '/materials',
+    icon: 'layers',
+    keywords: 'raw material fabric thread threshold purchase usage',
+  },
+  {
+    title: 'Production',
+    route: '/production',
+    icon: 'precision_manufacturing',
+    keywords: 'kanban batch sewing cutting stage plan schedule',
+  },
+  {
+    title: 'Tech pack',
+    route: '/tech-pack',
+    icon: 'description',
+    keywords: 'pattern silhouette spec measurements sizing garment',
+  },
+  {
+    title: 'Floor kiosk',
+    route: '/floor-kiosk',
+    icon: 'tv',
+    keywords: 'factory station scanning qc cutting sewing',
+  },
+  {
+    title: 'Accounting',
+    route: '/accounting',
+    icon: 'account_balance',
+    keywords: 'money ledger naira income expense profit report',
+  },
+  {
+    title: 'Logistics',
+    route: '/logistics',
+    icon: 'local_shipping',
+    keywords: 'delivery waybill shipment gigl haulage zones',
+  },
+  {
+    title: 'Procurement',
+    route: '/vendors',
+    icon: 'request_quote',
+    keywords: 'vendor supplier mill request order inventory restock',
+  },
+  {
+    title: 'Marketing',
+    route: '/marketing',
+    icon: 'campaign',
+    keywords: 'campaign promo sms source code offer',
+  },
+  {
+    title: 'Reviews',
+    route: '/reviews',
+    icon: 'reviews',
+    keywords: 'review moderation publish rating stars',
+  },
+  {
+    title: 'Partners',
+    route: '/partners',
+    icon: 'handshake',
+    keywords: 'investor distribution dividend equity shares',
+  },
+  {
+    title: 'Staff',
+    route: '/staff',
+    icon: 'badge',
+    keywords: 'user employee team role access two factor',
+  },
+  {
+    title: 'Audit log',
+    route: '/audit',
+    icon: 'receipt_long',
+    keywords: 'log history trail activity changes',
+  },
+  {
+    title: 'Security',
+    route: '/security',
+    icon: 'security',
+    keywords: '2fa two factor setup verification authenticator',
+  },
 ];
 
 @Component({
@@ -160,9 +266,7 @@ export class AppSearchComponent {
   constructor() {
     effect(() => {
       this.focus();
-      this.el.nativeElement
-        .querySelector('.gs-item.focused')
-        ?.scrollIntoView({ block: 'nearest' });
+      this.el.nativeElement.querySelector('.gs-item.focused')?.scrollIntoView({ block: 'nearest' });
     });
   }
 
@@ -253,11 +357,14 @@ export class AppSearchComponent {
       .map((p) => ({
         name: String(p['name'] ?? ''),
         category: String(p['category'] ?? ''),
-        skus: (p['variants'] as Array<Record<string, unknown>> | undefined)
-          ?.map((v) => String(v['sku'] ?? '')) ?? [],
+        skus:
+          (p['variants'] as Array<Record<string, unknown>> | undefined)?.map((v) =>
+            String(v['sku'] ?? ''),
+          ) ?? [],
       }))
       .filter(
-        ({ name, skus }) => name.toLowerCase().includes(ql) || skus.some((s) => s.toLowerCase().includes(ql)),
+        ({ name, skus }) =>
+          name.toLowerCase().includes(ql) || skus.some((s) => s.toLowerCase().includes(ql)),
       )
       .slice(0, 6)
       .map(({ name, category, skus }) => ({
@@ -275,8 +382,12 @@ export class AppSearchComponent {
     const items = data
       .filter(
         (m) =>
-          String(m['name'] ?? '').toLowerCase().includes(ql) ||
-          String(m['unit'] ?? '').toLowerCase().includes(ql),
+          String(m['name'] ?? '')
+            .toLowerCase()
+            .includes(ql) ||
+          String(m['unit'] ?? '')
+            .toLowerCase()
+            .includes(ql),
       )
       .slice(0, 6)
       .map((m) => ({
@@ -294,7 +405,12 @@ export class AppSearchComponent {
     const items = data
       .map((a) => ({
         id: String(a['id'] ?? ''),
-        name: String(a['businessName'] ?? (a['user'] as Record<string, unknown> | undefined)?.['name'] ?? a['name'] ?? 'Account'),
+        name: String(
+          a['businessName'] ??
+            (a['user'] as Record<string, unknown> | undefined)?.['name'] ??
+            a['name'] ??
+            'Account',
+        ),
         email: String((a['user'] as Record<string, unknown> | undefined)?.['email'] ?? ''),
         status: String(a['status'] ?? ''),
       }))
@@ -397,9 +513,7 @@ export class AppSearchComponent {
 
   openFocused(e: Event): void {
     e.preventDefault();
-    const item = this.groups()
-      .flatMap((g) => g.items)
-      [this.focus()];
+    const item = this.groups().flatMap((g) => g.items)[this.focus()];
     if (item) this.go(item);
   }
 

@@ -127,7 +127,11 @@ describe('ReturnsService', () => {
     });
 
     it('restocked returns write a RETURN ledger movement and mark the order RETURNED', async () => {
-      await service.resolve('r1', { decision: 'resolved', resolution: 'refunded', restocked: true }, staff);
+      await service.resolve(
+        'r1',
+        { decision: 'resolved', resolution: 'refunded', restocked: true },
+        staff,
+      );
       expect(inventoryService.record).toHaveBeenCalledWith(
         expect.objectContaining({ movementType: MovementType.RETURN, quantityDelta: 2 }),
         expect.anything(),
@@ -136,7 +140,11 @@ describe('ReturnsService', () => {
     });
 
     it('damaged returns write NO stock movement', async () => {
-      await service.resolve('r1', { decision: 'resolved', resolution: 'refunded', damaged: true }, staff);
+      await service.resolve(
+        'r1',
+        { decision: 'resolved', resolution: 'refunded', damaged: true },
+        staff,
+      );
       expect(inventoryService.record).not.toHaveBeenCalled();
     });
 

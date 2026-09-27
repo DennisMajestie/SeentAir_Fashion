@@ -2,10 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CatalogueService } from '../catalogue/catalogue.service';
-import {
-  CreateTechPackDto,
-  UpsertTechPackDto,
-} from './dto/upsert-tech-pack.dto';
+import { CreateTechPackDto, UpsertTechPackDto } from './dto/upsert-tech-pack.dto';
 import { TechPack } from './tech-pack.entity';
 import { TechPackRevision } from './tech-pack-revision.entity';
 
@@ -74,7 +71,8 @@ export class TechPacksService {
     }
     if (dto.silhouette !== undefined) pack.silhouette = dto.silhouette;
     if (dto.targetYieldUnits !== undefined) pack.targetYieldUnits = dto.targetYieldUnits;
-    if (dto.cuttingEfficiencyPct !== undefined) pack.cuttingEfficiencyPct = dto.cuttingEfficiencyPct;
+    if (dto.cuttingEfficiencyPct !== undefined)
+      pack.cuttingEfficiencyPct = dto.cuttingEfficiencyPct;
     if (dto.gradedMeasurements !== undefined) pack.gradedMeasurements = dto.gradedMeasurements;
     if (dto.stitchProtocol !== undefined) pack.stitchProtocol = dto.stitchProtocol;
     if (dto.laydownProtocol !== undefined) pack.laydownProtocol = dto.laydownProtocol;

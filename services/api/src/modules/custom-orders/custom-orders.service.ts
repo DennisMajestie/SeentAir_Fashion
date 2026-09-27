@@ -17,10 +17,7 @@ import { UsersService } from '../users/users.service';
 import { CreateCustomOrderDto } from './dto/create-custom-order.dto';
 import { IssueQuotationDto } from './dto/issue-quotation.dto';
 import { RecordCustomPaymentDto } from './dto/record-custom-payment.dto';
-import {
-  CustomOrderRequest,
-  CustomOrderStatus,
-} from './entities/custom-order-request.entity';
+import { CustomOrderRequest, CustomOrderStatus } from './entities/custom-order-request.entity';
 import { Quotation } from './entities/quotation.entity';
 import { SampleApproval } from './entities/sample-approval.entity';
 
@@ -225,9 +222,7 @@ export class CustomOrdersService {
     const sample = await this.sampleRepo.save(
       this.sampleRepo.create({ request, buyerApproved: approved, note: note ?? null }),
     );
-    request.status = approved
-      ? CustomOrderStatus.SAMPLE_APPROVED
-      : CustomOrderStatus.CANCELLED;
+    request.status = approved ? CustomOrderStatus.SAMPLE_APPROVED : CustomOrderStatus.CANCELLED;
     await this.requestRepo.save(request);
     return sample;
   }

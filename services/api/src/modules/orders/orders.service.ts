@@ -84,11 +84,11 @@ export class OrdersService {
     // still gets a RETAIL (retail-priced) order instead of a wholesale order.
     let channel: OrderChannel;
     let customerId: string | null = user.id;
-    let tierDiscountTier = null as import('../wholesale/entities/price-tier.entity').PriceTier | null;
+    let tierDiscountTier = null as
+      import('../wholesale/entities/price-tier.entity').PriceTier | null;
     const shopFromRetail = user.role === RoleName.CUSTOMER || dto.source === 'storefront';
     const shopFromWholesale =
-      !shopFromRetail &&
-      (user.role === RoleName.WHOLESALER || dto.source === 'wholesale_portal');
+      !shopFromRetail && (user.role === RoleName.WHOLESALER || dto.source === 'wholesale_portal');
 
     if (shopFromRetail) {
       channel = OrderChannel.RETAIL;
@@ -281,14 +281,14 @@ export class OrdersService {
       throw new ConflictException(`Cannot move order from '${order.status}' to '${status}'`);
     }
     if (order.paymentStatus !== PaymentStatus.PAID) {
-      throw new ForbiddenException('Order must be fully paid before it progresses (no part-payments)');
+      throw new ForbiddenException(
+        'Order must be fully paid before it progresses (no part-payments)',
+      );
     }
     order.status = status;
     if (status === OrderStatus.DELIVERED) order.deliveredAt = new Date();
     const saved = await this.orderRepo.save(order);
-    await this.eventRepo.save(
-      this.eventRepo.create({ order: saved, status, note: note ?? null }),
-    );
+    await this.eventRepo.save(this.eventRepo.create({ order: saved, status, note: note ?? null }));
     // Fire-and-forget: notifications never block or fail the status change.
     void this.notificationsService.onOrderStatusChange(
       order.customer?.id ?? null,
@@ -380,61 +380,65 @@ export class OrdersService {
     recordedBy: string | null,
     existingPayment: Payment | null,
   ): Promise<Payment> {
-    return this.dataSource.transaction(async (manager) => {
-      const paymentRepo = manager.getRepository(Payment);
-      const payment = existingPayment ?? paymentRepo.create({
-        order,
-        method,
-        amount,
-        reference: null,
-        recordedBy,
-      });
-      payment.status = PaymentRecordStatus.SUCCESS;
-      const savedPayment = await paymentRepo.save(payment);
+    return this.dataSource
+      .transaction(async (manager) => {
+        const paymentRepo = manager.getRepository(Payment);
+        const payment =
+          existingPayment ??
+          paymentRepo.create({
+            order,
+            method,
+            amount,
+            reference: null,
+            recordedBy,
+          });
+        payment.status = PaymentRecordStatus.SUCCESS;
+        const savedPayment = await paymentRepo.save(payment);
 
-      order.paymentStatus = PaymentStatus.PAID;
-      order.status = OrderStatus.ORDER_RECEIVED;
-      await manager.getRepository(Order).save(order);
-      await manager.getRepository(OrderStatusEvent).save(
-        manager.getRepository(OrderStatusEvent).create({
-          order,
-          status: OrderStatus.ORDER_RECEIVED,
-          note: `Paid in full via ${method}`,
-        }),
-      );
+        order.paymentStatus = PaymentStatus.PAID;
+        order.status = OrderStatus.ORDER_RECEIVED;
+        await manager.getRepository(Order).save(order);
+        await manager.getRepository(OrderStatusEvent).save(
+          manager.getRepository(OrderStatusEvent).create({
+            order,
+            status: OrderStatus.ORDER_RECEIVED,
+            note: `Paid in full via ${method}`,
+          }),
+        );
 
-      for (const item of order.items) {
-        await this.inventoryService.record(
+        for (const item of order.items) {
+          await this.inventoryService.record(
+            {
+              itemType: InventoryItemType.VARIANT,
+              itemId: item.variant.id,
+              movementType: MovementType.SALE,
+              quantityDelta: -item.quantity,
+              actorId: recordedBy ?? order.customer?.id ?? null,
+              referenceId: order.id,
+            },
+            manager,
+          );
+        }
+        // Every sale lands in the accounting ledger automatically.
+        await this.accountingService.record(
           {
-            itemType: InventoryItemType.VARIANT,
-            itemId: item.variant.id,
-            movementType: MovementType.SALE,
-            quantityDelta: -item.quantity,
-            actorId: recordedBy ?? order.customer?.id ?? null,
+            type: LedgerEntryType.SALE,
+            amount,
+            category: `${order.channel}_sale`,
             referenceId: order.id,
+            recordedBy,
           },
           manager,
         );
-      }
-      // Every sale lands in the accounting ledger automatically.
-      await this.accountingService.record(
-        {
-          type: LedgerEntryType.SALE,
-          amount,
-          category: `${order.channel}_sale`,
-          referenceId: order.id,
-          recordedBy,
-        },
-        manager,
-      );
-      return savedPayment;
-    }).then((savedPayment) => {
-      void this.notificationsService.onOrderStatusChange(
-        order.customer?.id ?? null,
-        order.id,
-        OrderStatus.ORDER_RECEIVED,
-      );
-      return savedPayment;
-    });
+        return savedPayment;
+      })
+      .then((savedPayment) => {
+        void this.notificationsService.onOrderStatusChange(
+          order.customer?.id ?? null,
+          order.id,
+          OrderStatus.ORDER_RECEIVED,
+        );
+        return savedPayment;
+      });
   }
 }

@@ -33,9 +33,13 @@ import { ThemeService } from '../theme.service';
           <span class="term-chip"
             ><span class="dot ok"></span> 256-Bit Encrypted Investor Terminal</span
           >
-          <span class="term-chip">Period: <strong>{{ store.periodLabel() }}</strong></span>
+          <span class="term-chip"
+            >Period: <strong>{{ store.periodLabel() }}</strong></span
+          >
           @if (store.lastUpdatedLabel(); as synced) {
-            <span class="term-chip">Synced: <strong>{{ synced }}</strong></span>
+            <span class="term-chip"
+              >Synced: <strong>{{ synced }}</strong></span
+            >
           }
         </div>
         <div class="term-right">
@@ -44,11 +48,22 @@ import { ThemeService } from '../theme.service';
             class="refresh-btn"
             type="button"
             aria-label="Refresh portfolio data"
-            [attr.title]="store.lastUpdatedLabel() ? 'Last synced ' + store.lastUpdatedLabel() : 'Sync portfolio data'"
+            [attr.title]="
+              store.lastUpdatedLabel()
+                ? 'Last synced ' + store.lastUpdatedLabel()
+                : 'Sync portfolio data'
+            "
             (click)="refresh()"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
               <path d="M21 12a9 9 0 1 1-2.7-6.4" />
               <path d="M21 3v5h-5" />
             </svg>
@@ -56,18 +71,36 @@ import { ThemeService } from '../theme.service';
           <button
             class="theme-toggle"
             type="button"
-            [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+            [attr.aria-label]="
+              theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+            "
             (click)="theme.toggle()"
           >
             @if (theme.theme() === 'dark') {
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                <path
+                  d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+                />
               </svg>
             } @else {
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
               </svg>
             }
@@ -88,7 +121,11 @@ import { ThemeService } from '../theme.service';
 
       <div class="shell-body">
         @if (navOpen()) {
-          <button class="drawer-scrim" aria-label="Close navigation" (click)="navOpen.set(false)"></button>
+          <button
+            class="drawer-scrim"
+            aria-label="Close navigation"
+            (click)="navOpen.set(false)"
+          ></button>
         }
         <aside class="sidebar" [class.open]="navOpen()">
           <p class="side-heading">Investor Portfolio</p>

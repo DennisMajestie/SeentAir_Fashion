@@ -1,11 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import {
-  InventoryItemType,
-  InventoryMovement,
-  MovementType,
-} from './inventory-movement.entity';
+import { InventoryItemType, InventoryMovement, MovementType } from './inventory-movement.entity';
 
 export interface RecordMovementInput {
   itemType: InventoryItemType;
@@ -111,13 +107,21 @@ export class InventoryService {
 
     const byItem = new Map<
       string,
-      { itemType: string; itemId: string; currentQuantity: number; byMovementType: Record<string, number> }
+      {
+        itemType: string;
+        itemId: string;
+        currentQuantity: number;
+        byMovementType: Record<string, number>;
+      }
     >();
     for (const row of rows) {
       const key = `${row.item_type}:${row.item_id}`;
-      const entry =
-        byItem.get(key) ??
-        { itemType: row.item_type, itemId: row.item_id, currentQuantity: 0, byMovementType: {} };
+      const entry = byItem.get(key) ?? {
+        itemType: row.item_type,
+        itemId: row.item_id,
+        currentQuantity: 0,
+        byMovementType: {},
+      };
       const total = parseInt(row.total, 10) || 0;
       entry.byMovementType[row.movement_type] = total;
       entry.currentQuantity += total;
@@ -149,7 +153,10 @@ export class InventoryService {
         .createQueryBuilder('m')
         .select('m.entry_hash', 'ledger_head')
         .addSelect('m.timestamp', 'last_timestamp')
-        .addSelect('(SELECT MIN(m2.timestamp) FROM inventory_movements m2 WHERE m2.item_type = :itemType AND m2.item_id = :itemId)', 'first_timestamp')
+        .addSelect(
+          '(SELECT MIN(m2.timestamp) FROM inventory_movements m2 WHERE m2.item_type = :itemType AND m2.item_id = :itemId)',
+          'first_timestamp',
+        )
         .where('m.item_type = :itemType AND m.item_id = :itemId', { itemType, itemId })
         .orderBy('m.timestamp', 'DESC')
         .addOrderBy('m.id', 'DESC')

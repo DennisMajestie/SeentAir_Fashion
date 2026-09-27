@@ -146,10 +146,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(200)
   @ApiBearerAuth()
-  async logout(
-    @CurrentUser() user: AuthenticatedUser,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  async logout(@CurrentUser() user: AuthenticatedUser, @Res({ passthrough: true }) res: Response) {
     res.clearCookie(REFRESH_COOKIE, this.cookieOptions());
     return this.authService.logout(user.id);
   }

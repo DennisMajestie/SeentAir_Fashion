@@ -1,4 +1,12 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { numericTransformer } from '../../../common/numeric.transformer';
 import { ProductionBatch } from './production-batch.entity';
 
@@ -18,13 +26,26 @@ export class ProductionTelemetry {
   @Column({ type: 'varchar' })
   machine: string;
 
-  @Column({ type: 'numeric', precision: 8, scale: 2, nullable: true, transformer: numericTransformer })
+  @Column({
+    type: 'numeric',
+    precision: 8,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   rpm: number | null;
 
   @Column({ name: 'needle_cycles', type: 'integer', nullable: true })
   needleCycles: number | null;
 
-  @Column({ name: 'thread_reserve_pct', type: 'numeric', precision: 5, scale: 2, nullable: true, transformer: numericTransformer })
+  @Column({
+    name: 'thread_reserve_pct',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   threadReservePct: number | null;
 
   @Column({ name: 'operator_id', type: 'uuid', nullable: true })

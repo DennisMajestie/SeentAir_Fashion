@@ -27,7 +27,11 @@ interface Milestone {
 
     @if (request(); as req) {
       <div class="cart-strip">
-        <span class="left"><span class="chip">Custom bespoke request #CR-{{ req.id.slice(0, 8).toUpperCase() }}</span></span>
+        <span class="left"
+          ><span class="chip"
+            >Custom bespoke request #CR-{{ req.id.slice(0, 8).toUpperCase() }}</span
+          ></span
+        >
         <span class="muted small">Lodged {{ req.createdAt | date: 'dd MMM yyyy' }}</span>
       </div>
 
@@ -35,13 +39,18 @@ interface Milestone {
         <div class="oc-top">
           <h1 style="font-size: var(--type-heading-md); max-width: 30ch">{{ title(req) }}</h1>
           <span class="status" [class]="'status ' + pill(req.status)">
-            {{ req.status.replaceAll('_', ' ') }}</span>
+            {{ req.status.replaceAll('_', ' ') }}</span
+          >
         </div>
         <p class="muted small" style="margin: var(--space-sm) 0 0">{{ req.description }}</p>
         <!-- GAP: attached techpack chip awaits the custom-order asset pipeline -->
         <p class="meta-line muted" style="margin-top: var(--space-sm)">
-          <span class="material-symbols-outlined" style="font-size:14px; vertical-align:-2px"
-            aria-hidden="true">verified</span>
+          <span
+            class="material-symbols-outlined"
+            style="font-size:14px; vertical-align:-2px"
+            aria-hidden="true"
+            >verified</span
+          >
           Factory-backed contract · full payment before production
         </p>
       </section>
@@ -53,12 +62,17 @@ interface Milestone {
         </div>
         <div class="lc-track">
           @for (m of milestones; track m.label; let idx = $index) {
-            <div class="lc-step" [class.done]="idx < currentStage()"
-              [class.current]="idx === currentStage()">
+            <div
+              class="lc-step"
+              [class.done]="idx < currentStage()"
+              [class.current]="idx === currentStage()"
+            >
               <span class="lc-dot">
                 @if (idx < currentStage()) {
                   <span class="material-symbols-outlined" aria-hidden="true">check</span>
-                } @else { {{ idx + 1 }} }
+                } @else {
+                  {{ idx + 1 }}
+                }
               </span>
               <span class="lc-l">{{ m.short }}</span>
               <span class="lc-d">{{ idx === 0 ? (req.createdAt | date: 'dd MMM') : '' }}</span>
@@ -82,18 +96,30 @@ interface Milestone {
         <section class="panel">
           @if (quote(); as q) {
             <div class="ledger">
-              <div class="lg-row total"><span>Quoted production cost<br />
-                <span class="muted" style="font-weight:400; font-size: var(--type-body-sm); text-transform:none; letter-spacing:normal">
-                  raw material + sewing + branding + packaging</span></span>
-                <span class="v">₦{{ q.amount | number: '1.0-2' }}</span></div>
+              <div class="lg-row total">
+                <span
+                  >Quoted production cost<br />
+                  <span
+                    class="muted"
+                    style="font-weight:400; font-size: var(--type-body-sm); text-transform:none; letter-spacing:normal"
+                  >
+                    raw material + sewing + branding + packaging</span
+                  ></span
+                >
+                <span class="v">₦{{ q.amount | number: '1.0-2' }}</span>
+              </div>
             </div>
-            @if (q.note) { <p class="muted small">{{ q.note }}</p> }
+            @if (q.note) {
+              <p class="muted small">{{ q.note }}</p>
+            }
             <button class="cta" style="width:100%" (click)="accept(req.id)">
               <span class="material-symbols-outlined" aria-hidden="true">handshake</span>
               Accept quotation
             </button>
           } @else {
-            <button class="cta outline" style="width:100%" (click)="loadQuote(req.id)">View quotation</button>
+            <button class="cta outline" style="width:100%" (click)="loadQuote(req.id)">
+              View quotation
+            </button>
           }
         </section>
       }
@@ -115,25 +141,30 @@ interface Milestone {
       </div>
       <section class="panel">
         <p class="small muted" style="margin:0 0 var(--space-sm)">
-          The factory produces one physical sample for your verification — seams, prints
-          and fabric weight — before any bulk cutting starts.
+          The factory produces one physical sample for your verification — seams, prints and fabric
+          weight — before any bulk cutting starts.
         </p>
         <!-- GAP: sample photography (multi-angle gallery in the reference) awaits
              the S3 media pipeline on custom orders; the stage copy is live data. -->
         @if (req.status === 'sample_in_production') {
           <div class="moq-banner met" style="margin:0">
-            <span class="material-symbols-outlined" aria-hidden="true">precision_manufacturing</span>
+            <span class="material-symbols-outlined" aria-hidden="true"
+              >precision_manufacturing</span
+            >
             <div>
               <strong>Your sample is in production at the Aba workshop.</strong>
-              <span class="sub">Once it reaches you, record your decision in the sign-off
-                terminal below — full production only starts after your approval.</span>
+              <span class="sub"
+                >Once it reaches you, record your decision in the sign-off terminal below — full
+                production only starts after your approval.</span
+              >
             </div>
           </div>
         } @else if (currentStage() >= 4) {
           <p class="small" style="margin:0"><strong>Sample stage passed.</strong></p>
         } @else {
-          <p class="small muted" style="margin:0">Sample production begins after quotation
-            acceptance and confirmed settlement.</p>
+          <p class="small muted" style="margin:0">
+            Sample production begins after quotation acceptance and confirmed settlement.
+          </p>
         }
       </section>
 
@@ -151,16 +182,26 @@ interface Milestone {
           }
         </div>
         <div class="ledger">
-          <div class="lg-row"><span>Fabric</span><span class="v">{{ req.fabricQuality }}</span></div>
-          <div class="lg-row"><span>Approved colourways</span><span class="v">{{ req.colours }}</span></div>
-          <div class="lg-row"><span>Target delivery</span><span class="v">{{ req.desiredDate }}</span></div>
+          <div class="lg-row">
+            <span>Fabric</span><span class="v">{{ req.fabricQuality }}</span>
+          </div>
+          <div class="lg-row">
+            <span>Approved colourways</span><span class="v">{{ req.colours }}</span>
+          </div>
+          <div class="lg-row">
+            <span>Target delivery</span><span class="v">{{ req.desiredDate }}</span>
+          </div>
           @if (paidAt(); as when) {
-            <div class="lg-row"><span>Settled</span>
-              <span class="v">{{ when | date: 'dd MMM yyyy' }} (desk-confirmed)</span></div>
+            <div class="lg-row">
+              <span>Settled</span>
+              <span class="v">{{ when | date: 'dd MMM yyyy' }} (desk-confirmed)</span>
+            </div>
           }
           @if (quote(); as q) {
-            <div class="lg-row total"><span>Locked production cost</span>
-              <span class="v">₦{{ q.amount | number: '1.0-2' }}</span></div>
+            <div class="lg-row total">
+              <span>Locked production cost</span>
+              <span class="v">₦{{ q.amount | number: '1.0-2' }}</span>
+            </div>
           }
         </div>
       </section>
@@ -171,28 +212,50 @@ interface Milestone {
           <span class="aside" style="color: var(--primary)">Authorised signatory</span>
         </div>
         <section class="panel">
-          <label>Revision notes (optional)
-            <textarea [(ngModel)]="note" name="note" rows="3"
-              placeholder="Describe required adjustments (e.g. adjust pocket width by 1cm, deepen ribbing tension, tighten wash tone)…"></textarea></label>
+          <label
+            >Revision notes (optional)
+            <textarea
+              [(ngModel)]="note"
+              name="note"
+              rows="3"
+              placeholder="Describe required adjustments (e.g. adjust pocket width by 1cm, deepen ribbing tension, tighten wash tone)…"
+            ></textarea>
+          </label>
           <p class="muted small" style="margin: 0 0 var(--space-sm)">
-            Leave blank if approving the strike-off without changes.</p>
+            Leave blank if approving the strike-off without changes.
+          </p>
           <button class="cta signoff-cta" (click)="decide(req, true)">
-            <span><span class="material-symbols-outlined" style="font-size:16px; vertical-align:-3px"
-              aria-hidden="true">verified</span>
-              Approve sample &amp; authorise bulk production</span>
+            <span
+              ><span
+                class="material-symbols-outlined"
+                style="font-size:16px; vertical-align:-3px"
+                aria-hidden="true"
+                >verified</span
+              >
+              Approve sample &amp; authorise bulk production</span
+            >
             <span class="sub">Locks the {{ req.quantity }}-unit cutting schedule</span>
           </button>
-          <button class="cta outline" style="width:100%; margin-top: var(--space-sm)"
-            (click)="decide(req, false)">
+          <button
+            class="cta outline"
+            style="width:100%; margin-top: var(--space-sm)"
+            (click)="decide(req, false)"
+          >
             <span class="material-symbols-outlined" aria-hidden="true">sync_problem</span>
             Request changes / revise sample
           </button>
         </section>
       }
-      @if (message()) { <p class="success">{{ message() }}</p> }
-      @if (error()) { <p class="error">{{ error() }}</p> }
+      @if (message()) {
+        <p class="success">{{ message() }}</p>
+      }
+      @if (error()) {
+        <p class="error">{{ error() }}</p>
+      }
     } @else if (missing()) {
-      <p class="error">Request not found. <a class="link" routerLink="/custom">Back to requests</a></p>
+      <p class="error">
+        Request not found. <a class="link" routerLink="/custom">Back to requests</a>
+      </p>
     } @else {
       <p class="muted">Loading request status…</p>
     }
@@ -258,7 +321,10 @@ export class CustomStatusPage implements OnInit {
   }
 
   sizeParts(req: CustomOrder): string[] {
-    return req.sizes.split(/[,|]/).map((p) => p.trim()).filter(Boolean);
+    return req.sizes
+      .split(/[,|]/)
+      .map((p) => p.trim())
+      .filter(Boolean);
   }
 
   paidAt(): string | null {
@@ -276,7 +342,9 @@ export class CustomStatusPage implements OnInit {
     this.error.set(null);
     this.api.acceptQuote(id).subscribe({
       next: () => {
-        this.message.set('Quotation accepted — settle the full amount with the desk to start the sample.');
+        this.message.set(
+          'Quotation accepted — settle the full amount with the desk to start the sample.',
+        );
         this.reload(id);
       },
       error: (err) => this.error.set(err?.error?.message ?? 'Could not accept.'),

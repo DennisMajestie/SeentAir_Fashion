@@ -62,18 +62,36 @@ export class Order {
   @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.AWAITING_PAYMENT })
   status: OrderStatus;
 
-  @Column({ name: 'payment_status', type: 'enum', enum: PaymentStatus, default: PaymentStatus.UNPAID })
+  @Column({
+    name: 'payment_status',
+    type: 'enum',
+    enum: PaymentStatus,
+    default: PaymentStatus.UNPAID,
+  })
   paymentStatus: PaymentStatus;
 
   /** Captured at creation from catalogue prices; payments must equal this exactly. */
-  @Column({ name: 'total_amount', type: 'numeric', precision: 12, scale: 2, transformer: numericTransformer })
+  @Column({
+    name: 'total_amount',
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   totalAmount: number;
 
   /** Free-form delivery destination captured at creation for outbound fulfilment. */
   @Column({ name: 'shipping_address', type: 'jsonb', nullable: true })
   shippingAddress: unknown | null;
 
-  @Column({ name: 'gross_weight_kg', type: 'numeric', precision: 8, scale: 2, nullable: true, transformer: numericTransformer })
+  @Column({
+    name: 'gross_weight_kg',
+    type: 'numeric',
+    precision: 8,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   grossWeightKg: number | null;
 
   /** Pallet staging reference for the warehouse. */

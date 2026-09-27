@@ -37,7 +37,9 @@ export class GiglAdapter implements CarrierAdapter {
       }),
     });
     if (!response.ok) {
-      throw new ServiceUnavailableException(`GIGL shipment creation failed: ${response.statusText}`);
+      throw new ServiceUnavailableException(
+        `GIGL shipment creation failed: ${response.statusText}`,
+      );
     }
     const body = (await response.json()) as { tracking_ref?: string; trackingRef?: string };
     const trackingRef = body.tracking_ref ?? body.trackingRef;

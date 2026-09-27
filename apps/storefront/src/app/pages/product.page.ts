@@ -19,9 +19,19 @@ import { SeentairTiltCardComponent } from '../tilt-card.component';
         <app-tilt-card class="pdp-hero">
           <div class="tilt-product">
             @if (selected()?.imageUrl) {
-              <img class="tilt-product-img" data-depth="0.5" [src]="selected()!.imageUrl!" [alt]="p.name" />
+              <img
+                class="tilt-product-img"
+                data-depth="0.5"
+                [src]="selected()!.imageUrl!"
+                [alt]="p.name"
+              />
             } @else {
-              <img class="tilt-product-img" data-depth="0.5" src="assets/shop-2.jpg" [alt]="p.name" />
+              <img
+                class="tilt-product-img"
+                data-depth="0.5"
+                src="assets/shop-2.jpg"
+                [alt]="p.name"
+              />
             }
             <span class="tilt-price" data-depth="1">₦{{ currentPrice() | number: '1.0-2' }}</span>
           </div>
@@ -32,29 +42,48 @@ import { SeentairTiltCardComponent } from '../tilt-card.component';
           @if (reviews().length > 0) {
             <p class="stars-line">
               <span class="stars">{{ starString(avgRating()) }}</span>
-              <span class="muted small">{{ avgRating() | number: '1.1-1' }} · {{ reviews().length }} review(s)</span>
+              <span class="muted small"
+                >{{ avgRating() | number: '1.1-1' }} · {{ reviews().length }} review(s)</span
+              >
             </p>
           }
           <p class="price lg">₦{{ currentPrice() | number: '1.0-2' }}</p>
           <p class="muted">{{ p.description }}</p>
 
           @if (sizes().length > 0) {
-            <p class="section-label">Select size <span class="count">// {{ sizes().length }}</span></p>
+            <p class="section-label">
+              Select size <span class="count">// {{ sizes().length }}</span>
+            </p>
             <div class="spec-chips">
               @for (s of sizes(); track s) {
-                <button class="spec-chip" [class.active]="size() === s"
-                  [disabled]="sizeSoldOut(s)" (click)="size.set(s)">
-                  {{ s }}@if (sizeSoldOut(s)) { <span class="chip-out">×</span> }
+                <button
+                  class="spec-chip"
+                  [class.active]="size() === s"
+                  [disabled]="sizeSoldOut(s)"
+                  (click)="size.set(s)"
+                >
+                  {{ s }}
+                  @if (sizeSoldOut(s)) {
+                    <span class="chip-out">×</span>
+                  }
                 </button>
               }
             </div>
           }
           @if (colours().length > 0) {
-            <p class="section-label">Select colour <span class="count">// {{ colours().length }}</span></p>
+            <p class="section-label">
+              Select colour <span class="count">// {{ colours().length }}</span>
+            </p>
             <div class="spec-chips">
               @for (c of colours(); track c) {
-                <button class="spec-chip" [class.active]="colour() === c"
-                  [disabled]="colourSoldOut(c)" (click)="colour.set(c)">{{ c }}</button>
+                <button
+                  class="spec-chip"
+                  [class.active]="colour() === c"
+                  [disabled]="colourSoldOut(c)"
+                  (click)="colour.set(c)"
+                >
+                  {{ c }}
+                </button>
               }
             </div>
           }
@@ -67,23 +96,35 @@ import { SeentairTiltCardComponent } from '../tilt-card.component';
           </span>
 
           <p class="cta-wrap">
-            <button class="cta block" (click)="addToCart()"
-              [disabled]="!selected() || selectedSoldOut()">
-              @if (!selected()) { This size/colour combination is unavailable }
-              @else if (selectedSoldOut()) { Sold out — {{ selected()!.size }} / {{ selected()!.colour }} }
-              @else if (selectedMadeToOrder()) { Order — made to your measurements }
-              @else { Add to cart — ₦{{ currentPrice() * quantity | number: '1.0-2' }} }
+            <button
+              class="cta block"
+              (click)="addToCart()"
+              [disabled]="!selected() || selectedSoldOut()"
+            >
+              @if (!selected()) {
+                This size/colour combination is unavailable
+              } @else if (selectedSoldOut()) {
+                Sold out — {{ selected()!.size }} / {{ selected()!.colour }}
+              } @else if (selectedMadeToOrder()) {
+                Order — made to your measurements
+              } @else {
+                Add to cart — ₦{{ currentPrice() * quantity | number: '1.0-2' }}
+              }
             </button>
           </p>
           @if (selectedMadeToOrder()) {
-            <p class="muted small">Cut in the Aba atelier after your order — allow a 3-week lead time.
-              Custom pieces are excluded from the 12-hour returns window.</p>
+            <p class="muted small">
+              Cut in the Aba atelier after your order — allow a 3-week lead time. Custom pieces are
+              excluded from the 12-hour returns window.
+            </p>
           }
           @if (added()) {
             <p class="success">Added — <a routerLink="/cart">view cart</a> or keep browsing.</p>
           }
 
-          <p class="section-label">Reviews <span class="count">[{{ reviews().length | number: '2.0' }}]</span></p>
+          <p class="section-label">
+            Reviews <span class="count">[{{ reviews().length | number: '2.0' }}]</span>
+          </p>
           @if (reviews().length === 0) {
             <p class="muted small">No reviews yet — reviews open after delivery.</p>
           }
@@ -96,7 +137,10 @@ import { SeentairTiltCardComponent } from '../tilt-card.component';
         </div>
       </article>
     } @else if (loadError()) {
-      <p class="muted">That piece could not be loaded — it may have sold out. <a routerLink="/shop">Back to the shop</a></p>
+      <p class="muted">
+        That piece could not be loaded — it may have sold out.
+        <a routerLink="/shop">Back to the shop</a>
+      </p>
     } @else {
       <div class="sk-face-pull" aria-hidden="true">
         <div class="skeleton sk-line w40"></div>
@@ -122,12 +166,14 @@ export class ProductPage implements OnInit {
   readonly colour = signal<string | null>(null);
   quantity = 1;
 
-  readonly sizes = computed(() =>
-    [...new Set((this.product()?.variants ?? []).map((v) => v.size).filter((s): s is string => !!s))],
-  );
-  readonly colours = computed(() =>
-    [...new Set((this.product()?.variants ?? []).map((v) => v.colour).filter((c): c is string => !!c))],
-  );
+  readonly sizes = computed(() => [
+    ...new Set((this.product()?.variants ?? []).map((v) => v.size).filter((s): s is string => !!s)),
+  ]);
+  readonly colours = computed(() => [
+    ...new Set(
+      (this.product()?.variants ?? []).map((v) => v.colour).filter((c): c is string => !!c),
+    ),
+  ]);
 
   /** The variant matching the chosen size+colour (dimensions without options are ignored). */
   readonly selected = computed<ProductVariant | null>(() => {
