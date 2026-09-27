@@ -16,6 +16,7 @@ import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 import { ProductCardComponent } from '../product-card.component';
+import { SeentairTiltCardComponent } from '../tilt-card.component';
 
 /** Curated category order for the home "Suggested" tiles — tailoring last. */
 const CATEGORY_ORDER = ['tops', 'bottoms', 'outerwear', 'accessories', 'tailoring'];
@@ -75,7 +76,7 @@ interface DemoReview {
  */
 @Component({
   selector: 'app-landing',
-  imports: [CommonModule, RouterLink, ProductCardComponent],
+  imports: [CommonModule, RouterLink, ProductCardComponent, SeentairTiltCardComponent],
   template: `
     <section class="dressing-scroll" #scrollRoot>
         <div class="dressing-stage">
@@ -164,6 +165,39 @@ interface DemoReview {
             }
           </div>
           <p class="center"><a class="view-all" routerLink="/shop">View all products <span class="arrow" aria-hidden="true">→</span></a></p>
+        }
+      </div>
+    </section>
+
+    <section id="look" class="grid-wrap">
+      <div class="wrap-col">
+        <div class="section-head">
+          <h2>Shop the look</h2>
+          <span class="muted small">One piece from each line — build the fit</span>
+        </div>
+        @if (look().length === 0) {
+          <p class="muted">New pieces landing soon.</p>
+        } @else {
+          <div class="grid slide">
+            @for (p of look(); track p.id; let i = $index) {
+              <app-tilt-card>
+                <a class="tilt-product" [routerLink]="['/product', p.id]">
+                  <img
+                    class="tilt-product-img"
+                    data-depth="0.5"
+                    [src]="p.variants[0]?.imageUrl || 'assets/' + fallbackImage(i)"
+                    [alt]="p.name"
+                    loading="lazy"
+                  />
+                  <span class="tilt-price" data-depth="1">₦{{ p.basePrice | number: '1.0-2' }}</span>
+                  <span class="tilt-caption">
+                    <strong>{{ p.name }}</strong>
+                    <span class="muted small">{{ p.category || 'Seentair' }}</span>
+                  </span>
+                </a>
+              </app-tilt-card>
+            }
+          </div>
         }
       </div>
     </section>
@@ -338,6 +372,19 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
         return b.createdAt.localeCompare(a.createdAt);
       })
       .slice(0, 8);
+  });
+  /** Shop the look: the newest piece from each category, so the row reads as one outfit. */
+  readonly look = computed(() => {
+    const seen = new Set<string>();
+    const picks: Product[] = [];
+    for (const p of [...this.all()].sort((a, b) => b.createdAt.localeCompare(a.createdAt))) {
+      const key = p.category ?? 'other';
+      if (seen.has(key)) continue;
+      seen.add(key);
+      picks.push(p);
+      if (picks.length === 4) break;
+    }
+    return picks;
   });
   /** Suggested categories present in the catalogue, each with a sample image. */
   readonly categories = computed(() => {

@@ -6,6 +6,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
 import { SWATCHES, ProductCardComponent } from '../product-card.component';
+import { SeentairTiltCardComponent } from '../tilt-card.component';
 
 type SortKey = 'featured' | 'newest' | 'price-asc' | 'price-desc';
 
@@ -32,7 +33,7 @@ function collectionKey(name: string): string {
     size/colour filters, availability badges, review stars and quick-add. */
 @Component({
   selector: 'app-shop',
-  imports: [CommonModule, FormsModule, ProductCardComponent],
+  imports: [CommonModule, FormsModule, ProductCardComponent, SeentairTiltCardComponent],
   template: `
     <div class="shop-hero" style="background-image:url('assets/shop-0.jpg')">
       <div class="hero-body">
@@ -123,7 +124,9 @@ function collectionKey(name: string): string {
     } @else {
       <div class="grid">
         @for (product of filtered(); track product.id; let i = $index) {
-          <app-product-card [product]="product" [index]="i" [rating]="ratingOf(product.id)" />
+          <app-tilt-card>
+            <app-product-card [product]="product" [index]="i" [rating]="ratingOf(product.id)" />
+          </app-tilt-card>
         }
       </div>
     }

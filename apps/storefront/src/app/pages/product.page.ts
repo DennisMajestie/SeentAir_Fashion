@@ -5,23 +5,27 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService, Product, ProductVariant } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
+import { SeentairTiltCardComponent } from '../tilt-card.component';
 
 /** Product detail — Stitch PDP layout: gallery left; kicker, Anton title,
     price, spec-chip size/colour selectors, qty stepper, full-width acid CTA,
     reviews as a bordered log. */
 @Component({
   selector: 'app-product',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, SeentairTiltCardComponent],
   template: `
     @if (product(); as p) {
       <article class="product-detail">
-        <div class="thumb large">
-          @if (selected()?.imageUrl) {
-            <img [src]="selected()!.imageUrl!" [alt]="p.name" />
-          } @else {
-            <img src="assets/shop-2.jpg" [alt]="p.name" />
-          }
-        </div>
+        <app-tilt-card class="pdp-hero">
+          <div class="tilt-product">
+            @if (selected()?.imageUrl) {
+              <img class="tilt-product-img" data-depth="0.5" [src]="selected()!.imageUrl!" [alt]="p.name" />
+            } @else {
+              <img class="tilt-product-img" data-depth="0.5" src="assets/shop-2.jpg" [alt]="p.name" />
+            }
+            <span class="tilt-price" data-depth="1">₦{{ currentPrice() | number: '1.0-2' }}</span>
+          </div>
+        </app-tilt-card>
         <div class="detail-body">
           <p class="sku-line">{{ selected()?.sku || '—' }} // {{ p.category }}</p>
           <h1>{{ p.name }}</h1>

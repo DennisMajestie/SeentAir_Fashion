@@ -699,10 +699,16 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
   text-decoration: none; display: block; overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-  &:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(28, 27, 27, 0.09);
+  &:hover { box-shadow: 0 8px 20px rgba(28, 27, 27, 0.09);
     .price { color: var(--primary); } }
   .card-body { padding: 0.9rem; }
   h3 { margin: 0 0 0.2rem; font-size: 0.98rem; font-family: 'Inter', sans-serif; text-transform: none; font-weight: 600; }
+}
+/* The 2px hover lift only where a pointer can hover and motion is welcome.
+   Inside an active app-tilt-card the tilt owns the lift (translateZ + spring). */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .card:hover { transform: translateY(-2px); }
+  app-tilt-card:not(.tilt-disabled) .card:hover { transform: none; }
 }
 .thumb {
   aspect-ratio: 4 / 5; max-width: 100%; background: var(--container);
@@ -820,7 +826,7 @@ code { font-family: 'Inter', monospace; font-size: 0.85em; color: var(--primary)
     padding: 0.25rem var(--wrap-x) 0.75rem;
   }
   .grid.slide::-webkit-scrollbar { display: none; }
-  .grid.slide .product-card { scroll-snap-align: start; }
+  .grid.slide .product-card, .grid.slide app-tilt-card { scroll-snap-align: start; }
   .cat-grid {
     grid-auto-flow: column; grid-template-columns: none;
     grid-auto-columns: min(66vw, 15rem);
@@ -1275,3 +1281,31 @@ select, input, textarea {
   .empty-state-cta { margin-top: 0.5rem; }
   &.ok .empty-state-icon { background: rgba(27, 127, 59, 0.1); color: var(--ok); }
 }
+
+/* ---- tilt-authored cards: PDP hero + home "Shop the look" ----
+   data-depth layers only float when nothing between app-tilt-card and the layer
+   clips or flattens 3D, so this card keeps preserve-3d and never sets overflow. */
+.tilt-product {
+  position: relative; display: block; padding: 10px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  text-decoration: none; color: inherit; transform-style: preserve-3d;
+  .tilt-product-img {
+    display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover;
+    border-radius: calc(var(--radius) - 4px); background: var(--container);
+  }
+  .tilt-price {
+    position: absolute; top: 22px; right: 22px;
+    padding: 0.35rem 0.7rem; border-radius: var(--radius-pill);
+    background: var(--ink); color: var(--canvas);
+    font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 0.95rem; letter-spacing: 0.02em;
+    box-shadow: 0 6px 16px rgba(28, 27, 27, 0.18);
+  }
+  .tilt-caption {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem;
+    padding: 0.7rem 0.25rem 0.15rem;
+    strong { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.98rem; }
+    .small { text-transform: capitalize; }
+  }
+}
+/* PDP: the hero replaces .thumb.large — same 460px column, full width on phones. */
+.pdp-hero { flex: 1 1 320px; max-width: 460px; }
