@@ -1,0 +1,14 @@
+# Generated / vendored
+node_modules/
+dist/
+coverage/
+.angular/
+out-tsc/
+.vercel/
+.claude/
+package-lock.json
+
+# Client-facing documentation and approved design snapshots are reference
+# material, not code — left exactly as authored.
+*.md
+docs/

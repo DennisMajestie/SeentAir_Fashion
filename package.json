@@ -9,14 +9,26 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
+    "lint": "eslint .",
     "test": "npm run test --workspaces --if-present",
     "api:dev": "npm run start:dev --workspace services/api",
     "api:migrate": "npm run migration:run --workspace services/api",
     "api:seed": "npm run seed --workspace services/api",
-    "start": "npm run migration:run --workspace services/api && npm start --workspace services/api"
+    "start": "npm run migration:run --workspace services/api && npm start --workspace services/api",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "angular-eslint": "^22.5.0",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.9",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.1"
   }
 }
