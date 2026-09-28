@@ -3532,6 +3532,11 @@ editing the shared .page-kicker, which other pages also use. */
   border-color: var(--warn);
   background: color-mix(in srgb, var(--warn) 10%, transparent);
 }
+/* Success state after a Paystack return. Tokens only, so it holds up in dark mode. */
+.ot-alert-ok {
+  border-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+}
 .ot-alert-title {
   display: block;
   font-weight: 700;

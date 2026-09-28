@@ -201,6 +201,26 @@ const STREAM_RETRY_MS = 30_000;
           }
         </section>
       } @else {
+        <!-- Return from Paystack. The wording is deliberately not "payment
+             received": only the API knows that, and the webhook may still be
+             in flight when this page loads. -->
+        @if (paymentReturn(); as r) {
+          @if (r === 'paid') {
+            <div class="ot-alert ot-alert-ok" role="status">
+              <span class="ot-alert-title">Thanks — your payment went through</span>
+              <p>
+                We are confirming it now. This page updates itself, so you can leave it open and
+                watch the order move along.
+              </p>
+            </div>
+          } @else {
+            <div class="ot-alert ot-alert-warn" role="status">
+              <span class="ot-alert-title">Payment cancelled</span>
+              <p>No money was taken. Your order is still reserved whenever you are ready to pay.</p>
+            </div>
+          }
+        }
+
         <!-- ===================== HERO ===================== -->
         <section class="ot-card ot-hero">
           @if (needsPayment()) {
@@ -494,6 +514,9 @@ export class OrderPage implements OnInit, OnDestroy {
   readonly pollSeconds = signal(POLL_FAST_MS / 1000);
   readonly paying = signal(false);
   readonly paymentError = signal<string | null>(null);
+  /** Set from Paystack's return URL. A UI hint only - the order status from the
+   *  API is what actually decides whether money arrived. */
+  readonly paymentReturn = signal<'paid' | 'cancelled' | null>(null);
   /** Set on a failed fetch so the skeleton is replaced by a retryable message. */
   readonly loadError = signal<string | null>(null);
   readonly loading = signal(false);
@@ -690,9 +713,31 @@ export class OrderPage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.orderId = this.route.snapshot.paramMap.get('id') ?? '';
+    this.readPaymentReturn();
     this.reload();
     this.startPolling();
     this.openStream();
+  }
+
+  /**
+   * Paystack returns the customer with ?reference= and ?status= once they have
+   * finished. That redirect is a navigation hint only - it is never proof of
+   * payment, because anyone can craft the URL. The order itself is the truth, so
+   * this only sets a banner and the page then waits for the webhook to land.
+   * If the webhook is slow, the poll loop below picks it up on its own.
+   */
+  private readPaymentReturn(): void {
+    const q = this.route.snapshot.queryParamMap;
+    const status = (q.get('status') ?? '').toLowerCase();
+    const reference = q.get('reference');
+    if (!status && !reference) return;
+    if (status === 'success' || status === 'successful') {
+      this.paymentReturn.set('paid');
+    } else if (status === 'cancelled' || status === 'abandoned' || status === 'failed') {
+      this.paymentReturn.set('cancelled');
+    } else {
+      this.paymentReturn.set(null);
+    }
   }
 
   ngOnDestroy(): void {

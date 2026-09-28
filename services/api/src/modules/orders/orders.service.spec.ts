@@ -177,10 +177,20 @@ describe('OrdersService — payment rules', () => {
       return AccessLevel.VIEW;
     }),
   };
-  // Paystack email override is permitted by default outside production. One
-  // stable object so tests can flip the flag the injected instance reads.
+  // Paystack email override is permitted by default outside production, and the
+  // callback base is blank unless a test sets it. One stable object so tests can
+  // flip what the injected instance reads.
   let emailOverrideAllowed = true;
-  const config = { get: jest.fn(() => emailOverrideAllowed) as (k: string) => unknown };
+  const configValues: Record<string, unknown> = {
+    'paystack.emailOverrideAllowed': emailOverrideAllowed,
+    'paystack.callbackUrlBase': '',
+  };
+  const config = {
+    get: jest.fn((key: string) => {
+      if (key === 'paystack.emailOverrideAllowed') return emailOverrideAllowed;
+      return configValues[key];
+    }) as (k: string) => unknown,
+  };
   const paystackService = {
     configured: true,
     initializeTransaction: jest.fn(async (email: string, amount: number, reference: string) => ({
@@ -306,10 +316,13 @@ describe('OrdersService — payment rules', () => {
   it('charges the order customer when no email override is given', async () => {
     h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
     await service.initPaystackPayment('o1', customer);
+    // 4th arg: the Paystack return URL. null here because the suite's config
+    // stub has no callback base configured.
     expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
       'ada@seentair.test',
       17000,
       expect.stringMatching(/^seentair-o1-/),
+      null,
     );
   });
 
@@ -320,7 +333,48 @@ describe('OrdersService — payment rules', () => {
       'real.inbox@example.com',
       17000,
       expect.stringMatching(/^seentair-o1-/),
+      null,
     );
+  });
+
+  describe('Paystack return URL', () => {
+    it('sends the order tracking page as the callback when a base is configured', async () => {
+      // Mirrors mail.resetUrlBase: the API owns the URL so a client cannot turn
+      // it into an open redirect.
+      configValues['paystack.callbackUrlBase'] = 'https://seent-air-fashion.vercel.app';
+      h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+      await service.initPaystackPayment('o1', customer);
+      expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+        'ada@seentair.test',
+        17000,
+        expect.any(String),
+        'https://seent-air-fashion.vercel.app/o1',
+      );
+    });
+
+    it('does not double up slashes when the base has a trailing one', async () => {
+      configValues['paystack.callbackUrlBase'] = 'https://app.test/';
+      h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+      await service.initPaystackPayment('o1', customer);
+      expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+        'ada@seentair.test',
+        17000,
+        expect.any(String),
+        'https://app.test/o1',
+      );
+    });
+
+    it('sends no callback at all when the base is blank', async () => {
+      configValues['paystack.callbackUrlBase'] = '';
+      h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+      await service.initPaystackPayment('o1', customer);
+      expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+        'ada@seentair.test',
+        17000,
+        expect.any(String),
+        null,
+      );
+    });
   });
 
   it('the override is refused where it is not allowed, so a live charge keeps the customer address', async () => {

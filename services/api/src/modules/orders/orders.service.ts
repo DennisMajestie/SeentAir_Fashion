@@ -439,6 +439,7 @@ export class OrdersService {
       email,
       order.totalAmount,
       reference,
+      this.paystackCallbackUrl(order.id),
     );
     await this.paymentRepo.save(
       this.paymentRepo.create({
@@ -622,6 +623,23 @@ export class OrdersService {
       },
       user,
     );
+  }
+
+  /**
+   * Where Paystack should send the customer back to. Built server-side from
+   * configuration rather than accepted from the client, so a caller cannot turn
+   * it into an open redirect to a hostile host. Returns null when no base is
+   * configured, which leaves Paystack's own success page in place.
+   */
+  private paystackCallbackUrl(orderId: string): string | null {
+    // Coerced, not assumed: a misconfigured or stubbed ConfigService can hand
+    // back something that is not a string, and this must never be the reason a
+    // payment fails to start.
+    const raw = this.config.get<string>('paystack.callbackUrlBase');
+    const base = typeof raw === 'string' ? raw.trim() : '';
+    if (!base) return null;
+    const trimmed = base.replace(/\/+$/, '');
+    return `${trimmed}/${encodeURIComponent(orderId)}`;
   }
 
   /**

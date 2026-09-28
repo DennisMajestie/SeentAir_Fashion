@@ -57,13 +57,26 @@ describe('OrderPage', () => {
       ...over,
     }) as OrderTracking;
 
-  const setUp = (order: Order | null, tracking?: OrderTracking) => {
+  const setUp = (
+    order: Order | null,
+    tracking?: OrderTracking,
+    query: Record<string, string> = {},
+  ) => {
     const order$ = new BehaviorSubject<Order | null>(order);
     TestBed.configureTestingModule({
       imports: [OrderPage],
       providers: [
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => ORDER_ID } } } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: { get: () => ORDER_ID },
+              // Paystack returns the customer with ?reference= and ?status=.
+              queryParamMap: { get: (k: string) => query[k] ?? null },
+            },
+          },
+        },
         {
           provide: ApiService,
           useValue: {
@@ -430,6 +443,59 @@ describe('OrderPage', () => {
     });
   });
 
+  describe('returning from Paystack', () => {
+    it('confirms a successful return without claiming the money arrived', async () => {
+      setUp(makeOrder({ status: 'awaiting_payment', paymentStatus: 'unpaid' }), undefined, {
+        status: 'success',
+        reference: 'seentair-abc-1234',
+      });
+      await settle();
+      const body = text();
+      expect(body).toContain('your payment went through');
+      // The order is still unpaid until the webhook lands, so the page must not
+      // assert that money has arrived.
+      expect(body).not.toContain('Paid in full');
+      expect(body).toContain('confirming it now');
+    });
+
+    it('tells the customer a cancelled payment took nothing', async () => {
+      setUp(makeOrder({ status: 'awaiting_payment', paymentStatus: 'unpaid' }), undefined, {
+        status: 'cancelled',
+      });
+      await settle();
+      expect(text()).toContain('Payment cancelled');
+      expect(text()).toContain('No money was taken');
+    });
+
+    it('stays silent when there is no Paystack return in the URL', async () => {
+      setUp(makeOrder({ status: 'awaiting_payment', paymentStatus: 'unpaid' }));
+      await settle();
+      expect(text()).not.toContain('your payment went through');
+      expect(text()).not.toContain('Payment cancelled');
+    });
+
+    it('ignores a forged status and shows no banner at all', async () => {
+      // Anyone can hand-craft this URL, so an unrecognised status must not
+      // produce a "thanks" banner.
+      setUp(makeOrder({ status: 'awaiting_payment', paymentStatus: 'unpaid' }), undefined, {
+        status: 'totally-made-up',
+        reference: 'seentair-forged',
+      });
+      await settle();
+      expect(text()).not.toContain('your payment went through');
+      expect(text()).not.toContain('Payment cancelled');
+    });
+
+    it('never shows the Pay reference back to the customer', async () => {
+      setUp(makeOrder({ status: 'awaiting_payment', paymentStatus: 'unpaid' }), undefined, {
+        status: 'success',
+        reference: 'seentair-secret-ref-99',
+      });
+      await settle();
+      expect(text()).not.toContain('seentair-secret-ref-99');
+    });
+  });
+
   describe('failure states', () => {
     const mountWithFailingOrder = (status: number, message: string) => {
       TestBed.configureTestingModule({
@@ -438,7 +504,12 @@ describe('OrderPage', () => {
           provideRouter([]),
           {
             provide: ActivatedRoute,
-            useValue: { snapshot: { paramMap: { get: () => ORDER_ID } } },
+            useValue: {
+              snapshot: {
+                paramMap: { get: () => ORDER_ID },
+                queryParamMap: { get: () => null },
+              },
+            },
           },
           {
             provide: ApiService,
