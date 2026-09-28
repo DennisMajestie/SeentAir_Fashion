@@ -55,11 +55,15 @@ export interface CustomOrder {
   createdAt: string;
 }
 
-/** One corridor checkpoint on a delivery leg, as the API projects it. */
+/**
+ * One delivery checkpoint as the API projects it for a wholesale buyer.
+ * `zone` and `note` are optional because a customer-facing projection omits
+ * them; the UI treats them as absent rather than rendering a blank.
+ */
 export interface DeliveryCheckpoint {
-  zone: string | null;
+  zone?: string | null;
   status: string | null;
-  note: string | null;
+  note?: string | null;
   at: string | null;
 }
 
@@ -69,7 +73,8 @@ export interface DeliveryLegView {
   carrier: string;
   status: 'pending' | 'in_transit' | 'delivered' | 'failed';
   trackingRef: string | null;
-  zone: string | null;
+  /** Optional: absent from a customer-facing projection. */
+  zone?: string | null;
   driverName: string | null;
   checkpoints: DeliveryCheckpoint[];
 }
