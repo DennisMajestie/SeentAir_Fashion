@@ -55,6 +55,32 @@ export interface CustomOrder {
   createdAt: string;
 }
 
+/** One corridor checkpoint on a delivery leg, as the API projects it. */
+export interface DeliveryCheckpoint {
+  zone: string | null;
+  status: string | null;
+  note: string | null;
+  at: string | null;
+}
+
+/** A leg of the freight journey — some destinations need several. */
+export interface DeliveryLegView {
+  legNumber: number;
+  carrier: string;
+  status: 'pending' | 'in_transit' | 'delivered' | 'failed';
+  trackingRef: string | null;
+  zone: string | null;
+  driverName: string | null;
+  checkpoints: DeliveryCheckpoint[];
+}
+
+export interface WholesaleTracking {
+  status: string;
+  deliveredAt: string | null;
+  events: Array<{ status: string; note: string | null; createdAt: string }>;
+  deliveries: DeliveryLegView[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
@@ -123,14 +149,58 @@ export class ApiService {
     return this.http.post<{ id: string }>(`${API_BASE}/orders/${orderId}/reorder`, {});
   }
 
-  tracking(orderId: string): Observable<{
-    status: string;
-    events: Array<{ status: string; note: string | null; createdAt: string }>;
-  }> {
-    return this.http.get<{
-      status: string;
-      events: Array<{ status: string; note: string | null; createdAt: string }>;
-    }>(`${API_BASE}/orders/${orderId}/tracking`);
+  tracking(orderId: string): Observable<WholesaleTracking> {
+    return this.http.get<WholesaleTracking>(`${API_BASE}/orders/${orderId}/tracking`);
+  }
+
+  /**
+   * Live status push for one order. Uses `fetch` + a stream reader rather than
+   * `EventSource`, which cannot send an Authorization header and would force
+   * the token into a query string. Frames are notifications only — this
+   * re-fetches `tracking()`. Resolves quietly on error; the caller falls back
+   * to polling.
+   */
+  async orderStream(
+    orderId: string,
+    onEvent: (kind: 'open' | 'status') => void,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const token = this.store.token();
+    if (!token) return;
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE}/orders/${orderId}/stream`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' },
+        signal,
+      });
+    } catch {
+      return;
+    }
+    if (!response.ok || !response.body) return;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        // SSE frames are separated by a blank line.
+        let split: number;
+        while ((split = buffer.indexOf('\n\n')) !== -1) {
+          const frame = buffer.slice(0, split);
+          buffer = buffer.slice(split + 2);
+          for (const line of frame.split('\n')) {
+            if (!line.startsWith('event:')) continue;
+            const kind = line.slice(6).trim();
+            if (kind === 'open' || kind === 'status') onEvent(kind);
+          }
+        }
+      }
+    } catch {
+      /* aborted or network dropped - caller falls back to polling */
+    }
   }
 
   // --- Custom design requests (post-MVP module, now live) ---

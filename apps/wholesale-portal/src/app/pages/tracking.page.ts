@@ -1,8 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { ApiService, Invoice } from '../api.service';
+import { ApiService, DeliveryLegView, Invoice } from '../api.service';
 import { pill } from '../status-pill';
+
+/** Fallback poll cadence while the SSE stream is down, and the slow cadence
+    used while it is up. Visibility-aware, so a backgrounded tab costs nothing. */
+const POLL_FAST_MS = 15_000;
+const POLL_SLOW_MS = 60_000;
+/** Wait before re-dialling a stream that dropped. */
+const STREAM_RETRY_MS = 30_000;
 
 interface TrackingEvent {
   status: string;
@@ -171,22 +178,78 @@ interface Stage {
               aria-hidden="true"
               >local_shipping</span
             >
-            Factory dispatch via GIGL</span
-          >
+            @if (leg(); as l) {
+              Factory dispatch via {{ carrierLabel(l) }}
+            } @else {
+              Factory dispatch via GIGL
+            }
+          </span>
           <span class="chip" [class.okc]="delivered()">{{
             delivered() ? 'Delivered' : legStatus()
           }}</span>
         </div>
         <div class="leg-row">
-          <span>Assigned carrier</span><span class="v">GIGL (first-line, pluggable)</span>
+          <span>Assigned carrier</span>
+          <span class="v">
+            @if (leg(); as l) {
+              {{ carrierLabel(l) }}
+            } @else {
+              GIGL (first-line, pluggable)
+            }
+          </span>
         </div>
         <div class="leg-row">
-          <span>Route vector</span><span class="v">Aba workshop → consignee hub</span>
+          <span>Route vector</span>
+          <span class="v">
+            @if (leg()?.zone) {
+              {{ leg()!.zone }}
+            } @else {
+              Aba workshop → consignee hub
+            }
+          </span>
         </div>
         <div class="leg-ref">
           <span>Tracking waybill</span>
-          <span class="v">Issued at dispatch</span>
+          <span class="v">{{ leg()?.trackingRef ?? 'Issued at dispatch' }}</span>
         </div>
+        @if (leg()?.driverName) {
+          <div class="leg-row">
+            <span>Rider</span><span class="v">{{ leg()!.driverName }}</span>
+          </div>
+        }
+
+        @if (leg(); as l) {
+          <div class="section-head" style="margin-top: var(--space-md)">
+            <h2>Corridor updates</h2>
+            <span class="aside">{{ l.checkpoints.length }}</span>
+          </div>
+          @if (l.checkpoints.length) {
+            @for (cp of l.checkpoints; track $index) {
+              <div class="leg-row">
+                <span>{{ cp.at | date: 'medium' }}</span>
+                <span class="v">
+                  {{ cp.zone ?? (cp.status ?? 'update').replaceAll('_', ' ') }}
+                  @if (cp.note) {
+                    <span class="muted small"> — {{ cp.note }}</span>
+                  }
+                </span>
+              </div>
+            }
+          } @else {
+            <p class="muted small" style="margin: 0">
+              No corridor updates recorded yet. They appear here the moment the factory or courier
+              reports them.
+            </p>
+          }
+        }
+
+        <p class="muted small" style="margin: var(--space-sm) 0 0">
+          @if (live()) {
+            Live — this page updates itself while it stays open.
+          } @else {
+            Checking every {{ pollSeconds() }}s while this tab is open.
+          }
+        </p>
       </div>
 
       @if (invoice(); as inv) {
@@ -243,16 +306,24 @@ interface Stage {
     }
   `,
 })
-export class TrackingPage implements OnInit {
+export class TrackingPage implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   readonly pill = pill;
   readonly orderId = signal('');
   readonly status = signal('');
   readonly events = signal<TrackingEvent[]>([]);
+  readonly deliveries = signal<DeliveryLegView[]>([]);
+  readonly live = signal(false);
+  readonly pollSeconds = signal(POLL_FAST_MS / 1000);
   readonly invoice = signal<Invoice | null>(null);
   readonly loaded = signal(false);
   readonly failed = signal(false);
+
+  private pollTimer: ReturnType<typeof setInterval> | undefined;
+  private retryTimer: ReturnType<typeof setTimeout> | undefined;
+  private streamAbort: AbortController | undefined;
+  private refetchQueued = false;
 
   /** The four canonical W8 stages; live events map in by status. */
   readonly stages: Stage[] = [
@@ -282,18 +353,125 @@ export class TrackingPage implements OnInit {
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') ?? '';
     this.orderId.set(id);
-    this.api.tracking(id).subscribe({
-      next: (t) => {
-        this.status.set(t.status);
-        this.events.set(t.events);
-        this.loaded.set(true);
-      },
-      error: () => this.failed.set(true),
+    this.refreshTracking((ok) => {
+      if (ok) this.loaded.set(true);
+      else this.failed.set(true);
     });
+    this.startPolling();
+    this.openStream();
     this.api.invoices().subscribe({
       next: (res) => this.invoice.set(res.data.find((i) => i.orderId === id) ?? null),
       error: () => undefined,
     });
+  }
+
+  ngOnDestroy(): void {
+    this.stopPolling();
+    this.streamAbort?.abort();
+  }
+
+  /**
+   * Re-reads tracking. Coalesces bursts into one request so several corridor
+   * checkpoints arriving together cannot stampede the API. `settled` fires on
+   * the first attempt only, so it can drive the loaded/failed banner without
+   * later polls resetting it.
+   */
+  private refreshTracking(settled?: (ok: boolean) => void): void {
+    if (this.refetchQueued) {
+      settled?.(true);
+      return;
+    }
+    this.refetchQueued = true;
+    queueMicrotask(() => {
+      this.refetchQueued = false;
+      this.api.tracking(this.orderId()).subscribe({
+        next: (t) => {
+          this.status.set(t.status);
+          this.events.set(t.events);
+          this.deliveries.set(t.deliveries ?? []);
+          settled?.(true);
+        },
+        error: () => settled?.(false),
+      });
+    });
+  }
+
+  private startPolling(): void {
+    this.stopPolling();
+    this.pollTimer = setInterval(() => {
+      // A hidden tab is not watching; skip the round trip entirely.
+      if (typeof document !== 'undefined' && document.hidden) return;
+      this.refreshTracking();
+    }, POLL_FAST_MS);
+  }
+
+  private setPoll(seconds: number): void {
+    if (this.pollSeconds() === seconds) return;
+    this.pollSeconds.set(seconds);
+    this.startPolling();
+  }
+
+  private openStream(): void {
+    this.streamAbort?.abort();
+    const abort = new AbortController();
+    this.streamAbort = abort;
+    void this.api
+      .orderStream(
+        this.orderId(),
+        (kind) => {
+          if (abort.signal.aborted) return;
+          if (kind === 'open') {
+            this.live.set(true);
+            this.setPoll(POLL_SLOW_MS / 1000);
+            return;
+          }
+          this.refreshTracking();
+        },
+        abort.signal,
+      )
+      .then(() => this.streamDropped(abort));
+  }
+
+  /** The stream ended or errored — the poll timer carries the page from here. */
+  private streamDropped(abort: AbortController): void {
+    if (abort.signal.aborted) return;
+    this.live.set(false);
+    this.setPoll(POLL_FAST_MS / 1000);
+    // Back off before retrying, so a server without SSE support cannot spin us.
+    clearTimeout(this.retryTimer);
+    this.retryTimer = setTimeout(() => {
+      if (!abort.signal.aborted) this.openStream();
+    }, STREAM_RETRY_MS);
+  }
+
+  private stopPolling(): void {
+    clearInterval(this.pollTimer);
+    this.pollTimer = undefined;
+    clearTimeout(this.retryTimer);
+    this.retryTimer = undefined;
+  }
+
+  /** 'gigl' is the carrier key; anything else is already a carrier name. */
+  carrierLabel(leg: DeliveryLegView): string {
+    return leg.carrier === 'gigl' ? 'GIGL courier' : leg.carrier;
+  }
+
+  legLabel(leg: DeliveryLegView): string {
+    switch (leg.status) {
+      case 'in_transit':
+        return 'On the way';
+      case 'delivered':
+        return 'Handed over';
+      case 'failed':
+        return 'Attempt failed';
+      default:
+        return 'Being booked';
+    }
+  }
+
+  /** The first delivery leg, if one has been booked. Public: the template reads it. */
+  leg(): DeliveryLegView | null {
+    return this.deliveries()[0] ?? null;
   }
 
   private stageIndexOf(status: string): number {
