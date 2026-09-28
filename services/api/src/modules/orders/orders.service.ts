@@ -299,7 +299,15 @@ export class OrdersService {
   }
 
   async findById(id: string, user: AuthenticatedUser): Promise<Order> {
-    const order = await this.orderRepo.findOne({ where: { id } });
+    // items and items.variant load eagerly; variant.product does not, so it is
+    // joined here. One extra LEFT JOIN on the single order query, which is what
+    // lets the storefront label a line by product name instead of SKU. Not
+    // marked eager on the entity: that would load the product for every variant
+    // fetch across the whole app, not just order reads.
+    const order = await this.orderRepo.findOne({
+      where: { id },
+      relations: { items: { variant: { product: true } } },
+    });
     if (!order) throw new NotFoundException(`Order ${id} not found`);
     const access = await this.effectiveAccess(user);
     if (access === AccessLevel.OWN && order.customer?.id !== user.id) {
