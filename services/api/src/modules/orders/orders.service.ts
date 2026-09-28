@@ -146,10 +146,20 @@ export interface StaffDeliveryLeg extends Omit<CustomerDeliveryLeg, 'checkpoints
   checkpoints: StaffCheckpoint[];
 }
 
-export interface OrderTracking<T = CustomerDeliveryLeg> {
+/** A status event as a customer may see it: status and when it happened.
+ *  `note` is staff-authored free text and is not projected. */
+export interface CustomerStatusEvent {
+  status: string;
+  createdAt: Date;
+}
+
+export interface OrderTracking<
+  T = CustomerDeliveryLeg,
+  E = OrderStatusEvent | CustomerStatusEvent,
+> {
   status: OrderStatus;
   deliveredAt: Date | null;
-  events: OrderStatusEvent[];
+  events: E[];
   deliveries: T[];
 }
 
@@ -676,7 +686,13 @@ export class OrdersService {
       status:
         order.status === OrderStatus.STOCK_EXCEPTION ? OrderStatus.ORDER_RECEIVED : order.status,
       deliveredAt: order.deliveredAt,
-      events: events.filter((e) => !internal.includes(e.status)),
+      // Only the status and the timestamp. `note` is staff-authored free text -
+      // PATCH /orders/:id/status accepts an optional note, so a future caller
+      // could put anything there, and today it already carries lines like
+      // "Paid; stock short: TEE-BLK-M x2" that are not the buyer's business.
+      events: events
+        .filter((e) => !internal.includes(e.status))
+        .map((e) => ({ status: e.status, createdAt: e.createdAt })),
       deliveries: legs.map(toCustomerLeg),
     };
   }

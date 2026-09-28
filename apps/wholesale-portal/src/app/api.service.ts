@@ -82,7 +82,12 @@ export interface DeliveryLegView {
 export interface WholesaleTracking {
   status: string;
   deliveredAt: string | null;
-  events: Array<{ status: string; note: string | null; createdAt: string }>;
+  /**
+   * `note` is optional: a customer-facing projection omits it, because it is
+   * staff-authored free text. The page already falls back to its own copy when
+   * it is absent.
+   */
+  events: Array<{ status: string; note?: string | null; createdAt: string }>;
   deliveries: DeliveryLegView[];
 }
 

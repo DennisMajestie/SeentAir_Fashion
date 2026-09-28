@@ -646,6 +646,69 @@ describe('OrdersService — payment rules', () => {
         service.tracking('o1', { ...customer, role: RoleName.MANAGEMENT }),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    it('gives a buyer with only OWN access the customer shape, not the staff one', async () => {
+      // Fail-closed by rank: OWN(1) < VIEW(2), so a WHOLESALER looking at their
+      // own order is treated as a buyer, not as staff.
+      permissionsService.getAccessLevel.mockResolvedValue(AccessLevel.OWN);
+      const res = await service.tracking('o1', {
+        ...customer,
+        role: RoleName.WHOLESALER,
+      });
+      const json = JSON.stringify(res);
+      expect(json).not.toContain(seededNote);
+      expect(json).not.toContain(seededZone);
+      expect(json).not.toContain('Okafor');
+    });
+
+    it('gives staff only VIEW or above the staff shape', async () => {
+      permissionsService.getAccessLevel.mockResolvedValue(AccessLevel.VIEW);
+      const res = await service.tracking('o1', finance);
+      expect(JSON.stringify(res)).toContain(seededNote);
+    });
+
+    describe('status event notes are staff-side', () => {
+      const seededEventNote = 'INTERNAL-NOTE-payout-hold-pending-teller';
+
+      beforeEach(() => {
+        h.order()['status'] = OrderStatus.PROCESSING;
+        h.eventRepo.find.mockResolvedValue([
+          {
+            status: 'order_received',
+            note: 'Paid in full via paystack',
+            createdAt: '2026-09-28T10:01:00.000Z',
+          },
+          {
+            status: 'processing',
+            note: seededEventNote,
+            createdAt: '2026-09-28T11:00:00.000Z',
+          },
+        ] as never);
+      });
+
+      it('omits the note from the customer payload entirely', async () => {
+        const res = await service.tracking('o1', customer);
+        expect(JSON.stringify(res)).not.toContain(seededEventNote);
+      });
+
+      it('leaves each customer event with only status and createdAt', async () => {
+        const res = await service.tracking('o1', customer);
+        for (const e of res.events) {
+          expect(Object.keys(e).sort()).toEqual(['createdAt', 'status']);
+        }
+      });
+
+      it('still shows the status and time a customer needs', async () => {
+        const res = await service.tracking('o1', customer);
+        expect(res.events.map((e) => e.status)).toEqual(['order_received', 'processing']);
+        expect(res.events[0].createdAt).toBe('2026-09-28T10:01:00.000Z');
+      });
+
+      it('keeps the note for staff', async () => {
+        const res = await service.tracking('o1', finance);
+        expect(JSON.stringify(res)).toContain(seededEventNote);
+      });
+    });
   });
 
   // ---- tracking flow (unchanged rules) ----

@@ -13,7 +13,8 @@ const STREAM_RETRY_MS = 30_000;
 
 interface TrackingEvent {
   status: string;
-  note: string | null;
+  /** Optional: a customer-facing projection omits staff-authored free text. */
+  note?: string | null;
   createdAt: string;
 }
 
