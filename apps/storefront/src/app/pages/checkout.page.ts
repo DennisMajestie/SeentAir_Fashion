@@ -85,6 +85,37 @@ const NIGERIAN_STATES = [
           <a class="cta" [href]="paystackUrl()!"
             >Pay with Paystack [₦{{ paidTotal() | number: '1.0-0' }}]</a
           >
+        } @else if (paymentError()) {
+          <!-- The order exists, so the generic error banner below is unreachable.
+               This panel is the only place the customer can still see that
+               payment failed, so it has to carry the reason and a way out. -->
+          <div class="notice notice-error u-rise" role="alert">
+            <svg
+              class="notice-icon"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <circle cx="10" cy="10" r="8.2" />
+              <path d="M10 5.6v5.4M10 13.9h.01" stroke-linecap="round" />
+            </svg>
+            <span>
+              <span class="notice-title">Online payment unavailable</span>
+              {{ paymentError() }} Your order is reserved — nothing is lost, and you can retry here
+              or pay offline.
+            </span>
+          </div>
+          <button class="cta" type="button" (click)="startPayment()" [disabled]="startingPayment()">
+            {{ startingPayment() ? 'Opening Paystack…' : 'Retry online payment' }}
+          </button>
+          <div class="settlement-box">
+            <strong>Or settle directly.</strong> Pay the exact total
+            <strong>₦{{ paidTotal() | number: '1.0-0' }}</strong> by bank transfer, cash, or POS and
+            our team will confirm it. No part-payments.
+          </div>
         } @else {
           <div class="settlement-box">
             <strong>Direct settlement.</strong> Online payment is not available right now. Your
@@ -398,6 +429,10 @@ export class CheckoutPage {
   readonly orderId = signal<string | null>(null);
   readonly paystackUrl = signal<string | null>(null);
   readonly paidTotal = signal(0);
+  /** Why the payment session failed. Separate from error(), which only renders
+      in the pre-order branch and is therefore invisible once an order exists. */
+  readonly paymentError = signal<string | null>(null);
+  readonly startingPayment = signal(false);
 
   /** Logged-in account email, used to detect a seeded `.test` login. */
   readonly accountEmail = signal<string | null>(null);
@@ -507,23 +542,40 @@ export class CheckoutPage {
         this.paidTotal.set(order.totalAmount);
         this.cart.clear();
         void this.alerts.toast(`Order placed — ref ${order.id.slice(0, 8).toUpperCase()}`);
-        const receipt = this.receiptEmail.trim();
-        this.api.payWithPaystack(order.id, order.totalAmount, receipt || undefined).subscribe({
-          next: (res) => {
-            this.paystackUrl.set(res.authorizationUrl);
-            this.placing.set(false);
-          },
-          error: () => {
-            this.placing.set(false);
-            this.error.set(
-              'Order placed — but the payment link could not be created. Settle from your account.',
-            );
-          },
-        });
+        this.startPayment();
       },
       error: (err) => {
         this.placing.set(false);
         this.error.set(err?.error?.message ?? 'Could not place the order.');
+      },
+    });
+  }
+
+  /**
+   * Opens a Paystack session for the order just placed. Kept separate from
+   * placeOrder so a failed session can be retried in place: the order already
+   * exists, so the only thing missing is a payment link. Public: the retry
+   * button in the template calls it.
+   */
+  startPayment(): void {
+    const orderId = this.orderId();
+    if (!orderId) return;
+    this.startingPayment.set(true);
+    this.paymentError.set(null);
+    const receipt = this.receiptEmail.trim();
+    this.api.payWithPaystack(orderId, this.paidTotal(), receipt || undefined).subscribe({
+      next: (res) => {
+        this.paystackUrl.set(res.authorizationUrl);
+        this.startingPayment.set(false);
+        this.placing.set(false);
+      },
+      error: (err) => {
+        this.startingPayment.set(false);
+        this.placing.set(false);
+        // Keep the server's reason: "Paystack is not configured" and a bad
+        // amount need very different responses from the customer, and a generic
+        // sentence throws that away.
+        this.paymentError.set(err?.error?.message ?? 'The payment link could not be created.');
       },
     });
   }

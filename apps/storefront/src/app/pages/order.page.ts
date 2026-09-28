@@ -29,6 +29,27 @@ const STREAM_RETRY_MS = 30_000;
       <p class="page-kicker">Order // {{ o.id.slice(0, 8) }}</p>
       <h1 class="page-title">Order tracking</h1>
 
+      <!-- An unpaid order is a dead end without this: checkout may have failed
+           to open a Paystack session (or the customer simply never paid), and
+           the order page is where they land to find out why. -->
+      @if (needsPayment()) {
+        <div class="rule-strip" role="alert">
+          <p class="s-name">Payment due — ₦{{ o.totalAmount | number: '1.0-0' }}</p>
+          <p class="s-state">■ AWAITING PAYMENT</p>
+          @if (paymentError()) {
+            <p class="muted small">{{ paymentError() }}</p>
+          } @else {
+            <p class="muted small">
+              This order is reserved. Pay the exact total online, or by bank transfer, cash or POS —
+              no part-payments.
+            </p>
+          }
+          <button class="cta small" type="button" (click)="startPayment()" [disabled]="paying()">
+            {{ paying() ? 'Opening Paystack…' : 'Pay now' }}
+          </button>
+        </div>
+      }
+
       <div class="exec-header">
         <p class="section-label plain">
           Progress <span class="count">// {{ percent() }}% complete</span>
@@ -213,6 +234,8 @@ export class OrderPage implements OnInit, OnDestroy {
   /** True while the SSE stream is connected; false means we are poll-only. */
   readonly live = signal(false);
   readonly pollSeconds = signal(POLL_FAST_MS / 1000);
+  readonly paying = signal(false);
+  readonly paymentError = signal<string | null>(null);
   readonly reviewMessage = signal<string | null>(null);
   readonly returnMessage = signal<string | null>(null);
   readonly returnError = signal<string | null>(null);
@@ -245,6 +268,42 @@ export class OrderPage implements OnInit, OnDestroy {
   /** 'gigl' is the carrier key; anything else is already a human carrier name. */
   carrierLabel(leg: DeliveryLegView): string {
     return leg.carrier === 'gigl' ? 'GIGL courier' : leg.carrier;
+  }
+
+  /**
+   * True while money is still owed. `paymentStatus` is the authority; status is
+   * the fallback so an order that predates the field still offers payment.
+   */
+  needsPayment(): boolean {
+    const o = this.order();
+    if (!o) return false;
+    if (o.status === 'cancelled' || o.status === 'returned') return false;
+    return o.paymentStatus !== 'paid' && o.status === 'awaiting_payment';
+  }
+
+  /**
+   * Opens a Paystack session for this order. The API mints a fresh reference
+   * each call, so retrying after a failure (or after an abandoned checkout) is
+   * safe and is the only way out of a stranded order.
+   */
+  startPayment(): void {
+    const o = this.order();
+    if (!o || this.paying()) return;
+    this.paying.set(true);
+    this.paymentError.set(null);
+    this.api.payWithPaystack(o.id, o.totalAmount).subscribe({
+      next: (res) => {
+        this.paying.set(false);
+        // Leave the app: Paystack hosts the payment, then redirects back here.
+        window.location.href = res.authorizationUrl;
+      },
+      error: (err) => {
+        this.paying.set(false);
+        this.paymentError.set(
+          err?.error?.message ?? 'The payment link could not be created. Try again shortly.',
+        );
+      },
+    });
   }
 
   legLabel(leg: DeliveryLegView): string {
