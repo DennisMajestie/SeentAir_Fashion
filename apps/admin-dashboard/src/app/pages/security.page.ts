@@ -8,7 +8,9 @@ import { ApiService } from '../api.service';
   selector: 'app-security',
   imports: [CommonModule, FormsModule],
   template: `
-    <h1>Account security</h1>
+    <div class="ops-head">
+      <div class="ops-id"><h1>Account security</h1></div>
+    </div>
     @if (me(); as profile) {
       <section class="panel">
         <p>

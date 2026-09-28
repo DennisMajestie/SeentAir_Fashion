@@ -24,7 +24,9 @@ interface DistRow {
   selector: 'app-partners-admin',
   imports: [CommonModule, FormsModule],
   template: `
-    <h1>Partners & investors</h1>
+    <div class="ops-head">
+      <div class="ops-id"><h1>Partners &amp; investors</h1></div>
+    </div>
     <p class="rule-strip">
       AGREED MODEL // 1,000,000 shares: 60% founder, 40% partners. Profits split each quarter: 40%
       reinvested, 40% paid out, 20% kept in reserve.

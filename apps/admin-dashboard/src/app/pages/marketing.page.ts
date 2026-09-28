@@ -19,7 +19,9 @@ interface CampaignRow {
   selector: 'app-marketing-admin',
   imports: [CommonModule, FormsModule],
   template: `
-    <h1>Marketing</h1>
+    <div class="ops-head">
+      <div class="ops-id"><h1>Marketing</h1></div>
+    </div>
 
     <div class="cols">
       <section class="panel lead">

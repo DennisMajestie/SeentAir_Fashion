@@ -2522,14 +2522,10 @@ textarea {
     object-fit: cover;
     object-position: center 10%;
     opacity: 0;
-    transition:
-      opacity 0.7s ease,
-      transform 0.9s ease;
-    transform: scale(1.03);
+    transition: opacity 0.7s ease;
   }
   img.stage-image.active {
     opacity: 1;
-    transform: scale(1);
   }
 }
 .stage-canvas {

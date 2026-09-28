@@ -19,7 +19,9 @@ interface LedgerRow {
   selector: 'app-accounting-admin',
   imports: [CommonModule, FormsModule],
   template: `
-    <h1>Accounting & reports</h1>
+    <div class="ops-head">
+      <div class="ops-id"><h1>Accounting &amp; reports</h1></div>
+    </div>
 
     <div class="tiles">
       @for (t of reportTiles(); track t.name) {

@@ -25,7 +25,9 @@ interface TierRow {
   selector: 'app-wholesale-admin',
   imports: [CommonModule, FormsModule],
   template: `
-    <h1>Wholesale</h1>
+    <div class="ops-head">
+      <div class="ops-id"><h1>Wholesale</h1></div>
+    </div>
 
     <p class="section-label">
       Applications & accounts

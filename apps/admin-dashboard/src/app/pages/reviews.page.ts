@@ -15,7 +15,9 @@ interface ReviewRow {
   selector: 'app-reviews-admin',
   imports: [CommonModule],
   template: `
-    <h1>Review moderation</h1>
+    <div class="ops-head">
+      <div class="ops-id"><h1>Review moderation</h1></div>
+    </div>
     <p class="rule-strip">
       Reviews stay hidden from the storefront until published — the moderated default holds until
       the client answers Open Question #4.

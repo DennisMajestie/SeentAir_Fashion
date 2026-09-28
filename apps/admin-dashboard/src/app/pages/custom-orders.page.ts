@@ -33,7 +33,9 @@ const NEXT: Record<string, string | null> = {
   selector: 'app-custom-admin',
   imports: [CommonModule, FormsModule],
   template: `
-    <h1>Custom orders</h1>
+    <div class="ops-head">
+      <div class="ops-id"><h1>Custom orders</h1></div>
+    </div>
     <p class="rule-strip">
       FULL PRODUCTION ONLY AFTER THE BUYER APPROVES THE SAMPLE — the API enforces it; the buyer
       decides in their portal.
