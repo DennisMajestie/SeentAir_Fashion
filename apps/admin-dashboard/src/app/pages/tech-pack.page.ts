@@ -113,7 +113,7 @@ interface ProductRow {
             }}<small>
               /
               {{
-                pack()?.['cuttingEfficiencyPct'] != null
+                pack()?.['cuttingEfficiencyPct'] !== null
                   ? pack()?.['cuttingEfficiencyPct'] + '%'
                   : '—'
               }}</small
@@ -501,9 +501,9 @@ export class TechPackPage implements OnInit {
     this.edit = {
       silhouette: String(found['silhouette'] ?? ''),
       targetYieldUnits:
-        found['targetYieldUnits'] != null ? Number(found['targetYieldUnits']) : null,
+        found['targetYieldUnits'] !== null ? Number(found['targetYieldUnits']) : null,
       cuttingEfficiencyPct:
-        found['cuttingEfficiencyPct'] != null ? Number(found['cuttingEfficiencyPct']) : null,
+        found['cuttingEfficiencyPct'] !== null ? Number(found['cuttingEfficiencyPct']) : null,
       dxfUrl: String(found['dxfUrl'] ?? ''),
       measurementsJson: gm ? JSON.stringify(gm, null, 2) : '',
       stitchProtocol: String(found['stitchProtocol'] ?? ''),

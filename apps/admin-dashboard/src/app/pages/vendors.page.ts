@@ -180,8 +180,8 @@ interface SupplierRow {
                     s.certified ? 'CERTIFIED' : 'PROSPECT'
                   }}</span>
                 </td>
-                <td class="mono">{{ s.slaScore != null ? s.slaScore + '/100' : '—' }}</td>
-                <td class="mono">{{ s.quotaUnits != null ? (s.quotaUnits | number) : '—' }}</td>
+                <td class="mono">{{ s.slaScore !== null ? s.slaScore + '/100' : '—' }}</td>
+                <td class="mono">{{ s.quotaUnits !== null ? (s.quotaUnits | number) : '—' }}</td>
               </tr>
             }
             @if (suppliersVisible().length === 0) {
@@ -208,11 +208,11 @@ interface SupplierRow {
             <dd>{{ s.location ?? '—' }}</dd>
             <dt>SLA score</dt>
             <dd>
-              {{ s.slaScore != null ? s.slaScore + ' / 100' : '—' }}
+              {{ s.slaScore !== null ? s.slaScore + ' / 100' : '—' }}
               <span class="mini-note">lead-time & quality record</span>
             </dd>
             <dt>Quota contract</dt>
-            <dd>{{ s.quotaUnits != null ? (s.quotaUnits | number) + ' units' : '—' }}</dd>
+            <dd>{{ s.quotaUnits !== null ? (s.quotaUnits | number) + ' units' : '—' }}</dd>
             <dt>Compliance notes</dt>
             <dd>{{ s.complianceNotes ?? '—' }}</dd>
           </dl>
@@ -318,7 +318,7 @@ interface SupplierRow {
               <dd>+{{ purchasedOf(m.id) | number }} {{ m.unit }} (total bought)</dd>
               <dt>Last unit cost</dt>
               <dd>
-                {{ lastCostOf(m.id) != null ? '₦' + (lastCostOf(m.id) | number: '1.0-2') : '—' }}
+                {{ lastCostOf(m.id) !== null ? '₦' + (lastCostOf(m.id) | number: '1.0-2') : '—' }}
               </dd>
             </dl>
 

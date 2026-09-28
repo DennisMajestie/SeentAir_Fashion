@@ -214,7 +214,7 @@ const MATERIAL_CATEGORIES = [
               <div class="kpi">
                 <span class="kpi-label">Last unit cost</span>
                 <span class="kpi-value">{{
-                  v.lastUnitCost != null ? '₦' + (v.lastUnitCost | number: '1.0-2') : '—'
+                  v.lastUnitCost !== null ? '₦' + (v.lastUnitCost | number: '1.0-2') : '—'
                 }}</span>
                 <span class="kpi-sub">latest purchase price</span>
               </div>

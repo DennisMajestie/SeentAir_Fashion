@@ -156,7 +156,7 @@ import { ApiService, ReturnRequest } from '../api.service';
             <dd>
               <code>{{ r.order.id.slice(0, 8) }}</code>
             </dd>
-            @if (r.refundAmount != null) {
+            @if (r.refundAmount !== null) {
               <dt class="naira">Refund exposure</dt>
               <dd class="naira">₦{{ r.refundAmount | number: '1.0-2' }}</dd>
             }

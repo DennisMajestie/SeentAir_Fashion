@@ -715,7 +715,7 @@ export class OrdersPage implements OnInit, OnDestroy {
     if (f.grossWeightKg != null) body['grossWeightKg'] = Number(f.grossWeightKg);
     if (f.palletRef.trim()) body['palletRef'] = f.palletRef.trim();
     this.api.fulfilOrder(order.id, body).subscribe({
-      next: (res) => {
+      next: () => {
         this.message.set('Pack-out recorded.');
         this.error.set(null);
         this.fulfilment = {

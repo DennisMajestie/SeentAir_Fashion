@@ -253,8 +253,10 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
             @if (l.driverName) {
               <dt>Driver</dt>
               <dd>
-                {{ l.driverName
-                }}<span class="mini-note" *ngIf="l.driverPhone"> · {{ l.driverPhone }}</span>
+                {{ l.driverName }}
+                @if (l.driverPhone) {
+                  <span class="mini-note">· {{ l.driverPhone }}</span>
+                }
               </dd>
             }
             @if ((l.contents ?? []).length > 0) {

@@ -1,23 +1,53 @@
 import { Routes } from '@angular/router';
-import { AccountPage } from './pages/account.page';
-import { CartPage } from './pages/cart.page';
-import { CheckoutPage } from './pages/checkout.page';
 import { LandingPage } from './pages/landing.page';
-import { OrderPage } from './pages/order.page';
-import { PoliciesPage } from './pages/policies.page';
-import { ProductPage } from './pages/product.page';
-import { ResetPasswordPage } from './pages/reset-password.page';
-import { ShopPage } from './pages/shop.page';
 
+/**
+ * Only the landing page is eager. Everything else loads on navigation: a
+ * shopper who lands and reads the hero should not pay for checkout, account and
+ * order-tracking code. Keeping these eager is what had the initial bundle
+ * sitting on top of its budget.
+ */
 export const routes: Routes = [
   { path: '', component: LandingPage, title: 'SEENTAIR — Streetwear' },
-  { path: 'shop', component: ShopPage, title: 'Seentair — Shop' },
-  { path: 'product/:id', component: ProductPage, title: 'Seentair — Product' },
-  { path: 'cart', component: CartPage, title: 'Seentair — Cart' },
-  { path: 'checkout', component: CheckoutPage, title: 'Seentair — Checkout' },
-  { path: 'account', component: AccountPage, title: 'Seentair — Account' },
-  { path: 'reset-password', component: ResetPasswordPage, title: 'Seentair — Reset password' },
-  { path: 'orders/:id', component: OrderPage, title: 'Seentair — Order tracking' },
-  { path: 'policies', component: PoliciesPage, title: 'Seentair — Store policies' },
+  {
+    path: 'shop',
+    loadComponent: () => import('./pages/shop.page').then((m) => m.ShopPage),
+    title: 'Seentair — Shop',
+  },
+  {
+    path: 'product/:id',
+    loadComponent: () => import('./pages/product.page').then((m) => m.ProductPage),
+    title: 'Seentair — Product',
+  },
+  {
+    path: 'cart',
+    loadComponent: () => import('./pages/cart.page').then((m) => m.CartPage),
+    title: 'Seentair — Cart',
+  },
+  {
+    path: 'checkout',
+    loadComponent: () => import('./pages/checkout.page').then((m) => m.CheckoutPage),
+    title: 'Seentair — Checkout',
+  },
+  {
+    path: 'account',
+    loadComponent: () => import('./pages/account.page').then((m) => m.AccountPage),
+    title: 'Seentair — Account',
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () => import('./pages/reset-password.page').then((m) => m.ResetPasswordPage),
+    title: 'Seentair — Reset password',
+  },
+  {
+    path: 'orders/:id',
+    loadComponent: () => import('./pages/order.page').then((m) => m.OrderPage),
+    title: 'Seentair — Order tracking',
+  },
+  {
+    path: 'policies',
+    loadComponent: () => import('./pages/policies.page').then((m) => m.PoliciesPage),
+    title: 'Seentair — Store policies',
+  },
   { path: '**', redirectTo: '' },
 ];

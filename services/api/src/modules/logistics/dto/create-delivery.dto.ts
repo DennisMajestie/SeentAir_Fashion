@@ -1,10 +1,8 @@
 import {
-  ArrayNotEmpty,
   IsArray,
   IsInt,
   IsNotEmpty,
   IsNumber,
-  IsObject,
   IsOptional,
   IsString,
   IsUUID,

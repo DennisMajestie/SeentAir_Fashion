@@ -129,15 +129,31 @@ import { ThemeService } from '../theme.service';
         }
         <aside class="sidebar" [class.open]="navOpen()">
           <p class="side-heading">Investor Portfolio</p>
-          <nav class="side-nav" (click)="navOpen.set(false)">
-            <a routerLink="/overview" routerLinkActive="active">Overview</a>
-            <a routerLink="/investment" routerLinkActive="active">My Investment</a>
-            <a routerLink="/performance" routerLinkActive="active">Performance</a>
-            <a routerLink="/inventory" routerLinkActive="active">Inventory</a>
-            <a routerLink="/reports" routerLinkActive="active">Accounts &amp; Reports</a>
-            <a routerLink="/profit-sharing" routerLinkActive="active">Profit Sharing</a>
-            <a routerLink="/documents" routerLinkActive="active">Documents &amp; Messages</a>
-            <a routerLink="/settings" routerLinkActive="active">Investor Settings</a>
+          <nav class="side-nav">
+            <a routerLink="/overview" routerLinkActive="active" (click)="navOpen.set(false)"
+              >Overview</a
+            >
+            <a routerLink="/investment" routerLinkActive="active" (click)="navOpen.set(false)"
+              >My Investment</a
+            >
+            <a routerLink="/performance" routerLinkActive="active" (click)="navOpen.set(false)"
+              >Performance</a
+            >
+            <a routerLink="/inventory" routerLinkActive="active" (click)="navOpen.set(false)"
+              >Inventory</a
+            >
+            <a routerLink="/reports" routerLinkActive="active" (click)="navOpen.set(false)"
+              >Accounts &amp; Reports</a
+            >
+            <a routerLink="/profit-sharing" routerLinkActive="active" (click)="navOpen.set(false)"
+              >Profit Sharing</a
+            >
+            <a routerLink="/documents" routerLinkActive="active" (click)="navOpen.set(false)"
+              >Documents &amp; Messages</a
+            >
+            <a routerLink="/settings" routerLinkActive="active" (click)="navOpen.set(false)"
+              >Investor Settings</a
+            >
           </nav>
           <div class="side-bottom">
             <div class="side-box">

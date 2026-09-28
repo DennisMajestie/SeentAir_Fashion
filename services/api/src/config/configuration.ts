@@ -84,10 +84,14 @@ export default () => ({
     // customer's. Seeded accounts use the reserved `.test` TLD that Paystack
     // rejects, so local/CI runs need a real inbox. Defaults off in production
     // so a live charge can never be redirected off the customer's address.
-    emailOverrideAllowed:
-      process.env.PAYSTACK_EMAIL_OVERRIDE_ALLOWED === undefined
-        ? process.env.NODE_ENV !== 'production'
-        : process.env.PAYSTACK_EMAIL_OVERRIDE_ALLOWED === 'true',
+    // A blank value means "not set" and takes the default: .env.example ships
+    // the key empty, and reading it as a literal false silently disabled the
+    // override in local runs that had every reason to have it on.
+    emailOverrideAllowed: (() => {
+      const raw = process.env.PAYSTACK_EMAIL_OVERRIDE_ALLOWED?.trim();
+      if (raw === undefined || raw === '') return process.env.NODE_ENV !== 'production';
+      return raw === 'true';
+    })(),
   },
   production: {
     // Confirmed stages, customizable to real factory-floor terms (appendix 02).

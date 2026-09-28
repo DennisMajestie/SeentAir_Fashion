@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, AuditEntry, Batch } from '../api.service';
 
@@ -216,7 +216,7 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
                 <div class="kpi">
                   <span class="kpi-label">Thread reserve</span
                   ><span class="kpi-value">{{
-                    t['threadReservePct'] != null ? t['threadReservePct'] + '%' : '—'
+                    t['threadReservePct'] !== null ? t['threadReservePct'] + '%' : '—'
                   }}</span
                   ><span class="kpi-sub">{{
                     t['recordedAt'] ? (str(t['recordedAt']) | date: 'HH:mm') : '—'

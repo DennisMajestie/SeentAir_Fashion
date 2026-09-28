@@ -49,7 +49,6 @@ async function bootstrap(): Promise<void> {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  // eslint-disable-next-line no-console
   console.log(`Seentair API listening on http://localhost:${port}/api/v1 (Swagger at /docs)`);
 }
 

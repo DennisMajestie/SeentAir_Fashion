@@ -344,7 +344,7 @@ interface ProductOpt {
                     <td class="mono">{{ t['rpm'] ?? '—' }}</td>
                     <td class="mono">{{ t['needleCycles'] ?? '—' }}</td>
                     <td class="mono">
-                      {{ t['threadReservePct'] != null ? t['threadReservePct'] + '%' : '—' }}
+                      {{ t['threadReservePct'] !== null ? t['threadReservePct'] + '%' : '—' }}
                     </td>
                   </tr>
                 }
@@ -457,13 +457,20 @@ interface ProductOpt {
 
     <!-- ===================== A4 — Record QC rejection modal ===================== -->
     @if (qcBatch(); as qb) {
-      <div class="modal-scrim" (click)="closeQcModal($event)">
+      <div
+        class="modal-scrim"
+        role="button"
+        tabindex="0"
+        aria-label="Close quality control rejection dialog"
+        (click)="closeQcModal($event)"
+        (keydown.enter)="closeQcModal($event)"
+        (keydown.escape)="qcBatch.set(null)"
+      >
         <div
           class="modal"
           role="dialog"
           aria-modal="true"
           aria-labelledby="qc-title"
-          (click)="$event.stopPropagation()"
         >
           <div class="modal-head">
             <h2 id="qc-title">⚠ Record quality control rejection</h2>
@@ -751,7 +758,7 @@ export class ProductionPage implements OnInit {
       inspectorId: this.nq.inspectorId,
     };
   }
-  closeQcModal(ev: MouseEvent): void {
+  closeQcModal(ev: Event): void {
     if (ev.target === ev.currentTarget) this.qcBatch.set(null);
   }
 
