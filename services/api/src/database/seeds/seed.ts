@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import * as bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 import { AppDataSource } from '../data-source';
 import { RoleName, UserStatus } from '../../common/enums';
 import { Permission } from '../../modules/users/entities/permission.entity';

@@ -13,6 +13,7 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { ACCESS_RANK, AccessLevel, ModuleName, RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { CatalogueService } from '../catalogue/catalogue.service';
+import { AvailabilityStatus } from '../catalogue/entities/product-variant.entity';
 import { InventoryItemType, MovementType } from '../inventory/inventory-movement.entity';
 import {
   InsufficientStockException,
@@ -232,14 +233,21 @@ export class OrdersService {
     let total = 0;
     for (const itemDto of dto.items) {
       const variant = await this.catalogueService.findVariantById(itemDto.variantId);
-      const available = await this.inventoryService.currentQuantity(
-        InventoryItemType.VARIANT,
-        variant.id,
-      );
-      if (available < itemDto.quantity) {
-        throw new BadRequestException(
-          `Insufficient stock for ${variant.sku}: ${available} available, ${itemDto.quantity} requested`,
+      // A made-to-order variant is never stocked (the seed holds 0 and the
+      // storefront still offers it with a lead time), so the stock gate must
+      // not block it. If it's paid before a batch exists, applyPayment records
+      // the line as a shortfall -> STOCK_EXCEPTION -> staff raise the batch.
+      // Every other availability state still must have real stock.
+      if (variant.availabilityStatus !== AvailabilityStatus.MADE_TO_ORDER) {
+        const available = await this.inventoryService.currentQuantity(
+          InventoryItemType.VARIANT,
+          variant.id,
         );
+        if (available < itemDto.quantity) {
+          throw new BadRequestException(
+            `Insufficient stock for ${variant.sku}: ${available} available, ${itemDto.quantity} requested`,
+          );
+        }
       }
       const retailPrice = variant.priceOverride ?? variant.product.basePrice;
       const unitPrice =
