@@ -75,6 +75,15 @@ export interface Batch {
   plannedDate: string | null;
 }
 
+/** Routable delivery destination. Matches ShippingAddressDto on the API. */
+export interface ShippingAddress {
+  state: string;
+  city: string;
+  line: string;
+  phone: string;
+  landmark?: string;
+}
+
 export interface AdminOrder {
   id: string;
   channel: string;
@@ -93,7 +102,9 @@ export interface AdminOrder {
     shortfall?: number;
     variant: { id: string; sku: string; size?: string | null; colour?: string | null };
   }>;
-  shippingAddress?: string | null;
+  shippingAddress?: ShippingAddress | null;
+  /** Handover instructions for the waybill — staff note, not routable data. */
+  deliveryNote?: string | null;
   oqrCode?: string | null;
   grossWeightKg?: number | null;
   palletRef?: string | null;

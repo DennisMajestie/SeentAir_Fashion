@@ -5,7 +5,6 @@ import {
   IsEnum,
   IsInt,
   IsNotEmpty,
-  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -13,6 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { OrderChannel } from '../entities/order.entity';
+import { ShippingAddressDto } from './shipping-address.dto';
 
 export class OrderItemDto {
   @IsUUID()
@@ -46,8 +46,9 @@ export class CreateOrderDto {
   @IsNotEmpty()
   source?: string;
 
-  /** Free-form delivery destination (address line, city, state, phone, …). */
+  /** Delivery destination (address line, city, state, phone, …). */
   @IsOptional()
-  @IsObject()
-  shippingAddress?: Record<string, unknown>;
+  @ValidateNested()
+  @Type(() => ShippingAddressDto)
+  shippingAddress?: ShippingAddressDto;
 }

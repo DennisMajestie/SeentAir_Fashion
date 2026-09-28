@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { AccessLevel, RoleName } from '../../common/enums';
@@ -13,6 +14,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order } from './entities/order.entity';
 import { Payment } from './entities/payment.entity';
+import { DeliveryLeg } from '../logistics/entities/delivery-leg.entity';
+import { OrderStatusBus } from './order-status.bus';
 import { OrdersService } from './orders.service';
 import { PaystackService } from './paystack.service';
 
@@ -56,6 +59,8 @@ describe('OrdersService — wholesale rules', () => {
         { provide: getRepositoryToken(Order), useValue: orderRepo },
         { provide: getRepositoryToken(Payment), useValue: {} },
         { provide: getRepositoryToken(OrderStatusEvent), useValue: {} },
+        { provide: getRepositoryToken(DeliveryLeg), useValue: {} },
+        { provide: OrderStatusBus, useValue: new OrderStatusBus() },
         { provide: CatalogueService, useValue: catalogueService },
         { provide: InventoryService, useValue: inventoryService },
         { provide: PermissionsService, useValue: permissionsService },
@@ -67,6 +72,7 @@ describe('OrdersService — wholesale rules', () => {
           provide: NotificationsService,
           useValue: { onOrderStatusChange: jest.fn(async () => undefined) },
         },
+        { provide: ConfigService, useValue: { get: jest.fn(() => true) } },
         { provide: getDataSourceToken(), useValue: {} },
       ],
     }).compile();

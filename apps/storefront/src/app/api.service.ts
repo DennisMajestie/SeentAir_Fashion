@@ -35,9 +35,45 @@ export interface Order {
   items: Array<{ variant: ProductVariant; quantity: number; unitPrice: number }>;
 }
 
+/** Delivery destination captured at checkout. The API stores this as free-form
+    jsonb on the order, so the shape is ours to keep stable. */
+export interface ShippingAddress {
+  state: string;
+  city: string;
+  line: string;
+  phone: string;
+  landmark?: string;
+}
+
 /** Access token only — the refresh token never reaches page JavaScript. */
 export interface TokenPair {
   accessToken: string;
+}
+
+/** One corridor checkpoint on a delivery leg, as the API projects it. */
+export interface DeliveryCheckpoint {
+  zone: string | null;
+  status: string | null;
+  note: string | null;
+  at: string | null;
+}
+
+/** A leg of the journey to the customer — some destinations need several. */
+export interface DeliveryLegView {
+  legNumber: number;
+  carrier: string;
+  status: 'pending' | 'in_transit' | 'delivered' | 'failed';
+  trackingRef: string | null;
+  zone: string | null;
+  driverName: string | null;
+  checkpoints: DeliveryCheckpoint[];
+}
+
+export interface OrderTracking {
+  status: string;
+  deliveredAt: string | null;
+  events: Array<{ status: string; note: string | null; createdAt: string }>;
+  deliveries: DeliveryLegView[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -100,6 +136,13 @@ export class ApiService {
     });
   }
 
+  /** Current account, used to tell a seeded dev login from a real shopper. */
+  me(): Observable<{ id: string; email: string; name: string; role: string }> {
+    return this.http.get<{ id: string; email: string; name: string; role: string }>(
+      `${API_BASE}/auth/me`,
+    );
+  }
+
   get isLoggedIn(): boolean {
     return !!this.store.token();
   }
@@ -108,8 +151,13 @@ export class ApiService {
   createOrder(
     items: Array<{ variantId: string; quantity: number }>,
     source?: string,
+    shippingAddress?: ShippingAddress,
   ): Observable<Order> {
-    return this.http.post<Order>(`${API_BASE}/orders`, { items, source });
+    return this.http.post<Order>(`${API_BASE}/orders`, {
+      items,
+      source,
+      ...(shippingAddress ? { shippingAddress } : {}),
+    });
   }
 
   myOrders(): Observable<{ data: Order[]; total: number }> {
@@ -120,22 +168,74 @@ export class ApiService {
     return this.http.get<Order>(`${API_BASE}/orders/${id}`);
   }
 
-  tracking(orderId: string): Observable<{
-    status: string;
-    deliveredAt: string | null;
-    events: Array<{ status: string; note: string | null; createdAt: string }>;
-  }> {
-    return this.http.get<{
-      status: string;
-      deliveredAt: string | null;
-      events: Array<{ status: string; note: string | null; createdAt: string }>;
-    }>(`${API_BASE}/orders/${orderId}/tracking`);
+  tracking(orderId: string): Observable<OrderTracking> {
+    return this.http.get<OrderTracking>(`${API_BASE}/orders/${orderId}/tracking`);
   }
 
-  payWithPaystack(orderId: string, amount: number): Observable<{ authorizationUrl: string }> {
+  /**
+   * Live status push for one order. Uses `fetch` + a stream reader rather than
+   * `EventSource` because EventSource cannot send an Authorization header, and
+   * putting the access token in the query string would leak it into logs and
+   * referrers. Frames are notifications only — this re-fetches `tracking()`.
+   *
+   * Yields a `false` signal when the stream ends or errors, which is the
+   * caller's cue to fall back to polling. Never throws.
+   */
+  async orderStream(
+    orderId: string,
+    onEvent: (kind: 'open' | 'status') => void,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const token = this.store.token();
+    if (!token) return;
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE}/orders/${orderId}/stream`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' },
+        signal,
+      });
+    } catch {
+      return;
+    }
+    if (!response.ok || !response.body) return;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        // SSE frames are separated by a blank line.
+        let split: number;
+        while ((split = buffer.indexOf('\n\n')) !== -1) {
+          const frame = buffer.slice(0, split);
+          buffer = buffer.slice(split + 2);
+          for (const line of frame.split('\n')) {
+            if (!line.startsWith('event:')) continue;
+            const kind = line.slice(6).trim();
+            if (kind === 'open' || kind === 'status') onEvent(kind);
+          }
+        }
+      }
+    } catch {
+      /* aborted or network dropped - caller falls back to polling */
+    }
+  }
+
+  /** `email` overrides where Paystack sends the receipt. The API refuses it in
+      production unless PAYSTACK_EMAIL_OVERRIDE_ALLOWED is explicitly on, so
+      only send it when the shopper actually changed it. */
+  payWithPaystack(
+    orderId: string,
+    amount: number,
+    email?: string,
+  ): Observable<{ authorizationUrl: string }> {
     return this.http.post<{ authorizationUrl: string }>(`${API_BASE}/orders/${orderId}/payment`, {
       method: 'paystack',
       amount,
+      ...(email ? { email } : {}),
     });
   }
 

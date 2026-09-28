@@ -1,10 +1,51 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ApiService } from '../api.service';
+import { ApiService, ShippingAddress } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
+
+/** GIGL delivers nationwide, so the state list is all 36 plus FCT. */
+const NIGERIAN_STATES = [
+  'Abia',
+  'Adamawa',
+  'Akwa Ibom',
+  'Anambra',
+  'Bauchi',
+  'Bayelsa',
+  'Benue',
+  'Borno',
+  'Cross River',
+  'Delta',
+  'Ebonyi',
+  'Edo',
+  'Ekiti',
+  'Enugu',
+  'FCT — Abuja',
+  'Gombe',
+  'Imo',
+  'Jigawa',
+  'Kaduna',
+  'Kano',
+  'Katsina',
+  'Kebbi',
+  'Kogi',
+  'Kwara',
+  'Lagos',
+  'Nasarawa',
+  'Niger',
+  'Ogun',
+  'Ondo',
+  'Osun',
+  'Oyo',
+  'Plateau',
+  'Rivers',
+  'Sokoto',
+  'Taraba',
+  'Yobe',
+  'Zamfara',
+] as const;
 
 /** Checkout — Stitch approved screen, stages 02 "Final payment" and
     03 "Order placed": manifest with thumbnails, condition-gated policy
@@ -165,19 +206,19 @@ import { CartService } from '../cart.service';
             </div>
           }
 
-          @if (!api.isLoggedIn) {
-            <div #details class="checkout-details">
+          <div #details class="checkout-details">
+            @if (!api.isLoggedIn) {
               <p class="section-label">Your details</p>
               <form class="auth-box checkout-auth" (ngSubmit)="signIn()">
                 @if (mode() === 'register') {
                   <label
                     >Full name
-                    <input [(ngModel)]="name" name="name" required placeholder="e.g. Kojo Mensah"
-                  /></label>
+                    <input [(ngModel)]="name" name="name" required placeholder="e.g. Kojo Mensah" />
+                  </label>
                   <label
                     >Phone (delivery updates)
-                    <input [(ngModel)]="phone" name="phone" placeholder="+234 800 000 0000"
-                  /></label>
+                    <input [(ngModel)]="phone" name="phone" placeholder="+234 800 000 0000" />
+                  </label>
                 }
                 <label
                   >Email
@@ -226,8 +267,85 @@ import { CartService } from '../cart.service';
                   <span>{{ signinError() }}</span>
                 </div>
               }
+            }
+
+            <p class="section-label">Delivery address</p>
+            <div class="auth-box checkout-auth">
+              <label
+                >State
+                <select [(ngModel)]="shipState" name="shipState" required>
+                  <option value="" disabled>Select a state</option>
+                  @for (s of NIGERIAN_STATES; track s) {
+                    <option [value]="s">{{ s }}</option>
+                  }
+                </select>
+              </label>
+              <label
+                >City / LGA
+                <input [(ngModel)]="shipCity" name="shipCity" required placeholder="e.g. Yaba" />
+              </label>
+              <label
+                >Address
+                <input
+                  [(ngModel)]="shipLine"
+                  name="shipLine"
+                  required
+                  placeholder="Street, house number"
+                />
+              </label>
+              <label
+                >Delivery phone
+                <input
+                  type="tel"
+                  [(ngModel)]="shipPhone"
+                  name="shipPhone"
+                  required
+                  placeholder="+234 800 000 0000"
+                />
+              </label>
+              <label
+                >Landmark <span class="muted">(optional, helps the rider)</span>
+                <input [(ngModel)]="shipLandmark" name="shipLandmark" />
+              </label>
+              @if (deliveryError()) {
+                <div class="notice notice-error u-rise" role="alert">
+                  <svg
+                    class="notice-icon"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <circle cx="10" cy="10" r="8.2" />
+                    <path d="M10 5.6v5.4M10 13.9h.01" stroke-linecap="round" />
+                  </svg>
+                  <span>{{ deliveryError() }}</span>
+                </div>
+              }
             </div>
-          }
+
+            @if (isDevAccount()) {
+              <p class="section-label">Payment receipt</p>
+              <div class="auth-box checkout-auth">
+                <label
+                  >Send the Paystack receipt to
+                  <input
+                    type="email"
+                    [(ngModel)]="receiptEmail"
+                    name="receiptEmail"
+                    placeholder="you@example.com"
+                  />
+                </label>
+                <p class="muted small">
+                  This account is on the reserved <code>.test</code> domain, which Paystack's
+                  validator rejects. Enter a real inbox to receive the receipt. Leave blank to use
+                  the order address. Overrides are refused in production.
+                </p>
+              </div>
+            }
+          </div>
         </div>
 
         <aside class="matrix-panel u-rise-1" aria-label="Order summary">
@@ -276,14 +394,47 @@ export class CheckoutPage {
   readonly placing = signal(false);
   readonly error = signal<string | null>(null);
   readonly signinError = signal<string | null>(null);
+  readonly deliveryError = signal<string | null>(null);
   readonly orderId = signal<string | null>(null);
   readonly paystackUrl = signal<string | null>(null);
   readonly paidTotal = signal(0);
+
+  /** Logged-in account email, used to detect a seeded `.test` login. */
+  readonly accountEmail = signal<string | null>(null);
+  readonly isDevAccount = computed(
+    () => this.accountEmail()?.toLowerCase().endsWith('.test') ?? false,
+  );
+
+  readonly NIGERIAN_STATES = NIGERIAN_STATES;
 
   name = '';
   phone = '';
   email = '';
   password = '';
+
+  shipState = '';
+  shipCity = '';
+  shipLine = '';
+  shipPhone = '';
+  shipLandmark = '';
+  receiptEmail = '';
+
+  constructor() {
+    this.loadAccount();
+  }
+
+  /** Reads the signed-in account so the receipt override only shows for
+      seeded `.test` logins. A 401 here is expected when signed out. */
+  private loadAccount(): void {
+    if (!this.api.isLoggedIn) {
+      this.accountEmail.set(null);
+      return;
+    }
+    this.api.me().subscribe({
+      next: (user) => this.accountEmail.set(user.email),
+      error: () => this.accountEmail.set(null),
+    });
+  }
 
   toggleMode(): void {
     this.mode.set(this.mode() === 'login' ? 'register' : 'login');
@@ -294,10 +445,15 @@ export class CheckoutPage {
     this.signinError.set(null);
     if (this.mode() === 'login') {
       this.api.login(this.email, this.password).subscribe({
+        next: () => this.loadAccount(),
         error: () => this.signinError.set('Sign-in failed — check your email and password.'),
       });
     } else {
       this.api.register(this.name, this.email, this.phone, this.password).subscribe({
+        next: () => {
+          this.shipPhone = this.shipPhone || this.phone;
+          this.loadAccount();
+        },
         error: (err) =>
           this.signinError.set(
             err?.error?.message ?? 'Registration failed — try a different email.',
@@ -312,20 +468,47 @@ export class CheckoutPage {
       this.details()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
+    const missing = this.deliveryMissing();
+    if (missing) {
+      this.deliveryError.set(missing);
+      this.details()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    this.deliveryError.set(null);
     this.placeOrder();
   }
 
-  placeOrder(): void {
+  /** GIGL cannot route a parcel without state, city, a street and a phone. */
+  private deliveryMissing(): string | null {
+    if (!this.shipState) return 'Choose a delivery state so we can route the parcel.';
+    if (!this.shipCity.trim()) return 'Add your city or LGA.';
+    if (!this.shipLine.trim()) return 'Add your street address and house number.';
+    if (!this.shipPhone.trim()) return 'Add a phone the rider can reach you on.';
+    return null;
+  }
+
+  private shippingAddress(): ShippingAddress {
+    return {
+      state: this.shipState,
+      city: this.shipCity.trim(),
+      line: this.shipLine.trim(),
+      phone: this.shipPhone.trim(),
+      ...(this.shipLandmark.trim() ? { landmark: this.shipLandmark.trim() } : {}),
+    };
+  }
+
+  private placeOrder(): void {
     this.placing.set(true);
     this.error.set(null);
     const items = this.cart.items().map((i) => ({ variantId: i.variantId, quantity: i.quantity }));
-    this.api.createOrder(items, 'storefront').subscribe({
+    this.api.createOrder(items, 'storefront', this.shippingAddress()).subscribe({
       next: (order) => {
         this.orderId.set(order.id);
         this.paidTotal.set(order.totalAmount);
         this.cart.clear();
         void this.alerts.toast(`Order placed — ref ${order.id.slice(0, 8).toUpperCase()}`);
-        this.api.payWithPaystack(order.id, order.totalAmount).subscribe({
+        const receipt = this.receiptEmail.trim();
+        this.api.payWithPaystack(order.id, order.totalAmount, receipt || undefined).subscribe({
           next: (res) => {
             this.paystackUrl.set(res.authorizationUrl);
             this.placing.set(false);

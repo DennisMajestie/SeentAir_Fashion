@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { ApiService, Order } from '../api.service';
+import { ApiService, DeliveryLegView, Order } from '../api.service';
 
 const STEPS = [
   { key: 'order_received', name: 'Order received' },
@@ -11,6 +11,13 @@ const STEPS = [
   { key: 'delivered', name: 'Delivered' },
 ];
 const RETURN_WINDOW_MS = 12 * 3_600_000;
+
+/** Fallback poll cadence while the SSE stream is down, and the slow cadence
+    used while it is up. Visibility-aware, so a backgrounded tab costs nothing. */
+const POLL_FAST_MS = 15_000;
+const POLL_SLOW_MS = 60_000;
+/** Wait before re-dialling a stream that dropped. */
+const STREAM_RETRY_MS = 30_000;
 
 /** Order tracking — Stitch "lifecycle" layout: percent-executed header,
     four step cards, checkpoint log, manifest, review + return actions. */
@@ -39,6 +46,45 @@ const RETURN_WINDOW_MS = 12 * 3_600_000;
           </div>
         }
       </div>
+
+      @if (deliveries().length) {
+        <p class="section-label">Delivery progress</p>
+        @for (leg of deliveries(); track leg.legNumber) {
+          <div class="rule-strip">
+            <p class="s-name">
+              {{ leg.legNumber > 1 ? 'Leg ' + leg.legNumber + ' — ' : '' }}{{ carrierLabel(leg) }}
+            </p>
+            <p class="s-state">{{ legLabel(leg) }}</p>
+            @if (leg.trackingRef) {
+              <p class="muted small">Tracking ref {{ leg.trackingRef }}</p>
+            }
+            @if (leg.driverName) {
+              <p class="muted small">Rider {{ leg.driverName }}</p>
+            }
+            @if (leg.checkpoints.length) {
+              @for (cp of leg.checkpoints; track $index) {
+                <div class="audit-row">
+                  <p class="a-time">{{ cp.at | date: 'medium' }}</p>
+                  <p class="a-status">{{ cp.zone ?? checkpointLabel(cp.status) }}</p>
+                  @if (cp.note) {
+                    <p class="muted small">{{ cp.note }}</p>
+                  }
+                </div>
+              }
+            } @else {
+              <p class="muted small">No corridor updates yet.</p>
+            }
+          </div>
+        }
+        <p class="muted small">
+          @if (live()) {
+            Live — updates appear here the moment the factory or courier reports them.
+          } @else {
+            Checking every {{ pollSeconds() }}s while this tab is open.
+          }
+        </p>
+      }
+
       @if (o.status === 'returned') {
         <p class="rule-strip">
           This order was returned. The resolution is recorded in the history below.
@@ -155,7 +201,7 @@ const RETURN_WINDOW_MS = 12 * 3_600_000;
     }
   `,
 })
-export class OrderPage implements OnInit {
+export class OrderPage implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
 
@@ -163,12 +209,22 @@ export class OrderPage implements OnInit {
   readonly order = signal<Order | null>(null);
   readonly deliveredAt = signal<string | null>(null);
   readonly events = signal<Array<{ status: string; note: string | null; createdAt: string }>>([]);
+  readonly deliveries = signal<DeliveryLegView[]>([]);
+  /** True while the SSE stream is connected; false means we are poll-only. */
+  readonly live = signal(false);
+  readonly pollSeconds = signal(POLL_FAST_MS / 1000);
   readonly reviewMessage = signal<string | null>(null);
   readonly returnMessage = signal<string | null>(null);
   readonly returnError = signal<string | null>(null);
   ratings: Record<string, number> = {};
   comments: Record<string, string> = {};
   returnReasons: Record<string, string> = {};
+
+  private orderId = '';
+  private pollTimer: ReturnType<typeof setInterval> | undefined;
+  private retryTimer: ReturnType<typeof setTimeout> | undefined;
+  private streamAbort: AbortController | undefined;
+  private refetchQueued = false;
 
   readonly stepIndex = computed(() => {
     const status = this.order()?.status ?? '';
@@ -186,16 +242,125 @@ export class OrderPage implements OnInit {
     return !!o && o.status === 'delivered' && !!deadline && deadline.getTime() > Date.now();
   });
 
+  /** 'gigl' is the carrier key; anything else is already a human carrier name. */
+  carrierLabel(leg: DeliveryLegView): string {
+    return leg.carrier === 'gigl' ? 'GIGL courier' : leg.carrier;
+  }
+
+  legLabel(leg: DeliveryLegView): string {
+    switch (leg.status) {
+      case 'in_transit':
+        return '▶ ON THE WAY';
+      case 'delivered':
+        return '■ HANDED OVER';
+      case 'failed':
+        return '■ ATTEMPT FAILED';
+      default:
+        return '· BEING BOOKED';
+    }
+  }
+
+  checkpointLabel(status: string | null): string {
+    return (status ?? 'update').replaceAll('_', ' ');
+  }
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id')!;
+    this.orderId = id;
     this.api.order(id).subscribe((o) => {
       this.order.set(o);
       for (const item of o.items) this.ratings[item.variant.id] ??= 5;
     });
-    this.api.tracking(id).subscribe((t) => {
-      this.events.set(t.events);
-      this.deliveredAt.set(t.deliveredAt);
+    this.refreshTracking();
+    this.startPolling();
+    this.openStream();
+  }
+
+  ngOnDestroy(): void {
+    this.stopPolling();
+    this.streamAbort?.abort();
+  }
+
+  /**
+   * Re-reads tracking. Coalesces bursts (several checkpoints at once) into one
+   * request so a busy delivery leg can't stampede the API.
+   */
+  private refreshTracking(): void {
+    if (this.refetchQueued) return;
+    this.refetchQueued = true;
+    queueMicrotask(() => {
+      this.refetchQueued = false;
+      this.api.tracking(this.orderId).subscribe({
+        next: (t) => {
+          this.events.set(t.events);
+          this.deliveredAt.set(t.deliveredAt);
+          this.deliveries.set(t.deliveries ?? []);
+        },
+        error: () => {
+          /* transient; the next tick retries */
+        },
+      });
     });
+  }
+
+  private startPolling(): void {
+    this.stopPolling();
+    this.pollTimer = setInterval(() => {
+      // A hidden tab is not watching; skip the round trip entirely.
+      if (typeof document !== 'undefined' && document.hidden) return;
+      this.refreshTracking();
+    }, POLL_FAST_MS);
+  }
+
+  private setPoll(seconds: number): void {
+    if (this.pollSeconds() === seconds) return;
+    this.pollSeconds.set(seconds);
+    this.startPolling();
+  }
+
+  /**
+   * SSE is the fast path; polling is the floor. If the stream fails for any
+   * reason (offline, proxy without streaming, expired token) the page keeps
+   * working off the poll timer, and the stream is retried at a slow cadence.
+   */
+  private openStream(): void {
+    this.streamAbort?.abort();
+    const abort = new AbortController();
+    this.streamAbort = abort;
+    void this.api
+      .orderStream(
+        this.orderId,
+        (kind) => {
+          if (abort.signal.aborted) return;
+          if (kind === 'open') {
+            this.live.set(true);
+            this.setPoll(POLL_SLOW_MS / 1000);
+            return;
+          }
+          this.refreshTracking();
+        },
+        abort.signal,
+      )
+      .then(() => this.streamDropped(abort));
+  }
+
+  /** The stream ended or errored — the poll timer carries the page from here. */
+  private streamDropped(abort: AbortController): void {
+    if (abort.signal.aborted) return;
+    this.live.set(false);
+    this.setPoll(POLL_FAST_MS / 1000);
+    // Back off before retrying, so a server without SSE support cannot spin us.
+    clearTimeout(this.retryTimer);
+    this.retryTimer = setTimeout(() => {
+      if (!abort.signal.aborted) this.openStream();
+    }, STREAM_RETRY_MS);
+  }
+
+  private stopPolling(): void {
+    clearInterval(this.pollTimer);
+    this.pollTimer = undefined;
+    clearTimeout(this.retryTimer);
+    this.retryTimer = undefined;
   }
 
   review(variantId: string): void {

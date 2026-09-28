@@ -3,17 +3,24 @@ import {
   IsBoolean,
   IsNotEmpty,
   IsNumber,
-  IsObject,
   IsOptional,
   IsString,
   Min,
   ValidateNested,
 } from 'class-validator';
+import { ShippingAddressDto } from './shipping-address.dto';
 
 export class OrderFulfilmentDto {
   @IsOptional()
-  @IsObject()
-  shippingAddress?: Record<string, unknown>;
+  @ValidateNested()
+  @Type(() => ShippingAddressDto)
+  shippingAddress?: ShippingAddressDto;
+
+  /** Handover instructions for the waybill — "gate code, call on arrival".
+      Deliberately separate from the address: it is not routable data. */
+  @IsOptional()
+  @IsString()
+  deliveryNote?: string;
 
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })

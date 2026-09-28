@@ -13,6 +13,16 @@ import { numericTransformer } from '../../../common/numeric.transformer';
 import { User } from '../../users/entities/user.entity';
 import { OrderItem } from './order-item.entity';
 
+/** Routable delivery destination. Structurally matched by ShippingAddressDto —
+    declared here so the entity carries the real shape instead of `unknown`. */
+export interface OrderShippingAddress {
+  state: string;
+  city: string;
+  line: string;
+  phone: string;
+  landmark?: string;
+}
+
 /** One shared order resource for ALL sales channels — no channel silos. */
 export enum OrderChannel {
   RETAIL = 'retail',
@@ -85,9 +95,14 @@ export class Order {
   })
   totalAmount: number;
 
-  /** Free-form delivery destination captured at creation for outbound fulfilment. */
+  /** Delivery destination captured at creation for outbound fulfilment. */
   @Column({ name: 'shipping_address', type: 'jsonb', nullable: true })
-  shippingAddress: unknown | null;
+  shippingAddress: OrderShippingAddress | null;
+
+  /** Handover instructions for the waybill — not routable data, so kept out
+      of the address. Set by staff at pack-out. */
+  @Column({ name: 'delivery_note', type: 'text', nullable: true })
+  deliveryNote: string | null;
 
   @Column({
     name: 'gross_weight_kg',

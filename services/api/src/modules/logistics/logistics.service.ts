@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { ACCESS_RANK, AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { Order } from '../orders/entities/order.entity';
+import { OrderStatusBus } from '../orders/order-status.bus';
 import { PermissionsService } from '../users/permissions.service';
 import { CarrierAdapter } from './carriers/carrier-adapter.interface';
 import { GiglAdapter } from './carriers/gigl.adapter';
@@ -31,6 +32,7 @@ export class LogisticsService {
     private readonly pricingRepo: Repository<DeliveryPricing>,
     @InjectRepository(Order) private readonly orderRepo: Repository<Order>,
     private readonly permissionsService: PermissionsService,
+    private readonly orderStatusBus: OrderStatusBus,
     giglAdapter: GiglAdapter,
     manualAdapter: ManualCarrierAdapter,
   ) {
@@ -59,7 +61,7 @@ export class LogisticsService {
           )
         : null;
 
-    return this.legRepo.save(
+    const saved = await this.legRepo.save(
       this.legRepo.create({
         order,
         carrier: dto.carrier,
@@ -75,6 +77,8 @@ export class LogisticsService {
         createdBy: actor.id,
       }),
     );
+    this.orderStatusBus.emit(order.id, 'delivery:created');
+    return saved;
   }
 
   /** Staff view: all delivery legs, newest first. */
@@ -92,7 +96,9 @@ export class LogisticsService {
     if (!leg) throw new NotFoundException(`Delivery leg ${id} not found`);
     leg.status = dto.status;
     if (dto.trackingRef !== undefined) leg.trackingRef = dto.trackingRef;
-    return this.legRepo.save(leg);
+    const saved = await this.legRepo.save(leg);
+    this.orderStatusBus.emit(leg.order.id, `delivery:${saved.status}`);
+    return saved;
   }
 
   /**
@@ -116,7 +122,11 @@ export class LogisticsService {
     leg.checkpoints = checkpoints;
     if (dto.driverName) leg.driverName = dto.driverName;
     if (dto.driverPhone) leg.driverPhone = dto.driverPhone;
-    return this.legRepo.save(leg);
+    const saved = await this.legRepo.save(leg);
+    // A corridor checkpoint is the thing customers actually wait on, so it is
+    // the highest-value push of the three.
+    this.orderStatusBus.emit(leg.order.id, 'delivery:checkpoint');
+    return saved;
   }
 
   /** Staff see any delivery; customers only their own order's legs. */

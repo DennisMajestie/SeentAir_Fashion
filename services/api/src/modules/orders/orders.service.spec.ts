@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { AccessLevel, ModuleName, RoleName } from '../../common/enums';
@@ -15,6 +16,8 @@ import { WholesaleService } from '../wholesale/wholesale.service';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
 import { Payment, PaymentMethod, PaymentRecordStatus } from './entities/payment.entity';
+import { DeliveryLeg } from '../logistics/entities/delivery-leg.entity';
+import { OrderStatusBus } from './order-status.bus';
 import { OrdersService, PaystackWebhookEvent } from './orders.service';
 import { PaystackService } from './paystack.service';
 
@@ -66,10 +69,15 @@ function harness() {
     save: jest.fn(async (v) => v),
     find: jest.fn(async (): Promise<Row[]> => []),
   };
+  // Order tracking reads delivery legs; no legs by default in these fixtures.
+  const legRepo = {
+    find: jest.fn(async (): Promise<Row[]> => []),
+  };
   const repoByEntity = new Map<unknown, unknown>([
     [Order, orderRepo],
     [Payment, paymentRepo],
     [OrderStatusEvent, eventRepo],
+    [DeliveryLeg, legRepo],
   ]);
 
   const manager = {
@@ -135,6 +143,7 @@ function harness() {
     orderRepo,
     paymentRepo,
     eventRepo,
+    legRepo,
     dataSource,
     setOrder: (o: Row) => {
       order = o;
@@ -168,6 +177,18 @@ describe('OrdersService — payment rules', () => {
       return AccessLevel.VIEW;
     }),
   };
+  // Paystack email override is permitted by default outside production. One
+  // stable object so tests can flip the flag the injected instance reads.
+  let emailOverrideAllowed = true;
+  const config = { get: jest.fn(() => emailOverrideAllowed) as (k: string) => unknown };
+  const paystackService = {
+    configured: true,
+    initializeTransaction: jest.fn(async (email: string, amount: number, reference: string) => ({
+      authorizationUrl: `https://checkout.paystack.com/${reference}`,
+      reference,
+    })),
+    verifyWebhookSignature: jest.fn(),
+  };
 
   const chargeSuccess = (id: number, amount = 1700000): PaystackWebhookEvent => ({
     event: 'charge.success',
@@ -176,6 +197,7 @@ describe('OrdersService — payment rules', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    emailOverrideAllowed = true;
     inventoryService.record.mockReset();
     h = harness();
     h.setOrder({
@@ -207,11 +229,13 @@ describe('OrdersService — payment rules', () => {
         { provide: getRepositoryToken(Order), useValue: h.orderRepo },
         { provide: getRepositoryToken(Payment), useValue: h.paymentRepo },
         { provide: getRepositoryToken(OrderStatusEvent), useValue: h.eventRepo },
+        { provide: getRepositoryToken(DeliveryLeg), useValue: h.legRepo },
+        { provide: OrderStatusBus, useValue: new OrderStatusBus() },
         { provide: CatalogueService, useValue: {} },
         { provide: InventoryService, useValue: inventoryService },
         { provide: PermissionsService, useValue: permissionsService },
         { provide: UsersService, useValue: usersService },
-        { provide: PaystackService, useValue: { configured: false } },
+        { provide: PaystackService, useValue: paystackService },
         {
           provide: WholesaleService,
           useValue: {
@@ -222,6 +246,7 @@ describe('OrdersService — payment rules', () => {
         },
         { provide: AccountingService, useValue: accountingService },
         { provide: NotificationsService, useValue: notificationsService },
+        { provide: ConfigService, useValue: config },
         { provide: getDataSourceToken(), useValue: h.dataSource },
       ],
     }).compile();
@@ -274,6 +299,50 @@ describe('OrdersService — payment rules', () => {
     await expect(
       service.recordOfflinePayment('o1', { method: PaymentMethod.CASH, amount: 17000 }, finance),
     ).rejects.toThrow(ForbiddenException);
+  });
+
+  // ---- Paystack payment init: receipt email override ----
+
+  it('charges the order customer when no email override is given', async () => {
+    h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+    await service.initPaystackPayment('o1', customer);
+    expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+      'ada@seentair.test',
+      17000,
+      expect.stringMatching(/^seentair-o1-/),
+    );
+  });
+
+  it('an override redirects the receipt — seeded .test addresses cannot be charged', async () => {
+    h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+    await service.initPaystackPayment('o1', customer, 'real.inbox@example.com');
+    expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+      'real.inbox@example.com',
+      17000,
+      expect.stringMatching(/^seentair-o1-/),
+    );
+  });
+
+  it('the override is refused where it is not allowed, so a live charge keeps the customer address', async () => {
+    emailOverrideAllowed = false;
+    h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+    await expect(
+      service.initPaystackPayment('o1', customer, 'attacker@example.com'),
+    ).rejects.toThrow(ForbiddenException);
+    expect(paystackService.initializeTransaction).not.toHaveBeenCalled();
+  });
+
+  it('records a PENDING payment row against the reference Paystack returned', async () => {
+    h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+    await service.initPaystackPayment('o1', customer);
+    expect(h.paymentRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: PaymentMethod.PAYSTACK,
+        amount: 17000,
+        status: PaymentRecordStatus.PENDING,
+        reference: expect.stringMatching(/^seentair-o1-/),
+      }),
+    );
   });
 
   // ---- Paystack webhook: idempotency ----

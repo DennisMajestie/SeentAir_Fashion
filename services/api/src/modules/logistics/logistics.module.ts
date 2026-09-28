@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Order } from '../orders/entities/order.entity';
+import { OrderStatusBusModule } from '../orders/order-status.bus.module';
 import { UsersModule } from '../users/users.module';
 import { GiglAdapter } from './carriers/gigl.adapter';
 import { ManualCarrierAdapter } from './carriers/manual.adapter';
@@ -10,7 +11,11 @@ import { LogisticsController } from './logistics.controller';
 import { LogisticsService } from './logistics.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([DeliveryLeg, DeliveryPricing, Order]), UsersModule],
+  imports: [
+    TypeOrmModule.forFeature([DeliveryLeg, DeliveryPricing, Order]),
+    UsersModule,
+    OrderStatusBusModule,
+  ],
   controllers: [LogisticsController],
   providers: [LogisticsService, GiglAdapter, ManualCarrierAdapter],
 })

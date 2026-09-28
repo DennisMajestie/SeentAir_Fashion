@@ -6,24 +6,36 @@ import { UsersModule } from '../users/users.module';
 import { WholesaleModule } from '../wholesale/wholesale.module';
 import { AccountingModule } from '../accounting/accounting.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { DeliveryLeg } from '../logistics/entities/delivery-leg.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order } from './entities/order.entity';
 import { Payment } from './entities/payment.entity';
 import { ProcessedWebhookEvent } from './entities/processed-webhook-event.entity';
+import { OrderStatusBusModule } from './order-status.bus.module';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { PaystackService } from './paystack.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, Payment, OrderStatusEvent, ProcessedWebhookEvent]),
+    TypeOrmModule.forFeature([
+      Order,
+      OrderItem,
+      Payment,
+      OrderStatusEvent,
+      ProcessedWebhookEvent,
+      // Registered here (not imported from LogisticsModule) so order tracking
+      // can read delivery legs without a circular module dependency.
+      DeliveryLeg,
+    ]),
     CatalogueModule,
     InventoryModule,
     UsersModule,
     WholesaleModule,
     AccountingModule,
     NotificationsModule,
+    OrderStatusBusModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService, PaystackService],

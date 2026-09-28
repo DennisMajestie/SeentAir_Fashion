@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AdminOrder, ApiService } from '../api.service';
@@ -11,6 +11,9 @@ const NEXT_STATUS: Record<string, string> = {
   processing: 'shipped',
   shipped: 'delivered',
 };
+
+/** How often the order list re-reads itself so staff never act on a stale queue. */
+const ORDERS_POLL_MS = 20_000;
 
 /** A9/A10 — Omnichannel orders & fulfilment desk, with the packing-slip /
     dispatch-dossier inspector for the selected order. One shared order
@@ -345,9 +348,20 @@ const NEXT_STATUS: Record<string, string> = {
               <dd>
                 <code class="wrap-anywhere">{{ o.id }}</code>
               </dd>
-              @if (str(o['shippingAddress'])) {
+              @if (o.shippingAddress) {
                 <dt>Ship to</dt>
-                <dd class="wrap-anywhere">{{ o['shippingAddress'] }}</dd>
+                <dd class="wrap-anywhere">
+                  <div>{{ o.shippingAddress.line }}</div>
+                  <div>{{ o.shippingAddress.city }}, {{ o.shippingAddress.state }}</div>
+                  @if (o.shippingAddress.landmark) {
+                    <div class="muted">Near {{ o.shippingAddress.landmark }}</div>
+                  }
+                  <div class="muted">{{ o.shippingAddress.phone }}</div>
+                </dd>
+              }
+              @if (o.deliveryNote) {
+                <dt>Waybill note</dt>
+                <dd class="wrap-anywhere">{{ o.deliveryNote }}</dd>
               }
             </dl>
 
@@ -366,13 +380,47 @@ const NEXT_STATUS: Record<string, string> = {
               </div>
             }
             <form (ngSubmit)="fulfil(o)">
+              <p class="ph-sub">override the delivery destination if the customer corrected it</p>
+              <div class="form-grid">
+                <label
+                  >State
+                  <input [(ngModel)]="fulfilment.shipState" name="fstate" placeholder="Lagos" />
+                </label>
+                <label
+                  >City / LGA
+                  <input [(ngModel)]="fulfilment.shipCity" name="fcity" placeholder="Yaba" />
+                </label>
+              </div>
               <label
-                >Shipping address
+                >Street address
+                <input
+                  [(ngModel)]="fulfilment.shipLine"
+                  name="fline"
+                  placeholder="Building, street, house number"
+                />
+              </label>
+              <div class="form-grid">
+                <label
+                  >Delivery phone
+                  <input
+                    type="tel"
+                    [(ngModel)]="fulfilment.shipPhone"
+                    name="fphone"
+                    placeholder="+234 800 000 0000"
+                  />
+                </label>
+                <label
+                  >Landmark
+                  <input [(ngModel)]="fulfilment.shipLandmark" name="flandmark" />
+                </label>
+              </div>
+              <label
+                >Waybill note
                 <textarea
                   rows="2"
-                  [(ngModel)]="fulfilment.shippingAddress"
-                  name="fship"
-                  placeholder="Building, street, area, LGA — used on the waybill."
+                  [(ngModel)]="fulfilment.deliveryNote"
+                  name="fnote"
+                  placeholder="Gate code, call on arrival, best window…"
                 ></textarea>
               </label>
               <div class="form-grid">
@@ -438,7 +486,7 @@ const NEXT_STATUS: Record<string, string> = {
     }
   `,
 })
-export class OrdersPage implements OnInit {
+export class OrdersPage implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly alerts = inject(BrandAlertService);
@@ -455,15 +503,55 @@ export class OrdersPage implements OnInit {
   query = '';
   notifyMsg = '';
   fulfilment = {
-    shippingAddress: '',
+    shipState: '',
+    shipCity: '',
+    shipLine: '',
+    shipPhone: '',
+    shipLandmark: '',
+    deliveryNote: '',
     grossWeightKg: null as number | null,
     palletRef: '',
     generateQrStencil: false,
   };
 
+  private pollTimer: ReturnType<typeof setInterval> | undefined;
+
   ngOnInit(): void {
     this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
     this.load();
+    this.pollTimer = setInterval(() => this.poll(), ORDERS_POLL_MS);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.pollTimer);
+  }
+
+  /**
+   * Keeps the list honest without a reload. Skipped when the tab is hidden,
+   * and when a dispatch dossier is open with unsaved edits — `load()` replaces
+   * the `orders` array, which would silently discard what staff are typing.
+   */
+  private poll(): void {
+    if (typeof document !== 'undefined' && document.hidden) return;
+    if (this.selected() && this.dispatchDirty()) return;
+    this.load();
+  }
+
+  /** True once a dispatch form field no longer matches the selected order. */
+  private dispatchDirty(): boolean {
+    const o = this.selected();
+    if (!o) return false;
+    const f = this.fulfilment;
+    const a = o.shippingAddress;
+    return (
+      f.shipLine !== (a?.line ?? '') ||
+      f.shipPhone !== (a?.phone ?? '') ||
+      f.shipLandmark !== (a?.landmark ?? '') ||
+      f.deliveryNote !== (o.deliveryNote ?? '') ||
+      f.palletRef !== '' ||
+      f.grossWeightKg !== null ||
+      f.generateQrStencil
+    );
   }
 
   load(): void {
@@ -598,20 +686,45 @@ export class OrdersPage implements OnInit {
   }
 
   fulfil(order: AdminOrder): void {
+    const f = this.fulfilment;
     const body: Record<string, unknown> = {
-      generateQrStencil: !!this.fulfilment.generateQrStencil,
+      generateQrStencil: !!f.generateQrStencil,
     };
-    if (this.fulfilment.shippingAddress.trim())
-      body['shippingAddress'] = this.fulfilment.shippingAddress.trim();
-    if (this.fulfilment.grossWeightKg != null)
-      body['grossWeightKg'] = Number(this.fulfilment.grossWeightKg);
-    if (this.fulfilment.palletRef.trim()) body['palletRef'] = this.fulfilment.palletRef.trim();
+
+    // The address is all-or-nothing: a partial override would fail the DTO's
+    // nested validation, so catch it here instead of 400-ing on save.
+    const parts = [f.shipState, f.shipCity, f.shipLine, f.shipPhone].map((v) => v.trim());
+    const filled = parts.filter(Boolean).length;
+    if (filled > 0 && filled < parts.length) {
+      this.error.set(
+        'Fill in state, city, street and phone together, or clear them all to keep the customer address.',
+      );
+      this.message.set(null);
+      return;
+    }
+    if (filled === parts.length) {
+      body['shippingAddress'] = {
+        state: parts[0],
+        city: parts[1],
+        line: parts[2],
+        phone: parts[3],
+        ...(f.shipLandmark.trim() ? { landmark: f.shipLandmark.trim() } : {}),
+      };
+    }
+    if (f.deliveryNote.trim()) body['deliveryNote'] = f.deliveryNote.trim();
+    if (f.grossWeightKg != null) body['grossWeightKg'] = Number(f.grossWeightKg);
+    if (f.palletRef.trim()) body['palletRef'] = f.palletRef.trim();
     this.api.fulfilOrder(order.id, body).subscribe({
       next: (res) => {
         this.message.set('Pack-out recorded.');
         this.error.set(null);
         this.fulfilment = {
-          shippingAddress: '',
+          shipState: '',
+          shipCity: '',
+          shipLine: '',
+          shipPhone: '',
+          shipLandmark: '',
+          deliveryNote: '',
           grossWeightKg: null,
           palletRef: '',
           generateQrStencil: false,

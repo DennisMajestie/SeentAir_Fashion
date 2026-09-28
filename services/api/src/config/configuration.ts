@@ -80,6 +80,14 @@ export default () => ({
   paystack: {
     secretKey: process.env.PAYSTACK_SECRET_KEY ?? '',
     baseUrl: process.env.PAYSTACK_BASE_URL ?? 'https://api.paystack.co',
+    // Lets a payment init send the receipt to an address other than the order
+    // customer's. Seeded accounts use the reserved `.test` TLD that Paystack
+    // rejects, so local/CI runs need a real inbox. Defaults off in production
+    // so a live charge can never be redirected off the customer's address.
+    emailOverrideAllowed:
+      process.env.PAYSTACK_EMAIL_OVERRIDE_ALLOWED === undefined
+        ? process.env.NODE_ENV !== 'production'
+        : process.env.PAYSTACK_EMAIL_OVERRIDE_ALLOWED === 'true',
   },
   production: {
     // Confirmed stages, customizable to real factory-floor terms (appendix 02).

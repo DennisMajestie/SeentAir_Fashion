@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { randomBytes, randomUUID } from 'crypto';
 import { DataSource, EntityManager, Repository } from 'typeorm';
@@ -24,6 +25,7 @@ import { WholesaleService } from '../wholesale/wholesale.service';
 import { AccountingService } from '../accounting/accounting.service';
 import { LedgerEntryType } from '../accounting/ledger-entry.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { DeliveryLeg, DeliveryLegStatus } from '../logistics/entities/delivery-leg.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderFulfilmentDto } from './dto/order-fulfilment.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
@@ -32,6 +34,7 @@ import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order, OrderChannel, OrderStatus, PaymentStatus } from './entities/order.entity';
 import { Payment, PaymentMethod, PaymentRecordStatus } from './entities/payment.entity';
 import { ProcessedWebhookEvent } from './entities/processed-webhook-event.entity';
+import { OrderStatusBus } from './order-status.bus';
 import { PaystackService } from './paystack.service';
 
 /** Forward-only customer-facing progression (appendix 09). RETURNED is set by the returns flow (Phase 5). */
@@ -99,6 +102,51 @@ interface WebhookResult {
   alert?: StaffAlert;
 }
 
+/** One leg of a multi-leg delivery, as a customer is allowed to see it. */
+export interface CustomerDeliveryLeg {
+  legNumber: number;
+  carrier: string;
+  status: DeliveryLegStatus;
+  trackingRef: string | null;
+  zone: string | null;
+  driverName: string | null;
+  /** Corridor's live checkpoints: [{ zone, status, note, at }]. */
+  checkpoints: Array<Record<string, unknown>>;
+}
+
+export interface OrderTracking {
+  status: OrderStatus;
+  deliveredAt: Date | null;
+  events: OrderStatusEvent[];
+  deliveries: CustomerDeliveryLeg[];
+}
+
+/** DeliveryLeg is loaded `eager: true` with its order, so it must never reach a
+ *  customer as an entity — project to CustomerDeliveryLeg instead. `cost`,
+ *  `contents`, `createdBy`, `driverPhone` and the internal `sealId` stay
+ *  staff-side. */
+export function toCustomerLeg(leg: DeliveryLeg): CustomerDeliveryLeg {
+  const raw = Array.isArray(leg.checkpoints) ? (leg.checkpoints as Array<unknown>) : [];
+  return {
+    legNumber: leg.legNumber,
+    carrier: leg.carrier,
+    status: leg.status,
+    trackingRef: leg.trackingRef,
+    zone: leg.zone,
+    driverName: leg.driverName,
+    checkpoints: raw
+      .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
+      .map(({ zone, status, note, ...rest }) => ({
+        zone,
+        status,
+        note,
+        // The writer stamps `timestamp`; the entity doc says `at`. Accept both
+        // so an older leg's checkpoints don't render with no time.
+        at: rest.timestamp ?? rest.at ?? null,
+      })),
+  };
+}
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -108,6 +156,7 @@ export class OrdersService {
     @InjectRepository(Payment) private readonly paymentRepo: Repository<Payment>,
     @InjectRepository(OrderStatusEvent)
     private readonly eventRepo: Repository<OrderStatusEvent>,
+    @InjectRepository(DeliveryLeg) private readonly legRepo: Repository<DeliveryLeg>,
     private readonly catalogueService: CatalogueService,
     private readonly inventoryService: InventoryService,
     private readonly permissionsService: PermissionsService,
@@ -116,6 +165,8 @@ export class OrdersService {
     private readonly wholesaleService: WholesaleService,
     private readonly accountingService: AccountingService,
     private readonly notificationsService: NotificationsService,
+    private readonly orderStatusBus: OrderStatusBus,
+    private readonly config: ConfigService,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
@@ -281,11 +332,12 @@ export class OrdersService {
   async initPaystackPayment(
     orderId: string,
     user: AuthenticatedUser,
+    emailOverride?: string,
   ): Promise<{ authorizationUrl: string; reference: string }> {
     const order = await this.findById(orderId, user);
     this.assertPayable(order, order.totalAmount);
+    const email = this.resolvePaystackEmail(order.customer?.email ?? user.email, emailOverride);
     const reference = `seentair-${order.id}-${randomUUID().slice(0, 8)}`;
-    const email = order.customer?.email ?? user.email;
     const init = await this.paystackService.initializeTransaction(
       email,
       order.totalAmount,
@@ -451,6 +503,7 @@ export class OrdersService {
     if (status === OrderStatus.DELIVERED) order.deliveredAt = new Date();
     const saved = await this.orderRepo.save(order);
     await this.eventRepo.save(this.eventRepo.create({ order: saved, status, note: note ?? null }));
+    this.orderStatusBus.emit(saved.id, status);
     // Fire-and-forget: notifications never block or fail the status change.
     void this.notificationsService.onOrderStatusChange(
       order.customer?.id ?? null,
@@ -489,6 +542,7 @@ export class OrdersService {
     }
     const order = await this.getOrderOrThrow(orderId);
     if (dto.shippingAddress !== undefined) order.shippingAddress = dto.shippingAddress;
+    if (dto.deliveryNote !== undefined) order.deliveryNote = dto.deliveryNote;
     if (dto.grossWeightKg !== undefined) order.grossWeightKg = dto.grossWeightKg;
     if (dto.palletRef !== undefined) order.palletRef = dto.palletRef;
     if (dto.generateQrStencil) {
@@ -502,17 +556,23 @@ export class OrdersService {
    * exception is an internal fulfilment state, so it reads as ORDER_RECEIVED
    * and internal notes are omitted; staff see everything.
    */
-  async tracking(
-    orderId: string,
-    user: AuthenticatedUser,
-  ): Promise<{ status: OrderStatus; deliveredAt: Date | null; events: OrderStatusEvent[] }> {
+  async tracking(orderId: string, user: AuthenticatedUser): Promise<OrderTracking> {
     const order = await this.findById(orderId, user);
     const events = await this.eventRepo.find({
       where: { order: { id: orderId } },
       order: { createdAt: 'ASC' },
     });
+    const legs = await this.legRepo.find({
+      where: { order: { id: orderId } },
+      order: { legNumber: 'ASC' },
+    });
     if (user.role !== RoleName.CUSTOMER) {
-      return { status: order.status, deliveredAt: order.deliveredAt, events };
+      return {
+        status: order.status,
+        deliveredAt: order.deliveredAt,
+        events,
+        deliveries: legs.map(toCustomerLeg),
+      };
     }
     const internal: string[] = [OrderStatus.STOCK_EXCEPTION, PAYMENT_EXCEPTION_EVENT];
     return {
@@ -520,6 +580,7 @@ export class OrdersService {
         order.status === OrderStatus.STOCK_EXCEPTION ? OrderStatus.ORDER_RECEIVED : order.status,
       deliveredAt: order.deliveredAt,
       events: events.filter((e) => !internal.includes(e.status)),
+      deliveries: legs.map(toCustomerLeg),
     };
   }
 
@@ -664,6 +725,10 @@ export class OrdersService {
   ): Promise<void> {
     const events = manager.getRepository(OrderStatusEvent);
     await events.save(events.create({ order, status, note }));
+    // Inside the transaction: a subscriber may re-fetch before commit and see
+    // the old status, but it re-reads on the next tick, so the notification is
+    // never wrong for long and cannot break the write.
+    this.orderStatusBus.emit(order.id, status);
   }
 
   /** The ledger items an order's lines touch — the set a multi-line writer locks up front. */
@@ -705,6 +770,21 @@ export class OrdersService {
         `No part-payments: amount must equal the order total (${order.totalAmount})`,
       );
     }
+  }
+
+  /**
+   * Where Paystack sends the charge receipt. The order customer's own address
+   * by default; an override exists because seeded accounts sit on the reserved
+   * `.test` TLD that Paystack's validator rejects, so local and CI runs have
+   * to supply a real inbox. Rejected outside non-production so a live charge
+   * can never be redirected away from the customer.
+   */
+  private resolvePaystackEmail(fallback: string, override?: string): string {
+    if (!override) return fallback;
+    if (!this.config.get<boolean>('paystack.emailOverrideAllowed')) {
+      throw new ForbiddenException('Paystack email override is not permitted on this environment');
+    }
+    return override;
   }
 
   /** Offline path: one transaction, then post-commit notifications. */

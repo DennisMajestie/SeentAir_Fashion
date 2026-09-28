@@ -4,6 +4,7 @@ import {
   Get,
   Headers,
   HttpCode,
+  MessageEvent,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -11,9 +12,11 @@ import {
   Query,
   RawBodyRequest,
   Req,
+  Sse,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
+import { Observable } from 'rxjs';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthenticatedUser } from '../../common/interfaces';
@@ -23,6 +26,7 @@ import { RecordPaymentDto } from './dto/record-payment.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrderChannel, OrderStatus } from './entities/order.entity';
 import { PaymentMethod } from './entities/payment.entity';
+import { OrderStatusBus } from './order-status.bus';
 import { OrdersService, PaystackWebhookEvent } from './orders.service';
 import { PaystackService } from './paystack.service';
 
@@ -32,6 +36,7 @@ export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,
     private readonly paystackService: PaystackService,
+    private readonly orderStatusBus: OrderStatusBus,
   ) {}
 
   // Access rules for the shared /orders resource are enforced inside
@@ -103,7 +108,7 @@ export class OrdersController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     if (dto.method === PaymentMethod.PAYSTACK) {
-      return this.ordersService.initPaystackPayment(id, user);
+      return this.ordersService.initPaystackPayment(id, user, dto.email);
     }
     return this.ordersService.recordOfflinePayment(id, dto, user);
   }
@@ -119,6 +124,22 @@ export class OrdersController {
   @ApiBearerAuth()
   tracking(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.ordersService.tracking(id, user);
+  }
+
+  /**
+   * Live push of this order's status changes. Emits a notification per change
+   * (never the tracking payload) so the client re-fetches /tracking over
+   * ordinary authenticated HTTP — one code path for the tracking shape, and an
+   * expiring token degrades the stream without losing data.
+   */
+  @Sse('orders/:id/stream')
+  @ApiBearerAuth()
+  async stream(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<Observable<MessageEvent>> {
+    await this.ordersService.findById(id, user);
+    return this.orderStatusBus.stream(id);
   }
 
   /** Stock exception (paid, short on stock): retry allocation now that stock has landed. */
