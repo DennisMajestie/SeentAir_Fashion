@@ -13,6 +13,13 @@ export interface ProductVariant {
   priceOverride: number | null;
   imageUrl: string | null;
   availabilityStatus: string;
+  /**
+   * Parent product name. The order endpoint does not send this yet, so every
+   * consumer must treat it as absent and fall back to the SKU. Widened here
+   * ahead of the matching API change so the fallback is the only path exercised
+   * until the backend starts populating it.
+   */
+  product?: { id: string; name: string } | null;
 }
 
 export interface Product {
@@ -32,6 +39,15 @@ export interface Order {
   paymentStatus: string;
   totalAmount: number;
   createdAt: string;
+  /**
+   * Shipping address as captured at checkout. The API has sent this since the
+   * address work; the interface was simply never widened to match.
+   */
+  shippingAddress?: ShippingAddress | null;
+  /** Set by the API the moment the order reaches `delivered`. */
+  deliveredAt?: string | null;
+  /** Courier/rider instructions staff recorded separately from the address. */
+  deliveryNote?: string | null;
   items: Array<{ variant: ProductVariant; quantity: number; unitPrice: number }>;
 }
 
@@ -50,11 +66,14 @@ export interface TokenPair {
   accessToken: string;
 }
 
-/** One corridor checkpoint on a delivery leg, as the API projects it. */
+/**
+ * One delivery checkpoint as the API projects it for a customer: status and
+ * time only. `zone` and `note` are deliberately absent from this type - the
+ * customer-facing projection omits them, because they are staff-authored free
+ * text and an internal corridor label.
+ */
 export interface DeliveryCheckpoint {
-  zone: string | null;
   status: string | null;
-  note: string | null;
   at: string | null;
 }
 
@@ -64,7 +83,7 @@ export interface DeliveryLegView {
   carrier: string;
   status: 'pending' | 'in_transit' | 'delivered' | 'failed';
   trackingRef: string | null;
-  zone: string | null;
+  /** Already reduced to a first name by the API. */
   driverName: string | null;
   checkpoints: DeliveryCheckpoint[];
 }
@@ -72,7 +91,8 @@ export interface DeliveryLegView {
 export interface OrderTracking {
   status: string;
   deliveredAt: string | null;
-  events: Array<{ status: string; note: string | null; createdAt: string }>;
+  /** `note` is optional: the customer projection omits staff-authored free text. */
+  events: Array<{ status: string; note?: string | null; createdAt: string }>;
   deliveries: DeliveryLegView[];
 }
 

@@ -80,6 +80,13 @@ export default () => ({
   paystack: {
     secretKey: process.env.PAYSTACK_SECRET_KEY ?? '',
     baseUrl: process.env.PAYSTACK_BASE_URL ?? 'https://api.paystack.co',
+    /**
+     * Where Paystack returns a customer after paying. The order's own tracking
+     * page is appended as a path, so one base covers every order. Empty means
+     * "not configured" and no callback is sent - Paystack then shows its own
+     * success page, which is what the customer was previously stranded on.
+     */
+    callbackUrlBase: process.env.PAYSTACK_CALLBACK_URL_BASE ?? '',
     // Lets a payment init send the receipt to an address other than the order
     // customer's. Seeded accounts use the reserved `.test` TLD that Paystack
     // rejects, so local/CI runs need a real inbox. Defaults off in production

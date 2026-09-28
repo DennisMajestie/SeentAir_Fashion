@@ -15,12 +15,15 @@ import { ThemeService } from './theme.service';
   selector: 'app-root',
   imports: [FormsModule, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
-    <header class="site-header" [class.scrolled]="scrolled()">
-      <div class="wrap-col header-inner">
-        <a routerLink="/" class="logo" aria-label="SEENTAIR Wholesale">
-          <img src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
-        </a>
-        @if (api.isLoggedIn) {
+    <!-- The sign-in screen renders its own branded header (ws-header), so the
+         site chrome is hidden while logged out. Without this the SEENTAIR
+         wordmark appeared twice, stacked, above the login form. -->
+    @if (api.isLoggedIn) {
+      <header class="site-header" [class.scrolled]="scrolled()">
+        <div class="wrap-col header-inner">
+          <a routerLink="/" class="logo" aria-label="SEENTAIR Wholesale">
+            <img src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
+          </a>
           <nav [class.open]="menuOpen()">
             <a
               routerLink="/"
@@ -40,9 +43,7 @@ import { ThemeService } from './theme.service';
             >
             <button class="link" (click)="menuOpen.set(false); logout()">Sign out</button>
           </nav>
-        }
-        <div class="header-actions">
-          @if (api.isLoggedIn) {
+          <div class="header-actions">
             <a
               class="theme-toggle"
               routerLink="/cart"
@@ -68,60 +69,60 @@ import { ThemeService } from './theme.service';
                 <span class="cart-badge">{{ cart.units() }}</span>
               }
             </a>
-          }
-          <button
-            class="theme-toggle"
-            type="button"
-            [attr.aria-label]="
-              theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
-            "
-            [attr.title]="theme.theme() === 'dark' ? 'Light mode' : 'Dark mode'"
-            (click)="theme.toggle()"
-          >
-            @if (theme.theme() === 'dark') {
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <circle cx="12" cy="12" r="4" />
-                <path
-                  d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
-                />
-              </svg>
-            } @else {
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
-              </svg>
-            }
-          </button>
-          @if (api.isLoggedIn) {
             <button
-              class="menu-toggle"
-              [attr.aria-expanded]="menuOpen()"
-              aria-label="Toggle menu"
-              (click)="toggleMenu()"
+              class="theme-toggle"
+              type="button"
+              [attr.aria-label]="
+                theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+              "
+              [attr.title]="theme.theme() === 'dark' ? 'Light mode' : 'Dark mode'"
+              (click)="theme.toggle()"
             >
-              <span></span><span></span><span></span>
+              @if (theme.theme() === 'dark') {
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <circle cx="12" cy="12" r="4" />
+                  <path
+                    d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+                  />
+                </svg>
+              } @else {
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+                </svg>
+              }
             </button>
-          }
+            @if (api.isLoggedIn) {
+              <button
+                class="menu-toggle"
+                [attr.aria-expanded]="menuOpen()"
+                aria-label="Toggle menu"
+                (click)="toggleMenu()"
+              >
+                <span></span><span></span><span></span>
+              </button>
+            }
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+    }
     <main>
       @if (!api.isLoggedIn) {
         <section class="auth-screen">
@@ -131,9 +132,54 @@ import { ThemeService } from './theme.service';
                 <img src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
                 <span class="chip">WHOLESALE PORTAL</span>
               </div>
-              <div class="secure">
-                <span class="material-symbols-outlined" aria-hidden="true">lock</span>
-                <span>B2B Secure</span>
+              <!-- The site header is hidden while logged out, so the theme
+                   toggle has to live here too or a dark-mode visitor has no
+                   way to switch before signing in. -->
+              <div class="header-actions">
+                <button
+                  class="theme-toggle"
+                  type="button"
+                  [attr.aria-label]="
+                    theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+                  "
+                  [attr.title]="theme.theme() === 'dark' ? 'Light mode' : 'Dark mode'"
+                  (click)="theme.toggle()"
+                >
+                  @if (theme.theme() === 'dark') {
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <circle cx="12" cy="12" r="4" />
+                      <path
+                        d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+                      />
+                    </svg>
+                  } @else {
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+                    </svg>
+                  }
+                </button>
+                <div class="secure">
+                  <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+                  <span>B2B Secure</span>
+                </div>
               </div>
             </div>
             <p class="lede">Authorised Retailers &amp; Stockists Only</p>

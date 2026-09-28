@@ -13,7 +13,8 @@ const STREAM_RETRY_MS = 30_000;
 
 interface TrackingEvent {
   status: string;
-  note: string | null;
+  /** Optional: a customer-facing projection omits staff-authored free text. */
+  note?: string | null;
   createdAt: string;
 }
 
@@ -201,8 +202,8 @@ interface Stage {
         <div class="leg-row">
           <span>Route vector</span>
           <span class="v">
-            @if (leg()?.zone) {
-              {{ leg()!.zone }}
+            @if (legZone()) {
+              {{ legZone() }}
             } @else {
               Aba workshop → consignee hub
             }
@@ -212,32 +213,27 @@ interface Stage {
           <span>Tracking waybill</span>
           <span class="v">{{ leg()?.trackingRef ?? 'Issued at dispatch' }}</span>
         </div>
-        @if (leg()?.driverName) {
+        @if (riderFirstName()) {
           <div class="leg-row">
-            <span>Rider</span><span class="v">{{ leg()!.driverName }}</span>
+            <span>Rider</span><span class="v">{{ riderFirstName() }}</span>
           </div>
         }
 
         @if (leg(); as l) {
           <div class="section-head" style="margin-top: var(--space-md)">
-            <h2>Corridor updates</h2>
+            <h2>Delivery updates</h2>
             <span class="aside">{{ l.checkpoints.length }}</span>
           </div>
           @if (l.checkpoints.length) {
             @for (cp of l.checkpoints; track $index) {
               <div class="leg-row">
                 <span>{{ cp.at | date: 'medium' }}</span>
-                <span class="v">
-                  {{ cp.zone ?? (cp.status ?? 'update').replaceAll('_', ' ') }}
-                  @if (cp.note) {
-                    <span class="muted small"> — {{ cp.note }}</span>
-                  }
-                </span>
+                <span class="v">{{ checkpointLabel(cp) }}</span>
               </div>
             }
           } @else {
             <p class="muted small" style="margin: 0">
-              No corridor updates recorded yet. They appear here the moment the factory or courier
+              No delivery updates recorded yet. They appear here the moment the factory or courier
               reports them.
             </p>
           }
@@ -472,6 +468,49 @@ export class TrackingPage implements OnInit, OnDestroy {
   /** The first delivery leg, if one has been booked. Public: the template reads it. */
   leg(): DeliveryLegView | null {
     return this.deliveries()[0] ?? null;
+  }
+
+  /**
+   * Courier zone, when the API still sends one. Optional by design: a
+   * customer-facing projection omits it, so this must degrade to null rather
+   * than render an empty cell or the string "undefined". Written to be safe to
+   * ship before or after that backend change.
+   */
+  legZone(): string | null {
+    const zone = (this.leg() as { zone?: string | null } | null)?.zone;
+    return zone && zone.trim() ? zone : null;
+  }
+
+  /** Rider, first name only. Returns null when the field is absent or blank. */
+  riderFirstName(): string | null {
+    const name = (this.leg()?.driverName ?? '').trim();
+    if (!name) return null;
+    return name.split(/\s+/)[0] || null;
+  }
+
+  /**
+   * Checkpoint label: status only. `zone` is an internal corridor label and
+   * `note` is free text typed by staff, so neither is shown to a wholesale
+   * buyer. Read defensively, so this renders correctly against both the
+   * current full projection and the reduced customer one.
+   */
+  checkpointLabel(cp: {
+    status?: string | null;
+    zone?: string | null;
+    note?: string | null;
+  }): string {
+    switch ((cp?.status ?? '').trim()) {
+      case 'on_track':
+        return 'On track';
+      case 'delayed':
+        return 'Delayed';
+      case 'arrived':
+        return 'Arrived';
+      case 'handed_over':
+        return 'Handed over';
+      default:
+        return 'Update';
+    }
   }
 
   private stageIndexOf(status: string): number {

@@ -3174,3 +3174,454 @@ textarea {
   flex: 1 1 320px;
   max-width: 460px;
 }
+
+/* ============================================================================
+   Order tracking page (apps/storefront/src/app/pages/order.page.ts)
+   Scoped under .ot by convention: this stylesheet is global, so every rule
+   here is prefixed and cannot leak into another page. Lives here rather than in
+   a component styles array because no other component in the app carries
+   scoped styles - pages style themselves from this file.
+   ========================================================================= */
+
+.ot {
+  padding-bottom: 6rem;
+}
+.ot-head {
+  margin-bottom: 1.2rem;
+}
+/* Spec: 11px, uppercase, .14em tracking, accent. Scoped rather than
+editing the shared .page-kicker, which other pages also use. */
+.ot-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin: 0 0 0.4rem;
+}
+.ot-title {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
+  line-height: 1;
+  margin: 0;
+}
+.ot-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.1rem;
+  margin-bottom: 1rem;
+}
+.ot-card-alert {
+  border-color: var(--line-2);
+}
+.ot-card-title {
+  font-size: var(--type-label-md);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin: 0 0 0.8rem;
+}
+/* --- badge + pulsing dot --- */
+.ot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: var(--type-label-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary);
+  background: var(--primary-tint);
+  border-radius: var(--radius-pill);
+  padding: 0.35rem 0.7rem;
+  margin: 0 0 0.7rem;
+}
+.ot-badge-ok {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+.ot-badge-danger {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.ot-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+  animation: ot-pulse 1.8s ease-in-out infinite;
+}
+@keyframes ot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+/* Motion is decoration; kill it for anyone who asked for less of it. */
+@media (prefers-reduced-motion: reduce) {
+  .ot-dot {
+    animation: none;
+  }
+}
+.ot-headline {
+  font-family: 'Oswald', sans-serif;
+  font-size: 1.3rem;
+  text-transform: uppercase;
+  margin: 0 0 0.35rem;
+}
+.ot-next {
+  color: var(--muted);
+  margin: 0 0 1rem;
+  font-size: var(--type-body-md);
+}
+/* --- segmented progress --- */
+.ot-progress {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 0.5rem;
+}
+.ot-seg {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--container-2);
+}
+.ot-seg.on {
+  background: var(--primary-fill);
+}
+.ot-seg.current {
+  box-shadow: 0 0 0 2px var(--primary-tint);
+}
+.ot-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: var(--type-label-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+/* --- rows --- */
+.ot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--line);
+}
+.ot-row:first-of-type {
+  border-top: none;
+}
+.ot-row-label {
+  color: var(--muted);
+  font-size: var(--type-label-md);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.ot-row-value {
+  text-align: right;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--type-body-md);
+}
+.ot-row-total .ot-row-value {
+  font-weight: 700;
+}
+.ot-paid {
+  color: var(--ok);
+  font-weight: 700;
+}
+.ot-eta {
+  margin-top: 0.4rem;
+}
+.ot-copy {
+  min-height: 32px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-pill);
+  background: var(--container);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--type-label-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+.ot-copy:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+/* --- timeline --- */
+.ot-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ot-node {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 0.8rem;
+  padding-bottom: 1.1rem;
+}
+.ot-node:last-child {
+  padding-bottom: 0;
+}
+/* Connector, filled only up to the current stage. */
+.ot-node:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 26px;
+  bottom: 2px;
+  width: 2px;
+  background: var(--container-2);
+}
+.ot-node.done:not(:last-child)::before,
+.ot-node.current:not(:last-child)::before {
+  background: var(--primary-fill);
+}
+.ot-node-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: var(--type-label-sm);
+  font-weight: 700;
+  background: var(--container-2);
+  color: var(--muted);
+  z-index: 1;
+}
+.ot-node.done .ot-node-dot {
+  background: var(--primary-fill);
+  color: var(--on-primary);
+}
+.ot-node.current .ot-node-dot {
+  background: var(--primary-fill);
+  color: var(--on-primary);
+  box-shadow: 0 0 0 4px var(--primary-tint);
+}
+.ot-node-body {
+  min-width: 0;
+}
+.ot-node-name {
+  font-weight: 700;
+  margin: 0 0 0.15rem;
+}
+.ot-node-blurb {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-body-sm);
+}
+.ot-node-time {
+  margin: 0.25rem 0 0;
+  font-size: var(--type-label-sm);
+  color: var(--primary);
+}
+.ot-pending-node .ot-node-name {
+  color: var(--muted);
+  font-weight: 600;
+}
+/* --- items --- */
+.ot-item {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 0.8rem;
+  align-items: start;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--line);
+}
+.ot-item:first-of-type {
+  border-top: none;
+}
+.ot-thumb {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: var(--radius-field);
+  background: var(--container);
+}
+.ot-thumb-empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.ot-item-body {
+  min-width: 0;
+}
+.ot-item-name {
+  font-weight: 700;
+  margin: 0 0 0.1rem;
+}
+.ot-item-variant {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-body-sm);
+}
+.ot-item-sku {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: var(--type-label-sm);
+}
+.ot-item-price {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ot-review {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+.ot-review input,
+.ot-review select {
+  min-height: 44px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-field);
+  background: var(--card);
+  color: var(--ink);
+  padding: 0 0.6rem;
+  font: inherit;
+}
+.ot-review input {
+  flex: 1 1 10rem;
+}
+.ot-checkpoints {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0.6rem 0 0;
+  border-top: 1px solid var(--line);
+}
+.ot-checkpoints li {
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.3rem 0;
+  font-size: var(--type-body-sm);
+}
+.ot-sublabel {
+  margin: 0.7rem 0 0;
+  font-size: var(--type-label-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.ot-cp-time {
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+.ot-alert {
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-field);
+  padding: 0.8rem;
+  margin-bottom: 1rem;
+  font-size: var(--type-body-sm);
+}
+.ot-alert-warn {
+  border-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+/* Success state after a Paystack return. Tokens only, so it holds up in dark mode. */
+.ot-alert-ok {
+  border-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+}
+.ot-alert-title {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+.ot-alert p {
+  margin: 0 0 0.5rem;
+}
+.ot-alert-reason {
+  color: var(--danger);
+}
+.ot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+.ot-ref,
+.ot-live,
+.ot-empty {
+  color: var(--muted);
+}
+.ot-ok {
+  color: var(--ok);
+}
+.ot-bad {
+  color: var(--danger);
+}
+/* Skeleton shapes that only the tracking page needs. The generic
+   .skeleton / .sk-line / .sk-row / .sk-av primitives stay global and are
+   reused as-is; only these new shapes are namespaced here. */
+.ot-sk-pill {
+  width: 120px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  margin-bottom: 0.7rem;
+}
+.ot-sk-seg-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-top: 0.6rem;
+}
+.ot-sk-seg {
+  height: 6px;
+  border-radius: var(--radius-pill);
+}
+.ot-sk-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-field);
+}
+/* .ot-mono, NOT .mono: the global .mono is an uppercase tracked label and
+   redefining it here would restyle every other page that uses it. */
+.ot-mono {
+  font-family: 'Inter', monospace;
+}
+/* --- sticky help dock --- */
+.ot-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.7rem var(--wrap-x) calc(0.7rem + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--canvas) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+}
+.ot-dock-btn {
+  width: 100%;
+  max-width: 430px;
+}
+.ot-dock-hours {
+  margin: 0;
+  font-size: var(--type-label-sm);
+  color: var(--muted);
+}
+@media (min-width: 768px) {
+  .ot-dock-btn {
+    max-width: 520px;
+  }
+}

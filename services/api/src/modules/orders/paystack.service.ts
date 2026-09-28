@@ -28,6 +28,7 @@ export class PaystackService {
     email: string,
     amountMajor: number,
     reference: string,
+    callbackUrl?: string | null,
   ): Promise<PaystackInitResult> {
     this.assertConfigured();
     const response = await fetch(`${this.baseUrl}/transaction/initialize`, {
@@ -41,6 +42,11 @@ export class PaystackService {
         // Paystack expects the minor unit (kobo for NGN).
         amount: Math.round(amountMajor * 100),
         reference,
+        // Where Paystack returns the customer after paying. Without it the buyer
+        // is stranded on Paystack's own success page with no route home. This is
+        // a navigation hint only - the order is marked paid by the webhook, not
+        // by this redirect.
+        ...(callbackUrl ? { callback_url: callbackUrl } : {}),
       }),
     });
     const body = (await response.json()) as {

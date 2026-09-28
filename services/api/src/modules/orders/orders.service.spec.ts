@@ -172,15 +172,25 @@ describe('OrdersService — payment rules', () => {
     findByRoles: jest.fn(async () => [{ id: 'staff-1' }, { id: 'staff-2' }]),
   };
   const permissionsService = {
-    getAccessLevel: jest.fn(async (_role: RoleName, module: ModuleName) => {
-      if (module === ModuleName.PAYMENTS) return AccessLevel.FULL;
+    getAccessLevel: jest.fn(async (_role: RoleName, _module: ModuleName): Promise<AccessLevel> => {
+      if (_module === ModuleName.PAYMENTS) return AccessLevel.FULL;
       return AccessLevel.VIEW;
     }),
   };
-  // Paystack email override is permitted by default outside production. One
-  // stable object so tests can flip the flag the injected instance reads.
+  // Paystack email override is permitted by default outside production, and the
+  // callback base is blank unless a test sets it. One stable object so tests can
+  // flip what the injected instance reads.
   let emailOverrideAllowed = true;
-  const config = { get: jest.fn(() => emailOverrideAllowed) as (k: string) => unknown };
+  const configValues: Record<string, unknown> = {
+    'paystack.emailOverrideAllowed': emailOverrideAllowed,
+    'paystack.callbackUrlBase': '',
+  };
+  const config = {
+    get: jest.fn((key: string) => {
+      if (key === 'paystack.emailOverrideAllowed') return emailOverrideAllowed;
+      return configValues[key];
+    }) as (k: string) => unknown,
+  };
   const paystackService = {
     configured: true,
     initializeTransaction: jest.fn(async (email: string, amount: number, reference: string) => ({
@@ -306,10 +316,13 @@ describe('OrdersService — payment rules', () => {
   it('charges the order customer when no email override is given', async () => {
     h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
     await service.initPaystackPayment('o1', customer);
+    // 4th arg: the Paystack return URL. null here because the suite's config
+    // stub has no callback base configured.
     expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
       'ada@seentair.test',
       17000,
       expect.stringMatching(/^seentair-o1-/),
+      null,
     );
   });
 
@@ -320,7 +333,48 @@ describe('OrdersService — payment rules', () => {
       'real.inbox@example.com',
       17000,
       expect.stringMatching(/^seentair-o1-/),
+      null,
     );
+  });
+
+  describe('Paystack return URL', () => {
+    it('sends the order tracking page as the callback when a base is configured', async () => {
+      // Mirrors mail.resetUrlBase: the API owns the URL so a client cannot turn
+      // it into an open redirect.
+      configValues['paystack.callbackUrlBase'] = 'https://seent-air-fashion.vercel.app';
+      h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+      await service.initPaystackPayment('o1', customer);
+      expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+        'ada@seentair.test',
+        17000,
+        expect.any(String),
+        'https://seent-air-fashion.vercel.app/o1',
+      );
+    });
+
+    it('does not double up slashes when the base has a trailing one', async () => {
+      configValues['paystack.callbackUrlBase'] = 'https://app.test/';
+      h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+      await service.initPaystackPayment('o1', customer);
+      expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+        'ada@seentair.test',
+        17000,
+        expect.any(String),
+        'https://app.test/o1',
+      );
+    });
+
+    it('sends no callback at all when the base is blank', async () => {
+      configValues['paystack.callbackUrlBase'] = '';
+      h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+      await service.initPaystackPayment('o1', customer);
+      expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+        'ada@seentair.test',
+        17000,
+        expect.any(String),
+        null,
+      );
+    });
   });
 
   it('the override is refused where it is not allowed, so a live charge keeps the customer address', async () => {
@@ -575,6 +629,140 @@ describe('OrdersService — payment rules', () => {
     const forStaff = await service.tracking('o1', finance);
     expect(forStaff.status).toBe(OrderStatus.STOCK_EXCEPTION);
     expect(forStaff.events).toHaveLength(3);
+  });
+
+  describe('tracking audience is derived server-side', () => {
+    const seededNote = 'INTERNAL-NOTE-driver-swapped';
+    const seededZone = 'INTERNAL-ZONE-DEPOT-7';
+
+    beforeEach(() => {
+      h.order()['status'] = OrderStatus.SHIPPED;
+      h.legRepo.find.mockResolvedValue([
+        {
+          legNumber: 1,
+          carrier: 'gigl',
+          status: 'in_transit',
+          trackingRef: 'GIGL-1',
+          zone: seededZone,
+          driverName: 'Ade Okafor',
+          driverPhone: '+2348000000000',
+          cost: 4200,
+          checkpoints: [
+            {
+              zone: seededZone,
+              status: 'on_track',
+              note: seededNote,
+              sealId: 'SEAL-77',
+              driverName: 'Ade Okafor',
+              timestamp: '2026-09-28T07:00:00.000Z',
+            },
+          ],
+        },
+      ] as never);
+    });
+
+    it('gives a customer the reduced leg, with no zone, note or surname', async () => {
+      const res = await service.tracking('o1', customer);
+      const json = JSON.stringify(res);
+      expect(json).not.toContain(seededNote);
+      expect(json).not.toContain(seededZone);
+      expect(json).not.toContain('Okafor');
+      expect(res.deliveries[0].driverName).toBe('Ade');
+    });
+
+    it('gives staff the full leg', async () => {
+      const res = await service.tracking('o1', finance);
+      const leg = res.deliveries[0] as unknown as Record<string, unknown>;
+      expect(leg['driverName']).toBe('Ade Okafor');
+      expect(leg['driverPhone']).toBe('+2348000000000');
+      expect(leg['zone']).toBe(seededZone);
+      expect(leg['cost']).toBe(4200);
+      expect((leg['checkpoints'] as Array<Record<string, unknown>>)[0]['note']).toBe(seededNote);
+    });
+
+    it('ignores a client-supplied audience and still returns the customer shape', async () => {
+      // The endpoint takes no such parameter. Even if a caller appends one, or
+      // forges a body/header, nothing reads it - the audience comes from the
+      // caller's own permission row.
+      const asCustomer = await service.tracking('o1', customer);
+      const json = JSON.stringify(asCustomer);
+      expect(json).not.toContain(seededNote);
+      expect(json).not.toContain(seededZone);
+      expect(json).not.toContain('Okafor');
+      expect(json).not.toContain('SEAL-77');
+    });
+
+    it('refuses a role with no order access outright, before shaping anything', async () => {
+      // A role with no grant is rejected by findById, so it never reaches the
+      // audience decision. That is stricter than defaulting it to 'customer'.
+      permissionsService.getAccessLevel.mockResolvedValue(AccessLevel.NONE);
+      await expect(
+        service.tracking('o1', { ...customer, role: RoleName.MANAGEMENT }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('gives a buyer with only OWN access the customer shape, not the staff one', async () => {
+      // Fail-closed by rank: OWN(1) < VIEW(2), so a WHOLESALER looking at their
+      // own order is treated as a buyer, not as staff.
+      permissionsService.getAccessLevel.mockResolvedValue(AccessLevel.OWN);
+      const res = await service.tracking('o1', {
+        ...customer,
+        role: RoleName.WHOLESALER,
+      });
+      const json = JSON.stringify(res);
+      expect(json).not.toContain(seededNote);
+      expect(json).not.toContain(seededZone);
+      expect(json).not.toContain('Okafor');
+    });
+
+    it('gives staff only VIEW or above the staff shape', async () => {
+      permissionsService.getAccessLevel.mockResolvedValue(AccessLevel.VIEW);
+      const res = await service.tracking('o1', finance);
+      expect(JSON.stringify(res)).toContain(seededNote);
+    });
+
+    describe('status event notes are staff-side', () => {
+      const seededEventNote = 'INTERNAL-NOTE-payout-hold-pending-teller';
+
+      beforeEach(() => {
+        h.order()['status'] = OrderStatus.PROCESSING;
+        h.eventRepo.find.mockResolvedValue([
+          {
+            status: 'order_received',
+            note: 'Paid in full via paystack',
+            createdAt: '2026-09-28T10:01:00.000Z',
+          },
+          {
+            status: 'processing',
+            note: seededEventNote,
+            createdAt: '2026-09-28T11:00:00.000Z',
+          },
+        ] as never);
+      });
+
+      it('omits the note from the customer payload entirely', async () => {
+        const res = await service.tracking('o1', customer);
+        expect(JSON.stringify(res)).not.toContain(seededEventNote);
+      });
+
+      it('leaves each customer event with only status and createdAt', async () => {
+        const res = await service.tracking('o1', customer);
+        for (const e of res.events) {
+          expect(Object.keys(e).sort()).toEqual(['createdAt', 'status']);
+        }
+      });
+
+      it('still shows the status and time a customer needs', async () => {
+        const res = await service.tracking('o1', customer);
+        expect(res.events.map((e) => e.status)).toEqual(['order_received', 'processing']);
+        expect(res.events[0].createdAt).toBe('2026-09-28T10:01:00.000Z');
+      });
+
+      it('keeps the note for staff', async () => {
+        const res = await service.tracking('o1', finance);
+        expect(JSON.stringify(res)).toContain(seededEventNote);
+      });
+    });
   });
 
   // ---- tracking flow (unchanged rules) ----

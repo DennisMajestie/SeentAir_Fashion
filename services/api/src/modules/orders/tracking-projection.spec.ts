@@ -1,5 +1,16 @@
 import { DeliveryLeg, DeliveryLegStatus } from '../logistics/entities/delivery-leg.entity';
-import { CustomerDeliveryLeg, toCustomerLeg } from './orders.service';
+import { CustomerDeliveryLeg, StaffDeliveryLeg, toCustomerLeg, toStaffLeg } from './orders.service';
+
+/**
+ * Sentinel values that must never appear in a customer payload. The whole point
+ * of the audience split is that staff-authored corridor detail stays staff-side,
+ * so the assertions below are on the serialised string, not on key presence:
+ * a field that is present-but-null would still leak through a naive UI.
+ */
+const SEEDED_NOTE = 'INTERNAL-NOTE-driver-swapped-do-not-tell-customer';
+const SEEDED_ZONE = 'INTERNAL-ZONE-DEPOT-7';
+const SEEDED_DRIVER = 'Ade Okafor';
+const SEEDED_SURNAME = 'Okafor';
 
 const leg = (over: Partial<DeliveryLeg> = {}): DeliveryLeg =>
   ({
@@ -8,8 +19,8 @@ const leg = (over: Partial<DeliveryLeg> = {}): DeliveryLeg =>
     carrier: 'gigl',
     status: DeliveryLegStatus.IN_TRANSIT,
     trackingRef: 'GIGL-8891',
-    zone: 'Lagos-Ikeja',
-    driverName: 'Ade',
+    zone: SEEDED_ZONE,
+    driverName: SEEDED_DRIVER,
     driverPhone: '+2348000000000',
     // Staff-only fields that must never reach a customer.
     cost: 4200,
@@ -17,11 +28,11 @@ const leg = (over: Partial<DeliveryLeg> = {}): DeliveryLeg =>
     createdBy: 'staff-1',
     checkpoints: [
       {
-        zone: 'Ikeja depot',
+        zone: SEEDED_ZONE,
         status: 'on_track',
         sealId: 'SEAL-77',
-        note: 'Loaded',
-        driverName: 'Ade',
+        note: SEEDED_NOTE,
+        driverName: SEEDED_DRIVER,
         driverPhone: '+2348000000000',
         timestamp: '2026-09-28T07:00:00.000Z',
       },
@@ -37,26 +48,34 @@ describe('toCustomerLeg', () => {
       carrier: 'gigl',
       status: DeliveryLegStatus.IN_TRANSIT,
       trackingRef: 'GIGL-8891',
-      zone: 'Lagos-Ikeja',
       driverName: 'Ade',
     });
-    expect(out.checkpoints).toHaveLength(1);
-    expect(out.checkpoints[0]).toEqual({
-      zone: 'Ikeja depot',
-      status: 'on_track',
-      note: 'Loaded',
-      at: '2026-09-28T07:00:00.000Z',
-    });
+    expect(out.checkpoints).toEqual([{ status: 'on_track', at: '2026-09-28T07:00:00.000Z' }]);
   });
 
-  it('keeps internal cost, consignment contents and driver phone staff-side', () => {
-    const out = toCustomerLeg(leg()) as unknown as Record<string, unknown>;
-    expect(out).not.toHaveProperty('cost');
-    expect(out).not.toHaveProperty('contents');
-    expect(out).not.toHaveProperty('driverPhone');
-    expect(out).not.toHaveProperty('createdBy');
-    expect(JSON.stringify(out)).not.toContain('SEAL-77');
-    expect(JSON.stringify(out)).not.toContain('+2348000000000');
+  it('reduces a full driver name to a first name', () => {
+    expect(toCustomerLeg(leg()).driverName).toBe('Ade');
+  });
+
+  it('serialises to a payload containing none of the seeded internal values', () => {
+    // Requirement: assert on the raw string, so a present-but-null field or a
+    // nested leak would still fail this.
+    const json = JSON.stringify(toCustomerLeg(leg()));
+    expect(json).not.toContain(SEEDED_NOTE);
+    expect(json).not.toContain(SEEDED_ZONE);
+    expect(json).not.toContain(SEEDED_SURNAME);
+    expect(json).not.toContain('Okafor');
+    // and the internal fields staff rely on
+    expect(json).not.toContain('SEAL-77');
+    expect(json).not.toContain('+2348000000000');
+    expect(json).not.toContain('4200');
+    expect(json).not.toContain('SEEN-1');
+    expect(json).not.toContain('staff-1');
+  });
+
+  it('has no zone or note keys at all on a checkpoint', () => {
+    const cp = toCustomerLeg(leg()).checkpoints[0];
+    expect(Object.keys(cp).sort()).toEqual(['at', 'status']);
   });
 
   it('never leaks the eagerly-loaded order relation', () => {
@@ -74,5 +93,37 @@ describe('toCustomerLeg', () => {
   it('tolerates null or malformed checkpoints', () => {
     expect(toCustomerLeg(leg({ checkpoints: null })).checkpoints).toEqual([]);
     expect(toCustomerLeg(leg({ checkpoints: [null, 'x', 7] as never })).checkpoints).toEqual([]);
+  });
+
+  it('handles a null driver name', () => {
+    expect(toCustomerLeg(leg({ driverName: null })).driverName).toBeNull();
+    expect(toCustomerLeg(leg({ driverName: '   ' })).driverName).toBeNull();
+  });
+});
+
+describe('toStaffLeg', () => {
+  it('keeps the full corridor detail ops needs', () => {
+    const out: StaffDeliveryLeg = toStaffLeg(leg());
+    expect(out.driverName).toBe(SEEDED_DRIVER); // full name, not reduced
+    expect(out.driverPhone).toBe('+2348000000000');
+    expect(out.zone).toBe(SEEDED_ZONE);
+    expect(out.cost).toBe(4200);
+    expect(out.contents).toEqual([{ sku: 'SEEN-1', quantity: 2 }]);
+    expect(out.createdBy).toBe('staff-1');
+    expect(out.checkpoints[0]).toMatchObject({
+      zone: SEEDED_ZONE,
+      status: 'on_track',
+      note: SEEDED_NOTE,
+      sealId: 'SEAL-77',
+      driverName: SEEDED_DRIVER,
+    });
+  });
+
+  it('carries the same status, ref and leg number as the customer view', () => {
+    const c = toCustomerLeg(leg());
+    const s = toStaffLeg(leg());
+    expect(s.status).toBe(c.status);
+    expect(s.trackingRef).toBe(c.trackingRef);
+    expect(s.legNumber).toBe(c.legNumber);
   });
 });
