@@ -172,8 +172,8 @@ describe('OrdersService — payment rules', () => {
     findByRoles: jest.fn(async () => [{ id: 'staff-1' }, { id: 'staff-2' }]),
   };
   const permissionsService = {
-    getAccessLevel: jest.fn(async (_role: RoleName, module: ModuleName) => {
-      if (module === ModuleName.PAYMENTS) return AccessLevel.FULL;
+    getAccessLevel: jest.fn(async (_role: RoleName, _module: ModuleName): Promise<AccessLevel> => {
+      if (_module === ModuleName.PAYMENTS) return AccessLevel.FULL;
       return AccessLevel.VIEW;
     }),
   };
@@ -575,6 +575,77 @@ describe('OrdersService — payment rules', () => {
     const forStaff = await service.tracking('o1', finance);
     expect(forStaff.status).toBe(OrderStatus.STOCK_EXCEPTION);
     expect(forStaff.events).toHaveLength(3);
+  });
+
+  describe('tracking audience is derived server-side', () => {
+    const seededNote = 'INTERNAL-NOTE-driver-swapped';
+    const seededZone = 'INTERNAL-ZONE-DEPOT-7';
+
+    beforeEach(() => {
+      h.order()['status'] = OrderStatus.SHIPPED;
+      h.legRepo.find.mockResolvedValue([
+        {
+          legNumber: 1,
+          carrier: 'gigl',
+          status: 'in_transit',
+          trackingRef: 'GIGL-1',
+          zone: seededZone,
+          driverName: 'Ade Okafor',
+          driverPhone: '+2348000000000',
+          cost: 4200,
+          checkpoints: [
+            {
+              zone: seededZone,
+              status: 'on_track',
+              note: seededNote,
+              sealId: 'SEAL-77',
+              driverName: 'Ade Okafor',
+              timestamp: '2026-09-28T07:00:00.000Z',
+            },
+          ],
+        },
+      ] as never);
+    });
+
+    it('gives a customer the reduced leg, with no zone, note or surname', async () => {
+      const res = await service.tracking('o1', customer);
+      const json = JSON.stringify(res);
+      expect(json).not.toContain(seededNote);
+      expect(json).not.toContain(seededZone);
+      expect(json).not.toContain('Okafor');
+      expect(res.deliveries[0].driverName).toBe('Ade');
+    });
+
+    it('gives staff the full leg', async () => {
+      const res = await service.tracking('o1', finance);
+      const leg = res.deliveries[0] as unknown as Record<string, unknown>;
+      expect(leg['driverName']).toBe('Ade Okafor');
+      expect(leg['driverPhone']).toBe('+2348000000000');
+      expect(leg['zone']).toBe(seededZone);
+      expect(leg['cost']).toBe(4200);
+      expect((leg['checkpoints'] as Array<Record<string, unknown>>)[0]['note']).toBe(seededNote);
+    });
+
+    it('ignores a client-supplied audience and still returns the customer shape', async () => {
+      // The endpoint takes no such parameter. Even if a caller appends one, or
+      // forges a body/header, nothing reads it - the audience comes from the
+      // caller's own permission row.
+      const asCustomer = await service.tracking('o1', customer);
+      const json = JSON.stringify(asCustomer);
+      expect(json).not.toContain(seededNote);
+      expect(json).not.toContain(seededZone);
+      expect(json).not.toContain('Okafor');
+      expect(json).not.toContain('SEAL-77');
+    });
+
+    it('refuses a role with no order access outright, before shaping anything', async () => {
+      // A role with no grant is rejected by findById, so it never reaches the
+      // audience decision. That is stricter than defaulting it to 'customer'.
+      permissionsService.getAccessLevel.mockResolvedValue(AccessLevel.NONE);
+      await expect(
+        service.tracking('o1', { ...customer, role: RoleName.MANAGEMENT }),
+      ).rejects.toThrow(ForbiddenException);
+    });
   });
 
   // ---- tracking flow (unchanged rules) ----

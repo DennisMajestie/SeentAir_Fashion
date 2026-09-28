@@ -103,48 +103,119 @@ interface WebhookResult {
   alert?: StaffAlert;
 }
 
-/** One leg of a multi-leg delivery, as a customer is allowed to see it. */
+/** Who a tracking response is being shaped for. Derived server-side from the
+ *  caller's effective access; never from anything the client sends. */
+export type TrackingAudience = 'customer' | 'staff';
+
+/** A checkpoint as a customer may see it. `zone` and `note` are absent by
+ *  design: zone is an internal corridor label and `note` is free text typed by
+ *  staff, which is not guaranteed to be customer-safe. */
+export interface CustomerCheckpoint {
+  status: string | null;
+  at: string | null;
+}
+
+/** One leg of a multi-leg delivery, as a customer is allowed to see it.
+ *  `driverName` is reduced to a first name for the same reason. */
 export interface CustomerDeliveryLeg {
   legNumber: number;
   carrier: string;
   status: DeliveryLegStatus;
   trackingRef: string | null;
-  zone: string | null;
   driverName: string | null;
-  /** Corridor's live checkpoints: [{ zone, status, note, at }]. */
-  checkpoints: Array<Record<string, unknown>>;
+  checkpoints: CustomerCheckpoint[];
 }
 
-export interface OrderTracking {
+/** The staff view keeps everything an ops user needs to run a delivery. */
+export interface StaffCheckpoint {
+  zone: unknown;
+  status: string | null;
+  note: string | null;
+  sealId: string | null;
+  driverName: string | null;
+  driverPhone: string | null;
+  at: string | null;
+}
+
+export interface StaffDeliveryLeg extends Omit<CustomerDeliveryLeg, 'checkpoints'> {
+  zone: string | null;
+  driverPhone: string | null;
+  cost: number | null;
+  contents: unknown | null;
+  createdBy: string | null;
+  checkpoints: StaffCheckpoint[];
+}
+
+export interface OrderTracking<T = CustomerDeliveryLeg> {
   status: OrderStatus;
   deliveredAt: Date | null;
   events: OrderStatusEvent[];
-  deliveries: CustomerDeliveryLeg[];
+  deliveries: T[];
 }
 
-/** DeliveryLeg is loaded `eager: true` with its order, so it must never reach a
- *  customer as an entity — project to CustomerDeliveryLeg instead. `cost`,
- *  `contents`, `createdBy`, `driverPhone` and the internal `sealId` stay
- *  staff-side. */
-export function toCustomerLeg(leg: DeliveryLeg): CustomerDeliveryLeg {
+/** First name only. A rider's full name and phone are staff-side detail. */
+function firstNameOnly(name: string | null): string | null {
+  const raw = (name ?? '').trim();
+  if (!raw) return null;
+  return raw.split(/\s+/)[0] || null;
+}
+
+function checkpointsOf(leg: DeliveryLeg): Array<Record<string, unknown>> {
   const raw = Array.isArray(leg.checkpoints) ? (leg.checkpoints as Array<unknown>) : [];
+  return raw.filter((c): c is Record<string, unknown> => !!c && typeof c === 'object');
+}
+
+/** The writer stamps `timestamp`; the entity doc says `at`. Accept both so an
+ *  older leg's checkpoints do not render with no time. */
+function checkpointTime(cp: Record<string, unknown>): string | null {
+  const t = cp['timestamp'] ?? cp['at'];
+  return t === undefined || t === null ? null : String(t);
+}
+
+/** Customer shape. `zone` and `note` are dropped rather than mapped: no
+ *  transformation makes staff-authored free text safe to show a customer. */
+export function toCustomerLeg(leg: DeliveryLeg): CustomerDeliveryLeg {
   return {
     legNumber: leg.legNumber,
     carrier: leg.carrier,
     status: leg.status,
     trackingRef: leg.trackingRef,
-    zone: leg.zone,
+    driverName: firstNameOnly(leg.driverName),
+    checkpoints: checkpointsOf(leg).map((cp) => ({
+      status: cp['status'] === undefined || cp['status'] === null ? null : String(cp['status']),
+      at: checkpointTime(cp),
+    })),
+  };
+}
+
+/** Staff shape: everything the ops dashboard and the GIGL workflow need. */
+export function toStaffLeg(leg: DeliveryLeg): StaffDeliveryLeg {
+  return {
+    legNumber: leg.legNumber,
+    carrier: leg.carrier,
+    status: leg.status,
+    trackingRef: leg.trackingRef,
     driverName: leg.driverName,
-    checkpoints: raw
-      .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
-      .map(({ zone, status, note, ...rest }) => ({
-        zone,
-        status,
-        note,
-        // The writer stamps `timestamp`; the entity doc says `at`. Accept both
-        // so an older leg's checkpoints don't render with no time.
-        at: rest.timestamp ?? rest.at ?? null,
-      })),
+    driverPhone: leg.driverPhone,
+    zone: leg.zone,
+    cost: leg.cost,
+    contents: leg.contents,
+    createdBy: leg.createdBy,
+    checkpoints: checkpointsOf(leg).map((cp) => ({
+      zone: cp['zone'] ?? null,
+      status: cp['status'] === undefined || cp['status'] === null ? null : String(cp['status']),
+      note: cp['note'] === undefined || cp['note'] === null ? null : String(cp['note']),
+      sealId: cp['sealId'] === undefined || cp['sealId'] === null ? null : String(cp['sealId']),
+      driverName:
+        cp['driverName'] === undefined || cp['driverName'] === null
+          ? null
+          : String(cp['driverName']),
+      driverPhone:
+        cp['driverPhone'] === undefined || cp['driverPhone'] === null
+          ? null
+          : String(cp['driverPhone']),
+      at: checkpointTime(cp),
+    })),
   };
 }
 
@@ -568,9 +639,18 @@ export class OrdersService {
   }
 
   /**
-   * Tracking timeline. Customers see the confirmed progression only: a stock
-   * exception is an internal fulfilment state, so it reads as ORDER_RECEIVED
-   * and internal notes are omitted; staff see everything.
+   * Tracking timeline.
+   *
+   * The audience is derived here from the caller's own effective access and
+   * nothing else. There is deliberately no query, body or header input: a
+   * customer cannot ask for the staff shape by sending `?audience=staff`,
+   * because no such parameter is ever read.
+   *
+   * Customers get the confirmed progression only — a stock exception is an
+   * internal fulfilment state, so it reads as ORDER_RECEIVED, and delivery
+   * detail is reduced to what is safe to show. Staff, who have at least VIEW
+   * access across the module, get the full leg including corridor checkpoints
+   * and driver contact.
    */
   async tracking(orderId: string, user: AuthenticatedUser): Promise<OrderTracking> {
     const order = await this.findById(orderId, user);
@@ -582,12 +662,13 @@ export class OrdersService {
       where: { order: { id: orderId } },
       order: { legNumber: 'ASC' },
     });
-    if (user.role !== RoleName.CUSTOMER) {
+    const audience: TrackingAudience = await this.trackingAudience(user);
+    if (audience === 'staff') {
       return {
         status: order.status,
         deliveredAt: order.deliveredAt,
         events,
-        deliveries: legs.map(toCustomerLeg),
+        deliveries: legs.map(toStaffLeg),
       };
     }
     const internal: string[] = [OrderStatus.STOCK_EXCEPTION, PAYMENT_EXCEPTION_EVENT];
@@ -598,6 +679,16 @@ export class OrdersService {
       events: events.filter((e) => !internal.includes(e.status)),
       deliveries: legs.map(toCustomerLeg),
     };
+  }
+
+  /**
+   * Staff see delivery internals; everyone else is treated as a customer.
+   * Access is resolved from the role's permission matrix, not from the request.
+   */
+  private async trackingAudience(user: AuthenticatedUser): Promise<TrackingAudience> {
+    if (user.role === RoleName.CUSTOMER) return 'customer';
+    const access = await this.effectiveAccess(user);
+    return ACCESS_RANK[access] >= ACCESS_RANK[AccessLevel.VIEW] ? 'staff' : 'customer';
   }
 
   /**

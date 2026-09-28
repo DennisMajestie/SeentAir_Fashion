@@ -123,6 +123,9 @@ export class OrdersController {
   @Get('orders/:id/tracking')
   @ApiBearerAuth()
   tracking(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    // No query/body/header parameter is accepted here. The customer vs staff
+    // shape is decided inside the service from the caller's own permissions, so
+    // there is nothing for a client to send to influence it.
     return this.ordersService.tracking(id, user);
   }
 
