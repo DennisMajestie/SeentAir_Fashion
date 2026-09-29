@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { CartService } from '../cart.service';
 import { environment } from '../../environments/environment';
 
-/** Cart — Stitch approved screen, stage 01 "Review": manifest with
+/** Cart, Stitch approved screen, stage 01 "Review": manifest with
     thumbnails, conditional policy notices, summary card with gradient
     total, sticky CTA footer. Checkout owns sign-in + final payment. */
 @Component({
@@ -91,7 +91,7 @@ import { environment } from '../../environments/environment';
           </svg>
           <span>
             <span class="notice-title">Made to order</span>
-            One or more pieces are produced on request — sample approval and a production run happen
+            One or more pieces are produced on request, sample approval and a production run happen
             before dispatch, so allow extra time.
           </span>
         </div>
@@ -119,7 +119,7 @@ import { environment } from '../../environments/environment';
               <div class="m-body">
                 <p class="sku-line">{{ item.sku }}</p>
                 <p class="m-name">{{ item.productName }}</p>
-                <p class="muted small">{{ item.size || '—' }} / {{ item.colour || '—' }}</p>
+                <p class="muted small">{{ item.size || '-' }} / {{ item.colour || '-' }}</p>
               </div>
               <span class="qty-stepper">
                 <button type="button" (click)="cart.setQuantity(item.variantId, item.quantity - 1)">

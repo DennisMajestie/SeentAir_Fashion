@@ -7,7 +7,7 @@ import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
 import { SeentairTiltCardComponent } from '../tilt-card.component';
 
-/** Product detail — Stitch PDP layout: gallery left; kicker, Anton title,
+/** Product detail, Stitch PDP layout: gallery left; kicker, Anton title,
     price, spec-chip size/colour selectors, qty stepper, full-width acid CTA,
     reviews as a bordered log. */
 @Component({
@@ -37,7 +37,7 @@ import { SeentairTiltCardComponent } from '../tilt-card.component';
           </div>
         </app-tilt-card>
         <div class="detail-body">
-          <p class="sku-line">{{ selected()?.sku || '—' }} // {{ p.category }}</p>
+          <p class="sku-line">{{ selected()?.sku || '-' }} // {{ p.category }}</p>
           <h1>{{ p.name }}</h1>
           @if (reviews().length > 0) {
             <p class="stars-line">
@@ -104,29 +104,29 @@ import { SeentairTiltCardComponent } from '../tilt-card.component';
               @if (!selected()) {
                 This size/colour combination is unavailable
               } @else if (selectedSoldOut()) {
-                Sold out — {{ selected()!.size }} / {{ selected()!.colour }}
+                Sold out: {{ selected()!.size }} / {{ selected()!.colour }}
               } @else if (selectedMadeToOrder()) {
-                Order — made to your measurements
+                Order: made to your measurements
               } @else {
-                Add to cart — ₦{{ currentPrice() * quantity | number: '1.0-2' }}
+                Add to cart: ₦{{ currentPrice() * quantity | number: '1.0-2' }}
               }
             </button>
           </p>
           @if (selectedMadeToOrder()) {
             <p class="muted small">
-              Cut in the Aba atelier after your order — allow a 3-week lead time. Custom pieces are
+              Cut in the Aba atelier after your order, allow a 3-week lead time. Custom pieces are
               excluded from the 12-hour returns window.
             </p>
           }
           @if (added()) {
-            <p class="success">Added — <a routerLink="/cart">view cart</a> or keep browsing.</p>
+            <p class="success">Added: <a routerLink="/cart">view cart</a> or keep browsing.</p>
           }
 
           <p class="section-label">
             Reviews <span class="count">[{{ reviews().length | number: '2.0' }}]</span>
           </p>
           @if (reviews().length === 0) {
-            <p class="muted small">No reviews yet — reviews open after delivery.</p>
+            <p class="muted small">No reviews yet: reviews open after delivery.</p>
           }
           @for (r of reviews(); track $index) {
             <div class="review">
@@ -138,7 +138,7 @@ import { SeentairTiltCardComponent } from '../tilt-card.component';
       </article>
     } @else if (loadError()) {
       <p class="muted">
-        That piece could not be loaded — it may have sold out.
+        That piece could not be loaded, it may have sold out.
         <a routerLink="/shop">Back to the shop</a>
       </p>
     } @else {
@@ -242,6 +242,6 @@ export class ProductPage implements OnInit {
     if (!p || !v) return;
     this.cart.add(p, v, Math.max(1, this.quantity));
     this.added.set(true);
-    void this.alerts.toast(`Added to basket — ${p.name}`);
+    void this.alerts.toast(`Added to basket: ${p.name}`);
   }
 }

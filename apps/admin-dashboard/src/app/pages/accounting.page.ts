@@ -13,7 +13,7 @@ interface LedgerRow {
   entryDate: string;
 }
 
-/** Accounting — Stitch layout: five naira stat tiles, chip-typed ledger,
+/** Accounting, Stitch layout: five naira stat tiles, chip-typed ledger,
     approval-gated manual entry panel. */
 @Component({
   selector: 'app-accounting-admin',
@@ -89,7 +89,7 @@ interface LedgerRow {
       <section class="panel">
         <p class="section-label">Record manual entry</p>
         <p class="muted small">
-          Manual entries move funds — approval-gated. Sales and material purchases are booked
+          Manual entries move funds: approval-gated. Sales and material purchases are booked
           automatically.
         </p>
         <form (ngSubmit)="record()">
@@ -198,7 +198,7 @@ export class AccountingAdminPage implements OnInit {
       .subscribe({
         next: (r) => {
           this.ne.approvalRequestId = r.id;
-          this.message.set('Approval requested — Management decides in the queue.');
+          this.message.set('Approval requested: Management decides in the queue.');
           this.error.set(null);
         },
         error: (e) => this.error.set(e?.error?.message ?? 'Request failed.'),
@@ -222,7 +222,7 @@ export class AccountingAdminPage implements OnInit {
           this.loadLedger();
         },
         error: (e) =>
-          this.error.set(e?.error?.message ?? 'Not approved yet — check the Approvals queue.'),
+          this.error.set(e?.error?.message ?? 'Not approved yet: check the Approvals queue.'),
       });
   }
 }

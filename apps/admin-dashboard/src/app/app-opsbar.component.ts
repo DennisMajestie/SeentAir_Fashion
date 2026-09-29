@@ -51,7 +51,7 @@ const QUICK_ACTIONS: ActionRow[] = [
   { label: 'Create wholesale tier', route: '/wholesale', ico: 'warehouse', hint: 'Price band' },
 ];
 
-/** Header operations hub — a live attention bell plus a quick-actions menu, so
+/** Header operations hub, a live attention bell plus a quick-actions menu, so
     the owner sees what needs them from any screen without opening a page.
     Data pulls reuse the same endpoints as the dashboard KPI rail. */
 @Component({
@@ -96,7 +96,7 @@ const QUICK_ACTIONS: ActionRow[] = [
               </a>
             }
             @if (attentionRows().length === 0) {
-              <p class="ops-pop-empty">All clear — nothing needs you right now.</p>
+              <p class="ops-pop-empty">All clear: nothing needs you right now.</p>
             }
           </div>
         }
@@ -202,7 +202,7 @@ export class AppOpsbarComponent implements OnInit, OnDestroy {
         severity: 'crit',
         ico: 'crisis_alert',
         tag: 'Material critical',
-        body: `${m.name} — only ${m.currentQuantity} ${m.unit ?? ''} left`,
+        body: `${m.name}- only ${m.currentQuantity} ${m.unit ?? ''} left`,
         when: `threshold ${m.reorderThreshold}`,
         route: '/materials',
       });

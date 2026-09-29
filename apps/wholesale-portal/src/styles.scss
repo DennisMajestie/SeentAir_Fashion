@@ -1,5 +1,5 @@
 /* ============================================================
-   SEENTAIR WHOLESALE — Approved Stitch design system
+   SEENTAIR WHOLESALE: Approved Stitch design system
    "Utilitarian Industrial B2B" (project 4978034307012465281)
    Light warm canvas, 1px structural borders, zero shadows,
    square corners, Inter-only type, storefront gold commit colour.
@@ -73,7 +73,7 @@
   --radius-field: 0;
 }
 
-/* Dark ops theme — gold on near-black, per brief 15.5. Flips surfaces to
+/* Dark ops theme, gold on near-black, per brief 15.5. Flips surfaces to
    warm charcoal and keeps the gold commit colour across the portal. */
 :root[data-theme='dark'] {
   color-scheme: dark;
@@ -1052,7 +1052,7 @@ label {
 }
 
 /* ============================================================
-   W2–W10 rebuild — shared components (approved Stitch layouts,
+   W2-W10 rebuild: shared components (approved Stitch layouts,
    recoloured to the portal gold token system; no reference red)
    ============================================================ */
 

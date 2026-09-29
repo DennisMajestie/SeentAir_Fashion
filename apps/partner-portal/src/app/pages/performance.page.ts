@@ -3,7 +3,7 @@ import { Component, computed, inject } from '@angular/core';
 import { PortalStore } from '../portal.store';
 
 /**
- * Screen P4 — Operational & Financial Performance: yield ledgers, revenue &
+ * Screen P4, Operational & Financial Performance: yield ledgers, revenue &
  * cost breakdown, channel mix, product ranking, factory floor summary.
  */
 @Component({
@@ -16,13 +16,13 @@ import { PortalStore } from '../portal.store';
           <p class="page-kicker">Partner Governance Tier // Verified Ledger Telemetry</p>
           <h1 class="page-title">Operational &amp; Financial Performance</h1>
           <p class="page-sub">
-            Verified production and net yield ledgers for the Seentair garment factory, Aba unit —
+            Verified production and net yield ledgers for the Seentair garment factory, Aba unit -
             drawn live from the company accounting ledger.
           </p>
         </div>
         <div class="page-head-side">
           <span class="chip gold">{{ store.periodLabel() }} · Current</span>
-          <!-- GAP: no per-quarter report filter endpoint — figures below are all-time ledger aggregates. -->
+          <!-- GAP: no per-quarter report filter endpoint, figures below are all-time ledger aggregates. -->
           <span class="chip">All-time aggregates</span>
         </div>
       </div>
@@ -49,7 +49,7 @@ import { PortalStore } from '../portal.store';
             @if (store.netMarginPct() !== null) {
               {{ store.netMarginPct() | number: '1.0-1' }}%
             } @else {
-              —
+              -
             }
           </span>
           <span class="kpi-sub">Net profit as a share of revenue</span>
@@ -59,7 +59,7 @@ import { PortalStore } from '../portal.store';
       <div class="split">
         <section class="panel">
           <div class="panel-head">
-            <h2>Ledger analysis — revenue &amp; cost breakdown</h2>
+            <h2>Ledger analysis: revenue &amp; cost breakdown</h2>
             <span class="panel-note">Audited ledger basis</span>
           </div>
           @if (incomeRows().length > 0) {
@@ -81,7 +81,7 @@ import { PortalStore } from '../portal.store';
             <span class="stmt-label">Total recorded income (topline)</span>
             <span class="stmt-val">₦{{ d.performance.income | number: '1.0-0' }}</span>
           </div>
-          <!-- GAP: expenditure is exposed as one aggregate — no COGS vs operating split for partners. -->
+          <!-- GAP: expenditure is exposed as one aggregate, no COGS vs operating split for partners. -->
           <div class="stmt-row">
             <span class="stmt-label">Total expenditure (COGS + operating, aggregate)</span>
             <span class="stmt-val">(₦{{ d.performance.expenditure | number: '1.0-0' }})</span>
@@ -98,10 +98,10 @@ import { PortalStore } from '../portal.store';
 
         <section class="panel">
           <div class="panel-head">
-            <h2>Yield trajectory — net margin trend</h2>
+            <h2>Yield trajectory: net margin trend</h2>
             <span class="panel-note">Last 4 quarters</span>
           </div>
-          <!-- GAP: no quarterly report-history endpoint — margin trend cannot be drawn honestly yet. -->
+          <!-- GAP: no quarterly report-history endpoint, margin trend cannot be drawn honestly yet. -->
           <p class="gap-note">
             Margin trend charts appear once quarterly ledger snapshots are published. The current
             all-time net margin is
@@ -117,7 +117,7 @@ import { PortalStore } from '../portal.store';
       <div class="split-half">
         <section class="panel">
           <div class="panel-head">
-            <h2>Distribution mix — sales by channel</h2>
+            <h2>Distribution mix: sales by channel</h2>
             <span class="panel-note">Retail · wholesale · in-store</span>
           </div>
           <!-- GAP: no channel-split reporting endpoint for partners. -->
@@ -136,7 +136,7 @@ import { PortalStore } from '../portal.store';
           <!-- GAP: no product-level revenue endpoint for partners (aggregates-only boundary). -->
           <p class="gap-note">
             Product-level revenue ranking is not yet shared. When released it is strictly anonymized
-            SKU telemetry — never customer-level data.
+            SKU telemetry: never customer-level data.
           </p>
         </section>
       </div>
@@ -149,16 +149,16 @@ import { PortalStore } from '../portal.store';
         <div class="floor-grid">
           <!-- GAP: no production/QC telemetry endpoint (batches, output pcs, defect rate, QC outcomes). -->
           <div class="floor-cell">
-            <span>Completed batches</span><strong>—</strong><em>Not yet published</em>
+            <span>Completed batches</span><strong>-</strong><em>Not yet published</em>
           </div>
           <div class="floor-cell">
-            <span>Output</span><strong>—</strong><em>Not yet published</em>
+            <span>Output</span><strong>-</strong><em>Not yet published</em>
           </div>
           <div class="floor-cell">
-            <span>Defect rate</span><strong>—</strong><em>Not yet published</em>
+            <span>Defect rate</span><strong>-</strong><em>Not yet published</em>
           </div>
           <div class="floor-cell">
-            <span>QC repaired / burned</span><strong>—</strong><em>Reason-coded at QC</em>
+            <span>QC repaired / burned</span><strong>-</strong><em>Reason-coded at QC</em>
           </div>
         </div>
         <p class="fine muted">

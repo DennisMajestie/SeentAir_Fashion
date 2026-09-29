@@ -61,7 +61,7 @@ export interface ShippingAddress {
   landmark?: string;
 }
 
-/** Access token only — the refresh token never reaches page JavaScript. */
+/** Access token only, the refresh token never reaches page JavaScript. */
 export interface TokenPair {
   accessToken: string;
 }
@@ -77,7 +77,7 @@ export interface DeliveryCheckpoint {
   at: string | null;
 }
 
-/** A leg of the journey to the customer — some destinations need several. */
+/** A leg of the journey to the customer, some destinations need several. */
 export interface DeliveryLegView {
   legNumber: number;
   carrier: string;
@@ -196,7 +196,7 @@ export class ApiService {
    * Live status push for one order. Uses `fetch` + a stream reader rather than
    * `EventSource` because EventSource cannot send an Authorization header, and
    * putting the access token in the query string would leak it into logs and
-   * referrers. Frames are notifications only — this re-fetches `tracking()`.
+   * referrers. Frames are notifications only, this re-fetches `tracking()`.
    *
    * Yields a `false` signal when the stream ends or errors, which is the
    * caller's cue to fall back to polling. Never throws.

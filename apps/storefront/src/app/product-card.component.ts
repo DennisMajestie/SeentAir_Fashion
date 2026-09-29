@@ -187,7 +187,7 @@ export class ProductCardComponent implements OnDestroy {
           ? sizes[0] === 'OS'
             ? 'One size'
             : 'Made to measure'
-          : `${sizes[0]}–${sizes[sizes.length - 1]}`;
+          : `${sizes[0]}-${sizes[sizes.length - 1]}`;
     const colourPart = colours.length > 1 ? `${colours.length} colours` : '';
     return [sizePart, colourPart].filter(Boolean).join(' · ');
   }

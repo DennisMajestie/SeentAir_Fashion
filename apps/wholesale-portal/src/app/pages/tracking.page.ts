@@ -25,7 +25,7 @@ interface Stage {
 }
 
 /**
- * W8 — Wholesale order tracking: freight header, GIGL corridor panel,
+ * W8, Wholesale order tracking: freight header, GIGL corridor panel,
  * progress timeline mapped onto the four canonical stages (fed by the
  * live tracking events), freight leg, package manifest, support & policy.
  */
@@ -61,12 +61,12 @@ interface Stage {
           <div class="mg">
             <span class="m-l">Last event</span>
             <span class="m-v">{{
-              lastEventAt() ? (lastEventAt() | date: 'dd MMM, HH:mm') : '—'
+              lastEventAt() ? (lastEventAt() | date: 'dd MMM, HH:mm') : '-'
             }}</span>
           </div>
           <div class="mg">
             <span class="m-l">Batch volume</span>
-            <span class="m-v">{{ invoice() ? units(invoice()!) + ' garment units' : '—' }}</span>
+            <span class="m-v">{{ invoice() ? units(invoice()!) + ' garment units' : '-' }}</span>
           </div>
           <!-- GAP: consignee destination address awaits the buyer address-book module -->
           <div class="mg">
@@ -81,7 +81,7 @@ interface Stage {
       </section>
 
       <!-- GAP: live GPS corridor map awaits GIGL telemetry via the logistics
-           adapter — the corridor panel states the real route policy instead. -->
+           adapter: the corridor panel states the real route policy instead. -->
       <section class="panel">
         <div class="tagbar">
           <span
@@ -93,7 +93,7 @@ interface Stage {
             >
             Logistics freight corridor</span
           >
-          <span>Aba — nationwide</span>
+          <span>Aba: nationwide</span>
         </div>
         <div
           class="leg-row"
@@ -156,7 +156,7 @@ interface Stage {
           </div>
           @for (event of extraEvents(); track event.createdAt) {
             <p class="small">
-              <strong>{{ event.status.replaceAll('_', ' ') }}</strong> —
+              <strong>{{ event.status.replaceAll('_', ' ') }}</strong> -
               {{ event.note ?? 'recorded' }}
               <span class="muted">({{ event.createdAt | date: 'medium' }})</span>
             </p>
@@ -169,7 +169,7 @@ interface Stage {
         <span class="aside">Single leg · GIGL</span>
       </div>
       <!-- GAP: multi-leg waybill breakdown (carrier, route vectors, waybill refs)
-           awaits the GIGL adapter's shipment API — one honest leg is shown. -->
+           awaits the GIGL adapter's shipment API: one honest leg is shown. -->
       <div class="leg-card">
         <div class="leg-head">
           <span
@@ -241,7 +241,7 @@ interface Stage {
 
         <p class="muted small" style="margin: var(--space-sm) 0 0">
           @if (live()) {
-            Live — this page updates itself while it stays open.
+            Live: this page updates itself while it stays open.
           } @else {
             Checking every {{ pollSeconds() }}s while this tab is open.
           }
@@ -280,14 +280,14 @@ interface Stage {
           within 24 hours. Custom production batches are non-returnable.
         </div>
       </div>
-      <!-- GAP: returns intake endpoint not exposed to the portal yet — the desk
+      <!-- GAP: returns intake endpoint not exposed to the portal yet, the desk
            handles the 12-hour window by phone; button stays locked. -->
       <button
         class="cta quiet"
         style="width:100%"
         disabled
         [title]="
-          delivered() ? 'Returns are handled by the desk — call the hub' : 'Available upon delivery'
+          delivered() ? 'Returns are handled by the desk, call the hub' : 'Available upon delivery'
         "
       >
         <span class="material-symbols-outlined" aria-hidden="true">lock</span>
@@ -327,7 +327,7 @@ export class TrackingPage implements OnInit, OnDestroy {
       key: /received|verified|confirmed|paid/,
       label: 'Order received & verified',
       fallbackNote:
-        'Payment verification pending — the batch is allocated once the desk confirms settlement.',
+        'Payment verification pending: the batch is allocated once the desk confirms settlement.',
     },
     {
       key: /processing|production|packaging|packing|qc/,
@@ -428,7 +428,7 @@ export class TrackingPage implements OnInit, OnDestroy {
       .then(() => this.streamDropped(abort));
   }
 
-  /** The stream ended or errored — the poll timer carries the page from here. */
+  /** The stream ended or errored, the poll timer carries the page from here. */
   private streamDropped(abort: AbortController): void {
     if (abort.signal.aborted) return;
     this.live.set(false);

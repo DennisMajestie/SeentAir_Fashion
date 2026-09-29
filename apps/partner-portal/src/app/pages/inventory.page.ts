@@ -4,9 +4,9 @@ import { InventorySummaryRow, ProductVariantRef } from '../api.service';
 import { PortalStore } from '../portal.store';
 
 /**
- * Screen P5 — Inventory Valuation & Raw Material Reserves. The partner API
+ * Screen P5, Inventory Valuation & Raw Material Reserves. The partner API
  * exposes the audited finished-goods aggregate plus the live event-sourced
- * per-item stock summary (INVENTORY VIEW) — labelled with product names from
+ * per-item stock summary (INVENTORY VIEW)- labelled with product names from
  * the public catalogue. Valuations stay honest "unvalued" (no ₦ endpoint).
  */
 type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
@@ -20,7 +20,7 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
           <p class="page-kicker">Ledger Asset Register // Warehouse &amp; Mill Holdings</p>
           <h1 class="page-title">Inventory Valuation &amp; Raw Material Reserves</h1>
           <p class="page-sub">
-            Audited warehouse and mill holdings for the Seentair garment factory, Aba — aggregate
+            Audited warehouse and mill holdings for the Seentair garment factory, Aba: aggregate
             telemetry only, derived from event-sourced stock movements.
           </p>
         </div>
@@ -36,7 +36,7 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
           <span class="kpi-value">{{ d.inventoryVisibility.finishedGoodsUnits | number }}</span>
           <span class="kpi-sub">Garment units ready in warehouse</span>
         </div>
-        <!-- GAP: no stock-valuation endpoint — ₦ values of finished goods & raw lots are not published. -->
+        <!-- GAP: no stock-valuation endpoint, ₦ values of finished goods & raw lots are not published. -->
         <div class="kpi">
           <span class="kpi-label">Finished goods value</span>
           <span class="kpi-value">Not yet valued</span>
@@ -45,11 +45,11 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
         <div class="kpi">
           <span class="kpi-label">Raw material holdings</span>
           <span class="kpi-value">{{ materialUnits() | number }} units</span>
-          <span class="kpi-sub">Live mill lots — cotton, poly &amp; trims</span>
+          <span class="kpi-sub">Live mill lots: cotton, poly &amp; trims</span>
         </div>
         <div class="kpi">
           <span class="kpi-label">Reserved &amp; written off</span>
-          <span class="kpi-value">—</span>
+          <span class="kpi-value">-</span>
           <span class="kpi-sub">QC-reason-coded; reported quarterly</span>
         </div>
       </div>
@@ -79,7 +79,7 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
             </div>
           } @empty {
             <p class="gap-note" style="margin-top: 0.7rem">
-              No variant-level stock has been recorded to the ledger yet — the distribution fills as
+              No variant-level stock has been recorded to the ledger yet, the distribution fills as
               stock movements are posted.
             </p>
           }
@@ -106,7 +106,7 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
       <section class="panel">
         <div class="panel-head">
           <h2>Product silhouette stock register</h2>
-          <span class="panel-note">SKU aggregates — never customer data</span>
+          <span class="panel-note">SKU aggregates: never customer data</span>
         </div>
         <div class="table-scroll">
           <table class="table">
@@ -171,22 +171,22 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
         <!-- GAP: no raw-material lot endpoint (mill reserves, GSM lots, dye buffers). -->
         <div class="floor-grid">
           <div class="floor-cell">
-            <span>Cotton reserves</span><strong>—</strong><em>Not yet published</em>
+            <span>Cotton reserves</span><strong>-</strong><em>Not yet published</em>
           </div>
           <div class="floor-cell">
-            <span>Poly &amp; blend lots</span><strong>—</strong><em>Not yet published</em>
+            <span>Poly &amp; blend lots</span><strong>-</strong><em>Not yet published</em>
           </div>
           <div class="floor-cell">
-            <span>Trims &amp; branding stock</span><strong>—</strong><em>Not yet published</em>
+            <span>Trims &amp; branding stock</span><strong>-</strong><em>Not yet published</em>
           </div>
           <div class="floor-cell">
-            <span>Packaging reserves</span><strong>—</strong><em>Not yet published</em>
+            <span>Packaging reserves</span><strong>-</strong><em>Not yet published</em>
           </div>
         </div>
       </section>
 
       <div class="notice">
-        Operational stock mandate: inventory is event-sourced — every unit count derives from
+        Operational stock mandate: inventory is event-sourced, every unit count derives from
         immutable stock-movement records, never direct edits. Partner visibility is strictly
         aggregate-level and excludes all customer-facing data.
       </div>
@@ -259,7 +259,7 @@ type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
 export class InventoryPage {
   readonly store = inject(PortalStore);
 
-  /** Total raw-material units across live mill lots (quantity, not ₦ — no valuation endpoint). */
+  /** Total raw-material units across live mill lots (quantity, not ₦, no valuation endpoint). */
   readonly materialUnits = computed(() => {
     const rows = this.store.materialRows();
     return rows.reduce((sum, r) => sum + Math.max(0, r.currentQuantity), 0);
@@ -275,7 +275,7 @@ export class InventoryPage {
 
   specLabel(row: RegisterRow): string {
     const parts = [row.meta?.colour, row.meta?.size].filter((p): p is string => !!p);
-    return parts.length > 0 ? parts.join(' · ') : '—';
+    return parts.length > 0 ? parts.join(' · ') : '-';
   }
 
   statusLabel(quantity: number): string {

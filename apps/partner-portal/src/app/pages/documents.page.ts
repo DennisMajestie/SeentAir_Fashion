@@ -3,7 +3,7 @@ import { Component, computed, inject } from '@angular/core';
 import { PortalStore } from '../portal.store';
 
 /**
- * Screen P8 — Shareholder Documents & Direct Management Desk. The corporate
+ * Screen P8, Shareholder Documents & Direct Management Desk. The corporate
  * vault has no document endpoint yet (honest empty states); the message desk
  * shows the live in-platform inbox delivered to this account (notifications).
  */
@@ -60,7 +60,7 @@ import { PortalStore } from '../portal.store';
             <span class="num">1.</span> Shareholder &amp; governance agreements
             <span class="tail">0 records</span>
           </p>
-          <!-- GAP: no document-library endpoint — executed agreements, CAC forms and share
+          <!-- GAP: no document-library endpoint, executed agreements, CAC forms and share
                certificates appear here as downloadable rows once the API ships one. -->
           <div class="empty-state">
             <span class="empty-state-icon" aria-hidden="true"
@@ -136,7 +136,7 @@ import { PortalStore } from '../portal.store';
               <span class="panel-note">Secure inbox · {{ inboxCount() }}</span>
             </div>
             <p class="desk-copy">
-              Confidential shareholder liaison from the executive desk — communications are routed
+              Confidential shareholder liaison from the executive desk, communications are routed
               directly to Seentair leadership. No customer data or support requests are routed here.
             </p>
             @if (store.messages(); as inbox) {
@@ -185,7 +185,7 @@ import { PortalStore } from '../portal.store';
               id="inquiry"
               rows="4"
               disabled
-              placeholder="Submitting an inquiry is not yet enabled — reply via your liaison desk contact."
+              placeholder="Submitting an inquiry is not yet enabled: reply via your liaison desk contact."
             ></textarea>
             <button class="cta block" type="button" disabled>Send secure message</button>
           </section>
@@ -211,7 +211,7 @@ import { PortalStore } from '../portal.store';
 
       <div class="notice">
         All legal instruments available to this registry are verified through corporate counsel and
-        retained under legal hold. Partner communications never expose customer records — the
+        retained under legal hold. Partner communications never expose customer records, the
         partner boundary excludes all customer PII by design.
       </div>
     }

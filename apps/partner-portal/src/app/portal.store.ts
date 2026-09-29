@@ -9,7 +9,7 @@ import {
 } from './api.service';
 
 /**
- * One dashboard fetch shared by every page — the API's confirmed
+ * One dashboard fetch shared by every page, the API's confirmed
  * partner dashboard payload is the single source for all eight screens.
  * Aggregates only; never customer PII (client-explicit boundary).
  */
@@ -27,7 +27,7 @@ export class PortalStore {
   private readonly variantIndex = signal<Record<string, ProductVariantRef>>({});
   private readonly lastUpdated = signal<number | null>(null);
 
-  /** Calendar quarter label, e.g. "Q3 2026" — real calendar, not a fabricated period. */
+  /** Calendar quarter label, e.g. "Q3 2026"- real calendar, not a fabricated period. */
   readonly periodLabel = computed(() => {
     const now = new Date();
     return `Q${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`;
@@ -52,7 +52,7 @@ export class PortalStore {
     return (p.net / p.income) * 100;
   });
 
-  /** Confirmed profit-allocation covenant, e.g. "40 / 40 / 20" — mirror of server config. */
+  /** Confirmed profit-allocation covenant, e.g. "40 / 40 / 20"- mirror of server config. */
   readonly covenantLabel = computed(() => {
     const c = this.dash()?.config;
     return `${c?.reinvestmentPct ?? 40} / ${c?.dividendsPct ?? 40} / ${c?.reservePct ?? 20}`;
@@ -79,7 +79,7 @@ export class PortalStore {
       .sort((a, b) => b.currentQuantity - a.currentQuantity);
   });
 
-  /** Raw material (mill) rows from the same live summary — never "—" placeholders. */
+  /** Raw material (mill) rows from the same live summary, never "-" placeholders. */
   readonly materialRows = computed(() => {
     const index = this.variantIndex();
     return (this.inventory() ?? [])
@@ -113,7 +113,7 @@ export class PortalStore {
       error: (err: { error?: { message?: string } }) =>
         this.loadError.set(
           err?.error?.message ??
-            'No partner record is linked to this account yet — contact Seentair.',
+            'No partner record is linked to this account yet, contact Seentair.',
         ),
     });
     this.api.me().subscribe({

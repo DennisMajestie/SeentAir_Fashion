@@ -34,7 +34,7 @@ interface ZoneRow {
 
 const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
 
-/** A12 — Inter-facility haulage & delivery logistics. Approved Stitch layout:
+/** A12, Inter-facility haulage & delivery logistics. Approved Stitch layout:
     transit KPIs, status-filtered haulage runs, a master-waybill inspector per
     leg (carrier tracking read), plus the zone-pricing engine and quote
     calculator. GIGL sits behind the pluggable carrier adapter. */
@@ -118,7 +118,7 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
           <label
             >Zone
             <select [(ngModel)]="nd.zone" name="dz">
-              <option value="">—</option>
+              <option value="">-</option>
               @for (z of zones(); track z.id) {
                 <option [value]="z.zone">{{ z.zone }}</option>
               }
@@ -186,8 +186,8 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
                   }}</span>
                 </td>
                 <td class="mono">{{ l.legNumber }}</td>
-                <td class="mono small">{{ l.trackingRef || '—' }}</td>
-                <td class="mono">{{ l.cost !== null ? '₦' + (l.cost | number) : '—' }}</td>
+                <td class="mono small">{{ l.trackingRef || '-' }}</td>
+                <td class="mono">{{ l.cost !== null ? '₦' + (l.cost | number) : '-' }}</td>
                 <td>
                   <span
                     class="chip"
@@ -263,7 +263,7 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
               <dt>Contents (pcs)</dt>
               <dd class="wrap-anywhere">
                 @for (c of l.contents ?? []; track $index) {
-                  {{ c.quantity }}×{{ c.sku ?? '—' }}
+                  {{ c.quantity }}×{{ c.sku ?? '-' }}
                   @if ($index < (l.contents ?? []).length - 1) {
                     ·
                   }
@@ -282,7 +282,7 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
                 <li>
                   <time>{{ str(cp.at) | date: 'MMM d, HH:mm' }}</time>
                   <span class="act-action">
-                    {{ cp.zone }} —
+                    {{ cp.zone }} -
                     <span
                       class="chip"
                       [class.ok]="cp.status === 'delivered'"
@@ -346,7 +346,7 @@ const LEG_STATUSES = ['pending', 'in_transit', 'delivered', 'failed'];
           @if (tracking(); as t) {
             <dl class="kv">
               <dt>Tracking ref</dt>
-              <dd class="wrap-anywhere">{{ t['trackingRef'] || '—' }}</dd>
+              <dd class="wrap-anywhere">{{ t['trackingRef'] || '-' }}</dd>
               <dt>Carrier status</dt>
               <dd>{{ t['status'] }}</dd>
               @if (t['dispatchedAt']) {
@@ -560,7 +560,7 @@ export class LogisticsAdminPage implements OnInit {
           this.ok('Delivery leg created.');
         },
         error: (e) =>
-          this.fail(e, 'Create failed — GIGL needs API keys; use a manual carrier meanwhile.'),
+          this.fail(e, 'Create failed: GIGL needs API keys; use a manual carrier meanwhile.'),
       });
   }
 

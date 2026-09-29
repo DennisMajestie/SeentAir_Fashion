@@ -200,7 +200,7 @@ export class AccountPage implements OnInit {
   >([]);
   readonly error = signal<string | null>(null);
   readonly info = signal<string | null>(null);
-  /** 'signin' or 'register' — one card, two jobs. */
+  /** 'signin' or 'register'- one card, two jobs. */
   readonly mode = signal<'signin' | 'register'>('signin');
   readonly showPassword = signal(false);
   readonly busy = signal(false);

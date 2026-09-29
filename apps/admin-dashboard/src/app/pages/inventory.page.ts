@@ -27,7 +27,7 @@ interface VariantInfo {
   colour: string | null;
 }
 
-/** A8 — Inventory valuation & stock depository with the immutable movement
+/** A8, Inventory valuation & stock depository with the immutable movement
     ledger. Stock is NEVER edited directly: every figure derives from
     InventoryMovement rows; removals stay approval-gated. */
 @Component({
@@ -61,7 +61,7 @@ interface VariantInfo {
 
     @if (ledgerVerify(); as lv) {
       <div class="rule-strip" [style.borderColor]="lv.broken > 0 ? 'var(--danger)' : ''">
-        <strong>Ledger hash-chain</strong> — every movement is SHA-256 bound to the previous one.
+        <strong>Ledger hash-chain</strong>- every movement is SHA-256 bound to the previous one.
         @if (lv.broken === 0) {
           All {{ lv.total }} entries verify; stock history has not been tampered with.
         } @else {
@@ -74,7 +74,7 @@ interface VariantInfo {
     }
 
     <p class="rule-strip">
-      EVERY CHANGE IS RECORDED // stock moves only through logged entries — removing stock needs
+      EVERY CHANGE IS RECORDED // stock moves only through logged entries, removing stock needs
       approval.
     </p>
 
@@ -161,7 +161,7 @@ interface VariantInfo {
                     @if (valueOf(s) !== null) {
                       ₦{{ valueOf(s) | number: '1.0-0' }}
                     } @else {
-                      <span class="muted">—</span>
+                      <span class="muted">-</span>
                     }
                   </td>
                 </tr>
@@ -223,7 +223,7 @@ interface VariantInfo {
           </div>
           @if (variantInfo(s); as vi) {
             <p class="ops-sub" style="margin:0 0 0.5rem;">
-              {{ vi.product }} · {{ vi.colour || '—' }} · size {{ vi.size || '—' }}
+              {{ vi.product }} · {{ vi.colour || '-' }} · size {{ vi.size || '-' }}
             </p>
           }
           <div class="kpi-bar" style="margin-bottom:0.8rem;">
@@ -273,7 +273,7 @@ interface VariantInfo {
                   >
                     {{ m.quantityDelta > 0 ? '+' : '' }}{{ m.quantityDelta }}
                   </td>
-                  <td class="mono small muted">{{ m.referenceId?.slice(0, 12) || '—' }}</td>
+                  <td class="mono small muted">{{ m.referenceId?.slice(0, 12) || '-' }}</td>
                 </tr>
               }
               @if (movementRows().length === 0) {
@@ -327,9 +327,9 @@ interface VariantInfo {
             @if (materialMeta(s.itemId); as mm) {
               <dl class="kv">
                 <dt>Category</dt>
-                <dd>{{ mm.category || '—' }}</dd>
+                <dd>{{ mm.category || '-' }}</dd>
                 <dt>Bay / rack location</dt>
-                <dd class="mono">{{ mm.storageLocation || '—' }}</dd>
+                <dd class="mono">{{ mm.storageLocation || '-' }}</dd>
               </dl>
             } @else {
               <p class="muted small">No location recorded for this material.</p>
@@ -342,7 +342,7 @@ interface VariantInfo {
             <span class="ph-sub">needs approval</span>
           </div>
           <p class="muted small">
-            Add stock = correction in. Remove stock = taking it out — removal needs approval.
+            Add stock = correction in. Remove stock = taking it out, removal needs approval.
           </p>
           <form (ngSubmit)="adjust()">
             <label
@@ -594,7 +594,7 @@ export class InventoryAdminPage implements OnInit {
       .subscribe({
         next: (r) => {
           this.adj.approvalRequestId = r.id;
-          this.message.set('Removal approval requested — Management decides in the queue.');
+          this.message.set('Removal approval requested: Management decides in the queue.');
           this.error.set(null);
         },
         error: (e) => this.error.set(e?.error?.message ?? 'Request failed.'),
@@ -620,7 +620,7 @@ export class InventoryAdminPage implements OnInit {
           this.api.inventorySummary().subscribe((s) => this.summary.set(s));
         },
         error: (e) =>
-          this.error.set(e?.error?.message ?? 'Refused — removals need an approved request.'),
+          this.error.set(e?.error?.message ?? 'Refused: removals need an approved request.'),
       });
   }
 

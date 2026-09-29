@@ -3,7 +3,7 @@ import { Component, computed, inject } from '@angular/core';
 import { PortalStore } from '../portal.store';
 
 /**
- * Screen P3 — My Investment & Equity Structure: registry record, share
+ * Screen P3, My Investment & Equity Structure: registry record, share
  * mechanics, equity distribution donut, capitalization table, capital ledger.
  * Founder/partners split and the share covenant are mirrored from the server
  * dashboard config, so the "other partners" slice is derived as
@@ -20,7 +20,7 @@ import { PortalStore } from '../portal.store';
           <h1 class="page-title">My Investment &amp; Equity Structure</h1>
           <p class="page-sub">
             Official shareholder registry record for
-            {{ store.me()?.name ?? 'this partner account' }} — read-only, maintained by Seentair
+            {{ store.me()?.name ?? 'this partner account' }}- read-only, maintained by Seentair
             Limited.
           </p>
         </div>
@@ -83,7 +83,7 @@ import { PortalStore } from '../portal.store';
           <div class="how-cell">
             <span>Strategic reserve</span><strong>{{ d.config.reservePct }}% Retained</strong>
           </div>
-          <!-- GAP: liquidation-preference terms are not exposed via the API — copy defers to the agreement. -->
+          <!-- GAP: liquidation-preference terms are not exposed via the API, copy defers to the agreement. -->
           <div class="how-cell">
             <span>Liquidation preference</span><strong>Per agreement</strong>
           </div>
@@ -219,7 +219,7 @@ import { PortalStore } from '../portal.store';
               <tr>
                 <!-- GAP: transaction dates & per-call breakdown are not exposed; only the registry total is. -->
                 <td class="mono">On registry</td>
-                <td class="wrap">Initial equity injection — founding partner subscription</td>
+                <td class="wrap">Initial equity injection: founding partner subscription</td>
                 <td class="num-col mono">{{ d.investmentInformation.shares | number }}</td>
                 <td class="num-col mono">
                   ₦{{ d.investmentInformation.investedAmount | number: '1.0-0' }}
@@ -242,7 +242,7 @@ import { PortalStore } from '../portal.store';
         </div>
         <p class="gap-note" style="margin-top: 0.7rem">
           Certified share certificates and the countersigned shareholders' agreement are issued by
-          the company secretary — document downloads appear under Documents &amp; Messages when
+          the company secretary: document downloads appear under Documents &amp; Messages when
           shared.
         </p>
       </section>

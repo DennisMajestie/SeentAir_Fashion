@@ -1,5 +1,5 @@
 /* ============================================================
-   SEENTAIR OPERATIONS — Approved Stitch design system
+   SEENTAIR OPERATIONS: Approved Stitch design system
    "Utilitarian Industrial B2B" (project 4978034307012465281).
    Light warm canvas, 1px structural borders, zero shadows,
    square corners, Inter-only type, storefront gold actions.
@@ -15,7 +15,7 @@
   --hairline-strong: #1b1c19;
   --ink: #1b1c19;
   --ink-dim: #5f5e5e;
-  --gold: #c9a24b; /* storefront gold — fills & markers */
+  --gold: #c9a24b; /* storefront gold, fills & markers */
   --gold-strong: #b08a33; /* gold hover */
   --acid: #c9a24b; /* accent (var-compat) */
   --acid-ink: #8a6a1c; /* gold for text on light surfaces */
@@ -36,7 +36,7 @@
   --type-heading-sm: 1rem;
 }
 
-/* Dark ops theme — gold on near-black (brief 15.5). Keeps token names. */
+/* Dark ops theme, gold on near-black (brief 15.5). Keeps token names. */
 :root[data-theme='dark'] {
   color-scheme: dark;
   --obsidian: #0f0e0c;
@@ -1471,7 +1471,7 @@ label {
   }
 }
 
-/* Loading skeletons — shimmer shaped like the real content it replaces */
+/* Loading skeletons, shimmer shaped like the real content it replaces */
 .skeleton {
   position: relative;
   overflow: hidden;
@@ -1577,7 +1577,7 @@ ul.activity {
 
 /* Media reduce + also already defined above for sidebar */
 
-/* Dashboard KPIs — sparkline, delta, trend note */
+/* Dashboard KPIs, sparkline, delta, trend note */
 .tile {
   .spark {
     display: block;
@@ -1749,7 +1749,7 @@ ul.activity {
   }
 }
 
-/* Shared color dots — activity feed + legend swatches */
+/* Shared color dots, activity feed + legend swatches */
 .sw {
   display: inline-block;
   width: 9px;
@@ -1797,7 +1797,7 @@ ul.activity {
 }
 
 /* ============================================================
-   Operations login — approved light industrial split screen
+   Operations login: approved light industrial split screen
    (mirrors the Seentair Ops / Partner sign-in reference)
    ============================================================ */
 $ops-primary: var(--gold);
@@ -2205,7 +2205,7 @@ $ops-canvas: var(--obsidian);
   }
 }
 /* ============================================================
-   OPS CONSOLE PRIMITIVES — approved Stitch ops screens (A1–A17)
+   OPS CONSOLE PRIMITIVES: approved Stitch ops screens (A1-A17)
    rebuilt on the app's gold system. Layout/structure fidelity;
    palette stays the gold tokens above (never the reference red).
    ============================================================ */
@@ -2744,7 +2744,7 @@ $ops-canvas: var(--obsidian);
   cursor: pointer;
 }
 
-/* Key–value fact rows */
+/* Key-value fact rows */
 .kv {
   display: grid;
   grid-template-columns: minmax(110px, auto) 1fr;
@@ -2947,7 +2947,7 @@ $ops-canvas: var(--obsidian);
   margin: 0.3rem 0 0;
 }
 
-/* A1 dashboard — executive review layer (approved 2026-09-15) */
+/* A1 dashboard, executive review layer (approved 2026-09-15) */
 .gold-bullet {
   width: 8px;
   height: 8px;
@@ -3217,7 +3217,7 @@ $ops-canvas: var(--obsidian);
 }
 
 /* ============================================================
-   Brand SweetAlert2 skin — ivory paper + harvest gold, both modes.
+   Brand SweetAlert2 skin: ivory paper + harvest gold, both modes.
    Layered over the default popup; color/inline vars drive the rest.
    ============================================================ */
 .swal2-popup.ba-popup,

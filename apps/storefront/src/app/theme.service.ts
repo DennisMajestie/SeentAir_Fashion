@@ -5,7 +5,7 @@ export type Theme = 'light' | 'dark';
 const THEME_KEY = 'seentair.theme';
 const THEME_META_COLORS: Record<Theme, string> = { light: '#fcf9f8', dark: '#141311' };
 
-/** Light/dark theme — mirrors the pre-paint script in index.html.
+/** Light/dark theme, mirrors the pre-paint script in index.html.
  *  Persists the choice and keeps the <meta name="theme-color"> in sync. */
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -37,7 +37,7 @@ export class ThemeService {
     try {
       localStorage.setItem(THEME_KEY, t);
     } catch {
-      /* storage unavailable — session-only */
+      /* storage unavailable, session-only */
     }
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (meta) meta.content = THEME_META_COLORS[t];

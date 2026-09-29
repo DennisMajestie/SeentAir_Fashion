@@ -8,46 +8,46 @@ import { LandingPage } from './pages/landing.page';
  * sitting on top of its budget.
  */
 export const routes: Routes = [
-  { path: '', component: LandingPage, title: 'SEENTAIR — Streetwear' },
+  { path: '', component: LandingPage, title: 'SEENTAIR: Streetwear' },
   {
     path: 'shop',
     loadComponent: () => import('./pages/shop.page').then((m) => m.ShopPage),
-    title: 'Seentair — Shop',
+    title: 'Seentair: Shop',
   },
   {
     path: 'product/:id',
     loadComponent: () => import('./pages/product.page').then((m) => m.ProductPage),
-    title: 'Seentair — Product',
+    title: 'Seentair: Product',
   },
   {
     path: 'cart',
     loadComponent: () => import('./pages/cart.page').then((m) => m.CartPage),
-    title: 'Seentair — Cart',
+    title: 'Seentair: Cart',
   },
   {
     path: 'checkout',
     loadComponent: () => import('./pages/checkout.page').then((m) => m.CheckoutPage),
-    title: 'Seentair — Checkout',
+    title: 'Seentair: Checkout',
   },
   {
     path: 'account',
     loadComponent: () => import('./pages/account.page').then((m) => m.AccountPage),
-    title: 'Seentair — Account',
+    title: 'Seentair: Account',
   },
   {
     path: 'reset-password',
     loadComponent: () => import('./pages/reset-password.page').then((m) => m.ResetPasswordPage),
-    title: 'Seentair — Reset password',
+    title: 'Seentair: Reset password',
   },
   {
     path: 'orders/:id',
     loadComponent: () => import('./pages/order.page').then((m) => m.OrderPage),
-    title: 'Seentair — Order tracking',
+    title: 'Seentair: Order tracking',
   },
   {
     path: 'policies',
     loadComponent: () => import('./pages/policies.page').then((m) => m.PoliciesPage),
-    title: 'Seentair — Store policies',
+    title: 'Seentair: Store policies',
   },
   { path: '**', redirectTo: '' },
 ];

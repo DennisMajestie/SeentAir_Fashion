@@ -11,7 +11,7 @@ interface Milestone {
 }
 
 /**
- * W10 — Custom request status: bespoke-request header, production milestone
+ * W10, Custom request status: bespoke-request header, production milestone
  * lifecycle, strike-off sample panel, batch parameters and the consignee
  * sign-off terminal (quote acceptance / sample approval), all wired to the
  * live custom-orders API.
@@ -129,7 +129,7 @@ interface Milestone {
           <span class="material-symbols-outlined" aria-hidden="true">payments</span>
           <div>
             <strong>Awaiting settlement</strong>
-            Full payment (bank transfer / POS) is due now — the desk confirms it, then the
+            Full payment (bank transfer / POS) is due now: the desk confirms it, then the
             strike-off sample enters production. No part-payments.
           </div>
         </div>
@@ -141,8 +141,8 @@ interface Milestone {
       </div>
       <section class="panel">
         <p class="small muted" style="margin:0 0 var(--space-sm)">
-          The factory produces one physical sample for your verification — seams, prints and fabric
-          weight — before any bulk cutting starts.
+          The factory produces one physical sample for your verification, seams, prints and fabric
+          weight: before any bulk cutting starts.
         </p>
         <!-- GAP: sample photography (multi-angle gallery in the reference) awaits
              the S3 media pipeline on custom orders; the stage copy is live data. -->
@@ -154,7 +154,7 @@ interface Milestone {
             <div>
               <strong>Your sample is in production at the Aba workshop.</strong>
               <span class="sub"
-                >Once it reaches you, record your decision in the sign-off terminal below — full
+                >Once it reaches you, record your decision in the sign-off terminal below, full
                 production only starts after your approval.</span
               >
             </div>
@@ -343,7 +343,7 @@ export class CustomStatusPage implements OnInit {
     this.api.acceptQuote(id).subscribe({
       next: () => {
         this.message.set(
-          'Quotation accepted — settle the full amount with the desk to start the sample.',
+          'Quotation accepted: settle the full amount with the desk to start the sample.',
         );
         this.reload(id);
       },
@@ -357,8 +357,8 @@ export class CustomStatusPage implements OnInit {
       next: () => {
         this.message.set(
           approved
-            ? `Sample approved — the ${req.quantity}-unit batch is authorised for production.`
-            : 'Revision requested — the factory will rework the sample.',
+            ? `Sample approved: the ${req.quantity}-unit batch is authorised for production.`
+            : 'Revision requested: the factory will rework the sample.',
         );
         this.reload(req.id);
       },

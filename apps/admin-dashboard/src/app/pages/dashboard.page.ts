@@ -42,11 +42,11 @@ const RANGE_LABEL: Record<string, string> = {
 
 const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
 
-/** A1 — Executive Operations Command (owner home). Approved Stitch layout:
+/** A1, Executive Operations Command (owner home). Approved Stitch layout:
     KPI command bar, range-scoped sales chart (server-bucketed by the
     Analytics API), needs-attention rail, manufacturing pipeline, best
     sellers / slow movers / critical materials. Every figure is bound to a
-    live endpoint — nothing invented, gaps labeled. */
+    live endpoint: nothing invented, gaps labeled. */
 @Component({
   selector: 'app-dashboard',
   imports: [CommonModule, RouterLink],
@@ -370,7 +370,7 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
           <section class="panel flat">
             <div class="panel-head">
               <span class="gold-bullet" aria-hidden="true"></span>
-              <h2>Order status — live</h2>
+              <h2>Order status: live</h2>
               <span class="ph-sub">paid orders by status · {{ rangeLabel() }}</span>
             </div>
             @if (dashboard(); as d) {
@@ -549,7 +549,7 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
                 </span>
               </div>
               <p class="muted small">
-                Both series come from the same source as the chart above — for the selected period.
+                Both series come from the same source as the chart above, for the selected period.
               </p>
             }
           </section>
@@ -559,7 +559,7 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
           <section class="panel flat">
             <div class="panel-head">
               <span class="gold-bullet" aria-hidden="true"></span>
-              <h2>Order status — live</h2>
+              <h2>Order status: live</h2>
               <span class="chp-end">{{ statusBreakdownTotal() | number }} paid</span>
             </div>
             @if (dashboard(); as d) {
@@ -724,7 +724,7 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
                 <div class="att-item crit" style="margin-bottom:0.5rem;">
                   <span class="att-tag">Below threshold</span>
                   <p class="att-body">
-                    <strong>{{ m.name }}</strong> — {{ m.currentQuantity }} {{ m.unit }} left (min
+                    <strong>{{ m.name }}</strong>- {{ m.currentQuantity }} {{ m.unit }} left (min
                     {{ m.reorderThreshold }})
                   </p>
                 </div>
@@ -733,14 +733,14 @@ const ISO_DATE = (d: Date): string => d.toISOString().slice(0, 10);
                 <div class="att-item warn" style="margin-bottom:0.5rem;">
                   <span class="att-tag">Finished goods thin</span>
                   <p class="att-body">
-                    <strong>{{ skuFor(v.variantId) }}</strong> — {{ v.currentQuantity }} unit(s)
+                    <strong>{{ skuFor(v.variantId) }}</strong>- {{ v.currentQuantity }} unit(s)
                     left (low-stock level {{ ls.variantThreshold }})
                   </p>
                 </div>
               }
               @if (ls.variants.length > 5) {
                 <p class="mini-note">
-                  +{{ ls.variants.length - 5 }} more size(s) at or below the low-stock level — full
+                  +{{ ls.variants.length - 5 }} more size(s) at or below the low-stock level, full
                   list on the Inventory page.
                 </p>
               }
@@ -844,8 +844,8 @@ export class DashboardPage implements OnInit {
   readonly shiftLabel = (() => {
     const h = new Date().getHours();
     return h >= 7 && h < 19
-      ? 'Day shift window (07:00–19:00 WAT)'
-      : 'After-hours window (19:00–07:00 WAT)';
+      ? 'Day shift window (07:00-19:00 WAT)'
+      : 'After-hours window (19:00-07:00 WAT)';
   })();
 
   ngOnInit(): void {
@@ -977,7 +977,7 @@ export class DashboardPage implements OnInit {
     this.hoverIdx.set(nearest);
   }
 
-  /** Escalation rail — every item derives from a live queue. */
+  /** Escalation rail, every item derives from a live queue. */
   readonly attention = computed(() => {
     const items: Array<{
       key: string;
@@ -995,7 +995,7 @@ export class DashboardPage implements OnInit {
         tag: 'Low-stock alert',
         severity: 'crit',
         when: 'now',
-        body: `${m.name} — ${m.currentQuantity} left, reorder threshold ${m.reorderThreshold}`,
+        body: `${m.name}- ${m.currentQuantity} left, reorder threshold ${m.reorderThreshold}`,
         action: 'Order re-supply',
         route: '/materials',
       });
@@ -1006,7 +1006,7 @@ export class DashboardPage implements OnInit {
         tag: 'Pending approval',
         severity: 'warn',
         when: this.formatTime(a.createdAt),
-        body: `${a.actionType.replaceAll('_', ' ')} — requested by ${a.requestedBy.name}`,
+        body: `${a.actionType.replaceAll('_', ' ')}- requested by ${a.requestedBy.name}`,
         action: 'Review & authorise',
         route: '/approvals',
       });
@@ -1018,7 +1018,7 @@ export class DashboardPage implements OnInit {
         tag: 'Return awaiting inspection',
         severity: 'warn',
         when: `due ${this.formatTime(fr.deadline)}`,
-        body: `${this.pendingReturns()} request(s) in the queue — next: ${fr.sku}`,
+        body: `${this.pendingReturns()} request(s) in the queue: next: ${fr.sku}`,
         action: 'Open inspection desk',
         route: '/returns',
       });
@@ -1030,7 +1030,7 @@ export class DashboardPage implements OnInit {
         tag: 'Dispatch in transit',
         severity: 'info',
         when: 'live',
-        body: `${String(t['carrier'] ?? 'carrier')} leg ${String(t['legNumber'] ?? '')} — ${String(t['trackingRef'] ?? 'no tracking ref')}`,
+        body: `${String(t['carrier'] ?? 'carrier')} leg ${String(t['legNumber'] ?? '')}- ${String(t['trackingRef'] ?? 'no tracking ref')}`,
         action: 'View haulage',
         route: '/logistics',
       });
@@ -1090,7 +1090,7 @@ export class DashboardPage implements OnInit {
     return this.skus().get(variantId) ?? variantId.slice(0, 8);
   }
 
-  /** Reference's "Export Daily Operations Sheet" — print flow (no export API yet). */
+  /** Reference's "Export Daily Operations Sheet"- print flow (no export API yet). */
   exportSheet(): void {
     window.print();
   }

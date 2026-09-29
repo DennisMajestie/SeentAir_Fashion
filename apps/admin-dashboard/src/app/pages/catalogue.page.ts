@@ -26,7 +26,7 @@ interface TierRow {
   discountPercent: number;
 }
 
-/** A6 — Product catalogue & silhouette registry. Approved Stitch layout:
+/** A6, Product catalogue & silhouette registry. Approved Stitch layout:
     registry KPIs, silhouette list, and a spec inspector with the size matrix,
     wholesale tier pricing and the dual-control (approval-gated) price change. */
 @Component({
@@ -38,7 +38,7 @@ interface TierRow {
         <p class="eyebrow">Products · Prices & sizes</p>
         <h1>Product catalogue</h1>
         <p class="ops-sub">
-          Everything you sell — products, sizes, colours and prices, all in one place.
+          Everything you sell: products, sizes, colours and prices, all in one place.
         </p>
       </div>
       <div class="ops-actions">
@@ -66,7 +66,7 @@ interface TierRow {
       <div class="kpi" [class.kpi-action]="pendingPriceChanges() > 0">
         <span class="kpi-label">Pending price changes</span>
         <span class="kpi-value">{{ pendingPriceChanges() }}</span>
-        <span class="kpi-sub">needs management approval — see Approvals</span>
+        <span class="kpi-sub">needs management approval: see Approvals</span>
       </div>
     </div>
 
@@ -90,7 +90,7 @@ interface TierRow {
             <label
               >Collection
               <select [(ngModel)]="np.collectionId" name="pcoll">
-                <option value="">—</option>
+                <option value="">-</option>
                 @for (c of collectionRows(); track c.id) {
                   <option [value]="c.id">{{ c.name }}</option>
                 }
@@ -178,7 +178,7 @@ interface TierRow {
                   }
                 </td>
                 <td>
-                  <span class="chip">{{ p.category || '—' }}</span>
+                  <span class="chip">{{ p.category || '-' }}</span>
                 </td>
                 <td class="mono">
                   {{ colourways(p) }} colour(s) · {{ p.variants.length }} size option(s)
@@ -263,8 +263,8 @@ interface TierRow {
                     <td>
                       <code>{{ v['sku'] }}</code>
                     </td>
-                    <td class="mono">{{ v['size'] || '—' }}</td>
-                    <td>{{ v['colour'] || '—' }}</td>
+                    <td class="mono">{{ v['size'] || '-' }}</td>
+                    <td>{{ v['colour'] || '-' }}</td>
                     <td class="mono">₦{{ variantPrice(v, p.basePrice) | number: '1.0-0' }}</td>
                     <td>
                       <span
@@ -288,7 +288,7 @@ interface TierRow {
           @if (activeSpec(); as v) {
             <div class="gap-sep"></div>
             <div class="panel-head">
-              <h2>Tech spec — {{ v['sku'] }}</h2>
+              <h2>Tech spec: {{ v['sku'] }}</h2>
               <span class="ph-sub">fit note & pattern geometry</span>
               <span class="ph-end"
                 ><button class="cta small ghost" type="button" (click)="exportSpecSheet(v)">
@@ -345,7 +345,7 @@ interface TierRow {
                     <tr>
                       <td class="small">{{ row['materialName'] ?? rawName(row['materialId']) }}</td>
                       <td class="mono">{{ row['quantityPerUnit'] ?? row['quantity'] }}</td>
-                      <td class="mono">{{ row['unitOfMeasure'] ?? '—' }}</td>
+                      <td class="mono">{{ row['unitOfMeasure'] ?? '-' }}</td>
                     </tr>
                   }
                 </tbody>
@@ -503,7 +503,7 @@ export class CatalogueAdminPage implements OnInit {
       : 'no variants yet';
   }
   colourways(p: ProductRow): number {
-    return new Set(p.variants.map((v) => v.colour ?? '—')).size;
+    return new Set(p.variants.map((v) => v.colour ?? '-')).size;
   }
   stockOf(p: ProductRow): number {
     const stock = this.stockMap();
@@ -694,7 +694,7 @@ export class CatalogueAdminPage implements OnInit {
         next: (res) => {
           this.approvals[p.id] = res.id;
           this.ok(
-            `Approval requested for ${p.name} — Management must approve it in the queue before you can apply.`,
+            `Approval requested for ${p.name}- Management must approve it in the queue before you can apply.`,
           );
         },
         error: (e) => this.fail(e, 'Approval request failed.'),
@@ -712,7 +712,7 @@ export class CatalogueAdminPage implements OnInit {
           delete this.approvals[p.id];
           this.ok('Price updated.');
         },
-        error: (e) => this.fail(e, 'Not approved yet — check the Approvals queue.'),
+        error: (e) => this.fail(e, 'Not approved yet: check the Approvals queue.'),
       });
   }
 }

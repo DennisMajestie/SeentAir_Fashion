@@ -8,7 +8,7 @@ import { pill } from '../status-pill';
 const SIZE_KEYS = ['S', 'M', 'L', 'XL', 'XXL'] as const;
 
 /**
- * W9 — Request a custom design: policy/SLA panel, four numbered step cards
+ * W9, Request a custom design: policy/SLA panel, four numbered step cards
  * (garment specifications, techpack & assets, size breakdown & volume,
  * delivery & logistics) and the production roadmap, submitting through the
  * live custom-orders API. Existing requests link to their W10 status pages.
@@ -93,7 +93,7 @@ const SIZE_KEYS = ['S', 'M', 'L', 'XL', 'XXL'] as const;
           <span class="sc-step">Step 2 of 4</span>
         </div>
         <!-- GAP: techpack file upload awaits the S3 asset pipeline on custom
-             orders — the dropzone is present but locked, and buyers reference
+             orders: the dropzone is present but locked, and buyers reference
              assets in the description meanwhile. -->
         <div class="dropzone" aria-disabled="true">
           <div class="dz-icon">
@@ -110,7 +110,7 @@ const SIZE_KEYS = ['S', 'M', 'L', 'XL', 'XXL'] as const;
             <span class="material-symbols-outlined" aria-hidden="true">lock</span> Browse files
           </button>
           <p class="dz-sub">
-            Upload lands with the asset pipeline — for now, describe reference pieces in your design
+            Upload lands with the asset pipeline, for now, describe reference pieces in your design
             description and the desk will request files.
           </p>
         </div>
@@ -175,7 +175,7 @@ const SIZE_KEYS = ['S', 'M', 'L', 'XL', 'XXL'] as const;
           <input type="date" [(ngModel)]="form.desiredDate" name="desiredDate" required
         /></label>
         <p class="muted small" style="margin:0">
-          The desired date guides production scheduling — the factory confirms the final SLA with
+          The desired date guides production scheduling, the factory confirms the final SLA with
           your quotation.
         </p>
       </section>
@@ -219,7 +219,7 @@ const SIZE_KEYS = ['S', 'M', 'L', 'XL', 'XXL'] as const;
           <div style="flex:1">
             <div class="rm-t"><span>Payment (100% upfront)</span></div>
             <p class="rm-d">
-              Full settlement — bank transfer or POS, desk-confirmed — before the sample run.
+              Full settlement: bank transfer or POS, desk-confirmed: before the sample run.
             </p>
           </div>
         </div>
@@ -334,7 +334,7 @@ export class CustomPage implements OnInit {
       next: (created) => {
         this.busy.set(false);
         this.message.set(
-          'Request submitted for technical review — you will be notified when it is quoted.',
+          'Request submitted for technical review, you will be notified when it is quoted.',
         );
         this.load();
         void this.router.navigate(['/custom', created.id]);

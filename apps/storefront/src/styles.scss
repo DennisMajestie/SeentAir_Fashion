@@ -1,9 +1,9 @@
-/* SEENTAIR — approved design system (client's Stitch project
+/* SEENTAIR, approved design system (client's Stitch project
    "Seentair Streetwear Storefront", projects/4978034307012465281).
    Customer-facing: brand gold on warm ivory; dark mode = champagne gold on
    near-black. The brand gold matches the scroll-dressing hero's frozen
    palette. The hero is EXEMPT and keeps gold-on-ivory in both themes
-   (see the .hero-* exemption block below) — client: don't touch the hero. */
+   (see the .hero-* exemption block below)- client: don't touch the hero. */
 
 :root {
   --canvas: #fcf9f8;
@@ -15,7 +15,7 @@
   --ink: #1c1b1b;
   --muted: #6f6a67;
   /* Brand gold accent (shared with the ops surfaces; equals the frozen
-     hero palette): #8a6a18 gold text on cream is ~4.8–5.1:1 (AA body),
+     hero palette): #8a6a18 gold text on cream is ~4.8-5.1:1 (AA body),
      #c9a24b buttons with ink-on-gold 6.9:1. */
   --primary: #8a6a18;
   --primary-fill: #c9a24b;
@@ -173,7 +173,7 @@ code {
     border-color 0.3s ease,
     backdrop-filter 0.3s ease,
     box-shadow 0.3s ease;
-  /* padding-block only — the inline padding comes from .wrap-col, which
+  /* padding-block only, the inline padding comes from .wrap-col, which
      this element also carries. A `padding` shorthand here would zero it
      and pull the logo out of alignment with every section below. */
   /* Logo left; nav and the cart/menu group ride together on the right. */
@@ -712,7 +712,7 @@ code {
       font-weight: 600;
     }
   }
-  /* dashed separator — then the gradient total as the focal point */
+  /* dashed separator, then the gradient total as the focal point */
   .matrix-divider {
     border-top: 1px dashed var(--line-2);
     margin: 0.6rem 0;
@@ -764,7 +764,7 @@ code {
 }
 
 /* ---------- system components (approved spec tokens) ---------- */
-/* Stage bar — segmented progress; label carries the real step name. */
+/* Stage bar, segmented progress; label carries the real step name. */
 .stage-bar {
   margin: 1.6rem 0 1.2rem;
   .stage-label-line {
@@ -799,7 +799,7 @@ code {
   }
 }
 
-/* Inline policy notices — amber for warnings (wholesale MOQ, made-to-order),
+/* Inline policy notices, amber for warnings (wholesale MOQ, made-to-order),
    red for errors, green for success, accent for info. Only rendered when
    the condition is actually true. */
 .notice {
@@ -864,7 +864,7 @@ code {
   }
 }
 
-/* Sticky CTA footer — safe-area bottom, translucent canvas blur. */
+/* Sticky CTA footer, safe-area bottom, translucent canvas blur. */
 .sticky-cta {
   position: sticky;
   bottom: 0;
@@ -946,7 +946,7 @@ code {
   gap: 0.55rem;
 }
 
-/* Entrance: opacity + 12px rise, staggered 80ms — always reduced-motion
+/* Entrance: opacity + 12px rise, staggered 80ms, always reduced-motion
    safe. The frozen hero keeps its own .rise; this drives new screens. */
 @keyframes u-rise {
   from {
@@ -1569,7 +1569,7 @@ code {
     inset: 0;
     background: linear-gradient(0deg, rgba(20, 15, 12, 0.78) 0%, rgba(20, 15, 12, 0.05) 60%);
   }
-  /* Campaign image keeps its dark scrim + white type — correct on a light
+  /* Campaign image keeps its dark scrim + white type, correct on a light
      page too; the kicker uses the primary tint to stay legible on it. */
   .hero-body {
     position: relative;
@@ -2475,7 +2475,7 @@ textarea {
 }
 
 /* ---------- scroll-dressing landing (approved acts) ---------- */
-/* BACKGROUND LAYER — do not modify image source/size/position/cropping,
+/* BACKGROUND LAYER, do not modify image source/size/position/cropping,
    filters or overlays. Only the foreground content layer below changes. */
 .dressing-scroll {
   height: 650vh;
@@ -2518,7 +2518,7 @@ textarea {
     height: 100%;
     /* Cover at EVERY width: the canvas engine positions garments with
        cover math, so a contain-fitted base image on mobile put every
-       panel in the wrong place — the "scattered" phone bug. */
+       panel in the wrong place, the "scattered" phone bug. */
     object-fit: cover;
     object-position: center 10%;
     opacity: 0;
@@ -2578,7 +2578,7 @@ textarea {
   font-weight: 700;
   font-size: clamp(32px, 4.6vw, 58px);
   margin: 0;
-  /* Brand gold headline — the deeper text-weight gold, which holds
+  /* Brand gold headline, the deeper text-weight gold, which holds
      4.8:1 on the veiled photograph (the bright fill gold reads washed
      out at 2.3:1, even at display sizes). */
   line-height: 0.92;
@@ -2883,7 +2883,7 @@ textarea {
     grid-column: 1;
     padding: 14px 16px 12px;
   }
-  /* The full archive card sits above the headline on phones — kicker,
+  /* The full archive card sits above the headline on phones, kicker,
      tag, rule, title and caption. */
   .hero-card {
     grid-column: 1;
@@ -2959,7 +2959,7 @@ textarea {
 }
 
 /* ============================================================
-   Brand SweetAlert2 skin (storefront ivory/gold) — appended so it
+   Brand SweetAlert2 skin (storefront ivory/gold)- appended so it
    sits after the base import layers.
    ============================================================ */
 .swal2-popup.ba-popup,
@@ -3169,7 +3169,7 @@ textarea {
     }
   }
 }
-/* PDP: the hero replaces .thumb.large — same 460px column, full width on phones. */
+/* PDP: the hero replaces .thumb.large, same 460px column, full width on phones. */
 .pdp-hero {
   flex: 1 1 320px;
   max-width: 460px;

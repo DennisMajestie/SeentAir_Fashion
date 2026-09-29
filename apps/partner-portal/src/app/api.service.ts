@@ -116,12 +116,12 @@ export class ApiService {
     );
   }
 
-  /** Starts a password reset — posts regardless of whether the email exists. */
+  /** Starts a password reset, posts regardless of whether the email exists. */
   forgotPassword(email: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${API_BASE}/auth/forgot-password`, { email });
   }
 
-  /** Step 2 of a 2FA login — exchanges the challenge token + TOTP code for a session. */
+  /** Step 2 of a 2FA login, exchanges the challenge token + TOTP code for a session. */
   verify2fa(challengeToken: string, code: string): Observable<{ accessToken: string }> {
     return this.http
       .post<{ accessToken: string }>(`${API_BASE}/auth/2fa/verify`, { challengeToken, code })
@@ -172,7 +172,7 @@ export class ApiService {
     );
   }
 
-  /** Public catalogue — used to label variant stock rows with product names. */
+  /** Public catalogue, used to label variant stock rows with product names. */
   products(limit = 500): Observable<{ data: ProductRef[]; total: number }> {
     return this.http.get<{ data: ProductRef[]; total: number }>(
       `${API_BASE}/products?limit=${limit}`,

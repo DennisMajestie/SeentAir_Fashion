@@ -17,7 +17,7 @@ interface CartGroup {
 }
 
 /**
- * W5 — Bulk cart & checkout: batch production items, consignee destination,
+ * W5, Bulk cart & checkout: batch production items, consignee destination,
  * freight options, factory policy & SLA, production cost summary and
  * settlement method. Commit places the order through POST /orders (the
  * server re-prices at the buyer's tier and enforces MOQ).
@@ -90,7 +90,7 @@ interface CartGroup {
           </div>
           <div class="oc-top" style="margin-top: var(--space-md); align-items:center">
             <span class="tabular small"
-              >₦{{ group.unitPrice | number: '1.0-2' }} / unit —
+              >₦{{ group.unitPrice | number: '1.0-2' }} / unit -
               <strong>₦{{ group.amount | number: '1.0-2' }}</strong></span
             >
             <span style="display:flex; gap: var(--space-lg)">
@@ -106,7 +106,7 @@ interface CartGroup {
       <div class="section-head">
         <h2>2. Delivery consignee destination</h2>
       </div>
-      <!-- GAP: no buyer address-book endpoint yet — destination is agreed with the
+      <!-- GAP: no buyer address-book endpoint yet, destination is agreed with the
            Aba desk after commit instead of rendering a stored consignee address. -->
       <section class="panel">
         <div class="oc-top">
@@ -114,7 +114,7 @@ interface CartGroup {
             <strong>{{ buyerName() ?? 'Wholesale account' }}</strong>
             <p class="muted small" style="margin: 2px 0 0">
               Delivery destination and consignee contact are confirmed with the Aba desk once the
-              batch is committed — GIGL dispatch or factory pickup.
+              batch is committed: GIGL dispatch or factory pickup.
             </p>
           </div>
           <span class="chip okc">Verified buyer</span>
@@ -125,7 +125,7 @@ interface CartGroup {
         <h2>3. Freight waybill options</h2>
         <span class="aside">For {{ cart.units() }} units</span>
       </div>
-      <!-- GAP: no delivery-fee quotation endpoint — freight is quoted on the waybill
+      <!-- GAP: no delivery-fee quotation endpoint, freight is quoted on the waybill
            at dispatch, so no fee figures are shown against each option. -->
       <label class="radio-opt" [class.selected]="freight === 'gigl'">
         <input type="radio" name="freight" value="gigl" [(ngModel)]="freight" />
@@ -135,7 +135,7 @@ interface CartGroup {
             <span class="r-price muted">Quoted at dispatch</span></span
           >
           <span class="r-sub"
-            >First-line carrier — doorstep commercial drop with tracked waybill.</span
+            >First-line carrier: doorstep commercial drop with tracked waybill.</span
           >
         </span>
       </label>
@@ -174,7 +174,7 @@ interface CartGroup {
           @if (tier(); as t) {
             <div class="lg-row disc">
               <span>{{ t.name }} wholesale rate</span>
-              <span class="v">{{ t.discountPercent }}% off retail — applied</span>
+              <span class="v">{{ t.discountPercent }}% off retail: applied</span>
             </div>
           }
           <!-- GAP: freight + any statutory charges appear on the final invoice; no
@@ -200,7 +200,7 @@ interface CartGroup {
         <h2>5. Settlement method</h2>
       </div>
       <!-- GAP: Paystack is the confirmed processor, but the portal has no
-           payment-initialisation endpoint yet — settlement today is bank
+           payment-initialisation endpoint yet, settlement today is bank
            transfer / POS confirmed by the desk, so commit places the order
            and the desk follows up with payment instructions. -->
       <label class="radio-opt" [class.selected]="settlement === 'transfer'">
@@ -208,7 +208,7 @@ interface CartGroup {
         <span class="r-body">
           <span class="r-title"><span>Direct corporate bank transfer / POS</span></span>
           <span class="r-sub"
-            >Current live flow — the desk confirms your payment, then the batch enters
+            >Current live flow: the desk confirms your payment, then the batch enters
             production.</span
           >
         </span>
@@ -221,7 +221,7 @@ interface CartGroup {
             <span class="r-price muted">Coming online</span></span
           >
           <span class="r-sub"
-            >Instant confirmation — cards, NIBSS transfer, USSD. Awaiting production keys; the desk
+            >Instant confirmation: cards, NIBSS transfer, USSD. Awaiting production keys; the desk
             will settle this order manually meanwhile.</span
           >
         </span>
@@ -235,16 +235,16 @@ interface CartGroup {
       >
         <span class="material-symbols-outlined" aria-hidden="true">lock</span>
         {{
-          placing() ? 'Committing batch…' : 'Commit batch — ₦' + (cart.amount() | number: '1.0-2')
+          placing() ? 'Committing batch…' : 'Commit batch: ₦' + (cart.amount() | number: '1.0-2')
         }}
       </button>
       @if (!moqMet()) {
         <p class="error" style="text-align:center">
-          Minimum order is {{ moq() }} units — you have {{ cart.units() }}.
+          Minimum order is {{ moq() }} units: you have {{ cart.units() }}.
         </p>
       }
       <p class="muted small" style="text-align:center; margin-top: var(--space-sm)">
-        Full payment upfront confirms the production slot — the cutting floor is notified once the
+        Full payment upfront confirms the production slot, the cutting floor is notified once the
         desk verifies settlement.
       </p>
     }
@@ -253,9 +253,9 @@ interface CartGroup {
       <section class="panel">
         <div class="tagbar"><span>Batch committed</span><span class="success">OK</span></div>
         <p class="apply-copy">
-          Order <code>{{ result.id.slice(0, 8).toUpperCase() }}</code> placed —
+          Order <code>{{ result.id.slice(0, 8).toUpperCase() }}</code> placed -
           <strong>₦{{ result.totalAmount | number: '1.0-2' }}</strong
-          >. Payment: bank transfer / POS — our team confirms it, then production starts.
+          >. Payment: bank transfer / POS, our team confirms it, then production starts.
         </p>
         <div class="actions">
           <a class="cta small" [routerLink]="['/orders', result.id, 'invoice']"
@@ -345,7 +345,7 @@ export class CartPage implements OnInit {
     const units = this.cart.units();
     const ok = await this.alerts.confirm({
       title: 'Commit this batch order?',
-      html: `${units} unit${units === 1 ? '' : 's'} at wholesale rate — full payment upfront, and the order is final once committed.`,
+      html: `${units} unit${units === 1 ? '' : 's'} at wholesale rate: full payment upfront, and the order is final once committed.`,
       confirm: 'Commit order',
       icon: 'warning',
     });
@@ -357,12 +357,12 @@ export class CartPage implements OnInit {
         this.placing.set(false);
         this.orderResult.set(order);
         this.cart.clear();
-        void this.alerts.toast(`Batch committed — ref ${order.id.slice(0, 8).toUpperCase()}`);
+        void this.alerts.toast(`Batch committed: ref ${order.id.slice(0, 8).toUpperCase()}`);
       },
       error: (err) => {
         this.placing.set(false);
         this.error.set(err?.error?.message ?? 'Order failed.');
-        void this.alerts.toast('Order failed — please retry.', { icon: 'error' });
+        void this.alerts.toast('Order failed: please retry.', { icon: 'error' });
       },
     });
   }

@@ -3,7 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, AuditEntry } from '../api.service';
 
-/** A15 — Immutable operational audit log. Approved Stitch layout: integrity
+/** A15, Immutable operational audit log. Approved Stitch layout: integrity
     header, entry tiles, server-side filters (action / actor / date window) and
     an expandable before/after state inspector per entry. Entries are written
     automatically by the API's audit interceptor (principle #4). */
@@ -16,7 +16,7 @@ import { ApiService, AuditEntry } from '../api.service';
         <p class="eyebrow">Governance · Audit</p>
         <h1>Activity log</h1>
         <p class="ops-sub">
-          Every change to the business is recorded here automatically — nothing needs to be typed in
+          Every change to the business is recorded here automatically, nothing needs to be typed in
           by hand.
         </p>
       </div>
@@ -36,12 +36,12 @@ import { ApiService, AuditEntry } from '../api.service';
 
     @if (verifyResult(); as v) {
       <div class="rule-strip" [style.borderColor]="v.broken > 0 ? 'var(--danger)' : ''">
-        <strong>Hash-chain integrity check</strong> — every audit entry is SHA-256 chained to the
+        <strong>Hash-chain integrity check</strong>- every audit entry is SHA-256 chained to the
         previous one.
         @if (v.broken === 0) {
           All {{ v.total }} entries verify end-to-end; the ledger has not been tampered with.
         } @else {
-          {{ v.broken }} of {{ v.total }} entries fail verification — investigate immediately.
+          {{ v.broken }} of {{ v.total }} entries fail verification: investigate immediately.
         }
         @if (v.headHash) {
           <code class="mono">{{ v.headHash }}</code>
@@ -117,7 +117,7 @@ import { ApiService, AuditEntry } from '../api.service';
                 @if (hasState(entry)) {
                   before/after captured
                 } @else {
-                  —
+                  -
                 }
               </td>
               <td>
@@ -227,7 +227,7 @@ export class AuditPage implements OnInit {
   }
 
   pretty(v: unknown): string {
-    if (v == null) return '— not captured —';
+    if (v == null) return '- not captured -';
     try {
       return JSON.stringify(v, null, 2);
     } catch {

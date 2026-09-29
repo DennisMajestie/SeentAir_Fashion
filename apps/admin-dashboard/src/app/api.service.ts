@@ -103,7 +103,7 @@ export interface AdminOrder {
     variant: { id: string; sku: string; size?: string | null; colour?: string | null };
   }>;
   shippingAddress?: ShippingAddress | null;
-  /** Handover instructions for the waybill — staff note, not routable data. */
+  /** Handover instructions for the waybill, staff note, not routable data. */
   deliveryNote?: string | null;
   oqrCode?: string | null;
   grossWeightKg?: number | null;

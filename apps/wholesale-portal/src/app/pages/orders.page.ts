@@ -6,7 +6,7 @@ import { ApiService, Invoice, Pricing } from '../api.service';
 import { pill } from '../status-pill';
 
 /**
- * W6 — Orders & invoices: procurement log stats, status filter chips,
+ * W6, Orders & invoices: procurement log stats, status filter chips,
  * order/date filters, batch cards with contextual actions, and a real
  * CSV batch-statement export built from the live invoice ledger.
  */
@@ -128,7 +128,7 @@ import { pill } from '../status-pill';
 
         <div class="oc-actions">
           @if (!isPaid(invoice)) {
-            <!-- GAP: no payment-slip upload endpoint — the desk verifies transfers;
+            <!-- GAP: no payment-slip upload endpoint, the desk verifies transfers;
                  the pro-forma stands in for the reference's UPLOAD SLIP action. -->
             <a class="cta small" [routerLink]="['/orders', invoice.orderId, 'invoice']">
               <span class="material-symbols-outlined" aria-hidden="true">description</span>
@@ -180,7 +180,7 @@ import { pill } from '../status-pill';
         aria-hidden="true"
         >lock</span
       >
-      Statements are generated from the live order ledger — every movement is audit-logged.
+      Statements are generated from the live order ledger, every movement is audit-logged.
     </p>
   `,
 })
@@ -256,7 +256,7 @@ export class OrdersPage implements OnInit {
     this.api.reorder(orderId).subscribe({
       next: (order) => {
         this.message.set(
-          `Reorder placed: ${order.id.slice(0, 8)} — repriced at your current tier.`,
+          `Reorder placed: ${order.id.slice(0, 8)}- repriced at your current tier.`,
         );
         this.api.invoices().subscribe((res) => this.invoices.set(res.data));
       },

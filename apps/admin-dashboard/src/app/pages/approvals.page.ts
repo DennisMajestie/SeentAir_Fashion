@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, Approval } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 
-/** A14 — Management approvals queue. Approved Stitch layout: compliance strip,
+/** A14, Management approvals queue. Approved Stitch layout: compliance strip,
     per-request dossier cards with the payload decoded into an impact table,
     approve/reject actions, and the decision history below. Decisions stay
     server-side gated (architectural principle #3). */
@@ -17,7 +17,7 @@ import { BrandAlertService } from '../brand-alert.service';
         <p class="eyebrow">Approvals · who asked & what changed</p>
         <h1>Management approval queue</h1>
         <p class="ops-sub">
-          Price changes, purchasing, production starts and stock removals wait here — nothing
+          Price changes, purchasing, production starts and stock removals wait here, nothing
           proceeds without a decision.
         </p>
       </div>
@@ -107,7 +107,7 @@ import { BrandAlertService } from '../brand-alert.service';
             Written justification for this decision
             <textarea
               rows="2"
-              placeholder="Recorded to the audit log — required."
+              placeholder="Recorded to the audit log: required."
               [(ngModel)]="justifications[approval.id]"
               name="j-{{ approval.id }}"
               aria-label="Justification"
@@ -202,7 +202,7 @@ export class ApprovalsPage implements OnInit {
       case 'price_change':
         return 'Target retail price revision';
       case 'purchasing':
-        return 'Purchase order — raw materials';
+        return 'Purchase order: raw materials';
       case 'production_start':
         return 'Production batch allocation';
       case 'stock_disposal':
@@ -219,13 +219,13 @@ export class ApprovalsPage implements OnInit {
     const from = Number(p?.['from']);
     const to = Number(p?.['to']);
     if (!p || Number.isNaN(from) || Number.isNaN(to)) return null;
-    const deltaPct = from > 0 ? (Math.round(((to - from) / from) * 1000) / 10).toFixed(1) : '—';
+    const deltaPct = from > 0 ? (Math.round(((to - from) / from) * 1000) / 10).toFixed(1) : '-';
     return { product: String(p['product'] ?? ''), from, to, deltaPct };
   }
 
   payloadEntries(a: Approval): Array<[string, string]> {
     const p = a.payload;
-    if (!p || typeof p !== 'object') return [['payload', String(p ?? '—')]];
+    if (!p || typeof p !== 'object') return [['payload', String(p ?? '-')]];
     return Object.entries(p as Record<string, unknown>).map(([k, v]) => [
       k.replace(/([A-Z])/g, ' $1').toLowerCase(),
       typeof v === 'object' ? JSON.stringify(v) : String(v),
@@ -252,7 +252,7 @@ export class ApprovalsPage implements OnInit {
     }
     const ok = await this.alerts.confirm({
       title: decision === 'approved' ? 'Approve & execute?' : 'Reject request?',
-      html: `${label} — the decision and your justification are written to the audit log and cannot be reversed.`,
+      html: `${label}- the decision and your justification are written to the audit log and cannot be reversed.`,
       confirm: decision === 'approved' ? 'Approve' : 'Reject',
       danger: decision === 'rejected',
       icon: decision === 'approved' ? 'warning' : 'error',

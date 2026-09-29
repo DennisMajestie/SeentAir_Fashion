@@ -11,7 +11,7 @@ interface CustomerThread {
   lastOrderAt: string;
 }
 
-/** 060 — Client communications & dispatch support desk. LAYOUT SHELL: there is
+/** 060, Client communications & dispatch support desk. LAYOUT SHELL: there is
     no inbound-messaging module (live chat / WhatsApp APIs are future work), so
     the inbox is approximated with real customer order activity, and the
     composer sends real in-platform notifications tied to an order. */
@@ -35,7 +35,7 @@ interface CustomerThread {
       chat & WhatsApp Business API are future integrations.
     </p>
     <!-- GAP: inbound customer messages, thread history, macros/AI replies, SLA response
-         timers and escalate-to-WhatsApp — no messaging module exists in the API. -->
+         timers and escalate-to-WhatsApp, no messaging module exists in the API. -->
 
     <div class="kpi-bar">
       <div class="kpi">
@@ -138,7 +138,7 @@ interface CustomerThread {
             }
           </ul>
           <p class="mini-note">
-            No message history — inbound chat is not integrated; only order context is available.
+            No message history: inbound chat is not integrated; only order context is available.
           </p>
 
           <div class="gap-sep"></div>
@@ -152,7 +152,7 @@ interface CustomerThread {
               <select [(ngModel)]="orderId" name="oid" required>
                 @for (o of t.orders; track o.id) {
                   <option [value]="o.id">
-                    #{{ o.id.slice(0, 8) }} — {{ o.status.replaceAll('_', ' ') }}
+                    #{{ o.id.slice(0, 8) }}- {{ o.status.replaceAll('_', ' ') }}
                   </option>
                 }
               </select>
@@ -164,7 +164,7 @@ interface CustomerThread {
                 name="draft"
                 rows="3"
                 required
-                placeholder="Hi — your batch has cleared quality inspection and is scheduled for courier dispatch…"
+                placeholder="Hi: your batch has cleared quality inspection and is scheduled for courier dispatch…"
               ></textarea>
             </label>
             <div class="actions flat" style="margin-bottom:0.6rem;">
@@ -203,19 +203,19 @@ export class MessagesPage implements OnInit {
   draft = '';
   orderId = '';
 
-  /** Canned composer starters (client-side text only — no macro backend). */
+  /** Canned composer starters (client-side text only, no macro backend). */
   readonly macros = [
     {
       label: 'Send tracking',
-      text: 'Hello! Your order is with the courier — we will share the live tracking link as soon as the leg is dispatched.',
+      text: 'Hello! Your order is with the courier, we will share the live tracking link as soon as the leg is dispatched.',
     },
     {
       label: 'Confirm size exchange',
-      text: 'Thanks for reaching out — size exchanges follow the returns window: request within 12h of receipt and we will guide you through the swap.',
+      text: 'Thanks for reaching out: size exchanges follow the returns window: request within 12h of receipt and we will guide you through the swap.',
     },
     {
       label: 'Payment reminder',
-      text: 'Hi! Your order is reserved and awaiting full payment — it ships as soon as payment is confirmed.',
+      text: 'Hi! Your order is reserved and awaiting full payment, it ships as soon as payment is confirmed.',
     },
   ];
 

@@ -6,7 +6,7 @@ import { ApiService, Pricing, PricingProduct } from '../api.service';
 import { CartService } from '../cart.service';
 
 /**
- * W3 — Catalogue with tiered pricing. MOQ policy banner, SKU search,
+ * W3, Catalogue with tiered pricing. MOQ policy banner, SKU search,
  * category chips, product cards (tier matrix + per-variant unit steppers,
  * add-to-bulk-order) and the sticky draft-batch allocation bar.
  * MOQ is enforced server-side too.
@@ -21,11 +21,11 @@ import { CartService } from '../cart.service';
         <div class="tagbar"><span>Wholesale account required</span><span>B2B</span></div>
         <p class="apply-copy">
           Wholesale ordering needs an approved account (minimum order quantity applies). Apply below
-          — our team reviews applications and assigns your price tier.
+         - our team reviews applications and assigns your price tier.
         </p>
         <button class="cta" (click)="apply()" [disabled]="applied()">
           {{
-            applied() ? 'Application submitted — pending review' : 'Apply for a wholesale account'
+            applied() ? 'Application submitted: pending review' : 'Apply for a wholesale account'
           }}
         </button>
         @if (error()) {
@@ -83,9 +83,9 @@ import { CartService } from '../cart.service';
 
           <div class="scroll-hint" style="margin-top: var(--space-sm)">
             <span>Volume tier matrix</span>
-            <span>Seentair Factory — Aba</span>
+            <span>Seentair Factory: Aba</span>
           </div>
-          <!-- GAP: single-tier ladder only — multi-band volume prices (20-49 / 50-99 / 100+)
+          <!-- GAP: single-tier ladder only, multi-band volume prices (20-49 / 50-99 / 100+)
                await tier criteria resolution (Open Question #2). The third box routes to the
                desk instead of inventing a price. -->
           <div class="tier-boxes">
@@ -106,7 +106,7 @@ import { CartService } from '../cart.service';
             </div>
           </div>
 
-          <!-- GAP: no live stock-count endpoint for wholesale buyers yet — availability
+          <!-- GAP: no live stock-count endpoint for wholesale buyers yet, availability
                figures from the reference are omitted rather than invented. -->
           <div class="pc-stock">
             <span>Cut &amp; sewn at the Aba factory</span>
@@ -258,6 +258,6 @@ export class CataloguePage implements OnInit {
       }));
     this.cart.add(lines);
     for (const v of product.variants) this.quantities[v.id] = 0;
-    this.message.set(`${product.name} added to the draft batch — review the order below.`);
+    this.message.set(`${product.name} added to the draft batch: review the order below.`);
   }
 }

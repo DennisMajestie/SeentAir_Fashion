@@ -18,7 +18,7 @@ import { BrandAlertService } from '../brand-alert.service';
 import { ProductCardComponent } from '../product-card.component';
 import { SeentairTiltCardComponent } from '../tilt-card.component';
 
-/** Curated category order for the home "Suggested" tiles — tailoring last. */
+/** Curated category order for the home "Suggested" tiles, tailoring last. */
 const CATEGORY_ORDER = ['tops', 'bottoms', 'outerwear', 'accessories', 'tailoring'];
 const CATEGORY_LABELS: Record<string, string> = {
   tops: 'Tops',
@@ -41,14 +41,14 @@ interface Stage {
 }
 
 interface FabricPiece {
-  /** Canvas-space polygon — the cut shape of this fabric panel. */
+  /** Canvas-space polygon, the cut shape of this fabric panel. */
   poly: Array<[number, number]>;
   cx: number; // centroid: the piece rotates/settles about this point
   cy: number;
   sdx: number; // exploded offset (where the cut piece hangs in space)
   sdy: number;
   srot: number; // exploded rotation in radians
-  delay: number; // per-piece stagger — panels seat one after another
+  delay: number; // per-piece stagger, panels seat one after another
 }
 
 interface DemoReview {
@@ -63,8 +63,8 @@ interface DemoReview {
  * client-requested EXPLODED GARMENT-CONSTRUCTION assembly:
  *
  * The garment is isolated by diffing the two stage photographs (the
- * changed pixels are the clothing), then CUT into pattern-piece panels —
- * sleeves, chest, body, hem — like fabric coming off the cutting table.
+ * changed pixels are the clothing), then CUT into pattern-piece panels -
+ * sleeves, chest, body, hem, like fabric coming off the cutting table.
  * The pieces hang exploded in space, rotated apart; scroll flies each
  * panel in and seats it in place, constructing the garment exactly as it
  * is sewn in the factory. Scroll-up takes it apart again (position is a
@@ -163,7 +163,7 @@ interface DemoReview {
 
     <div class="trust-strip" aria-label="Store promises">
       <span class="trust-item">Full payment</span>
-      <span class="trust-item">Tracked dispatch — 24h</span>
+      <span class="trust-item">Tracked dispatch: 24h</span>
       <span class="trust-item">12h returns</span>
       <span class="trust-item">One atelier, Aba</span>
     </div>
@@ -195,7 +195,7 @@ interface DemoReview {
       <div class="wrap-col">
         <div class="section-head">
           <h2>Shop the look</h2>
-          <span class="muted small">One piece from each line — build the fit</span>
+          <span class="muted small">One piece from each line, build the fit</span>
         </div>
         @if (look().length === 0) {
           <p class="muted">New pieces landing soon.</p>
@@ -412,7 +412,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private get walkEnd(): number {
     return this.walkReady ? 0.22 : 0;
   }
-  /** Full catalogue (limit 50 from the API) — the home strips are projections. */
+  /** Full catalogue (limit 50 from the API)- the home strips are projections. */
   readonly all = signal<Product[]>([]);
   /** Latest drops: newest first. */
   readonly latest = computed(() =>
@@ -492,7 +492,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       name: 'Tunde A.',
       product: 'Hoodie',
       rating: 4,
-      comment: 'Raw edges done right. Sizing guide was spot on — same one I got in store.',
+      comment: 'Raw edges done right. Sizing guide was spot on, same one I got in store.',
     },
     {
       name: 'Zainab K.',
@@ -510,7 +510,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       name: 'Ngozi U.',
       product: 'Hoodie',
       rating: 4,
-      comment: 'Dust-resistant claim is real — wore it fieldside. Restocking colours soon, I hope.',
+      comment: 'Dust-resistant claim is real: wore it fieldside. Restocking colours soon, I hope.',
     },
     {
       name: 'Ibrahim S.',
@@ -522,7 +522,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       name: 'Tobi D.',
       product: 'Jogger',
       rating: 5,
-      comment: 'Easy returns process too — I sized up and swapped within a day of delivery.',
+      comment: 'Easy returns process too: I sized up and swapped within a day of delivery.',
     },
   ];
   readonly subscribed = signal(false);
@@ -547,7 +547,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   /** piecesByPair[i] = the cut fabric panels for that transition */
   private piecesByPair: FabricPiece[][] = [];
   /** Full stage photographs + their registration shifts (sample space).
-      Settled scenes draw the real photo — composites only ever fly. */
+      Settled scenes draw the real photo, composites only ever fly. */
   private stageImgs: HTMLImageElement[] = [];
   private frameShifts: Array<{ dx: number; dy: number }> = [];
   private sampleW = 0;
@@ -642,9 +642,9 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     try {
       localStorage.setItem('seentair.newsletter', email);
     } catch {
-      /* storage unavailable — in-memory confirmation only */
+      /* storage unavailable, in-memory confirmation only */
     }
-    void this.alerts.toast(`You're on the list — ${email}`);
+    void this.alerts.toast(`You're on the list: ${email}`);
   }
 
   // ------------------------------------------------------------------
@@ -738,7 +738,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     const stageFloat = Math.min(0.9999, dressed) * segments;
     const seg = Math.min(segments - 1, Math.floor(stageFloat));
     let t = stageFloat - seg;
-    // Act 1 resumes from the hover the walk left behind — no jump back.
+    // Act 1 resumes from the hover the walk left behind, no jump back.
     if (seg === 0 && walkEnd > 0) t = 0.35 + t * 0.65;
 
     const settled = t >= 0.88 ? seg + 1 : seg;
@@ -750,7 +750,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   /**
    * Persistent dressing: completed garments stay on the mannequin at full
    * opacity; only the CURRENT act's garment is mid-flight as cut panels.
-   * Nothing ever crossfades — it is one scene being dressed layer by layer
+   * Nothing ever crossfades, it is one scene being dressed layer by layer
    * (and undressed in reverse on scroll-up).
    */
   private drawPieces(seg: number, t: number): void {
@@ -764,7 +764,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     if (!this.engineReady || this.engineFailed) return;
 
     // 1. Completed acts: draw the real photograph of that dressed state
-    //    (registered onto the base mannequin). No stacked diff composites —
+    //    (registered onto the base mannequin). No stacked diff composites -
     //    settled cloth is always solid, true fabric.
     if (seg > 0) this.drawFullFrame(ctx, seg);
 
@@ -815,7 +815,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Cover-draw a full stage photograph at its registered offset — identical
+   * Cover-draw a full stage photograph at its registered offset, identical
    * math to the garment canvases, so seated overlays and full frames align.
    */
   private drawFullFrame(ctx: CanvasRenderingContext2D, idx: number): void {
@@ -932,7 +932,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   /**
    * Locate the mannequin in a sampled frame: background color is read from
    * the corners; the body is everything that differs from it. Returns the
-   * body centroid x and the lowest body row (the feet — bare in every
+   * body centroid x and the lowest body row (the feet, bare in every
    * frame, hence a stable registration anchor).
    */
   private bodyAnchor(f: Uint8ClampedArray, w: number, h: number): { cx: number; feetY: number } {
@@ -1015,7 +1015,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       }
     }
     if (scored.length < 40) return { garment: null, pieces: [] };
-    // Keep only the strongest 40% of diffs — the garment, not scene lighting.
+    // Keep only the strongest 40% of diffs, the garment, not scene lighting.
     scored.sort((a, b) => b.score - a.score);
     scored.length = Math.max(40, Math.floor(scored.length * 0.75));
 
@@ -1131,7 +1131,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     mctx.putImageData(mdata, 0, 0);
     gctx.globalCompositeOperation = 'destination-in';
     gctx.imageSmoothingEnabled = true;
-    gctx.filter = 'blur(3px)'; // soften cut edges — fabric, not pixel stairs
+    gctx.filter = 'blur(3px)'; // soften cut edges, fabric, not pixel stairs
     gctx.drawImage(maskCanvas, 0, 0, this.canvasW, this.canvasH);
     gctx.filter = 'none';
 

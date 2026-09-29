@@ -261,7 +261,7 @@ import { environment } from '../environments/environment';
                       <span class="mini-info">
                         <span class="mini-name">{{ item.productName }}</span>
                         <span class="muted small"
-                          >{{ item.size || 'OS' }} · {{ item.colour || '—' }} · ×{{
+                          >{{ item.size || 'OS' }} · {{ item.colour || '-' }} · ×{{
                             item.quantity
                           }}</span
                         >
@@ -303,18 +303,18 @@ import { environment } from '../environments/environment';
             <span class="logo-footer"
               ><img src="assets/logo.png" alt="SEENTAIR" width="180" height="36"
             /></span>
-            <p>Streetwear manufactured in-house at our Aba factory — one atelier, no middlemen.</p>
+            <p>Streetwear manufactured in-house at our Aba factory, one atelier, no middlemen.</p>
           </div>
           <nav class="footer-col" aria-label="Shop">
             <h4>Shop</h4>
             <a routerLink="/shop">All products</a>
-            <a routerLink="/shop">Drop 04 — Harmattan</a>
+            <a routerLink="/shop">Drop 04: Harmattan</a>
             <a routerLink="/shop">Studio Essentials</a>
           </nav>
           <nav class="footer-col" aria-label="Help">
             <h4>Help</h4>
             <a routerLink="/policies" fragment="shipping">Shipping &amp; dispatch</a>
-            <a routerLink="/policies" fragment="returns">Returns — 12h window</a>
+            <a routerLink="/policies" fragment="returns">Returns: 12h window</a>
             <a routerLink="/policies" fragment="payments">Payments</a>
             <a routerLink="/policies" fragment="contact">Contact us</a>
           </nav>

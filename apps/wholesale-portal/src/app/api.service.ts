@@ -67,7 +67,7 @@ export interface DeliveryCheckpoint {
   at: string | null;
 }
 
-/** A leg of the freight journey — some destinations need several. */
+/** A leg of the freight journey, some destinations need several. */
 export interface DeliveryLegView {
   legNumber: number;
   carrier: string;
@@ -166,7 +166,7 @@ export class ApiService {
   /**
    * Live status push for one order. Uses `fetch` + a stream reader rather than
    * `EventSource`, which cannot send an Authorization header and would force
-   * the token into a query string. Frames are notifications only — this
+   * the token into a query string. Frames are notifications only, this
    * re-fetches `tracking()`. Resolves quietly on error; the caller falls back
    * to polling.
    */
