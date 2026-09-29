@@ -9,7 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes, randomUUID } from 'crypto';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 import { ACCESS_RANK, AccessLevel, ModuleName, RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { CatalogueService } from '../catalogue/catalogue.service';
@@ -387,6 +387,31 @@ export class OrdersService {
     // this copy is what lets the storefront show the confirmation immediately.
     if (guest) saved.trackingToken = await this.issueTrackingToken(saved.id);
     return saved;
+  }
+
+  /**
+   * Attach every unclaimed guest order placed with this address to the account.
+   * Returns how many moved.
+   *
+   * The caller MUST have verified the address first: matching on email alone is
+   * what makes this useful and also what would make it a hijack, since anyone
+   * could register with a stranger's address and inherit their order history and
+   * home address. AuthService only calls this from verifyEmail.
+   *
+   * Already-claimed orders are skipped, so re-verifying is a no-op rather than a
+   * way to steal an order back from whoever claimed it first.
+   */
+  async claimGuestOrders(userId: string, email: string): Promise<number> {
+    const normalised = email.trim().toLowerCase();
+    const result = await this.orderRepo.update(
+      { guestEmail: normalised, claimedAt: IsNull() },
+      { customer: { id: userId }, claimedAt: new Date() },
+    );
+    const claimed = result.affected ?? 0;
+    if (claimed > 0) {
+      this.logger.log(`Claimed ${claimed} guest order(s) onto account ${userId}`);
+    }
+    return claimed;
   }
 
   /**

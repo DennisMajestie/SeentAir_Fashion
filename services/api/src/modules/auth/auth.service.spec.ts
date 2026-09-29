@@ -6,8 +6,10 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { RoleName, UserStatus } from '../../common/enums';
 import { User } from '../users/entities/user.entity';
+import { OrdersService } from '../orders/orders.service';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
+import { EmailVerificationToken } from './email-verification-token.entity';
 import { MailAdapter } from './mail.adapter';
 import { PasswordResetToken } from './password-reset-token.entity';
 import { RefreshToken } from './refresh-token.entity';
@@ -29,6 +31,15 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
     send: jest.fn(async (_to: string, _subject: string, _body: string) => undefined),
     configured: false,
   };
+  /** Email verification tokens; `verifyRecord` is what findOne hands back. */
+  let verifyRecord: Record<string, unknown> | null = null;
+  const verifyRepo = {
+    findOne: jest.fn(async () => verifyRecord),
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => v),
+    update: jest.fn(async () => ({ affected: 1 })),
+  };
+  const ordersService = { claimGuestOrders: jest.fn(async () => 0) };
   const refreshRepo = {
     findOne: jest.fn(async () => refreshRecord),
     create: jest.fn((v) => ({ id: 'jti-new', ...v })),
@@ -66,6 +77,8 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
         'security.lockoutMinutes': 15,
         'mail.resetTtlMinutes': 30,
         'mail.resetUrlBase': 'http://localhost:4200/reset-password',
+        'mail.verifyTtlMinutes': 1440,
+        'mail.verifyUrlBase': 'http://localhost:4200/verify-email',
       };
       return values[key];
     }),
@@ -94,7 +107,9 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
         { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: getRepositoryToken(RefreshToken), useValue: refreshRepo },
         { provide: getRepositoryToken(PasswordResetToken), useValue: resetRepo },
+        { provide: getRepositoryToken(EmailVerificationToken), useValue: verifyRepo },
         { provide: MailAdapter, useValue: mailAdapter },
+        { provide: OrdersService, useValue: ordersService },
       ],
     }).compile();
     service = moduleRef.get(AuthService);
@@ -314,6 +329,120 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
         { userId: 'u1', revokedAt: expect.anything() },
         { revokedAt: expect.any(Date) },
       );
+    });
+  });
+
+  describe('email verification', () => {
+    beforeEach(() => {
+      usersService['findById'].mockResolvedValue({
+        id: 'u1',
+        name: 'Ada',
+        email: 'ada@example.com',
+        emailVerifiedAt: null,
+        status: UserStatus.ACTIVE,
+        role: { name: RoleName.CUSTOMER },
+      });
+    });
+
+    it('registration issues a token and mails a link, without blocking sign-up', async () => {
+      usersService['create'].mockResolvedValue({
+        id: 'u1',
+        name: 'Ada',
+        email: 'ada@example.com',
+        role: { name: RoleName.CUSTOMER },
+      });
+      const pair = await service.register({
+        name: 'Ada',
+        email: 'ada@example.com',
+        password: 'CorrectHorse1!',
+      });
+      expect(pair.accessToken).toBeTruthy(); // the account is usable immediately
+      await new Promise((r) => setImmediate(r));
+      expect(verifyRepo.save).toHaveBeenCalled();
+      // Only the hash is stored.
+      const saved = verifyRepo.save.mock.calls[0][0] as { tokenHash: string };
+      expect(saved.tokenHash).toMatch(/^[0-9a-f]{64}$/);
+      expect(mailAdapter.send).toHaveBeenCalledWith(
+        'ada@example.com',
+        expect.stringContaining('Confirm'),
+        expect.stringContaining('verify-email?token='),
+      );
+    });
+
+    it('a mail failure never fails registration', async () => {
+      usersService['create'].mockResolvedValue({
+        id: 'u1',
+        name: 'Ada',
+        email: 'ada@example.com',
+        role: { name: RoleName.CUSTOMER },
+      });
+      mailAdapter.send.mockRejectedValueOnce(new Error('smtp down'));
+      await expect(
+        service.register({ name: 'Ada', email: 'ada@example.com', password: 'CorrectHorse1!' }),
+      ).resolves.toBeTruthy();
+    });
+
+    it('a valid token verifies the address and claims the guest orders', async () => {
+      verifyRecord = {
+        id: 'v1',
+        userId: 'u1',
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 60_000),
+      };
+      ordersService.claimGuestOrders.mockResolvedValueOnce(2);
+      const result = await service.verifyEmail('c'.repeat(64));
+      expect(verifyRepo.update).toHaveBeenCalledWith('v1', { usedAt: expect.any(Date) });
+      expect(userRepo.update).toHaveBeenCalledWith('u1', {
+        emailVerifiedAt: expect.any(Date),
+      });
+      expect(ordersService.claimGuestOrders).toHaveBeenCalledWith('u1', 'ada@example.com');
+      expect(result.ordersClaimed).toBe(2);
+    });
+
+    it('an already-used token is refused and claims nothing', async () => {
+      verifyRecord = {
+        id: 'v1',
+        userId: 'u1',
+        usedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+      };
+      await expect(service.verifyEmail('c'.repeat(64))).rejects.toThrow('invalid or has expired');
+      expect(ordersService.claimGuestOrders).not.toHaveBeenCalled();
+    });
+
+    it('an expired token is refused and claims nothing', async () => {
+      verifyRecord = {
+        id: 'v1',
+        userId: 'u1',
+        usedAt: null,
+        expiresAt: new Date(Date.now() - 1),
+      };
+      await expect(service.verifyEmail('c'.repeat(64))).rejects.toThrow('invalid or has expired');
+      expect(ordersService.claimGuestOrders).not.toHaveBeenCalled();
+    });
+
+    it('an unknown token is refused and claims nothing', async () => {
+      verifyRecord = null;
+      await expect(service.verifyEmail('c'.repeat(64))).rejects.toThrow('invalid or has expired');
+      expect(ordersService.claimGuestOrders).not.toHaveBeenCalled();
+    });
+
+    it('resend is enumeration-safe and sends nothing for an unknown address', async () => {
+      usersService['findByEmail'] = jest.fn(async () => null);
+      const result = await service.resendVerification('nobody@example.com');
+      expect(result.message).toBe('If that address needs confirming, a link has been sent.');
+      expect(mailAdapter.send).not.toHaveBeenCalled();
+    });
+
+    it('resend sends nothing for an already-verified address', async () => {
+      usersService['findByEmail'] = jest.fn(async () => ({
+        id: 'u1',
+        email: 'ada@example.com',
+        emailVerifiedAt: new Date(),
+        status: UserStatus.ACTIVE,
+      }));
+      await service.resendVerification('ada@example.com');
+      expect(mailAdapter.send).not.toHaveBeenCalled();
     });
   });
 });

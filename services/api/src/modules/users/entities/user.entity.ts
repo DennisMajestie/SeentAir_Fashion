@@ -24,6 +24,14 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  /**
+   * When the account proved it controls this address. Null means unverified:
+   * the account still signs in and shops normally, but no guest order will be
+   * claimed onto it (see OrdersService.claimGuestOrders).
+   */
+  @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
+  emailVerifiedAt: Date | null;
+
   /** Never selected by default — must be explicitly requested for auth. */
   @Column({ name: 'password_hash', select: false })
   passwordHash: string;

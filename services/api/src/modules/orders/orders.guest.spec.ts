@@ -45,6 +45,7 @@ describe('OrdersService — guest checkout', () => {
     save: jest.fn(async (v) => ({ id: 'o-new', ...v })),
     findOne: jest.fn(),
     findAndCount: jest.fn(async () => [[], 0]),
+    update: jest.fn(async () => ({ affected: 0 })),
   };
   const variant = {
     id: 'v1',
@@ -267,6 +268,27 @@ describe('OrdersService — guest checkout', () => {
     it('no token and no session is a 404, never a listing of the order', async () => {
       await expect(service.tracking('o1')).rejects.toThrow(NotFoundException);
       expect(orderRepo.findOne).not.toHaveBeenCalled();
+    });
+  });
+
+  // ---- claiming a guest order onto an account ----
+
+  describe('claimGuestOrders', () => {
+    it('attaches only unclaimed orders matching the address, normalised', async () => {
+      orderRepo.update.mockResolvedValueOnce({ affected: 2 });
+      const claimed = await service.claimGuestOrders('u1', '  Ada@Example.COM ');
+      expect(claimed).toBe(2);
+      expect(orderRepo.update).toHaveBeenCalledWith(
+        // Only rows still unclaimed: re-verifying cannot take an order back
+        // from whoever claimed it first.
+        { guestEmail: 'ada@example.com', claimedAt: expect.anything() },
+        { customer: { id: 'u1' }, claimedAt: expect.any(Date) },
+      );
+    });
+
+    it('reports zero when the address placed no guest orders', async () => {
+      orderRepo.update.mockResolvedValueOnce({ affected: 0 });
+      expect(await service.claimGuestOrders('u1', 'nobody@example.com')).toBe(0);
     });
   });
 });

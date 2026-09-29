@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,6 +10,8 @@ import { RoleName, UserStatus } from '../../common/enums';
 import { JwtPayload } from '../../common/interfaces';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import { OrdersService } from '../orders/orders.service';
+import { EmailVerificationToken } from './email-verification-token.entity';
 import { MailAdapter } from './mail.adapter';
 import { PasswordResetToken } from './password-reset-token.entity';
 import { RefreshToken } from './refresh-token.entity';
@@ -24,6 +26,8 @@ export type LoginResult = TokenPair | { requires2fa: true; challengeToken: strin
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -33,7 +37,10 @@ export class AuthService {
     private readonly refreshRepo: Repository<RefreshToken>,
     @InjectRepository(PasswordResetToken)
     private readonly resetRepo: Repository<PasswordResetToken>,
+    @InjectRepository(EmailVerificationToken)
+    private readonly verifyRepo: Repository<EmailVerificationToken>,
     private readonly mailAdapter: MailAdapter,
+    private readonly ordersService: OrdersService,
   ) {}
 
   /**
@@ -53,7 +60,78 @@ export class AuthService {
       password: input.password,
       role: RoleName.CUSTOMER,
     });
+    // Fire-and-forget: a mail failure must not fail the registration. The
+    // account works unverified; only claiming guest orders waits on it.
+    void this.sendVerificationEmail(user);
     return this.issueTokens(user.id, user.email, user.role.name);
+  }
+
+  /**
+   * Issue a single-use verification token and mail the link. Issuing a new one
+   * invalidates any previous unused token, so a resend cannot leave two live.
+   * Never throws — callers treat verification as best-effort delivery.
+   */
+  private async sendVerificationEmail(user: User): Promise<void> {
+    try {
+      await this.verifyRepo.update({ userId: user.id, usedAt: IsNull() }, { usedAt: new Date() });
+      const rawToken = randomBytes(32).toString('hex');
+      const ttlMinutes = this.config.get<number>('mail.verifyTtlMinutes') ?? 1440;
+      await this.verifyRepo.save(
+        this.verifyRepo.create({
+          userId: user.id,
+          tokenHash: createHash('sha256').update(rawToken).digest('hex'),
+          expiresAt: new Date(Date.now() + ttlMinutes * 60_000),
+        }),
+      );
+      const link = `${this.config.get<string>('mail.verifyUrlBase')}?token=${rawToken}`;
+      await this.mailAdapter.send(
+        user.email,
+        'Confirm your Seentair email',
+        [
+          `Hi ${user.name},`,
+          '',
+          'Confirm this address and any order you placed as a guest with it moves',
+          'into your account, so you can track everything in one place.',
+          '',
+          link,
+          '',
+          `This link expires in ${Math.round(ttlMinutes / 60)} hours.`,
+        ].join('\n'),
+      );
+    } catch (err) {
+      this.logger.warn(`Verification email failed for ${user.id}: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Single-use, expiring token → the address is confirmed, and every guest
+   * order placed with it is attached to this account. Enumeration-safe: an
+   * invalid token says nothing about whether the account exists.
+   */
+  async verifyEmail(rawToken: string): Promise<{ message: string; ordersClaimed: number }> {
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const record = await this.verifyRepo.findOne({ where: { tokenHash } });
+    if (!record || record.usedAt || record.expiresAt.getTime() < Date.now()) {
+      throw new BadRequestException('That verification link is invalid or has expired');
+    }
+    const user = await this.usersService.findById(record.userId);
+    await this.verifyRepo.update(record.id, { usedAt: new Date() });
+    if (!user.emailVerifiedAt) {
+      await this.userRepo.update(user.id, { emailVerifiedAt: new Date() });
+    }
+    // The whole point of verification: only now is it safe to hand this account
+    // orders that were placed by whoever could read this address.
+    const ordersClaimed = await this.ordersService.claimGuestOrders(user.id, user.email);
+    return { message: 'Email confirmed.', ordersClaimed };
+  }
+
+  /** Re-send verification. Enumeration-safe: the response never varies. */
+  async resendVerification(email: string): Promise<{ message: string }> {
+    const generic = { message: 'If that address needs confirming, a link has been sent.' };
+    const user = await this.usersService.findByEmail(email.trim().toLowerCase());
+    if (!user || user.emailVerifiedAt || user.status !== UserStatus.ACTIVE) return generic;
+    await this.sendVerificationEmail(user);
+    return generic;
   }
 
   /**

@@ -21,6 +21,9 @@ export default () => ({
     resetTtlMinutes: parseInt(process.env.RESET_TTL_MINUTES ?? '30', 10),
     /** Where a guest's emailed tracking link points; the order id is appended. */
     orderUrlBase: process.env.ORDER_URL_BASE ?? 'http://localhost:4200/orders',
+    verifyUrlBase: process.env.VERIFY_URL_BASE ?? 'http://localhost:4200/verify-email',
+    /** A day by default: long enough to survive a night, short enough to matter. */
+    verifyTtlMinutes: parseInt(process.env.VERIFY_TTL_MINUTES ?? '1440', 10),
     /** How long a guest tracking link stays usable. Long by design: it is the
         only route a guest has to their order until they create an account. */
     orderTokenTtlDays: parseInt(process.env.ORDER_TOKEN_TTL_DAYS ?? '90', 10),

@@ -37,6 +37,11 @@ export class UsersService {
     return this.userRepo.find({ where: { role: { name: In(roles) } } });
   }
 
+  /** Lookup by address, without the password hash. */
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userRepo.findOne({ where: { email: email.trim().toLowerCase() } });
+  }
+
   /** For auth only — includes the password hash. */
   async findByEmailWithPassword(email: string): Promise<User | null> {
     return this.userRepo

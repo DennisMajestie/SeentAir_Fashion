@@ -22,6 +22,7 @@ import { ForgotPasswordDto, ResetPasswordDto } from './dto/password-reset.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { TotpCodeDto, Verify2faDto } from './dto/twofa.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 
 /**
  * Token transport (XSS-hardened):
@@ -140,6 +141,27 @@ export class AuthController {
   @HttpCode(200)
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.newPassword);
+  }
+
+  /**
+   * Confirm an address. On success every guest order placed with it is attached
+   * to the account, which is the only reason verification exists.
+   */
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('verify-email')
+  @HttpCode(200)
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto.token);
+  }
+
+  /** Enumeration-safe: identical response whether or not the address needs it. */
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('resend-verification')
+  @HttpCode(200)
+  resendVerification(@Body() dto: ForgotPasswordDto) {
+    return this.authService.resendVerification(dto.email);
   }
 
   /** Server-side logout: revokes every active refresh token and clears the cookie. */
