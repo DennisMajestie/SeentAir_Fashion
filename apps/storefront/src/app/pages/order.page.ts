@@ -504,6 +504,8 @@ export class OrderPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
 
   readonly stages = STAGES;
+  /** Set for a guest viewing their own order; undefined when signed in. */
+  private guestToken?: string;
   readonly order = signal<Order | null>(null);
   readonly deliveredAt = signal<string | null>(null);
   /** `note` is optional: the customer tracking projection omits staff-authored
@@ -713,6 +715,7 @@ export class OrderPage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.orderId = this.route.snapshot.paramMap.get('id') ?? '';
+    this.resolveGuestToken();
     this.readPaymentReturn();
     this.reload();
     this.startPolling();
@@ -740,6 +743,30 @@ export class OrderPage implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * How a guest proves this order is theirs. The emailed link carries ?token=;
+   * checkout also stashes a copy, because returning from Paystack lands on a
+   * URL without it. Signed-in customers never need either.
+   */
+  private resolveGuestToken(): void {
+    if (this.api.isLoggedIn) return;
+    const fromUrl = this.route.snapshot.queryParamMap.get('token');
+    if (fromUrl) {
+      this.guestToken = fromUrl;
+      try {
+        localStorage.setItem(`seentair.order.${this.orderId}`, fromUrl);
+      } catch {
+        /* private mode: the link still works for this visit */
+      }
+      return;
+    }
+    try {
+      this.guestToken = localStorage.getItem(`seentair.order.${this.orderId}`) ?? undefined;
+    } catch {
+      this.guestToken = undefined;
+    }
+  }
+
   ngOnDestroy(): void {
     this.stopPolling();
     this.streamAbort?.abort();
@@ -751,7 +778,7 @@ export class OrderPage implements OnInit, OnDestroy {
     if (!this.orderId || this.loading()) return;
     this.loading.set(true);
     this.loadError.set(null);
-    this.api.order(this.orderId).subscribe({
+    this.api.order(this.orderId, this.guestToken).subscribe({
       next: (o) => {
         this.order.set(o);
         for (const item of o.items) this.ratings[item.variant.id] ??= 5;
@@ -778,7 +805,7 @@ export class OrderPage implements OnInit, OnDestroy {
     this.refetchQueued = true;
     queueMicrotask(() => {
       this.refetchQueued = false;
-      this.api.tracking(this.orderId).subscribe({
+      this.api.tracking(this.orderId, this.guestToken).subscribe({
         next: (t) => {
           this.events.set(t.events);
           this.deliveredAt.set(t.deliveredAt);

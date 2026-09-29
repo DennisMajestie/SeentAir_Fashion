@@ -77,10 +77,17 @@ export class OrdersController {
     });
   }
 
+  /** Same order for a signed-in customer or, with ?token=, for the guest who
+      placed it. The token is only consulted when there is no session. */
   @Get('orders/:id')
+  @OptionalAuth()
   @ApiBearerAuth()
-  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.ordersService.findById(id, user);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user?: AuthenticatedUser,
+    @Query('token') token?: string,
+  ) {
+    return this.ordersService.findById(id, user, token);
   }
 
   @Patch('orders/:id/status')

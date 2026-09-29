@@ -14,6 +14,7 @@ import { OrderAccessToken } from './entities/order-access-token.entity';
 import { Payment } from './entities/payment.entity';
 import { ProcessedWebhookEvent } from './entities/processed-webhook-event.entity';
 import { OrderStatusBusModule } from './order-status.bus.module';
+import { OrderExpiryService } from './order-expiry.service';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { PaystackService } from './paystack.service';
@@ -40,7 +41,7 @@ import { PaystackService } from './paystack.service';
     OrderStatusBusModule,
   ],
   controllers: [OrdersController],
-  providers: [OrdersService, PaystackService],
+  providers: [OrdersService, PaystackService, OrderExpiryService],
   exports: [OrdersService],
 })
 export class OrdersModule {}

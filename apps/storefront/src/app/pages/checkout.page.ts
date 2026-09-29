@@ -240,17 +240,15 @@ const NIGERIAN_STATES = [
           <div #details class="checkout-details">
             @if (!api.isLoggedIn) {
               <p class="section-label">Your details</p>
-              <form class="auth-box checkout-auth" (ngSubmit)="signIn()">
-                @if (mode() === 'register') {
-                  <label
-                    >Full name
-                    <input [(ngModel)]="name" name="name" required placeholder="e.g. Kojo Mensah" />
-                  </label>
-                  <label
-                    >Phone (delivery updates)
-                    <input [(ngModel)]="phone" name="phone" placeholder="+234 800 000 0000" />
-                  </label>
-                }
+              <!-- No account needed to buy. Name and email only: the email
+                   carries the receipt and the tracking link, and Paystack
+                   cannot take a payment without one. Signing in is offered,
+                   never required. -->
+              <div class="auth-box checkout-auth">
+                <label
+                  >Full name
+                  <input [(ngModel)]="name" name="name" required placeholder="e.g. Kojo Mensah" />
+                </label>
                 <label
                   >Email
                   <input
@@ -259,28 +257,31 @@ const NIGERIAN_STATES = [
                     name="email"
                     required
                     placeholder="you@example.com"
-                /></label>
-                <label
-                  >Password
-                  <input
-                    type="password"
-                    [(ngModel)]="password"
-                    name="password"
-                    required
-                    minlength="8"
-                    [attr.autocomplete]="
-                      mode() === 'register' ? 'new-password' : 'current-password'
-                    "
-                /></label>
-                <button class="cta" type="submit">
-                  {{ mode() === 'login' ? 'Sign in' : 'Create account' }}
-                </button>
-                <button class="link" type="button" (click)="toggleMode()">
+                  />
+                  <small class="fine">Your receipt and order tracking link go here.</small>
+                </label>
+                @if (showSignIn()) {
+                  <label
+                    >Password
+                    <input
+                      type="password"
+                      [(ngModel)]="password"
+                      name="password"
+                      required
+                      minlength="8"
+                      autocomplete="current-password"
+                    />
+                  </label>
+                  <button class="cta" type="button" (click)="signIn()">Sign in</button>
+                }
+                <button class="link" type="button" (click)="toggleSignIn()">
                   {{
-                    mode() === 'login' ? 'New here? Create an account' : 'Have an account? Sign in'
+                    showSignIn()
+                      ? 'Continue as a guest instead'
+                      : 'Have an account? Sign in to use your saved details'
                   }}
                 </button>
-              </form>
+              </div>
               @if (signinError()) {
                 <div class="notice notice-error u-rise" role="alert">
                   <svg
@@ -421,7 +422,8 @@ export class CheckoutPage {
   private readonly alerts = inject(BrandAlertService);
   private readonly details = viewChild<ElementRef<HTMLElement>>('details');
 
-  readonly mode = signal<'login' | 'register'>('login');
+  /** Guest checkout is the default; sign-in is revealed on request. */
+  readonly showSignIn = signal(false);
   readonly placing = signal(false);
   readonly error = signal<string | null>(null);
   readonly signinError = signal<string | null>(null);
@@ -471,37 +473,31 @@ export class CheckoutPage {
     });
   }
 
-  toggleMode(): void {
-    this.mode.set(this.mode() === 'login' ? 'register' : 'login');
+  /** Signing in is an alternative to guest checkout, never a gate before it. */
+  toggleSignIn(): void {
+    this.showSignIn.set(!this.showSignIn());
     this.signinError.set(null);
   }
 
   signIn(): void {
     this.signinError.set(null);
-    if (this.mode() === 'login') {
-      this.api.login(this.email, this.password).subscribe({
-        next: () => this.loadAccount(),
-        error: () => this.signinError.set('Sign-in failed: check your email and password.'),
-      });
-    } else {
-      this.api.register(this.name, this.email, this.phone, this.password).subscribe({
-        next: () => {
-          this.shipPhone = this.shipPhone || this.phone;
-          this.loadAccount();
-        },
-        error: (err) =>
-          this.signinError.set(
-            err?.error?.message ?? 'Registration failed: try a different email.',
-          ),
-      });
-    }
+    this.api.login(this.email, this.password).subscribe({
+      next: () => this.loadAccount(),
+      error: () => this.signinError.set('Sign-in failed: check your email and password.'),
+    });
   }
 
   proceed(): void {
     if (this.placing()) return;
+    // A guest is not turned away, only asked for the two fields the order
+    // genuinely needs: who to address it to, and where to send the receipt.
     if (!this.api.isLoggedIn) {
-      this.details()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
+      const missingGuest = this.guestMissing();
+      if (missingGuest) {
+        this.deliveryError.set(missingGuest);
+        this.details()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
     }
     const missing = this.deliveryMissing();
     if (missing) {
@@ -511,6 +507,16 @@ export class CheckoutPage {
     }
     this.deliveryError.set(null);
     this.placeOrder();
+  }
+
+  /** The two fields a guest order cannot be placed without. */
+  private guestMissing(): string | null {
+    if (!this.name.trim()) return 'Add your name so we know who the parcel is for.';
+    const email = this.email.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return 'Add a valid email: your receipt and tracking link go there.';
+    }
+    return null;
   }
 
   /** GIGL cannot route a parcel without state, city, a street and a phone. */
@@ -536,9 +542,22 @@ export class CheckoutPage {
     this.placing.set(true);
     this.error.set(null);
     const items = this.cart.items().map((i) => ({ variantId: i.variantId, quantity: i.quantity }));
-    this.api.createOrder(items, 'storefront', this.shippingAddress()).subscribe({
+    const guest = this.api.isLoggedIn
+      ? undefined
+      : { name: this.name.trim(), email: this.email.trim().toLowerCase() };
+    this.api.createOrder(items, 'storefront', this.shippingAddress(), guest).subscribe({
       next: (order) => {
         this.orderId.set(order.id);
+        // The only time the raw token exists. Kept so the confirmation page
+        // still opens the order after the Paystack round-trip; the same link
+        // is emailed, so losing this is inconvenient, not fatal.
+        if (order.trackingToken) {
+          try {
+            localStorage.setItem(`seentair.order.${order.id}`, order.trackingToken);
+          } catch {
+            /* private mode: the emailed link remains the route in */
+          }
+        }
         this.paidTotal.set(order.totalAmount);
         this.cart.clear();
         void this.alerts.toast(`Order placed: ref ${order.id.slice(0, 8).toUpperCase()}`);

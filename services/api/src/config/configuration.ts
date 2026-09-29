@@ -11,6 +11,10 @@ export default () => ({
     refreshTtl: process.env.JWT_REFRESH_TTL ?? '7d',
     refreshTtlMs: parseInt(process.env.JWT_REFRESH_TTL_MS ?? String(7 * 24 * 3_600_000), 10),
   },
+  orders: {
+    /** How long an order may sit unpaid before the nightly sweep cancels it. */
+    unpaidExpiryHours: parseInt(process.env.UNPAID_ORDER_EXPIRY_HOURS ?? '24', 10),
+  },
   mail: {
     smtpHost: process.env.SMTP_HOST ?? '',
     smtpPort: parseInt(process.env.SMTP_PORT ?? '587', 10),

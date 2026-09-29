@@ -45,6 +45,11 @@ export const routes: Routes = [
     title: 'Seentair: Order tracking',
   },
   {
+    path: 'verify-email',
+    loadComponent: () => import('./pages/verify-email.page').then((m) => m.VerifyEmailPage),
+    title: 'Seentair: Confirm your email',
+  },
+  {
     path: 'policies',
     loadComponent: () => import('./pages/policies.page').then((m) => m.PoliciesPage),
     title: 'Seentair: Store policies',

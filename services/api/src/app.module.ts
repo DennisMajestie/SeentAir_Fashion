@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import configuration from './config/configuration';
@@ -32,6 +33,8 @@ import { TechPacksModule } from './modules/tech-packs/tech-packs.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
+    // Drives the nightly unpaid-order sweep (OrderExpiryService).
+    ScheduleModule.forRoot(),
     // Global rate limit; credential endpoints carry stricter @Throttle overrides.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     TypeOrmModule.forRootAsync({

@@ -48,6 +48,12 @@ export interface Order {
   deliveredAt?: string | null;
   /** Courier/rider instructions staff recorded separately from the address. */
   deliveryNote?: string | null;
+  /**
+   * Returned once, on creating a guest order: the key that opens it without an
+   * account. Stored locally so the confirmation page works after the Paystack
+   * round-trip; the same link also arrives by email.
+   */
+  trackingToken?: string;
   items: Array<{ variant: ProductVariant; quantity: number; unitPrice: number }>;
 }
 
@@ -168,28 +174,49 @@ export class ApiService {
   }
 
   // --- Orders ---
+  /**
+   * `guest` is sent only when nobody is signed in. The API rejects it alongside
+   * a token, so passing both would fail the whole order.
+   */
   createOrder(
     items: Array<{ variantId: string; quantity: number }>,
     source?: string,
     shippingAddress?: ShippingAddress,
+    guest?: { name: string; email: string },
   ): Observable<Order> {
     return this.http.post<Order>(`${API_BASE}/orders`, {
       items,
       source,
       ...(shippingAddress ? { shippingAddress } : {}),
+      ...(guest ? { guest } : {}),
     });
+  }
+
+  verifyEmail(token: string): Observable<{ message: string; ordersClaimed: number }> {
+    return this.http.post<{ message: string; ordersClaimed: number }>(
+      `${API_BASE}/auth/verify-email`,
+      { token },
+    );
+  }
+
+  resendVerification(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${API_BASE}/auth/resend-verification`, { email });
   }
 
   myOrders(): Observable<{ data: Order[]; total: number }> {
     return this.http.get<{ data: Order[]; total: number }>(`${API_BASE}/orders`);
   }
 
-  order(id: string): Observable<Order> {
-    return this.http.get<Order>(`${API_BASE}/orders/${id}`);
+  /** `token` opens a guest's own order with no session; ignored when signed in. */
+  order(id: string, token?: string): Observable<Order> {
+    const query = token ? `?token=${encodeURIComponent(token)}` : '';
+    return this.http.get<Order>(`${API_BASE}/orders/${id}${query}`);
   }
 
-  tracking(orderId: string): Observable<OrderTracking> {
-    return this.http.get<OrderTracking>(`${API_BASE}/orders/${orderId}/tracking`);
+  /** `token` opens a guest's own order with no session; ignored when signed in. */
+  tracking(orderId: string, token?: string): Observable<OrderTracking> {
+    const query = token ? `?token=${encodeURIComponent(token)}` : '';
+    return this.http.get<OrderTracking>(`${API_BASE}/orders/${orderId}/tracking${query}`);
   }
 
   /**

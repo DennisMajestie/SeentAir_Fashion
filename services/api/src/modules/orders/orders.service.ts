@@ -496,7 +496,16 @@ export class OrdersService {
     return { data, total };
   }
 
-  async findById(id: string, user: AuthenticatedUser): Promise<Order> {
+  /**
+   * `rawToken` is the guest path: the same order, proven by the emailed link
+   * rather than a session. It is only consulted when there is no user, so a
+   * signed-in caller can never widen their access by attaching one.
+   */
+  async findById(id: string, user?: AuthenticatedUser, rawToken?: string): Promise<Order> {
+    if (!user) {
+      if (!rawToken) throw new NotFoundException(`Order ${id} not found`);
+      return this.orderForToken(id, rawToken);
+    }
     // items and items.variant load eagerly; variant.product does not, so it is
     // joined here. One extra LEFT JOIN on the single order query, which is what
     // lets the storefront label a line by product name instead of SKU. Not
