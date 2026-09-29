@@ -2925,8 +2925,12 @@ textarea {
     flex-direction: column;
     align-items: flex-start;
     gap: 3px;
-    width: fit-content;
-    max-width: calc(100% - 32px);
+    /* Fixed width, not fit-content: the acts carry captions of very different
+       lengths (56 to 83 characters), so a content-sized card stretched to the
+       max at some acts and sat narrower at others. With the left edge pinned
+       by the margin, that moved the right edge mid-scroll and read as the
+       padding changing while the dressing animation ran. */
+    width: calc(100% - 32px);
     padding: 10px 14px;
     margin: 0 0 10px 16px;
     .card-rule {
