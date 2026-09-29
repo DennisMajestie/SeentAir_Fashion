@@ -1,11 +1,18 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
+import { FilterSheetComponent } from '../filter-sheet.component';
 import { SWATCHES, ProductCardComponent } from '../product-card.component';
+import {
+  EMPTY_FILTERS,
+  SheetFilters,
+  activeFilterCount,
+  matchesSheetFilters,
+} from '../shop-filters';
 
 type SortKey = 'featured' | 'newest' | 'price-asc' | 'price-desc';
 
@@ -32,7 +39,7 @@ function collectionKey(name: string): string {
     size/colour filters, availability badges, review stars and quick-add. */
 @Component({
   selector: 'app-shop',
-  imports: [CommonModule, FormsModule, ProductCardComponent],
+  imports: [CommonModule, FormsModule, ProductCardComponent, FilterSheetComponent],
   template: `
     <input
       class="search-bar"
@@ -69,47 +76,20 @@ function collectionKey(name: string): string {
       }
     </div>
 
-    @if (collections().length > 1) {
-      <div class="pill-bar collection-bar">
-        <span class="filter-label">Collection</span>
-        <button class="pill" [class.active]="collection() === null" (click)="collection.set(null)">
-          All
-        </button>
-        @for (c of collections(); track c) {
-          <button class="pill" [class.active]="collection() === c" (click)="collection.set(c)">
-            {{ c }}
-          </button>
-        }
-      </div>
-    }
-
     <div class="shop-toolbar">
-      <div class="filter-group">
-        <span class="filter-label">Size</span>
-        @for (s of allSizes(); track s) {
-          <button
-            class="size-chip"
-            [class.active]="size() === s"
-            (click)="size.set(size() === s ? null : s)"
-          >
-            {{ s }}
-          </button>
+      <button
+        class="cta small ghost filters-btn"
+        type="button"
+        #filtersBtn
+        [attr.aria-expanded]="sheetOpen()"
+        aria-haspopup="dialog"
+        (click)="openSheet()"
+      >
+        Filters
+        @if (activeFilters() > 0) {
+          <span class="filters-badge">{{ activeFilters() }}</span>
         }
-      </div>
-      <div class="filter-group">
-        <span class="filter-label">Colour</span>
-        @for (c of allColours(); track c) {
-          <button
-            class="swatch-btn"
-            [class.active]="colour() === c"
-            [attr.aria-label]="'Filter by ' + c"
-            [title]="c"
-            (click)="colour.set(colour() === c ? null : c)"
-          >
-            <span class="swatch" [style.background]="swatch(c)"></span>
-          </button>
-        }
-      </div>
+      </button>
       <div class="toolbar-right">
         @if (hasFilters()) {
           <button class="link" (click)="clearFilters()">Clear filters</button>
@@ -147,19 +127,36 @@ function collectionKey(name: string): string {
         }
       </div>
     }
+
+    <!-- Created on first open, not on page load, so it never competes with the
+         product grid's first paint. -->
+    @if (sheetOpen()) {
+      <app-filter-sheet
+        [products]="all()"
+        [applied]="appliedFilters()"
+        (apply)="applyFilters($event)"
+        (dismiss)="closeSheet()"
+      />
+    }
   `,
 })
 export class ShopPage implements OnInit {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly filtersBtn = viewChild<ElementRef<HTMLButtonElement>>('filtersBtn');
   readonly all = signal<Product[]>([]);
   readonly loading = signal(true);
   readonly skCards = Array.from({ length: 8 }, (_, i) => i);
   readonly query = signal('');
   readonly category = signal<string | null>(null);
-  readonly collection = signal<string | null>(null);
-  readonly size = signal<string | null>(null);
-  readonly colour = signal<string | null>(null);
+  /** What the grid is showing. The sheet edits a copy and only commits on apply. */
+  readonly appliedFilters = signal<SheetFilters>({ ...EMPTY_FILTERS });
+  /** Mounted on first open only, so the sheet never competes with the grid's first paint. */
+  readonly sheetOpen = signal(false);
+  readonly collection = computed(() => this.appliedFilters().collection);
+  readonly size = computed(() => this.appliedFilters().size);
+  readonly colour = computed(() => this.appliedFilters().colour);
   readonly sort = signal<SortKey>('featured');
   /** productId → average rating + review count (public reviews endpoint). */
   readonly ratings = signal<Map<string, { avg: number; count: number }>>(new Map());
@@ -222,14 +219,11 @@ export class ShopPage implements OnInit {
   readonly filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
     const cat = this.category();
-    const coll = this.collection();
-    const size = this.size();
-    const colour = this.colour();
     const rows = this.all().filter((p) => {
       if (cat && (p.category ?? 'other') !== cat) return false;
-      if (coll && p.collection?.name !== coll) return false;
-      if (size && !p.variants.some((v) => v.size === size)) return false;
-      if (colour && !p.variants.some((v) => v.colour === colour)) return false;
+      // One predicate shared with the sheet's count, so the number on
+      // "Show N pieces" and what the grid renders cannot drift apart.
+      if (!matchesSheetFilters(p, this.appliedFilters())) return false;
       if (!q) return true;
       const haystack = [
         p.name,
@@ -250,8 +244,9 @@ export class ShopPage implements OnInit {
     return rows;
   });
 
+  readonly activeFilters = computed(() => activeFilterCount(this.appliedFilters()));
   readonly hasFilters = computed(
-    () => !!(this.category() || this.collection() || this.size() || this.colour() || this.query()),
+    () => this.activeFilters() > 0 || !!this.category() || !!this.query(),
   );
 
   private readonly fallbacks = [
@@ -262,8 +257,61 @@ export class ShopPage implements OnInit {
     'shop-6.jpg',
   ];
 
+  openSheet(): void {
+    this.sheetOpen.set(true);
+  }
+
+  /** Dismiss discards pending changes: the applied set is never touched here. */
+  closeSheet(): void {
+    this.sheetOpen.set(false);
+    this.filtersBtn()?.nativeElement.focus();
+  }
+
+  /**
+   * Commit the sheet's pending selection: the grid moves, the URL records it,
+   * and the customer is put back at the top of the results they just asked for.
+   */
+  applyFilters(next: SheetFilters): void {
+    this.appliedFilters.set(next);
+    this.syncUrl();
+    this.closeSheet();
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: this.reducedMotion() ? 'auto' : 'smooth' });
+    }
+  }
+
+  /** Applied filters are shareable, so they live in the query string. Pending never does. */
+  private syncUrl(): void {
+    const f = this.appliedFilters();
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        size: f.size ?? null,
+        colour: f.colour ?? null,
+        collection: f.collection ?? null,
+        maxPrice: f.maxPrice ?? null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private reducedMotion(): boolean {
+    return (
+      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
+  }
+
   ngOnInit(): void {
-    const fromQuery = this.route.snapshot.queryParamMap.get('category');
+    const q = this.route.snapshot.queryParamMap;
+    const price = q.get('maxPrice');
+    this.appliedFilters.set({
+      size: q.get('size') ?? null,
+      colour: q.get('colour') ?? null,
+      collection: q.get('collection') ?? null,
+      maxPrice: price === null || price === undefined ? null : Number(price),
+    });
+    const fromQuery = q.get('category');
     if (fromQuery) this.category.set(fromQuery);
     this.api.products().subscribe({
       next: (res) => {
@@ -303,11 +351,11 @@ export class ShopPage implements OnInit {
   ratingOf(productId: string): { avg: number; count: number } | null {
     return this.ratings().get(productId) ?? null;
   }
+  /** The toolbar's own reset: clears the applied set, the category and the search. */
   clearFilters(): void {
     this.category.set(null);
-    this.collection.set(null);
-    this.size.set(null);
-    this.colour.set(null);
     this.query.set('');
+    this.appliedFilters.set({ ...EMPTY_FILTERS });
+    this.syncUrl();
   }
 }
