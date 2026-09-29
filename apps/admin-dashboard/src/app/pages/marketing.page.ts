@@ -13,7 +13,7 @@ interface CampaignRow {
   endDate: string;
 }
 
-/** Marketing — Stitch layout: campaigns table with type chips, create panel,
+/** Marketing, Stitch layout: campaigns table with type chips, create panel,
     source performance from analytics. */
 @Component({
   selector: 'app-marketing-admin',
@@ -48,9 +48,9 @@ interface CampaignRow {
                 <td>
                   <span class="chip acid">{{ c.type.replaceAll('_', ' ') }}</span>
                 </td>
-                <td class="mono small">{{ c.channel || '—' }}</td>
+                <td class="mono small">{{ c.channel || '-' }}</td>
                 <td class="mono">
-                  {{ c.discountPercent !== null ? c.discountPercent + '%' : '—' }}
+                  {{ c.discountPercent !== null ? c.discountPercent + '%' : '-' }}
                 </td>
                 <td class="mono small">{{ c.startDate }} → {{ c.endDate }}</td>
                 <td>
@@ -157,7 +157,7 @@ export class MarketingAdminPage implements OnInit {
           this.error.set(null);
           this.load();
         },
-        error: (e) => this.error.set(e?.error?.message ?? 'Create failed — check the dates.'),
+        error: (e) => this.error.set(e?.error?.message ?? 'Create failed: check the dates.'),
       });
   }
 }

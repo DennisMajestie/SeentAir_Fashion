@@ -18,7 +18,7 @@ interface ProductRow {
   variants: VariantRow[];
 }
 
-/** A7 — Silhouette pattern & tech pack editor. Bound to the TechPacks API:
+/** A7, Silhouette pattern & tech pack editor. Bound to the TechPacks API:
     per-variant spec with graded measurements, protocols, DXF link and a
     revision journal; approved packs become the shop-floor reference. */
 @Component({
@@ -38,7 +38,7 @@ interface ProductRow {
           name="prod"
           (ngModelChange)="select()"
         >
-          <option value="">— choose a product —</option>
+          <option value="">- choose a product -</option>
           @for (p of products(); track p.id) {
             <option [value]="p.id">{{ p.name }}</option>
           }
@@ -97,7 +97,7 @@ interface ProductRow {
             <span class="kpi-value">₦{{ unitCost() | number: '1.0-0' }}</span>
             <span class="kpi-sub">from batch #{{ costBatchRef() }} recorded cost</span>
           } @else {
-            <span class="kpi-value">—</span>
+            <span class="kpi-value">-</span>
             <span class="kpi-sub">no production batch costs for this product yet</span>
           }
         </div>
@@ -109,13 +109,13 @@ interface ProductRow {
         <div class="kpi">
           <span class="kpi-label">Target yield</span>
           <span class="kpi-value"
-            >{{ pack()?.['targetYieldUnits'] ?? '—'
+            >{{ pack()?.['targetYieldUnits'] ?? '-'
             }}<small>
               /
               {{
                 pack()?.['cuttingEfficiencyPct'] !== null
                   ? pack()?.['cuttingEfficiencyPct'] + '%'
-                  : '—'
+                  : '-'
               }}</small
             ></span
           >
@@ -159,7 +159,7 @@ interface ProductRow {
                 </table>
               } @else {
                 <p class="muted small">
-                  Measurement object present but empty — open the editor and record points of
+                  Measurement object present but empty, open the editor and record points of
                   measure.
                 </p>
               }
@@ -176,11 +176,11 @@ interface ProductRow {
             <div class="kv">
               <dt>Stitch protocol</dt>
               <dd class="wrap-anywhere" style="white-space:pre-wrap;">
-                {{ pack()?.['stitchProtocol'] || '—' }}
+                {{ pack()?.['stitchProtocol'] || '-' }}
               </dd>
               <dt>Laydown protocol</dt>
               <dd class="wrap-anywhere" style="white-space:pre-wrap;">
-                {{ pack()?.['laydownProtocol'] || '—' }}
+                {{ pack()?.['laydownProtocol'] || '-' }}
               </dd>
             </div>
           </section>
@@ -205,8 +205,8 @@ interface ProductRow {
                     <td>
                       <code>{{ v.sku }}</code>
                     </td>
-                    <td class="mono">{{ v.size || '—' }}</td>
-                    <td>{{ v.colour || '—' }}</td>
+                    <td class="mono">{{ v.size || '-' }}</td>
+                    <td>{{ v.colour || '-' }}</td>
                     <td class="mono">₦{{ v.priceOverride ?? p.basePrice | number: '1.0-0' }}</td>
                   </tr>
                 }
@@ -343,7 +343,7 @@ interface ProductRow {
               <p class="mini-note">Based on the latest production batch of this product.</p>
             } @else {
               <p class="muted small">
-                No batch costs yet — record one in Production to fill this in.
+                No batch costs yet: record one in Production to fill this in.
               </p>
             }
             <a class="link" href="/catalogue">Edit per-unit BOM on Catalogue</a>
@@ -518,7 +518,7 @@ export class TechPackPage implements OnInit {
       try {
         gradedMeasurements = JSON.parse(measured) as Record<string, unknown>;
       } catch {
-        this.error.set('Graded measurements are not valid JSON — fix and retry.');
+        this.error.set('Graded measurements are not valid JSON, fix and retry.');
         return {};
       }
     }
@@ -562,7 +562,7 @@ export class TechPackPage implements OnInit {
         this.pack.set(updated);
         this.syncEdit(updated);
         this.reloadRevisions(pack['id'] as string);
-        this.ok(`Saved — revision ${updated?.['revision'] ?? '?'} snapshotted.`);
+        this.ok(`Saved: revision ${updated?.['revision'] ?? '?'} snapshotted.`);
       },
       error: (e) => this.error.set(e?.error?.message ?? 'Save failed.'),
     });
@@ -577,7 +577,7 @@ export class TechPackPage implements OnInit {
     this.api.approveTechPack(pack['id'] as string).subscribe({
       next: (updated) => {
         this.pack.set(updated);
-        this.ok('Approved — this pack is now the shop-floor reference.');
+        this.ok('Approved: this pack is now the shop-floor reference.');
       },
       error: (e) => this.error.set(e?.error?.message ?? 'Approval failed.'),
     });
@@ -606,7 +606,7 @@ export class TechPackPage implements OnInit {
       cells: sizes.map((s) => {
         const mapping = gm[s] as Record<string, unknown> | undefined;
         const v = mapping?.[pom];
-        return v === undefined || v === null ? '—' : String(v);
+        return v === undefined || v === null ? '-' : String(v);
       }),
     }));
   }

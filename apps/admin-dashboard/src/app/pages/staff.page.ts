@@ -28,7 +28,7 @@ const ROLES = [
 
 const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
 
-/** A16 — Staff directory & access control matrix. Approved Stitch layout:
+/** A16, Staff directory & access control matrix. Approved Stitch layout:
     headcount tiles, searchable directory with role/2FA chips, and a
     role-inspector rail with the role-change action. Access stays enforced
     server-side (RBAC principle #6). */
@@ -41,7 +41,7 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
         <p class="eyebrow">Admin · Access control</p>
         <h1>Staff directory & access roles</h1>
         <p class="ops-sub">
-          Manage staff and operational clearance levels — least privilege by default.
+          Manage staff and operational clearance levels, least privilege by default.
         </p>
       </div>
       <div class="ops-actions">
@@ -148,7 +148,7 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
                   <span class="muted small mono">{{ u.id.slice(0, 8) }}</span>
                 </td>
                 <td class="small">
-                  {{ u.email }}<br /><span class="muted mono">{{ u.phone || '—' }}</span>
+                  {{ u.email }}<br /><span class="muted mono">{{ u.phone || '-' }}</span>
                 </td>
                 <td>
                   <span class="chip" [class.acid]="u.role.name !== 'customer'">{{
@@ -255,7 +255,7 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
               </tbody>
             </table>
             <p class="muted small" style="margin-top:0.5rem;">
-              STAFF_ACCESS cannot drop below view — the owner is never locked out. A dot is
+              STAFF_ACCESS cannot drop below view, the owner is never locked out. A dot is
               VIEW-to-FULL (N → none, O → own, V → view, A → approve, F → full).
             </p>
           } @else {
@@ -264,7 +264,7 @@ const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
 
           <div class="panel-head" style="margin-top:0.9rem;"><h2>Role & clearance</h2></div>
           <p class="muted small">
-            Each staff member can only see and do what their role allows — this is enforced
+            Each staff member can only see and do what their role allows, this is enforced
             automatically.
           </p>
           <div class="actions">
@@ -485,7 +485,7 @@ export class StaffAdminPage implements OnInit {
           p.module === 'staff_access' && ['view', 'approve', 'full', 'own'].includes(p.accessLevel),
       )
     ) {
-      this.error.set('STAFF_ACCESS must keep at least view access — raise it and try again.');
+      this.error.set('STAFF_ACCESS must keep at least view access, raise it and try again.');
       return;
     }
     this.api.updateRolePermissions(role, permissions).subscribe({
@@ -510,7 +510,7 @@ export class StaffAdminPage implements OnInit {
         next: () => {
           this.showInvite.set(false);
           this.message.set(
-            'Account created — share the temporary password securely and have them change it via Forgot password.',
+            'Account created: share the temporary password securely and have them change it via Forgot password.',
           );
           this.error.set(null);
           this.load();

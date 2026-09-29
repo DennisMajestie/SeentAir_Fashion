@@ -4,9 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { ApiService, ReturnRequest } from '../api.service';
 
-/** A11 — Customer returns quarantine & inspection desk. Approved Stitch
+/** A11, Customer returns quarantine & inspection desk. Approved Stitch
     layout: intake KPIs, live intake registry with SLA countdowns, and a
-    grading inspector that resolves each RMA (restock vs damaged — the
+    grading inspector that resolves each RMA (restock vs damaged: the
     existing disposition flow). 12h request / 24h completion windows are
     enforced server-side. */
 @Component({
@@ -56,7 +56,7 @@ import { ApiService, ReturnRequest } from '../api.service';
 
     <p class="rule-strip">
       RETURN WINDOWS // request within 12h of receipt · complete within 24h · custom orders excluded
-      — enforced by the API.
+     - enforced by the API.
     </p>
 
     <div class="ops-toolbar">
@@ -214,7 +214,7 @@ import { ApiService, ReturnRequest } from '../api.service';
               <div class="att-item">
                 <span class="att-tag">Grade A/B · Pristine or mint-grade</span>
                 <p class="att-body">
-                  Original packaging and tags intact — put it back into sellable stock.
+                  Original packaging and tags intact, put it back into sellable stock.
                 </p>
                 <span class="att-act"
                   ><button class="cta small" (click)="resolve(r.id, 'restocked')">
@@ -225,7 +225,7 @@ import { ApiService, ReturnRequest } from '../api.service';
               <div class="att-item crit">
                 <span class="att-tag">Grade C · Irreparable / compromised</span>
                 <p class="att-body">
-                  Damaged, worn or contaminated — quarantine as damaged; excluded from stock.
+                  Damaged, worn or contaminated: quarantine as damaged; excluded from stock.
                 </p>
                 <span class="att-act"
                   ><button class="danger" (click)="resolve(r.id, 'damaged')">
@@ -236,7 +236,7 @@ import { ApiService, ReturnRequest } from '../api.service';
             </div>
           } @else {
             <p class="success small">
-              This return has been resolved — the outcome is recorded in Inventory and the Activity
+              This return has been resolved, the outcome is recorded in Inventory and the Activity
               log.
             </p>
           }
@@ -326,7 +326,7 @@ export class ReturnsPage implements OnInit {
   /** SLA countdown chip, derived from the real 24h deadline. */
   deadlineLabel(r: ReturnRequest): string {
     const ms = new Date(r.returnDeadline).getTime() - Date.now();
-    if (Number.isNaN(ms)) return '—';
+    if (Number.isNaN(ms)) return '-';
     const h = Math.floor(Math.abs(ms) / 3_600_000);
     const m = Math.floor((Math.abs(ms) % 3_600_000) / 60_000);
     return ms < 0 ? `overdue ${h}h ${m}m` : `${h}h ${m}m left`;

@@ -10,7 +10,7 @@ interface ReviewRow {
   variant: { sku: string };
 }
 
-/** Review moderation queue — pending until published (Open Question #4 default). */
+/** Review moderation queue, pending until published (Open Question #4 default). */
 @Component({
   selector: 'app-reviews-admin',
   imports: [CommonModule],
@@ -19,7 +19,7 @@ interface ReviewRow {
       <div class="ops-id"><h1>Review moderation</h1></div>
     </div>
     <p class="rule-strip">
-      Reviews stay hidden from the storefront until published — the moderated default holds until
+      Reviews stay hidden from the storefront until published, the moderated default holds until
       the client answers Open Question #4.
     </p>
 

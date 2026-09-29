@@ -5,10 +5,10 @@ import { ApiService, Invoice, Pricing } from '../api.service';
 import { pill } from '../status-pill';
 
 /**
- * W2 — Wholesale buyer home. Identity + tier card, 2×2 operations KPI grid,
+ * W2, Wholesale buyer home. Identity + tier card, 2×2 operations KPI grid,
  * catalogue CTA, recent orders, billing & invoices, desk contact.
  * All figures derive from the live API (auth/me, wholesale/pricing,
- * wholesale/invoices, notifications) — nothing is invented.
+ * wholesale/invoices, notifications)- nothing is invented.
  */
 @Component({
   selector: 'app-home',
@@ -36,7 +36,7 @@ import { pill } from '../status-pill';
           </span>
           <a class="link" routerLink="/catalogue">Tier details</a>
         } @else {
-          <span>Wholesale account awaiting approval — apply from the catalogue.</span>
+          <span>Wholesale account awaiting approval, apply from the catalogue.</span>
           <a class="link" routerLink="/catalogue">Apply</a>
         }
       </div>
@@ -87,7 +87,7 @@ import { pill } from '../status-pill';
             <strong style="font-size: 1rem">{{ last.createdAt | date: 'dd MMM yyyy' }}</strong>
             <span class="k-sub">{{ last.status.replaceAll('_', ' ') }}</span>
           } @else {
-            <strong style="font-size: 1rem">—</strong><span class="k-sub">No orders yet</span>
+            <strong style="font-size: 1rem">-</strong><span class="k-sub">No orders yet</span>
           }
         </div>
       </div>
@@ -178,7 +178,7 @@ import { pill } from '../status-pill';
           <div>
             <span class="oc-id">INV-{{ invoice.orderId.slice(0, 8).toUpperCase() }}</span>
             <span class="oc-meta"
-              >{{ paid(invoice) ? 'Settled amount' : 'Amount due' }} — ₦{{
+              >{{ paid(invoice) ? 'Settled amount' : 'Amount due' }}- ₦{{
                 invoice.totalAmount | number: '1.0-2'
               }}</span
             >
@@ -204,7 +204,7 @@ import { pill } from '../status-pill';
       </article>
     }
 
-    <!-- GAP: no account-manager endpoint yet — desk identity below is the same
+    <!-- GAP: no account-manager endpoint yet, desk identity below is the same
          factory support desk the approved W1 screen publishes, not a per-buyer
          assigned rep. Awaits a wholesale account-manager field in the API. -->
     <div class="section-head">
@@ -217,7 +217,7 @@ import { pill } from '../status-pill';
           <span class="chip dark" style="padding: 10px 8px">YD</span>
           <div>
             <strong>Aba Wholesale Desk</strong>
-            <p class="muted small" style="margin: 2px 0 0">Wholesale operations — Aba factory</p>
+            <p class="muted small" style="margin: 2px 0 0">Wholesale operations: Aba factory</p>
           </div>
         </div>
       </div>
@@ -297,7 +297,7 @@ export class HomePage implements OnInit {
     this.api.reorder(orderId).subscribe({
       next: (order) =>
         this.message.set(
-          `Reorder placed: ${order.id.slice(0, 8)} — repriced at your current tier.`,
+          `Reorder placed: ${order.id.slice(0, 8)}- repriced at your current tier.`,
         ),
       error: (err) => this.message.set(err?.error?.message ?? 'Reorder failed.'),
     });

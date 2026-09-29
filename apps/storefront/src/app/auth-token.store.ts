@@ -15,7 +15,7 @@ export const API_BASE = environment.apiBase;
  */
 @Injectable({ providedIn: 'root' })
 export class TokenStore {
-  // HttpBackend bypasses interceptors — no recursion into ourselves.
+  // HttpBackend bypasses interceptors, no recursion into ourselves.
   private readonly bare = new HttpClient(inject(HttpBackend));
   readonly token = signal<string | null>(null);
 

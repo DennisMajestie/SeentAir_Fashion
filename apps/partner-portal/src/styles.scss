@@ -1,10 +1,10 @@
 /* ============================================================
-   SEENTAIR PARTNERS — Approved Stitch design system
+   SEENTAIR PARTNERS: Approved Stitch design system
    "Utilitarian Industrial B2B" (project 4978034307012465281).
    Light warm canvas, 1px structural borders, zero shadows,
    square corners, Inter-only type, storefront gold actions.
-   Calm and read-mostly; aggregates only — never customer data.
-   Reference screens use vermilion — rebuilt here on the app's
+   Calm and read-mostly; aggregates only, never customer data.
+   Reference screens use vermilion, rebuilt here on the app's
    gold token system (hard colour rule).
    ============================================================ */
 
@@ -17,7 +17,7 @@
   --hairline-2: #dcdad5;
   --ink: #1b1c19;
   --ink-dim: #5f5e5e;
-  --gold: #c9a24b; /* storefront gold — fills & markers */
+  --gold: #c9a24b; /* storefront gold, fills & markers */
   --gold-strong: #b08a33; /* gold hover */
   --acid: #c9a24b; /* accent (var-compat) */
   --acid-ink: #8a6a1c; /* gold for text on light surfaces */
@@ -37,7 +37,7 @@
   --type-body-md: 0.8125rem;
 }
 
-/* Dark ops theme — gold on near-black (brief 15.5). Keeps token names. */
+/* Dark ops theme, gold on near-black (brief 15.5). Keeps token names. */
 :root[data-theme='dark'] {
   color-scheme: dark;
   --obsidian: #0f0e0c;
@@ -530,7 +530,7 @@ input:focus-visible {
   }
 }
 
-/* KPI strip — stat tiles (values wear ink, never series color) */
+/* KPI strip, stat tiles (values wear ink, never series color) */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));

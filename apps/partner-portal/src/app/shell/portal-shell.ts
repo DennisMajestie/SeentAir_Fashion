@@ -7,7 +7,7 @@ import { PortalStore } from '../portal.store';
 import { ThemeService } from '../theme.service';
 
 /**
- * Approved partner-portal chrome (screens P2–P8): encrypted-terminal top bar,
+ * Approved partner-portal chrome (screens P2-P8): encrypted-terminal top bar,
  * "Investor Portfolio" sidebar, distribution ticker, sign-out. Sidebar becomes
  * a drawer under 960px.
  */
@@ -162,14 +162,14 @@ import { ThemeService } from '../theme.service';
                 <strong class="mono">{{ d.period }}</strong>
                 <span class="side-box-sub">Latest declared period</span>
               } @else {
-                <strong>—</strong>
+                <strong>-</strong>
                 <span class="side-box-sub">No distributions declared yet</span>
               }
             </div>
             <div class="side-box">
               <span class="side-box-label">Liaison Helpdesk</span>
               <strong>Investor Relations Desk</strong>
-              <!-- GAP: no liaison contact endpoint — desk contact details come from Seentair directly. -->
+              <!-- GAP: no liaison contact endpoint, desk contact details come from Seentair directly. -->
               <span class="side-box-sub">Via Documents &amp; Messages</span>
             </div>
             <button class="side-signout" (click)="signOut()">Sign out</button>

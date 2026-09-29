@@ -19,7 +19,7 @@ interface TierRow {
   ruleDescription: string | null;
 }
 
-/** Wholesale administration — applications table with approve/tier-assign,
+/** Wholesale administration, applications table with approve/tier-assign,
     price tiers panel with approval-gated discount changes. */
 @Component({
   selector: 'app-wholesale-admin',
@@ -71,7 +71,7 @@ interface TierRow {
             </td>
             <td>
               <select [(ngModel)]="tierChoice[a.id]" [name]="'t' + a.id">
-                <option value="">— tier —</option>
+                <option value="">- tier -</option>
                 @for (t of tiers(); track t.id) {
                   <option [value]="t.id">{{ t.name }} ({{ t.discountPercent }}%)</option>
                 }
@@ -321,7 +321,7 @@ export class WholesaleAdminPage implements OnInit {
       .subscribe({
         next: (r) => {
           this.tierApprovals[t.id] = r.id;
-          this.ok('Approval requested — Management decides in the queue.');
+          this.ok('Approval requested: Management decides in the queue.');
         },
         error: (e) => this.fail(e, 'Request failed.'),
       });
@@ -350,7 +350,7 @@ export class WholesaleAdminPage implements OnInit {
   editingClose(id: string): void {
     delete this.editing[id];
   }
-  /** Name and rule edits — allowed immediately; only discounts stay approval-gated. */
+  /** Name and rule edits, allowed immediately; only discounts stay approval-gated. */
   saveTier(t: TierRow): void {
     const name = (this.editName[t.id] ?? '').trim();
     if (!name) {
@@ -363,10 +363,10 @@ export class WholesaleAdminPage implements OnInit {
       error: (e) => this.fail(e, 'Could not save the tier.'),
     });
   }
-  /** Drop a pending approval locally — the tier discount stays unchanged. */
+  /** Drop a pending approval locally, the tier discount stays unchanged. */
   cancelTierApproval(t: TierRow): void {
     delete this.tierApprovals[t.id];
-    this.ok(`Approval request for '${t.name}' cancelled — the tier is unchanged.`);
+    this.ok(`Approval request for '${t.name}' cancelled: the tier is unchanged.`);
   }
   deleteTier(t: TierRow): void {
     void this.alerts

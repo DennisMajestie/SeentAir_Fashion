@@ -6,7 +6,7 @@ import { PortalStore } from '../portal.store';
 import { ThemeService } from '../theme.service';
 
 /**
- * Investor Settings (sidebar item on every approved screen) — profile record,
+ * Investor Settings (sidebar item on every approved screen)- profile record,
  * two-step verification enrolment (live auth/2fa endpoints), terminal theme.
  */
 @Component({
@@ -32,11 +32,11 @@ import { ThemeService } from '../theme.service';
         </div>
         <div class="rail-rows">
           <div class="rail-row">
-            <span>Account name</span><strong>{{ store.me()?.name ?? '—' }}</strong>
+            <span>Account name</span><strong>{{ store.me()?.name ?? '-' }}</strong>
           </div>
           <div class="rail-row">
             <span>Authorized email</span
-            ><strong class="mono">{{ store.me()?.email ?? '—' }}</strong>
+            ><strong class="mono">{{ store.me()?.email ?? '-' }}</strong>
           </div>
           <div class="rail-row">
             <span>Role</span><strong>{{ roleLabel() }}</strong>
@@ -53,7 +53,7 @@ import { ThemeService } from '../theme.service';
         </div>
         <p class="gap-note" style="margin-top: 0.7rem">
           Registry changes (name, email, payout instrument) are made by Seentair's company secretary
-          — contact the desk via Documents &amp; Messages.
+         - contact the desk via Documents &amp; Messages.
         </p>
       </section>
 
@@ -234,7 +234,7 @@ export class SettingsPage {
       },
       error: () => {
         this.busy.set(false);
-        this.message.set({ kind: 'error', text: 'Incorrect code — verification not activated.' });
+        this.message.set({ kind: 'error', text: 'Incorrect code: verification not activated.' });
       },
     });
   }
@@ -248,13 +248,13 @@ export class SettingsPage {
         this.code = '';
         this.message.set({
           kind: 'ok-msg',
-          text: 'Two-step verification disabled — all other sessions were revoked.',
+          text: 'Two-step verification disabled: all other sessions were revoked.',
         });
         this.refreshMe();
       },
       error: () => {
         this.busy.set(false);
-        this.message.set({ kind: 'error', text: 'Incorrect code — verification stays enabled.' });
+        this.message.set({ kind: 'error', text: 'Incorrect code: verification stays enabled.' });
       },
     });
   }

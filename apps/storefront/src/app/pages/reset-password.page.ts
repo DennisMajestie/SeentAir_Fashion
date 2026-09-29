@@ -13,7 +13,7 @@ import { ApiService } from '../api.service';
       <h1>Set a new password</h1>
       @if (!token) {
         <p class="error">
-          This reset link is incomplete — request a new one from your
+          This reset link is incomplete, request a new one from your
           <a routerLink="/account">account page</a>.
         </p>
       } @else if (done()) {
@@ -51,7 +51,7 @@ export class ResetPasswordPage {
     this.api.resetPassword(this.token, this.password).subscribe({
       next: (res) => this.done.set(res.message),
       error: (err) =>
-        this.error.set(err?.error?.message ?? 'Reset failed — the link may have expired.'),
+        this.error.set(err?.error?.message ?? 'Reset failed: the link may have expired.'),
     });
   }
 }

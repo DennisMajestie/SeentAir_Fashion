@@ -3,10 +3,10 @@ import { Component, computed, inject } from '@angular/core';
 import { PortalStore } from '../portal.store';
 
 /**
- * Screen P7 — Profit Sharing & Dividend Distribution. Pool figures derive
+ * Screen P7, Profit Sharing & Dividend Distribution. Pool figures derive
  * from the API's distribution rows; the 40/40/20 covenant and the founder's
  * 60% pool share are confirmed company config mirrored from the server's own
- * distribution math (partners.service.ts) — never invented values.
+ * distribution math (partners.service.ts)- never invented values.
  */
 @Component({
   selector: 'app-profit-sharing-page',
@@ -18,7 +18,7 @@ import { PortalStore } from '../portal.store';
           <p class="page-kicker">Equity Class: Ordinary // Quarterly Covenant</p>
           <h1 class="page-title">Profit Sharing &amp; Dividend Distribution</h1>
           <p class="page-sub">
-            Quarterly distribution allocation for ordinary share equity partners — declared from
+            Quarterly distribution allocation for ordinary share equity partners, declared from
             audited net profit and approval-gated as fund movements.
           </p>
         </div>
@@ -64,7 +64,7 @@ import { PortalStore } from '../portal.store';
             <span class="pool-num">1 · Capital reinvestment</span>
             <strong>₦{{ reinvestment(latest.totalProfit) | number: '1.0-0' }}</strong>
             <span class="pool-sub"
-              >{{ d.config.reinvestmentPct }}% covenant — allocated to production capacity, fabric
+              >{{ d.config.reinvestmentPct }}% covenant: allocated to production capacity, fabric
               intake and factory flow</span
             >
             <div class="meter">
@@ -75,7 +75,7 @@ import { PortalStore } from '../portal.store';
             <span class="pool-num">2 · Dividend payout pool</span>
             <strong>₦{{ latest.dividendPool | number: '1.0-0' }}</strong>
             <span class="pool-sub"
-              >{{ d.config.dividendsPct }}% covenant — distributed to shareholders as cash
+              >{{ d.config.dividendsPct }}% covenant: distributed to shareholders as cash
               dividends</span
             >
             <div class="meter gold">
@@ -86,7 +86,7 @@ import { PortalStore } from '../portal.store';
             <span class="pool-num">3 · Strategic reserve fund</span>
             <strong>₦{{ reserve(latest.totalProfit) | number: '1.0-0' }}</strong>
             <span class="pool-sub"
-              >{{ d.config.reservePct }}% covenant — retained against FX volatility and operational
+              >{{ d.config.reservePct }}% covenant: retained against FX volatility and operational
               contingency</span
             >
             <div class="meter">
@@ -103,7 +103,7 @@ import { PortalStore } from '../portal.store';
             </div>
             <div class="meter-row">
               <span class="wrap"
-                >Founder &amp; executive pool — {{ d.config.founderSharePct }}%</span
+                >Founder &amp; executive pool: {{ d.config.founderSharePct }}%</span
               >
               <div class="meter">
                 <div class="meter-fill" [style.width.%]="d.config.founderSharePct"></div>
@@ -114,7 +114,7 @@ import { PortalStore } from '../portal.store';
             </div>
             <div class="meter-row">
               <span class="wrap"
-                >Outside strategic partners — {{ d.config.partnersSharePct }}%</span
+                >Outside strategic partners: {{ d.config.partnersSharePct }}%</span
               >
               <div class="meter">
                 <div class="meter-fill" [style.width.%]="d.config.partnersSharePct"></div>
@@ -128,7 +128,7 @@ import { PortalStore } from '../portal.store';
             <div class="meter-row">
               <span class="wrap"
                 ><strong
-                  >Your entitlement — {{ d.investmentInformation.equityPercentage }}%</strong
+                  >Your entitlement: {{ d.investmentInformation.equityPercentage }}%</strong
                 ></span
               >
               <div class="meter gold">
@@ -153,7 +153,7 @@ import { PortalStore } from '../portal.store';
               <span class="panel-note">{{ d.investmentInformation.equityPercentage }}% equity</span>
             </div>
             <p class="rail-kicker">
-              {{ store.me()?.name ?? 'Partner' }} — ordinary shareholder of record
+              {{ store.me()?.name ?? 'Partner' }}- ordinary shareholder of record
             </p>
             <p class="hero-figure sm">₦{{ latest.myDividend | number: '1.0-0' }}</p>
             <p class="hero-sub">{{ latest.period }} net dividend entitlement</p>
@@ -264,7 +264,7 @@ import { PortalStore } from '../portal.store';
                     @if (cashOnCash() !== null) {
                       <span class="mono">{{ cashOnCash() | number: '1.0-1' }}% cash-on-cash</span>
                     } @else {
-                      —
+                      -
                     }
                   </td>
                 </tr>

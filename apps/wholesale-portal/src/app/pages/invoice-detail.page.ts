@@ -5,7 +5,7 @@ import { ApiService, Invoice } from '../api.service';
 import { pill } from '../status-pill';
 
 /**
- * W7 — Invoice detail: commercial document header, issuer / consignee
+ * W7, Invoice detail: commercial document header, issuer / consignee
  * panels, itemized manifest, quality-guarantee note, commercial ledger
  * and document actions. Built entirely from the live invoice record.
  */
@@ -44,7 +44,7 @@ import { pill } from '../status-pill';
         <div class="mg">
           <span class="m-l">Settlement date</span>
           <span class="m-v">{{
-            inv.payments[0] ? (inv.payments[0].date | date: 'dd MMM yyyy') : '—'
+            inv.payments[0] ? (inv.payments[0].date | date: 'dd MMM yyyy') : '-'
           }}</span>
         </div>
         <div class="mg">
@@ -59,13 +59,13 @@ import { pill } from '../status-pill';
       </div>
 
       <!-- GAP: issuer RC / TIN / registered street address are not exposed by any
-           config endpoint — the block carries only what the business docs state. -->
+           config endpoint: the block carries only what the business docs state. -->
       <div class="party">
         <div class="p-head">
           <span>Manufacturer / issuer</span><span class="chip">Aba hub</span>
         </div>
         <div class="p-name">Seentair Limited</div>
-        <p class="p-sub">Streetwear manufacturer — single factory, Aba, Nigeria.</p>
+        <p class="p-sub">Streetwear manufacturer: single factory, Aba, Nigeria.</p>
         <div class="p-foot"><span>Finance desk</span><span class="v">+234 1 888 7400</span></div>
       </div>
 
@@ -76,7 +76,7 @@ import { pill } from '../status-pill';
         <div class="p-name">{{ buyer()?.name ?? 'Wholesale account' }}</div>
         <p class="p-sub">Approved Seentair wholesale buyer.</p>
         <div class="p-foot">
-          <span>Account email</span><span class="v">{{ buyer()?.email ?? '—' }}</span>
+          <span>Account email</span><span class="v">{{ buyer()?.email ?? '-' }}</span>
         </div>
       </div>
 

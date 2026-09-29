@@ -27,7 +27,7 @@ const NEXT: Record<string, string | null> = {
   fulfilled: 'delivered',
 };
 
-/** Custom orders management — Stitch layout: status-chip table, detail panel,
+/** Custom orders management, Stitch layout: status-chip table, detail panel,
     manager-only quotation, the sample gate spelled out. */
 @Component({
   selector: 'app-custom-admin',
@@ -37,7 +37,7 @@ const NEXT: Record<string, string | null> = {
       <div class="ops-id"><h1>Custom orders</h1></div>
     </div>
     <p class="rule-strip">
-      FULL PRODUCTION ONLY AFTER THE BUYER APPROVES THE SAMPLE — the API enforces it; the buyer
+      FULL PRODUCTION ONLY AFTER THE BUYER APPROVES THE SAMPLE, the API enforces it; the buyer
       decides in their portal.
     </p>
 
@@ -119,7 +119,7 @@ const NEXT: Record<string, string | null> = {
           <div class="panel flat">
             @if (detail(); as d) {
               <p class="small">
-                <strong>Full request</strong> — submitted {{ d['createdAt'] }}, last updated
+                <strong>Full request</strong>- submitted {{ d['createdAt'] }}, last updated
                 {{ d['updatedAt'] }}. Status {{ d['status'] }}.
               </p>
               <p class="small muted">{{ d['description'] }}</p>
@@ -128,7 +128,7 @@ const NEXT: Record<string, string | null> = {
               <p class="small">
                 Quotation on file:
                 <span class="naira">₦{{ num(q['amount']) | number: '1.0-2' }}</span>
-                — issued {{ q['createdAt'] }}
+               - issued {{ q['createdAt'] }}
                 @if (q['note']) {
                   · {{ q['note'] }}
                 }
@@ -265,7 +265,7 @@ export class CustomAdminPage implements OnInit {
       return;
     }
     this.api.issueQuotation(r.id, Number(amount)).subscribe({
-      next: () => this.ok('Quotation issued — the buyer sees it in their portal.'),
+      next: () => this.ok('Quotation issued: the buyer sees it in their portal.'),
       error: (e) => this.fail(e, 'Quotation requires Management/Owner authority.'),
     });
   }
@@ -274,8 +274,8 @@ export class CustomAdminPage implements OnInit {
     this.api
       .recordCustomPayment(r.id, this.payMethods[r.id], Number(this.payAmounts[r.id]))
       .subscribe({
-        next: () => this.ok('Payment recorded in full — sample production can start.'),
-        error: (e) => this.fail(e, 'Payment failed — must equal the quotation exactly.'),
+        next: () => this.ok('Payment recorded in full: sample production can start.'),
+        error: (e) => this.fail(e, 'Payment failed: must equal the quotation exactly.'),
       });
   }
 

@@ -18,7 +18,7 @@ interface DistRow {
   perPartnerBreakdown: { founderCeo: number; partners: Array<{ name: string; amount: number }> };
 }
 
-/** Partner administration — investor records, the 40% equity cap, and
+/** Partner administration, investor records, the 40% equity cap, and
     approval-gated quarterly distributions per the confirmed 40/40/20 model. */
 @Component({
   selector: 'app-partners-admin',
@@ -78,7 +78,7 @@ interface DistRow {
                         <span class="naira">₦{{ num(v['totalReceived']) | number: '1.0-2' }}</span>
                       </p>
                       <p class="small muted">
-                        Partners never see customer data — this is the same read-only view served to
+                        Partners never see customer data, this is the same read-only view served to
                         their portal.
                       </p>
                     } @else {
@@ -267,7 +267,7 @@ export class PartnersAdminPage implements OnInit {
         investedAmount: Number(this.np.investedAmount),
       })
       .subscribe({
-        next: () => this.ok('Partner created — their payment is recorded automatically.'),
+        next: () => this.ok('Partner created: their payment is recorded automatically.'),
         error: (e) => this.fail(e, 'Create failed (role/equity cap?).'),
       });
   }
@@ -285,7 +285,7 @@ export class PartnersAdminPage implements OnInit {
       .subscribe({
         next: (r) => {
           this.nd.approvalRequestId = r.id;
-          this.ok('Approval requested — Management decides in the queue.');
+          this.ok('Approval requested: Management decides in the queue.');
         },
         error: (e) => this.fail(e, 'Request failed.'),
       });
@@ -301,7 +301,7 @@ export class PartnersAdminPage implements OnInit {
       .subscribe({
         next: () => {
           this.nd = { period: '', totalProfit: 0, approvalRequestId: '' };
-          this.ok('Distribution declared — partners see it in their portal.');
+          this.ok('Distribution declared: partners see it in their portal.');
         },
         error: (e) => this.fail(e, 'Not approved yet, or period already distributed.'),
       });

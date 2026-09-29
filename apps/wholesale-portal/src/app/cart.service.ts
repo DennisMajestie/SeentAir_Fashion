@@ -14,7 +14,7 @@ export interface CartLine {
 
 /**
  * Draft batch allocation shared by Catalogue (W3), Bulk Order Matrix (W4)
- * and Bulk Cart & Checkout (W5). In-memory only — the server order is the
+ * and Bulk Cart & Checkout (W5). In-memory only, the server order is the
  * single source of truth once the batch is committed.
  */
 @Injectable({ providedIn: 'root' })

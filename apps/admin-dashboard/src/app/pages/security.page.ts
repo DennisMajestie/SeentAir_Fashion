@@ -3,7 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../api.service';
 
-/** Staff self-service 2FA enrolment — recommended for every internal account. */
+/** Staff self-service 2FA enrolment, recommended for every internal account. */
 @Component({
   selector: 'app-security',
   imports: [CommonModule, FormsModule],
@@ -15,7 +15,7 @@ import { ApiService } from '../api.service';
       <section class="panel">
         <p>
           Signed in as <strong>{{ profile.name }}</strong> (<code>{{ profile.role }}</code
-          >) — two-factor authentication is
+          >)- two-factor authentication is
           <strong [class.success]="profile.totpEnabled" [class.error]="!profile.totpEnabled">
             {{ profile.totpEnabled ? 'ON' : 'OFF' }}
           </strong>
@@ -98,7 +98,7 @@ export class SecurityPage implements OnInit {
     this.error.set(null);
     this.api.enable2fa(this.code).subscribe({
       next: () => {
-        this.message.set('2FA is on — your next sign-in will ask for a code.');
+        this.message.set('2FA is on: your next sign-in will ask for a code.');
         this.setup.set(null);
         this.code = '';
         this.refresh();

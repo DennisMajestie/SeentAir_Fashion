@@ -15,7 +15,7 @@ const NEXT_STATUS: Record<string, string> = {
 /** How often the order list re-reads itself so staff never act on a stale queue. */
 const ORDERS_POLL_MS = 20_000;
 
-/** A9/A10 — Omnichannel orders & fulfilment desk, with the packing-slip /
+/** A9/A10, Omnichannel orders & fulfilment desk, with the packing-slip /
     dispatch-dossier inspector for the selected order. One shared order
     resource across retail, wholesale, custom and in-store (principle #1). */
 @Component({
@@ -63,7 +63,7 @@ const ORDERS_POLL_MS = 20_000;
       <div class="kpi" [class.kpi-action]="unpaidCount() > 0">
         <span class="kpi-label">Awaiting payment</span>
         <span class="kpi-value">{{ unpaidCount() }}</span>
-        <span class="kpi-sub">full payment upfront — unpaid orders can't advance</span>
+        <span class="kpi-sub">full payment upfront: unpaid orders can't advance</span>
       </div>
     </div>
 
@@ -110,11 +110,11 @@ const ORDERS_POLL_MS = 20_000;
       </div>
     </div>
 
-    <!-- Paid orders the ledger could not fully allocate — money is in, stock is not. -->
+    <!-- Paid orders the ledger could not fully allocate, money is in, stock is not. -->
     @if (attention().length > 0) {
       <section class="panel" style="border-color: var(--warn);">
         <div class="panel-head">
-          <h2>Needs attention — paid, short on stock</h2>
+          <h2>Needs attention: paid, short on stock</h2>
           <span class="ph-sub">{{ attention().length }} order(s)</span>
         </div>
         <div class="table-scroll">
@@ -164,7 +164,7 @@ const ORDERS_POLL_MS = 20_000;
         <p class="mini-note">
           Allocate retries the short lines against current stock (completed batches land there).
           Refund releases any allocated units, records the refund in the ledger and cancels the
-          order — then issue the customer's refund in Paystack.
+          order: then issue the customer's refund in Paystack.
         </p>
       </section>
     }
@@ -243,11 +243,11 @@ const ORDERS_POLL_MS = 20_000;
       </table>
     </div>
 
-    <!-- ============ A10 — Dispatch dossier & pick verification ============ -->
+    <!-- ============ A10, Dispatch dossier & pick verification ============ -->
     @if (selected(); as o) {
       <section class="panel" style="border-color: var(--hairline-strong);">
         <div class="panel-head">
-          <h2>Dispatch details & item check — #{{ o.id.slice(0, 8) }}</h2>
+          <h2>Dispatch details & item check: #{{ o.id.slice(0, 8) }}</h2>
           <span
             class="chip"
             [class.ok]="o.paymentStatus === 'paid'"
@@ -289,7 +289,7 @@ const ORDERS_POLL_MS = 20_000;
                       <code>{{ it.variant.sku }}</code>
                     </td>
                     <td class="small">
-                      {{ it.variant.colour || '—' }} · size {{ it.variant.size || '—' }}
+                      {{ it.variant.colour || '-' }} · size {{ it.variant.size || '-' }}
                     </td>
                     <td class="mono">{{ it.quantity }}</td>
                     <td class="mono">₦{{ it.unitPrice | number: '1.0-0' }}</td>
@@ -317,7 +317,7 @@ const ORDERS_POLL_MS = 20_000;
                     <span class="act-action"
                       >{{ str(ev['status']).replaceAll('_', ' ') }}
                       @if (ev['note']) {
-                        — {{ ev['note'] }}
+                       - {{ ev['note'] }}
                       }
                     </span>
                   </li>
@@ -491,7 +491,7 @@ export class OrdersPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly alerts = inject(BrandAlertService);
   readonly orders = signal<AdminOrder[]>([]);
-  /** Paid orders in STOCK_EXCEPTION — loaded on their own so none drop off the latest-100 list. */
+  /** Paid orders in STOCK_EXCEPTION, loaded on their own so none drop off the latest-100 list. */
   readonly attention = signal<AdminOrder[]>([]);
   readonly total = signal(0);
   readonly error = signal<string | null>(null);
@@ -528,7 +528,7 @@ export class OrdersPage implements OnInit, OnDestroy {
 
   /**
    * Keeps the list honest without a reload. Skipped when the tab is hidden,
-   * and when a dispatch dossier is open with unsaved edits — `load()` replaces
+   * and when a dispatch dossier is open with unsaved edits, `load()` replaces
    * the `orders` array, which would silently discard what staff are typing.
    */
   private poll(): void {
@@ -574,8 +574,8 @@ export class OrdersPage implements OnInit, OnDestroy {
       next: (res) => {
         this.message.set(
           res.status === 'stock_exception'
-            ? 'Partial allocation — some lines are still short.'
-            : 'Stock allocated — order is back in fulfilment.',
+            ? 'Partial allocation: some lines are still short.'
+            : 'Stock allocated: order is back in fulfilment.',
         );
         this.load();
       },
@@ -594,7 +594,7 @@ export class OrdersPage implements OnInit, OnDestroy {
     this.error.set(null);
     this.api.refundStockException(o.id).subscribe({
       next: () => {
-        this.message.set('Refund recorded — order cancelled.');
+        this.message.set('Refund recorded: order cancelled.');
         this.load();
       },
       error: (err) => this.error.set(err?.error?.message ?? 'Refund failed.'),
@@ -681,7 +681,7 @@ export class OrdersPage implements OnInit, OnDestroy {
   copyRef(id: string): void {
     navigator.clipboard?.writeText(id).then(
       () => this.message.set('Order reference copied.'),
-      () => this.error.set('Could not copy — select and copy the ref manually.'),
+      () => this.error.set('Could not copy: select and copy the ref manually.'),
     );
   }
 

@@ -8,7 +8,7 @@ import { PortalStore } from '../portal.store';
 import { ThemeService } from '../theme.service';
 
 /**
- * Screen P1 — Partner sign-in + two-step hardware verification.
+ * Screen P1, Partner sign-in + two-step hardware verification.
  * Phase 01 (identity) is live; Phase 02 (TOTP challenge) activates when the
  * API answers `requires2fa` with a challenge token (auth/2fa/verify).
  */
@@ -21,7 +21,7 @@ import { ThemeService } from '../theme.service';
         <span class="term-chip"
           ><span class="dot ok"></span> Secure Protocol TLS / Encrypted Session</span
         >
-        <span class="term-chip strip-node">Node: ABA-HQ — Aba</span>
+        <span class="term-chip strip-node">Node: ABA-HQ: Aba</span>
         <button
           class="theme-toggle"
           type="button"
@@ -176,7 +176,7 @@ import { ThemeService } from '../theme.service';
               }
             </button>
             @if (phase() === 2) {
-              <p class="fine">Codes rotate every 30 seconds — attempts are rate-limited.</p>
+              <p class="fine">Codes rotate every 30 seconds, attempts are rate-limited.</p>
               <button class="link" type="button" (click)="restart()">
                 Start over with email &amp; passkey
               </button>
@@ -190,15 +190,15 @@ import { ThemeService } from '../theme.service';
         <p class="station-line mono">
           Status:
           @if (phase() === 2) {
-            challenge issued — awaiting verification
+            challenge issued: awaiting verification
           } @else {
-            pre-authorization — credentials required
+            pre-authorization: credentials required
           }
         </p>
 
         <!-- GAP: reference P1 shows live pre-auth KPI figures (run rate, equity retained, hub ops,
              dividend cycle); no unauthenticated telemetry endpoint exists, so these tiles carry
-             descriptive copy only — no fabricated numbers. -->
+             descriptive copy only: no fabricated numbers. -->
         <div class="kpi-grid auth-kpis">
           <div class="kpi">
             <span class="kpi-label">Manufacturing</span
@@ -213,7 +213,7 @@ import { ThemeService } from '../theme.service';
           <div class="kpi">
             <span class="kpi-label">Aba hub operations</span
             ><span class="kpi-value sm">Single-factory ops</span
-            ><span class="kpi-sub">Aggregates — never customer data</span>
+            ><span class="kpi-sub">Aggregates: never customer data</span>
           </div>
           <div class="kpi">
             <span class="kpi-label">Partner dividend cycle</span
@@ -223,7 +223,7 @@ import { ThemeService } from '../theme.service';
         </div>
 
         <div class="notice">
-          Regulatory &amp; statutory governance notice — this terminal provides restricted,
+          Regulatory &amp; statutory governance notice, this terminal provides restricted,
           read-only institutional data telemetry. Access is granted strictly to verified equity
           partners under non-disclosure covenants. Unauthorised access, scraping, replication, or
           forwarding of manufacturing outputs is strictly prohibited and subject to full criminal
@@ -505,7 +505,7 @@ export class LoginPage {
       },
       error: () => {
         this.busy.set(false);
-        this.error.set('Authorization failed — verified investor accounts only.');
+        this.error.set('Authorization failed: verified investor accounts only.');
       },
     });
   }
@@ -522,7 +522,7 @@ export class LoginPage {
       },
       error: () => {
         this.busy.set(false);
-        this.error.set('Verification failed — the code is incorrect or the challenge expired.');
+        this.error.set('Verification failed: the code is incorrect or the challenge expired.');
       },
     });
   }
@@ -535,7 +535,7 @@ export class LoginPage {
     this.info.set(null);
   }
 
-  /** Password reset door — consistent with the other Seentair sign-in forms. */
+  /** Password reset door, consistent with the other Seentair sign-in forms. */
   forgot(): void {
     if (this.phase() === 2) return;
     this.error.set(null);
@@ -556,7 +556,7 @@ export class LoginPage {
 
   private enter(): void {
     this.store.clear();
-    void this.alerts.toast('Session authorized — investor terminal unlocked');
+    void this.alerts.toast('Session authorized: investor terminal unlocked');
     void this.router.navigateByUrl('/overview');
   }
 }

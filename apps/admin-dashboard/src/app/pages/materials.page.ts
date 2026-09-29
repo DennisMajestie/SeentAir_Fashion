@@ -43,7 +43,7 @@ const MATERIAL_CATEGORIES = [
   { value: 'other', label: 'Other' },
 ];
 
-/** A5 — Raw materials inventory & thresholds. Approved Stitch layout: critical
+/** A5, Raw materials inventory & thresholds. Approved Stitch layout: critical
     reorder banner, warehouse stock depository table with health meters, and a
     per-material inspector with its live purchase/usage ledger (inventory
     movements) plus the approval-gated purchase flow. */
@@ -56,7 +56,7 @@ const MATERIAL_CATEGORIES = [
         <p class="eyebrow">Operations · Raw materials</p>
         <h1>Materials & raw stock</h1>
         <p class="ops-sub">
-          {{ materials().length }} materials tracked — amounts update automatically as stock moves.
+          {{ materials().length }} materials tracked: amounts update automatically as stock moves.
         </p>
       </div>
       <div class="ops-actions">
@@ -214,7 +214,7 @@ const MATERIAL_CATEGORIES = [
               <div class="kpi">
                 <span class="kpi-label">Last unit cost</span>
                 <span class="kpi-value">{{
-                  v.lastUnitCost !== null ? '₦' + (v.lastUnitCost | number: '1.0-2') : '—'
+                  v.lastUnitCost !== null ? '₦' + (v.lastUnitCost | number: '1.0-2') : '-'
                 }}</span>
                 <span class="kpi-sub">latest purchase price</span>
               </div>
@@ -446,7 +446,7 @@ export class MaterialsAdminPage implements OnInit {
 
   health(m: MaterialRow): string {
     if (m.reorderThreshold <= 0) return m.currentQuantity > 0 ? '100%' : '0%';
-    // Health = stock vs 2× threshold, clamped — a full bar means comfortably above reorder level.
+    // Health = stock vs 2× threshold, clamped, a full bar means comfortably above reorder level.
     return `${Math.max(3, Math.min(100, Math.round((m.currentQuantity / (m.reorderThreshold * 2)) * 100)))}%`;
   }
 
@@ -480,7 +480,7 @@ export class MaterialsAdminPage implements OnInit {
       .subscribe({
         next: () =>
           this.ok(
-            'Purchase-order draft raised as a purchasing approval — Management decides in the queue.',
+            'Purchase-order draft raised as a purchasing approval, Management decides in the queue.',
           ),
         error: (e) => this.fail(e, 'Could not raise the PO draft.'),
       });
@@ -529,7 +529,7 @@ export class MaterialsAdminPage implements OnInit {
       .subscribe({
         next: (res) => {
           this.pu.approvalRequestId = res.id;
-          this.ok('Purchase approval requested — Management must approve before recording.');
+          this.ok('Purchase approval requested: Management must approve before recording.');
         },
         error: (e) => this.fail(e, 'Approval request failed.'),
       });
@@ -557,10 +557,10 @@ export class MaterialsAdminPage implements OnInit {
             leadTimeDays: 0,
             approvalRequestId: '',
           };
-          this.ok('Purchase recorded — stock updated.');
+          this.ok('Purchase recorded: stock updated.');
           this.inspectRefresh(sel.id);
         },
-        error: (e) => this.fail(e, 'Not approved yet — check the Approvals queue.'),
+        error: (e) => this.fail(e, 'Not approved yet: check the Approvals queue.'),
       });
   }
 

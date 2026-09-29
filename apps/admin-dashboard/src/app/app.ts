@@ -589,7 +589,7 @@ export class App implements OnInit, OnDestroy {
       },
       error: () => {
         this.loading.set(false);
-        this.formError.set('Sign-in failed — staff accounts only.');
+        this.formError.set('Sign-in failed: staff accounts only.');
         this.triggerShake();
       },
     });
@@ -625,7 +625,7 @@ export class App implements OnInit, OnDestroy {
     void this.alerts.toast('Signed out of the operations console');
   }
 
-  /** Real name/role for the sidebar account footer — from the auth session. */
+  /** Real name/role for the sidebar account footer, from the auth session. */
   private loadMe(): void {
     this.me.set(null);
     this.api.me().subscribe({
@@ -682,7 +682,7 @@ export class App implements OnInit, OnDestroy {
     this.loading.set(false);
     this.resetSent.set(true);
     this.resetMsg.set(
-      'If that email exists, a reset token is on its way — check your inbox (and spam).',
+      'If that email exists, a reset token is on its way, check your inbox (and spam).',
     );
   }
 
@@ -705,7 +705,7 @@ export class App implements OnInit, OnDestroy {
     this.api.resetPassword(token.toLowerCase(), this.newPassword).subscribe({
       next: () => {
         this.loading.set(false);
-        this.resetMsg.set('Password changed — sign in with the new password.');
+        this.resetMsg.set('Password changed: sign in with the new password.');
         this.resetMode.set(false);
         this.resetSent.set(false);
         this.password = '';
@@ -715,7 +715,7 @@ export class App implements OnInit, OnDestroy {
       },
       error: () => {
         this.loading.set(false);
-        this.formError.set('Reset failed — the token may be invalid or already used.');
+        this.formError.set('Reset failed: the token may be invalid or already used.');
       },
     });
   }

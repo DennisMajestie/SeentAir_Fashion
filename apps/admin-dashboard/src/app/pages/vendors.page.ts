@@ -35,7 +35,7 @@ interface SupplierRow {
   complianceNotes: string | null;
 }
 
-/** A13 — Certified-mill supplier directory + procurement records. Suppliers are
+/** A13, Certified-mill supplier directory + procurement records. Suppliers are
     first-class now (Phase 9): name, category, location, certification, SLA
     score, quota contract and compliance notes, with add/edit. Per-material
     purchase history still derives from the inventory ledger. */
@@ -48,7 +48,7 @@ interface SupplierRow {
         <p class="eyebrow">Management · Purchases</p>
         <h1>Supplier directory & purchases</h1>
         <p class="ops-sub">
-          Certified mills on file, their SLA scores and quota contracts — plus what you've bought,
+          Certified mills on file, their SLA scores and quota contracts, plus what you've bought,
           straight from Inventory's records.
         </p>
       </div>
@@ -85,7 +85,7 @@ interface SupplierRow {
             >Location <input [(ngModel)]="ns.location" name="sloc" placeholder="Kano / Aba gate…"
           /></label>
           <label
-            >SLA score (0–100)
+            >SLA score (0-100)
             <input type="number" min="0" max="100" [(ngModel)]="ns.slaScore" name="ssla"
           /></label>
           <label
@@ -104,7 +104,7 @@ interface SupplierRow {
     }
 
     <p class="rule-strip">
-      PURCHASING STAYS APPROVAL-GATED // supplier records are a directory — every purchase still
+      PURCHASING STAYS APPROVAL-GATED // supplier records are a directory, every purchase still
       needs a management approval.
     </p>
 
@@ -173,20 +173,20 @@ interface SupplierRow {
                 <td>
                   <strong>{{ s.name }}</strong>
                 </td>
-                <td class="small">{{ (s.category ?? '—').replace('_', ' ') }}</td>
-                <td class="small">{{ s.location ?? '—' }}</td>
+                <td class="small">{{ (s.category ?? '-').replace('_', ' ') }}</td>
+                <td class="small">{{ s.location ?? '-' }}</td>
                 <td>
                   <span class="chip" [class.ok]="s.certified" [class.warn]="!s.certified">{{
                     s.certified ? 'CERTIFIED' : 'PROSPECT'
                   }}</span>
                 </td>
-                <td class="mono">{{ s.slaScore !== null ? s.slaScore + '/100' : '—' }}</td>
-                <td class="mono">{{ s.quotaUnits !== null ? (s.quotaUnits | number) : '—' }}</td>
+                <td class="mono">{{ s.slaScore !== null ? s.slaScore + '/100' : '-' }}</td>
+                <td class="mono">{{ s.quotaUnits !== null ? (s.quotaUnits | number) : '-' }}</td>
               </tr>
             }
             @if (suppliersVisible().length === 0) {
               <tr>
-                <td colspan="6" class="muted small">No suppliers on file yet — add one above.</td>
+                <td colspan="6" class="muted small">No suppliers on file yet, add one above.</td>
               </tr>
             }
           </tbody>
@@ -203,18 +203,18 @@ interface SupplierRow {
           </div>
           <dl class="kv">
             <dt>Category</dt>
-            <dd>{{ (s.category ?? '—').replace('_', ' ') }}</dd>
+            <dd>{{ (s.category ?? '-').replace('_', ' ') }}</dd>
             <dt>Location</dt>
-            <dd>{{ s.location ?? '—' }}</dd>
+            <dd>{{ s.location ?? '-' }}</dd>
             <dt>SLA score</dt>
             <dd>
-              {{ s.slaScore !== null ? s.slaScore + ' / 100' : '—' }}
+              {{ s.slaScore !== null ? s.slaScore + ' / 100' : '-' }}
               <span class="mini-note">lead-time & quality record</span>
             </dd>
             <dt>Quota contract</dt>
-            <dd>{{ s.quotaUnits !== null ? (s.quotaUnits | number) + ' units' : '—' }}</dd>
+            <dd>{{ s.quotaUnits !== null ? (s.quotaUnits | number) + ' units' : '-' }}</dd>
             <dt>Compliance notes</dt>
-            <dd>{{ s.complianceNotes ?? '—' }}</dd>
+            <dd>{{ s.complianceNotes ?? '-' }}</dd>
           </dl>
           <div class="panel-head"><h2>Edit supplier</h2></div>
           <form class="form-grid" (ngSubmit)="saveSupplier(s)">
@@ -318,7 +318,7 @@ interface SupplierRow {
               <dd>+{{ purchasedOf(m.id) | number }} {{ m.unit }} (total bought)</dd>
               <dt>Last unit cost</dt>
               <dd>
-                {{ lastCostOf(m.id) !== null ? '₦' + (lastCostOf(m.id) | number: '1.0-2') : '—' }}
+                {{ lastCostOf(m.id) !== null ? '₦' + (lastCostOf(m.id) | number: '1.0-2') : '-' }}
               </dd>
             </dl>
 
@@ -340,7 +340,7 @@ interface SupplierRow {
                     <tr>
                       <td class="mono small">{{ mv.timestamp | date: 'MMM d, y' }}</td>
                       <td class="mono delta plus">+{{ mv.quantityDelta | number }}</td>
-                      <td class="mono small muted">{{ mv.referenceId?.slice(0, 12) || '—' }}</td>
+                      <td class="mono small muted">{{ mv.referenceId?.slice(0, 12) || '-' }}</td>
                     </tr>
                   }
                 </tbody>

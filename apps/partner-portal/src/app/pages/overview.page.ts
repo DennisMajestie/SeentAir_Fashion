@@ -3,7 +3,7 @@ import { Component, computed, inject } from '@angular/core';
 import { PortalStore } from '../portal.store';
 
 /**
- * Screen P2 — Business Overview: executive performance summary, financial
+ * Screen P2, Business Overview: executive performance summary, financial
  * velocity trajectory, distribution rail, business-in-brief, cap-table strip.
  */
 @Component({
@@ -18,7 +18,7 @@ import { PortalStore } from '../portal.store';
           </p>
           <h1 class="page-title">Welcome back, {{ store.firstName() }}.</h1>
           <p class="page-sub">
-            Operational review and capital allocation metrics from the live company ledger —
+            Operational review and capital allocation metrics from the live company ledger -
             aggregates only, updated continuously.
           </p>
         </div>
@@ -62,7 +62,7 @@ import { PortalStore } from '../portal.store';
         <div class="kpi">
           <span class="kpi-label">Factory output in stock</span>
           <span class="kpi-value">{{ d.inventoryVisibility.finishedGoodsUnits | number }}</span>
-          <span class="kpi-sub">Finished garment units — aggregates only</span>
+          <span class="kpi-sub">Finished garment units: aggregates only</span>
         </div>
       </div>
 
@@ -70,7 +70,7 @@ import { PortalStore } from '../portal.store';
         <div>
           <section class="panel">
             <div class="panel-head">
-              <h2>Financial velocity — distributed profit trajectory</h2>
+              <h2>Financial velocity: distributed profit trajectory</h2>
               <span class="panel-note">Per declared period</span>
             </div>
             @if (trend().length >= 2) {
@@ -90,7 +90,7 @@ import { PortalStore } from '../portal.store';
                       rx="2"
                       fill="var(--gold)"
                     >
-                      <title>{{ b.period }} — ₦{{ b.value | number: '1.0-0' }}</title>
+                      <title>{{ b.period }}- ₦{{ b.value | number: '1.0-0' }}</title>
                     </rect>
                     <text [attr.x]="b.x + barW / 2" y="146" text-anchor="middle" class="axis-label">
                       {{ b.period }}
@@ -112,7 +112,7 @@ import { PortalStore } from '../portal.store';
                 Total company profit declared for distribution each period (₦).
               </p>
             } @else {
-              <!-- GAP: no quarterly revenue/profit history endpoint — the trajectory chart can only
+              <!-- GAP: no quarterly revenue/profit history endpoint, the trajectory chart can only
                    be drawn from declared distribution periods; fewer than two exist. -->
               <p class="gap-note">
                 The trajectory chart appears once at least two quarterly distribution periods have
@@ -126,7 +126,7 @@ import { PortalStore } from '../portal.store';
               <h2>Management commentary</h2>
               <span class="panel-note">Managing Director notes</span>
             </div>
-            <!-- GAP: no management-commentary endpoint — honest empty state, no fabricated notes. -->
+            <!-- GAP: no management-commentary endpoint, honest empty state, no fabricated notes. -->
             <div class="empty-state">
               <span class="empty-state-icon" aria-hidden="true"
                 ><svg
@@ -183,7 +183,7 @@ import { PortalStore } from '../portal.store';
               <p class="rail-kicker">Authorized distribution from audited net profits</p>
               <p class="rail-figure">₦{{ dist.myDividend | number: '1.0-0' }}</p>
               <p class="rail-figure-sub">
-                Your dividend — {{ dist.period }} · {{ d.investmentInformation.equityPercentage }}%
+                Your dividend: {{ dist.period }} · {{ d.investmentInformation.equityPercentage }}%
                 equity entitlement
               </p>
               <div class="rail-rows">
@@ -229,11 +229,11 @@ import { PortalStore } from '../portal.store';
 
           <section class="panel">
             <div class="panel-head">
-              <h2>Production centre — Aba</h2>
+              <h2>Production centre: Aba</h2>
             </div>
             <!-- GAP: no facility media/telemetry endpoint (reference shows a live floor photo card). -->
             <p class="gap-note">
-              Continuous single-factory operation — cutting, sewing, finishing, QC. Floor imagery
+              Continuous single-factory operation, cutting, sewing, finishing, QC. Floor imagery
               and line telemetry are not yet shared to the partner terminal.
             </p>
           </section>
@@ -259,7 +259,7 @@ import { PortalStore } from '../portal.store';
                   {{ d.investmentInformation.totalShares | number }}</strong
                 >
               </div>
-              <!-- GAP: no share-valuation endpoint — implied holding value is not computable honestly. -->
+              <!-- GAP: no share-valuation endpoint, implied holding value is not computable honestly. -->
               <div class="rail-row">
                 <span>Current implied holding value</span><strong>Not yet valued</strong>
               </div>

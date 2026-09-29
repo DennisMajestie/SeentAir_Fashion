@@ -56,7 +56,7 @@ export class TiltEnvironmentService {
  * (e.g. the shop `.card`) flattens 3D for its descendants, so depth layers
  * need a clip-free path up to this component.
  *
- * Usage in the shop grid — wrap the existing card as-is:
+ * Usage in the shop grid, wrap the existing card as-is:
  *
  *   <div class="grid">
  *     @for (product of filtered(); track product.id; let i = $index) {
@@ -67,7 +67,7 @@ export class TiltEnvironmentService {
  *   </div>
  *
  * Or author a card for the effect, with layered depth (see `.tilt-product` in
- * styles.scss — it keeps `transform-style: preserve-3d` and never clips):
+ * styles.scss, it keeps `transform-style: preserve-3d` and never clips):
  *
  *   <app-tilt-card>
  *     <a class="tilt-product" [routerLink]="['/product', product.id]">
@@ -127,7 +127,7 @@ export class TiltEnvironmentService {
       }
     }
 
-    /* Pre-rendered shadow whose opacity tracks tilt magnitude — never animate box-shadow. */
+    /* Pre-rendered shadow whose opacity tracks tilt magnitude, never animate box-shadow. */
     .tilt-shadow {
       position: absolute;
       inset: 0;
@@ -329,8 +329,8 @@ export class SeentairTiltCardComponent {
   };
 
   /**
-   * At rest, clear every inline transform. Any lingering 3D function — even
-   * translateZ(0) — would hold a GPU layer per card; 40 of those hurt scrolling
+   * At rest, clear every inline transform. Any lingering 3D function, even
+   * translateZ(0)- would hold a GPU layer per card; 40 of those hurt scrolling
    * on a mid-range phone. Removing is-active also drops will-change.
    */
   private readonly onSettled = (e?: TransitionEvent): void => {

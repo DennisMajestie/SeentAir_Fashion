@@ -3,10 +3,10 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, AuditEntry, Batch } from '../api.service';
 
-/** A17 — Factory floor kiosk / station terminal. LAYOUT SHELL: the reference's
+/** A17, Factory floor kiosk / station terminal. LAYOUT SHELL: the reference's
     per-unit stitch counters, machine telemetry and barcode scanners have no
     backend, so this terminal renders the approved layout over the real batch
-    the station is working: big readouts, stage advance, and QC flagging —
+    the station is working: big readouts, stage advance, and QC flagging -
     all wired to the live production API. */
 @Component({
   selector: 'app-floor-kiosk',
@@ -17,13 +17,13 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
         <p class="eyebrow">Factory terminal</p>
         <h1>Station kiosk</h1>
         <p class="ops-sub">
-          The batch currently at this work station — big, easy buttons for the sewing floor.
+          The batch currently at this work station, big, easy buttons for the sewing floor.
         </p>
       </div>
       <div class="ops-actions">
         <span class="live-chip">Station online</span>
         <select class="table-filter" [(ngModel)]="selectedId" name="batch" (ngModelChange)="pick()">
-          <option value="">— assign a batch —</option>
+          <option value="">- assign a batch -</option>
           @for (b of batches(); track b.id) {
             <option [value]="b.id">
               #{{ b.id.slice(0, 6) }} · {{ b.variant.sku }} × {{ b.quantity }} ({{ b.stage }})
@@ -38,12 +38,12 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
         <div class="kpi kpi-action">
           <span class="kpi-label">Active batch</span>
           <span class="kpi-value">#{{ b.id.slice(0, 6) }}</span>
-          <span class="kpi-sub">{{ b.variant.sku }} — {{ b.quantity }} units</span>
+          <span class="kpi-sub">{{ b.variant.sku }}- {{ b.quantity }} units</span>
         </div>
         <div class="kpi">
           <span class="kpi-label">Current stage</span>
           <span class="kpi-value" style="text-transform:uppercase;">{{ b.stage }}</span>
-          <span class="kpi-sub">planned {{ b.plannedDate || '—' }}</span>
+          <span class="kpi-sub">planned {{ b.plannedDate || '-' }}</span>
         </div>
         <div class="kpi">
           <span class="kpi-label">Units in run</span>
@@ -70,10 +70,10 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
                 style="width:100%; min-height:64px; font-size:1rem;"
                 (click)="advance(b, next)"
               >
-                ✓ Stage complete — advance to {{ next }}
+                ✓ Stage complete: advance to {{ next }}
               </button>
             } @else {
-              <p class="success">Batch done — finished goods added to stock.</p>
+              <p class="success">Batch done: finished goods added to stock.</p>
             }
             <div class="actions" style="justify-content:center; margin-top:0.8rem;">
               <button
@@ -92,7 +92,7 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
             <div style="display:flex; gap:0.5rem;">
               <input
                 style="flex:1;"
-                placeholder="event — e.g. sewing_start, qc"
+                placeholder="event: e.g. sewing_start, qc"
                 [(ngModel)]="ns.eventType"
                 name="kevent"
               />
@@ -134,9 +134,9 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
                 <label
                   >Classification
                   <select [(ngModel)]="fq.disposition" name="fdisp">
-                    <option value="burned">Defective — burn (write-off)</option>
+                    <option value="burned">Defective: burn (write-off)</option>
                     <option value="repaired_restocked">
-                      Minor factory error — repair & restock
+                      Minor factory error: repair & restock
                     </option>
                   </select>
                 </label>
@@ -210,16 +210,16 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
                 </div>
                 <div class="kpi">
                   <span class="kpi-label">RPM</span
-                  ><span class="kpi-value">{{ t['rpm'] ?? '—' }}</span
-                  ><span class="kpi-sub">needle cycles {{ t['needleCycles'] ?? '—' }}</span>
+                  ><span class="kpi-value">{{ t['rpm'] ?? '-' }}</span
+                  ><span class="kpi-sub">needle cycles {{ t['needleCycles'] ?? '-' }}</span>
                 </div>
                 <div class="kpi">
                   <span class="kpi-label">Thread reserve</span
                   ><span class="kpi-value">{{
-                    t['threadReservePct'] !== null ? t['threadReservePct'] + '%' : '—'
+                    t['threadReservePct'] !== null ? t['threadReservePct'] + '%' : '-'
                   }}</span
                   ><span class="kpi-sub">{{
-                    t['recordedAt'] ? (str(t['recordedAt']) | date: 'HH:mm') : '—'
+                    t['recordedAt'] ? (str(t['recordedAt']) | date: 'HH:mm') : '-'
                   }}</span>
                 </div>
               </div>
@@ -281,7 +281,7 @@ import { ApiService, AuditEntry, Batch } from '../api.service';
               <dt>Stage</dt>
               <dd>{{ b.stage }}</dd>
               <dt>Planned</dt>
-              <dd>{{ b.plannedDate || '—' }}</dd>
+              <dd>{{ b.plannedDate || '-' }}</dd>
               <dt>Label barcode</dt>
               <dd>
                 @if (barcode(); as bc) {
@@ -471,7 +471,7 @@ export class FloorKioskPage implements OnInit {
           this.fq = { quantity: 1, disposition: 'burned', reason: '' };
           this.showFlag.set(false);
           this.message.set(
-            'Defect logged — QC record written; burned units excluded from completion stock-in.',
+            'Defect logged: QC record written; burned units excluded from completion stock-in.',
           );
           this.error.set(null);
           this.loadRejections(b.id);

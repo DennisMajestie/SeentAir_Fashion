@@ -22,7 +22,7 @@ export interface AlertToast {
   timer?: number;
 }
 
-/** Seentair brand palettes — ivory paper and harvest gold, light + dark. */
+/** Seentair brand palettes, ivory paper and harvest gold, light + dark. */
 const GOLD = '#c9a24b';
 const PALETTE = {
   light: {

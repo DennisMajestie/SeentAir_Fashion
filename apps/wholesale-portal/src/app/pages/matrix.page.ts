@@ -6,7 +6,7 @@ import { ApiService, Pricing, PricingProduct } from '../api.service';
 import { CartService } from '../cart.service';
 
 /**
- * W4 — Bulk order form: colour × size allocation matrix for one product.
+ * W4, Bulk order form: colour × size allocation matrix for one product.
  * MOQ status counts this form plus the existing draft batch; the matrix
  * writes into the shared cart, and the server re-enforces MOQ on commit.
  */
@@ -61,7 +61,7 @@ import { CartService } from '../cart.service';
         <div class="moq-banner met" role="status">
           <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
           <div>
-            <strong>MOQ met — {{ committedUnits() }} units committed across the batch.</strong>
+            <strong>MOQ met: {{ committedUnits() }} units committed across the batch.</strong>
             <span class="sub">Review the order to commit the batch to production.</span>
           </div>
         </div>
@@ -114,7 +114,7 @@ import { CartService } from '../cart.service';
                         [attr.aria-label]="colour + ' size ' + size"
                       />
                     } @else {
-                      <span class="na">—</span>
+                      <span class="na">-</span>
                     }
                   </td>
                 }
@@ -132,7 +132,7 @@ import { CartService } from '../cart.service';
 
       <div class="section-head">
         <h2>Production notes</h2>
-        <span class="aside">Seentair factory — Aba</span>
+        <span class="aside">Seentair factory: Aba</span>
       </div>
       <!-- GAP: fabric density and lead-time specs are not in the pricing API yet;
            the boxes carry the real category and factory policy instead. -->

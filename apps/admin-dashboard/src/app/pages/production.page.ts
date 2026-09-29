@@ -9,7 +9,7 @@ interface ProductOpt {
   variants: Array<{ id: string; sku: string }>;
 }
 
-/** A2/A3/A4 — Production Kanban Board, Batch Detail dossier and the
+/** A2/A3/A4, Production Kanban Board, Batch Detail dossier and the
     Record-QC-Rejection modal, per the approved Stitch screens. All actions
     keep their approval-gated API flows (batch creation, cost, QC, moves). */
 @Component({
@@ -82,7 +82,7 @@ interface ProductOpt {
               <select [(ngModel)]="nb.variantId" name="bvar" required>
                 @for (p of products(); track p.id) {
                   @for (v of p.variants; track v.id) {
-                    <option [value]="v.id">{{ p.name }} — {{ v.sku }}</option>
+                    <option [value]="v.id">{{ p.name }}- {{ v.sku }}</option>
                   }
                 }
               </select>
@@ -143,12 +143,12 @@ interface ProductOpt {
       </div>
     }
 
-    <!-- ===================== A3 — Batch detail dossier ===================== -->
+    <!-- ===================== A3, Batch detail dossier ===================== -->
     @if (selected(); as b) {
       <section class="panel" style="border-color: var(--hairline-strong);">
         <div class="panel-head">
-          <h2>Batch #{{ b.id.slice(0, 8) }} — {{ b.variant.sku }}</h2>
-          <span class="ph-sub">{{ b.quantity }} units · planned {{ b.plannedDate || '—' }}</span>
+          <h2>Batch #{{ b.id.slice(0, 8) }}- {{ b.variant.sku }}</h2>
+          <span class="ph-sub">{{ b.quantity }} units · planned {{ b.plannedDate || '-' }}</span>
           <span class="ph-end">
             <button class="cta small ghost" type="button" (click)="openQcModal(b)">
               ⚠ Record QC rejection
@@ -204,7 +204,7 @@ interface ProductOpt {
                 </tbody>
               </table>
             } @else {
-              <p class="muted small">No cost recorded yet — use "Record batch cost" above.</p>
+              <p class="muted small">No cost recorded yet: use "Record batch cost" above.</p>
             }
             <div class="gap-sep"></div>
             <div class="panel-head">
@@ -299,7 +299,7 @@ interface ProductOpt {
             <dt>Stage</dt>
             <dd>{{ d['stage'] }}</dd>
             <dt>Planned date</dt>
-            <dd>{{ d['plannedDate'] || '—' }}</dd>
+            <dd>{{ d['plannedDate'] || '-' }}</dd>
             <dt>Created</dt>
             <dd>{{ str(d['createdAt']) | date: 'medium' }}</dd>
             <dt>Completed</dt>
@@ -341,10 +341,10 @@ interface ProductOpt {
                     <td class="mono small">{{ str(t['recordedAt']) | date: 'MMM d, HH:mm' }}</td>
                     <td class="small">{{ t['stage'] }}</td>
                     <td class="small">{{ t['machine'] }}</td>
-                    <td class="mono">{{ t['rpm'] ?? '—' }}</td>
-                    <td class="mono">{{ t['needleCycles'] ?? '—' }}</td>
+                    <td class="mono">{{ t['rpm'] ?? '-' }}</td>
+                    <td class="mono">{{ t['needleCycles'] ?? '-' }}</td>
                     <td class="mono">
-                      {{ t['threadReservePct'] !== null ? t['threadReservePct'] + '%' : '—' }}
+                      {{ t['threadReservePct'] !== null ? t['threadReservePct'] + '%' : '-' }}
                     </td>
                   </tr>
                 }
@@ -393,7 +393,7 @@ interface ProductOpt {
       </section>
     }
 
-    <!-- ===================== A2 — Kanban board ===================== -->
+    <!-- ===================== A2, Kanban board ===================== -->
     <div class="panel-head" style="margin-top:1.2rem;">
       <h2>Board</h2>
       <span class="ph-sub">finished batches are added to stock automatically</span>
@@ -443,7 +443,7 @@ interface ProductOpt {
             </div>
           }
           @if (visibleIn(stage).length === 0) {
-            <p class="muted small">—</p>
+            <p class="muted small">-</p>
           }
         </div>
       }
@@ -455,7 +455,7 @@ interface ProductOpt {
       <p class="error">{{ error() }}</p>
     }
 
-    <!-- ===================== A4 — Record QC rejection modal ===================== -->
+    <!-- ===================== A4, Record QC rejection modal ===================== -->
     @if (qcBatch(); as qb) {
       <div
         class="modal-scrim"
@@ -498,8 +498,8 @@ interface ProductOpt {
               <label
                 >Defect classification / root cause
                 <select [(ngModel)]="nq.disposition" name="qdisp">
-                  <option value="burned">Defective — burn (write-off)</option>
-                  <option value="repaired_restocked">Minor factory error — repair & restock</option>
+                  <option value="burned">Defective: burn (write-off)</option>
+                  <option value="repaired_restocked">Minor factory error: repair & restock</option>
                 </select>
               </label>
               <label class="wide"
@@ -513,7 +513,7 @@ interface ProductOpt {
               <label class="wide"
                 >Assigned inspector (QA sign-off)
                 <select [(ngModel)]="nq.inspectorId" name="qinsp">
-                  <option value="">— unassigned —</option>
+                  <option value="">- unassigned -</option>
                   @for (u of staff(); track u['id']) {
                     <option [value]="u['id']">{{ u['name'] }} ({{ roleLabel(u) }})</option>
                   }
@@ -709,7 +709,7 @@ export class ProductionPage implements OnInit {
 
   roleLabel(u: Record<string, unknown>): string {
     const r = u['role'];
-    return typeof r === 'string' ? r.replaceAll('_', ' ') : '—';
+    return typeof r === 'string' ? r.replaceAll('_', ' ') : '-';
   }
 
   openTelemetryForm(): void {
@@ -831,7 +831,7 @@ export class ProductionPage implements OnInit {
       .subscribe({
         next: (r) => {
           this.nb.approvalRequestId = r.id;
-          this.ok('Production approval requested — Management decides in the queue.');
+          this.ok('Production approval requested: Management decides in the queue.');
         },
         error: (e) => this.fail(e, 'Request failed.'),
       });
@@ -851,7 +851,7 @@ export class ProductionPage implements OnInit {
           this.showNewBatch.set(false);
           this.ok('Batch created in the first stage.');
         },
-        error: (e) => this.fail(e, 'Not approved yet — check the Approvals queue.'),
+        error: (e) => this.fail(e, 'Not approved yet: check the Approvals queue.'),
       });
   }
 
@@ -875,7 +875,7 @@ export class ProductionPage implements OnInit {
 
   recordQc(): void {
     const { batchId, station, inspectorId, ...rest } = this.nq;
-    const reason = station ? `${station} — ${rest.reason}` : rest.reason;
+    const reason = station ? `${station}- ${rest.reason}` : rest.reason;
     this.api
       .recordQcRejection(batchId, {
         quantity: Number(rest.quantity),
@@ -894,7 +894,7 @@ export class ProductionPage implements OnInit {
             inspectorId: this.nq.inspectorId,
           };
           this.qcBatch.set(null);
-          this.ok('Rejection recorded — burned units are excluded from completion stock-in.');
+          this.ok('Rejection recorded: burned units are excluded from completion stock-in.');
         },
         error: (e) => this.fail(e, 'Rejection failed.'),
       });

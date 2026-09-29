@@ -207,7 +207,7 @@ const STREAM_RETRY_MS = 30_000;
         @if (paymentReturn(); as r) {
           @if (r === 'paid') {
             <div class="ot-alert ot-alert-ok" role="status">
-              <span class="ot-alert-title">Thanks — your payment went through</span>
+              <span class="ot-alert-title">Thanks: your payment went through</span>
               <p>
                 We are confirming it now. This page updates itself, so you can leave it open and
                 watch the order move along.
@@ -226,7 +226,7 @@ const STREAM_RETRY_MS = 30_000;
           @if (needsPayment()) {
             <div class="ot-alert ot-alert-warn" role="status">
               <span class="ot-alert-title"
-                >Payment due — ₦{{ order()!.totalAmount | number: '1.0-0' }}</span
+                >Payment due: ₦{{ order()!.totalAmount | number: '1.0-0' }}</span
               >
               <p>
                 This order is reserved. Pay the exact total online, or by bank transfer, cash or
@@ -447,7 +447,7 @@ const STREAM_RETRY_MS = 30_000;
           <section class="ot-card">
             <h2 class="ot-card-title">Request a return</h2>
             <p class="muted small">
-              Returns must be requested within 12 hours of delivery — this window closes
+              Returns must be requested within 12 hours of delivery, this window closes
               {{ returnDeadline() | date: 'shortTime' }}. The physical return is due within 24 hours
               of the request.
             </p>
@@ -474,7 +474,7 @@ const STREAM_RETRY_MS = 30_000;
 
         <p class="ot-live muted small">
           @if (live()) {
-            Live — this page updates itself while it stays open.
+            Live: this page updates itself while it stays open.
           } @else {
             Checking every {{ pollSeconds() }}s while this tab is open.
           }
@@ -634,7 +634,7 @@ export class OrderPage implements OnInit, OnDestroy {
 
   deliveryLabel(): string {
     const o = this.order();
-    if (!o) return '—';
+    if (!o) return '-';
     if (o.deliveryNote) return o.deliveryNote;
     if (o.status === 'shipped' || o.status === 'delivered') return 'Handed to courier';
     return 'Quoted at dispatch';
@@ -920,7 +920,7 @@ export class OrderPage implements OnInit, OnDestroy {
         this.comments[variantId] ?? '',
       )
       .subscribe({
-        next: () => this.reviewMessage.set('Thanks! Your review is in — it appears once approved.'),
+        next: () => this.reviewMessage.set('Thanks! Your review is in, it appears once approved.'),
         error: (err) =>
           this.reviewMessage.set(err?.error?.message ?? 'Could not submit the review.'),
       });
@@ -937,7 +937,7 @@ export class OrderPage implements OnInit, OnDestroy {
     this.api.requestReturn(order.id, variantId, quantity, reason).subscribe({
       next: () =>
         this.returnMessage.set(
-          'Return requested — send the item back via a logistics company within 24 hours and keep the tracking number.',
+          'Return requested: send the item back via a logistics company within 24 hours and keep the tracking number.',
         ),
       error: (err) => this.returnError.set(err?.error?.message ?? 'Return request failed.'),
     });

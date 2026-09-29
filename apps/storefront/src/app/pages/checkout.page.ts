@@ -22,7 +22,7 @@ const NIGERIAN_STATES = [
   'Edo',
   'Ekiti',
   'Enugu',
-  'FCT — Abuja',
+  'FCT: Abuja',
   'Gombe',
   'Imo',
   'Jigawa',
@@ -47,7 +47,7 @@ const NIGERIAN_STATES = [
   'Zamfara',
 ] as const;
 
-/** Checkout — Stitch approved screen, stages 02 "Final payment" and
+/** Checkout, Stitch approved screen, stages 02 "Final payment" and
     03 "Order placed": manifest with thumbnails, condition-gated policy
     notices, summary card (dashed divider + gradient total), sign-in,
     sticky CTA footer with in-flight spinner, safe-area + WCAG AA. */
@@ -81,7 +81,7 @@ const NIGERIAN_STATES = [
         <h2>Order placed</h2>
         <p class="sku-line">Reference // {{ orderId() }}</p>
         @if (paystackUrl()) {
-          <p class="muted small">Final payment due — settle online or offline below.</p>
+          <p class="muted small">Final payment due: settle online or offline below.</p>
           <a class="cta" [href]="paystackUrl()!"
             >Pay with Paystack [₦{{ paidTotal() | number: '1.0-0' }}]</a
           >
@@ -104,7 +104,7 @@ const NIGERIAN_STATES = [
             </svg>
             <span>
               <span class="notice-title">Online payment unavailable</span>
-              {{ paymentError() }} Your order is reserved — nothing is lost, and you can retry here
+              {{ paymentError() }} Your order is reserved: nothing is lost, and you can retry here
               or pay offline.
             </span>
           </div>
@@ -119,7 +119,7 @@ const NIGERIAN_STATES = [
         } @else {
           <div class="settlement-box">
             <strong>Direct settlement.</strong> Online payment is not available right now. Your
-            order is reserved — pay the exact total by <strong>bank transfer, cash, or POS</strong>
+            order is reserved: pay the exact total by <strong>bank transfer, cash, or POS</strong>
             and our team will confirm it. No part-payments.
           </div>
         }
@@ -159,7 +159,7 @@ const NIGERIAN_STATES = [
           </svg>
           <span>
             <span class="notice-title">Wholesale eligibility</span>
-            {{ cart.count | number: '2.0' }} units meets the 20-unit MOQ — tiered wholesale pricing
+            {{ cart.count | number: '2.0' }} units meets the 20-unit MOQ, tiered wholesale pricing
             and bulk dispatch apply via the wholesale portal. This retail order is final at the
             retail rate.
           </span>
@@ -183,7 +183,7 @@ const NIGERIAN_STATES = [
           </svg>
           <span>
             <span class="notice-title">Made to order</span>
-            One or more pieces are produced on request — sample approval and a production run happen
+            One or more pieces are produced on request, sample approval and a production run happen
             before dispatch, so allow extra time.
           </span>
         </div>
@@ -230,7 +230,7 @@ const NIGERIAN_STATES = [
                 <p class="sku-line">{{ item.sku }}</p>
                 <p class="m-name">{{ item.productName }}</p>
                 <p class="muted small">
-                  {{ item.size || '—' }} / {{ item.colour || '—' }} × {{ item.quantity }}
+                  {{ item.size || '-' }} / {{ item.colour || '-' }} × {{ item.quantity }}
                 </p>
               </div>
               <span class="m-price">₦{{ item.unitPrice * item.quantity | number: '1.0-2' }}</span>
@@ -392,7 +392,7 @@ const NIGERIAN_STATES = [
             <span class="value">₦{{ cart.total | number: '1.0-0' }}</span>
           </div>
           <div class="settlement-box">
-            Paystack (card/bank) — or pay offline by <strong>bank transfer / cash / POS</strong>,
+            Paystack (card/bank)- or pay offline by <strong>bank transfer / cash / POS</strong>,
             confirmed by our team.
           </div>
         </aside>
@@ -481,7 +481,7 @@ export class CheckoutPage {
     if (this.mode() === 'login') {
       this.api.login(this.email, this.password).subscribe({
         next: () => this.loadAccount(),
-        error: () => this.signinError.set('Sign-in failed — check your email and password.'),
+        error: () => this.signinError.set('Sign-in failed: check your email and password.'),
       });
     } else {
       this.api.register(this.name, this.email, this.phone, this.password).subscribe({
@@ -491,7 +491,7 @@ export class CheckoutPage {
         },
         error: (err) =>
           this.signinError.set(
-            err?.error?.message ?? 'Registration failed — try a different email.',
+            err?.error?.message ?? 'Registration failed: try a different email.',
           ),
       });
     }
@@ -541,7 +541,7 @@ export class CheckoutPage {
         this.orderId.set(order.id);
         this.paidTotal.set(order.totalAmount);
         this.cart.clear();
-        void this.alerts.toast(`Order placed — ref ${order.id.slice(0, 8).toUpperCase()}`);
+        void this.alerts.toast(`Order placed: ref ${order.id.slice(0, 8).toUpperCase()}`);
         this.startPayment();
       },
       error: (err) => {

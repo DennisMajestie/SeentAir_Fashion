@@ -10,7 +10,7 @@ import { SeentairTiltCardComponent } from '../tilt-card.component';
 
 type SortKey = 'featured' | 'newest' | 'price-asc' | 'price-desc';
 
-/** Curated category order for the shop pills — tailoring (custom-only) is
+/** Curated category order for the shop pills, tailoring (custom-only) is
     deliberately last. Unknown categories fall through after these. */
 const CATEGORY_ORDER = ['tops', 'bottoms', 'outerwear', 'accessories', 'tailoring'];
 const CATEGORY_LABELS: Record<string, string> = {
@@ -24,7 +24,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 const COLLECTION_ORDER = ['drop04harmattan', 'studioessentials', 'ateliercommission'];
 
 /** Normalise a collection name for deterministic ordering regardless of
-    dash/space/typography variation (e.g. "Drop 04 — Harmattan"). */
+    dash/space/typography variation (e.g. "Drop 04: Harmattan"). */
 function collectionKey(name: string): string {
   return name.toLowerCase().replace(/[\s'’—–-]+/g, '');
 }
@@ -140,7 +140,7 @@ function collectionKey(name: string): string {
         }
       </div>
     } @else if (filtered().length === 0) {
-      <p class="muted">Nothing matches — clear the search or filters.</p>
+      <p class="muted">Nothing matches: clear the search or filters.</p>
     } @else {
       <div class="grid">
         @for (product of filtered(); track product.id; let i = $index) {

@@ -3,7 +3,7 @@ import { Component, computed, inject } from '@angular/core';
 import { PortalStore } from '../portal.store';
 
 /**
- * Screen P6 — Statutory Financial Accounts & Executive Reports: statement
+ * Screen P6, Statutory Financial Accounts & Executive Reports: statement
  * shelf, financial ratios, interim statement of comprehensive income,
  * signatories. Statement lines come from the live accounting ledger.
  */
@@ -17,7 +17,7 @@ import { PortalStore } from '../portal.store';
           <p class="page-kicker">Statutory Registry // Executive Reporting Shelf</p>
           <h1 class="page-title">Statutory Financial Accounts &amp; Executive Reports</h1>
           <p class="page-sub">
-            Verified financial records and quarterly audits — statement lines are drawn live from
+            Verified financial records and quarterly audits, statement lines are drawn live from
             the single-source company ledger.
           </p>
         </div>
@@ -27,7 +27,7 @@ import { PortalStore } from '../portal.store';
         </div>
       </div>
 
-      <!-- GAP: no report-document endpoint — the statement shelf renders its four approved slots
+      <!-- GAP: no report-document endpoint, the statement shelf renders its four approved slots
            with honest pending states instead of downloadable files. -->
       <div class="shelf">
         <div class="shelf-card">
@@ -67,7 +67,7 @@ import { PortalStore } from '../portal.store';
             </div>
             <p class="fine muted">Net profit retained from every ₦1 of recorded revenue.</p>
           } @else {
-            <p class="gap-note">No revenue recorded yet — margin not computable.</p>
+            <p class="gap-note">No revenue recorded yet: margin not computable.</p>
           }
         </section>
 
@@ -83,7 +83,7 @@ import { PortalStore } from '../portal.store';
             </div>
             <p class="fine muted">Combined production and operating outflows against revenue.</p>
           } @else {
-            <p class="gap-note">No revenue recorded yet — ratio not computable.</p>
+            <p class="gap-note">No revenue recorded yet: ratio not computable.</p>
           }
         </section>
 
@@ -137,7 +137,7 @@ import { PortalStore } from '../portal.store';
         <div class="letterhead">
           <img src="assets/logo.png" alt="SEENTAIR" height="24" />
           <div class="letterhead-meta">
-            <strong>Seentair Limited — Aba, Nigeria</strong>
+            <strong>Seentair Limited: Aba, Nigeria</strong>
             <span
               >Interim statement of comprehensive income · continuous ledger basis ·
               {{ store.periodLabel() }}</span
@@ -160,7 +160,7 @@ import { PortalStore } from '../portal.store';
         } @else {
           <div class="stmt-row">
             <span class="stmt-label muted">No income entries recorded yet</span
-            ><span class="stmt-val">—</span>
+            ><span class="stmt-val">-</span>
           </div>
         }
         <div class="stmt-row total">
@@ -172,7 +172,7 @@ import { PortalStore } from '../portal.store';
           <span class="num">2.</span> Cost of goods sold &amp; operating overheads
           <span class="tail">Aggregate basis</span>
         </p>
-        <!-- GAP: the partner ledger report exposes expenditure as one aggregate — no COGS vs
+        <!-- GAP: the partner ledger report exposes expenditure as one aggregate, no COGS vs
              admin-overhead split until officer sign-off. -->
         <div class="stmt-row">
           <span class="stmt-label">Combined production &amp; operating expenditure</span>
@@ -198,7 +198,7 @@ import { PortalStore } from '../portal.store';
       </section>
 
       <div class="split-half">
-        <!-- GAP: signatory names/roles are not exposed by the API — role slots render with
+        <!-- GAP: signatory names/roles are not exposed by the API, role slots render with
              on-file placeholders. -->
         <div class="panel sig">
           <span class="sig-role">Managing Director</span><strong>Signature on file</strong
@@ -330,7 +330,7 @@ import { PortalStore } from '../portal.store';
 export class ReportsPage {
   readonly store = inject(PortalStore);
 
-  /** Covenant donut — reinvestment (ink-dim), dividends (gold), reserve, from config. */
+  /** Covenant donut, reinvestment (ink-dim), dividends (gold), reserve, from config. */
   readonly covenantDonut = computed(() => {
     const c = this.store.dash()?.config;
     const reinv = c?.reinvestmentPct ?? 40;

@@ -26,7 +26,7 @@ export class WishlistService {
     try {
       localStorage.setItem(WISH_KEY, JSON.stringify(items));
     } catch {
-      /* storage unavailable — wishlist lives in memory only */
+      /* storage unavailable, wishlist lives in memory only */
     }
   }
 
