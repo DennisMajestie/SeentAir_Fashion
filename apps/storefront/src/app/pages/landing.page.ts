@@ -40,6 +40,23 @@ interface Stage {
   posY?: number;
 }
 
+/**
+ * Garment-isolation tuning. The garment is found by differencing two stage
+ * photographs, so how much of a piece survives depends on how far it differs
+ * from what was behind it. A BLACK piece against the dark mannequin differs
+ * very little, so these three dials decide whether it comes through whole or
+ * arrives full of holes. Raise DIFF_MIN_SCORE / lower DIFF_KEEP_RATIO if
+ * background or lighting starts registering as fabric; go the other way if a
+ * dark piece looks eaten into.
+ */
+/** Minimum RGB distance for a pixel to count as garment (was 80: too high for black). */
+const DIFF_MIN_SCORE = 48;
+/** Fraction of qualifying pixels kept, strongest first (was 0.75). */
+const DIFF_KEEP_RATIO = 0.9;
+/** Mask dilation passes — each one grows the garment edge so it overlaps the
+    body instead of leaving a hairline of mannequin showing at the seam. */
+const DIFF_DILATE_PASSES = 2;
+
 interface FabricPiece {
   /** Canvas-space polygon, the cut shape of this fabric panel. */
   poly: Array<[number, number]>;
@@ -1011,13 +1028,15 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
           Math.abs(next[im] - prev[ip]) +
           Math.abs(next[im + 1] - prev[ip + 1]) +
           Math.abs(next[im + 2] - prev[ip + 2]);
-        if (score > 80) scored.push({ x, y, score });
+        if (score > DIFF_MIN_SCORE) scored.push({ x, y, score });
       }
     }
     if (scored.length < 40) return { garment: null, pieces: [] };
-    // Keep only the strongest 40% of diffs, the garment, not scene lighting.
+    // Keep the strongest diffs — the garment, not scene lighting. The weakest
+    // of a black piece are its shadowed folds and the edge meeting the body,
+    // so cutting too deep here is what leaves a dark garment full of holes.
     scored.sort((a, b) => b.score - a.score);
-    scored.length = Math.max(40, Math.floor(scored.length * 0.75));
+    scored.length = Math.max(40, Math.floor(scored.length * DIFF_KEEP_RATIO));
 
     // Outlier pruning about the score-weighted centroid (kills background flecks).
     let cx = 0,
@@ -1080,15 +1099,17 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       for (let i = 0; i < mask.length; i++) {
         if (!mask[i] && !outside[i]) mask[i] = 1; // enclosed hole → garment
       }
-      const dilated = new Uint8Array(mask);
-      for (let y = 1; y < h - 1; y++) {
-        for (let x = 1; x < w - 1; x++) {
-          const i = y * w + x;
-          if (!mask[i] && (mask[i - 1] || mask[i + 1] || mask[i - w] || mask[i + w]))
-            dilated[i] = 1;
+      for (let pass = 0; pass < DIFF_DILATE_PASSES; pass++) {
+        const dilated = new Uint8Array(mask);
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const i = y * w + x;
+            if (!mask[i] && (mask[i - 1] || mask[i + 1] || mask[i - w] || mask[i + w]))
+              dilated[i] = 1;
+          }
         }
+        mask.set(dilated);
       }
-      mask.set(dilated);
     }
 
     // -- 2. garment-only image: full-res cover draw, masked by the diff --
