@@ -10,6 +10,7 @@ import { DeliveryLeg } from '../logistics/entities/delivery-leg.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order } from './entities/order.entity';
+import { OrderAccessToken } from './entities/order-access-token.entity';
 import { Payment } from './entities/payment.entity';
 import { ProcessedWebhookEvent } from './entities/processed-webhook-event.entity';
 import { OrderStatusBusModule } from './order-status.bus.module';
@@ -25,6 +26,7 @@ import { PaystackService } from './paystack.service';
       Payment,
       OrderStatusEvent,
       ProcessedWebhookEvent,
+      OrderAccessToken,
       // Registered here (not imported from LogisticsModule) so order tracking
       // can read delivery legs without a circular module dependency.
       DeliveryLeg,

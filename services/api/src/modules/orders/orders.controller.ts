@@ -15,9 +15,11 @@ import {
   Sse,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { Observable } from 'rxjs';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { OptionalAuth } from '../../common/decorators/optional-auth.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -43,9 +45,18 @@ export class OrdersController {
   // OrdersService (they span retail_orders and wholesale_orders, so a
   // single @RequireAccess module cannot express them).
 
+  /**
+   * Retail checkout, with or without an account. @OptionalAuth (not @Public)
+   * so a signed-in customer's token is still honoured here — going public
+   * would leave `user` undefined even for them, and every order would be a
+   * guest order. Throttled harder than the global default because this is the
+   * one unauthenticated write in the system.
+   */
   @Post('orders')
+  @OptionalAuth()
+  @Throttle({ default: { ttl: 600_000, limit: 10 } })
   @ApiBearerAuth()
-  create(@Body() dto: CreateOrderDto, @CurrentUser() user: AuthenticatedUser) {
+  create(@Body() dto: CreateOrderDto, @CurrentUser() user?: AuthenticatedUser) {
     return this.ordersService.create(dto, user);
   }
 
@@ -121,12 +132,18 @@ export class OrdersController {
   }
 
   @Get('orders/:id/tracking')
+  @OptionalAuth()
   @ApiBearerAuth()
-  tracking(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
-    // No query/body/header parameter is accepted here. The customer vs staff
-    // shape is decided inside the service from the caller's own permissions, so
-    // there is nothing for a client to send to influence it.
-    return this.ordersService.tracking(id, user);
+  tracking(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user?: AuthenticatedUser,
+    @Query('token') token?: string,
+  ) {
+    // `token` authenticates a guest; it cannot widen what comes back. The
+    // customer vs staff shape is still decided inside the service from the
+    // caller's own permissions, and a token holder is always a customer, so
+    // there remains nothing a client can send to influence the projection.
+    return this.ordersService.tracking(id, user, token);
   }
 
   /**

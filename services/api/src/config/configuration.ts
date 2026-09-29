@@ -19,6 +19,11 @@ export default () => ({
     fromAddress: process.env.MAIL_FROM ?? 'no-reply@seentair.com',
     resetUrlBase: process.env.RESET_URL_BASE ?? 'http://localhost:4200/reset-password',
     resetTtlMinutes: parseInt(process.env.RESET_TTL_MINUTES ?? '30', 10),
+    /** Where a guest's emailed tracking link points; the order id is appended. */
+    orderUrlBase: process.env.ORDER_URL_BASE ?? 'http://localhost:4200/orders',
+    /** How long a guest tracking link stays usable. Long by design: it is the
+        only route a guest has to their order until they create an account. */
+    orderTokenTtlDays: parseInt(process.env.ORDER_TOKEN_TTL_DAYS ?? '90', 10),
   },
   security: {
     // Secure cookies require HTTPS — on in production, off for local dev.

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { Notification, NotificationChannel, NotificationStatus } from './notification.entity';
+import { MailAdapter } from '../auth/mail.adapter';
 import { TermiiAdapter } from './termii.adapter';
 
 export interface NotifyInput {
@@ -21,6 +22,7 @@ export class NotificationsService {
     private readonly notificationRepo: Repository<Notification>,
     private readonly termii: TermiiAdapter,
     private readonly usersService: UsersService,
+    private readonly mailAdapter: MailAdapter,
   ) {}
 
   /** In-platform notifications always land (stored in the database). */
@@ -96,6 +98,43 @@ export class NotificationsService {
       }
     } catch (err) {
       this.logger.warn(`Notification failed for order ${orderId}: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * The guest's copy of their own order. This is the durable route to it: the
+   * Paystack callback only returns the browser, and browsers get closed, so a
+   * guest who never receives this has paid and has no way back to their order.
+   * Never throws — a mail failure must not roll back a paid order.
+   */
+  async sendGuestOrderConfirmation(input: {
+    email: string;
+    name: string | null;
+    orderId: string;
+    totalAmount: number;
+    trackingUrl: string;
+  }): Promise<void> {
+    const ref = input.orderId.slice(0, 8);
+    try {
+      await this.mailAdapter.send(
+        input.email,
+        `Your Seentair order ${ref} is confirmed`,
+        [
+          `${input.name ? `Hi ${input.name},` : 'Hi,'}`,
+          '',
+          `We have your payment and your order is confirmed. Reference ${ref}.`,
+          `Total paid: ${input.totalAmount}.`,
+          '',
+          `Track it here, no account needed: ${input.trackingUrl}`,
+          '',
+          'Keep this link — it is how you follow your delivery. Create an account with',
+          'this email address at any time and this order moves into your order history.',
+        ].join('\n'),
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Guest confirmation email failed for order ${input.orderId}: ${(err as Error).message}`,
+      );
     }
   }
 

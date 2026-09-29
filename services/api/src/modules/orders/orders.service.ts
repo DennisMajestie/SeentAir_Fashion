@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { randomBytes, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { ACCESS_RANK, AccessLevel, ModuleName, RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
@@ -28,8 +28,10 @@ import { LedgerEntryType } from '../accounting/ledger-entry.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { DeliveryLeg, DeliveryLegStatus } from '../logistics/entities/delivery-leg.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { GuestContactDto } from './dto/guest-contact.dto';
 import { OrderFulfilmentDto } from './dto/order-fulfilment.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
+import { OrderAccessToken } from './entities/order-access-token.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order, OrderChannel, OrderStatus, PaymentStatus } from './entities/order.entity';
@@ -239,6 +241,8 @@ export class OrdersService {
     @InjectRepository(OrderStatusEvent)
     private readonly eventRepo: Repository<OrderStatusEvent>,
     @InjectRepository(DeliveryLeg) private readonly legRepo: Repository<DeliveryLeg>,
+    @InjectRepository(OrderAccessToken)
+    private readonly accessTokenRepo: Repository<OrderAccessToken>,
     private readonly catalogueService: CatalogueService,
     private readonly inventoryService: InventoryService,
     private readonly permissionsService: PermissionsService,
@@ -269,8 +273,16 @@ export class OrdersService {
     return ACCESS_RANK[retail] >= ACCESS_RANK[wholesale] ? retail : wholesale;
   }
 
-  async create(dto: CreateOrderDto, user: AuthenticatedUser): Promise<Order> {
-    const access = await this.effectiveAccess(user);
+  /**
+   * `user` is undefined for a guest (the route is @OptionalAuth). A guest is
+   * always a retail buyer with no account: they cannot reach the wholesale
+   * branch, which needs an approved account, nor the staff branch, which needs
+   * FULL access. Everything downstream of the channel decision — pricing from
+   * the catalogue, the stock gate, the ledger — is identical either way.
+   */
+  async create(dto: CreateOrderDto, user?: AuthenticatedUser): Promise<Order> {
+    const guest = user ? undefined : this.assertGuestPayload(dto);
+    const access = user ? await this.effectiveAccess(user) : AccessLevel.OWN;
     if (ACCESS_RANK[access] < ACCESS_RANK[AccessLevel.OWN]) {
       throw new ForbiddenException('No order access');
     }
@@ -280,16 +292,18 @@ export class OrdersService {
     // source, so a wholesaler-role account buying on the retail storefront
     // still gets a RETAIL (retail-priced) order instead of a wholesale order.
     let channel: OrderChannel;
-    let customerId: string | null = user.id;
+    let customerId: string | null = user?.id ?? null;
     let tierDiscountTier = null as
       import('../wholesale/entities/price-tier.entity').PriceTier | null;
-    const shopFromRetail = user.role === RoleName.CUSTOMER || dto.source === 'storefront';
+    const shopFromRetail = !user || user.role === RoleName.CUSTOMER || dto.source === 'storefront';
     const shopFromWholesale =
-      !shopFromRetail && (user.role === RoleName.WHOLESALER || dto.source === 'wholesale_portal');
+      !shopFromRetail &&
+      !!user &&
+      (user.role === RoleName.WHOLESALER || dto.source === 'wholesale_portal');
 
     if (shopFromRetail) {
       channel = OrderChannel.RETAIL;
-    } else if (shopFromWholesale) {
+    } else if (shopFromWholesale && user) {
       channel = OrderChannel.WHOLESALE;
       // Wholesale gate: approved account + MOQ (appendix 06).
       const account = await this.wholesaleService.assertApprovedAccount(user.id);
@@ -307,6 +321,17 @@ export class OrdersService {
       }
       channel = dto.channel ?? OrderChannel.IN_STORE;
       customerId = dto.customerId ?? null;
+    }
+
+    // A retail parcel cannot be routed without a destination, and a guest order
+    // has no account address to fall back on. Scoped to RETAIL deliberately:
+    // an in-store sale is handed over the counter, and the wholesale portal
+    // does not collect an address today — widening this would break live B2B
+    // ordering. Wholesale addressing is tracked separately.
+    if (channel === OrderChannel.RETAIL && !dto.shippingAddress) {
+      throw new BadRequestException(
+        'shippingAddress is required: a delivery cannot be routed without state, city, street and phone',
+      );
     }
 
     // Price items from the catalogue and soft-check stock availability.
@@ -345,6 +370,9 @@ export class OrdersService {
 
     const order = this.orderRepo.create({
       customer: customerId ? await this.usersService.findById(customerId) : null,
+      guestName: guest?.name ?? null,
+      guestEmail: guest?.email ?? null,
+      claimedAt: null,
       channel,
       source: dto.source ?? null,
       shippingAddress: dto.shippingAddress ?? null,
@@ -353,7 +381,71 @@ export class OrdersService {
       totalAmount: Math.round(total * 100) / 100,
       items,
     });
-    return this.orderRepo.save(order);
+    const saved = await this.orderRepo.save(order);
+    // A guest has no account to look the order up from, so the tracking token is
+    // minted here and handed back exactly once. It is also emailed on payment;
+    // this copy is what lets the storefront show the confirmation immediately.
+    if (guest) saved.trackingToken = await this.issueTrackingToken(saved.id);
+    return saved;
+  }
+
+  /**
+   * Mint a tracking token for one order. The raw value is returned to the
+   * caller and never stored — only its SHA-256 hash goes to the database, so a
+   * leak of the table opens nothing.
+   */
+  async issueTrackingToken(orderId: string): Promise<string> {
+    const rawToken = randomBytes(32).toString('hex');
+    const ttlDays = this.config.get<number>('mail.orderTokenTtlDays') ?? 90;
+    await this.accessTokenRepo.save(
+      this.accessTokenRepo.create({
+        orderId,
+        tokenHash: createHash('sha256').update(rawToken).digest('hex'),
+        expiresAt: new Date(Date.now() + ttlDays * 86_400_000),
+      }),
+    );
+    return rawToken;
+  }
+
+  /**
+   * Resolve a guest tracking token to its order. A wrong, expired or foreign
+   * token is a 404 rather than a 403 — a 403 would confirm that the order id
+   * exists, which is exactly what someone probing ids wants to learn.
+   */
+  private async orderForToken(orderId: string, rawToken: string): Promise<Order> {
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const record = await this.accessTokenRepo.findOne({ where: { tokenHash } });
+    if (!record || record.orderId !== orderId || record.expiresAt.getTime() < Date.now()) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: { items: { variant: { product: true } } },
+    });
+    if (!order) throw new NotFoundException(`Order ${orderId} not found`);
+    return order;
+  }
+
+  /**
+   * Validate the guest half of a create request. The DTO already checked the
+   * shape; this enforces the rules that depend on who is calling.
+   */
+  private assertGuestPayload(dto: CreateOrderDto): GuestContactDto {
+    if (!dto.guest) {
+      throw new BadRequestException(
+        'Sign in, or provide guest details (name and email) to order without an account',
+      );
+    }
+    // A guest cannot choose a channel or attach the order to somebody's account:
+    // both are staff controls, and honouring them unauthenticated would let a
+    // stranger write orders onto a real customer's history.
+    if (dto.channel && dto.channel !== OrderChannel.RETAIL) {
+      throw new ForbiddenException('Guest orders are retail only');
+    }
+    if (dto.customerId) {
+      throw new ForbiddenException('Guest orders cannot be attached to an account');
+    }
+    return dto.guest;
   }
 
   async findAll(
@@ -433,7 +525,12 @@ export class OrdersService {
   ): Promise<{ authorizationUrl: string; reference: string }> {
     const order = await this.findById(orderId, user);
     this.assertPayable(order, order.totalAmount);
-    const email = this.resolvePaystackEmail(order.customer?.email ?? user.email, emailOverride);
+    // A guest order has no account behind it, so the address it was placed with
+    // is the one Paystack bills and receipts.
+    const email = this.resolvePaystackEmail(
+      order.customer?.email ?? order.guestEmail ?? user.email,
+      emailOverride,
+    );
     const reference = `seentair-${order.id}-${randomUUID().slice(0, 8)}`;
     const init = await this.paystackService.initializeTransaction(
       email,
@@ -680,8 +777,22 @@ export class OrdersService {
    * access across the module, get the full leg including corridor checkpoints
    * and driver contact.
    */
-  async tracking(orderId: string, user: AuthenticatedUser): Promise<OrderTracking> {
-    const order = await this.findById(orderId, user);
+  async tracking(
+    orderId: string,
+    user?: AuthenticatedUser,
+    rawToken?: string,
+  ): Promise<OrderTracking> {
+    // A tracking token authenticates, it does not choose a shape: whoever opens
+    // a guest link is a customer, even if they happen to be signed in as staff
+    // in another tab. Only a caller the permission matrix says is staff gets the
+    // staff projection, so there is still nothing a client can send to widen it.
+    const viaToken = !user && !!rawToken;
+    if (!user && !rawToken) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+    const order = viaToken
+      ? await this.orderForToken(orderId, rawToken!)
+      : await this.findById(orderId, user!);
     const events = await this.eventRepo.find({
       where: { order: { id: orderId } },
       order: { createdAt: 'ASC' },
@@ -690,7 +801,7 @@ export class OrdersService {
       where: { order: { id: orderId } },
       order: { legNumber: 'ASC' },
     });
-    const audience: TrackingAudience = await this.trackingAudience(user);
+    const audience: TrackingAudience = viaToken ? 'customer' : await this.trackingAudience(user!);
     if (audience === 'staff') {
       return {
         status: order.status,
@@ -1036,6 +1147,31 @@ export class OrdersService {
     return { payment: savedPayment, order, short };
   }
 
+  /**
+   * A guest's only durable route back to their order. Issues a fresh tracking
+   * token rather than reusing the creation one, which the server never kept.
+   * Never throws: the payment is already committed and must not be undone by a
+   * mail failure.
+   */
+  private async emailGuestConfirmation(order: Order): Promise<void> {
+    if (!order.guestEmail) return;
+    try {
+      const token = await this.issueTrackingToken(order.id);
+      const base = this.config.get<string>('mail.orderUrlBase') ?? '';
+      await this.notificationsService.sendGuestOrderConfirmation({
+        email: order.guestEmail,
+        name: order.guestName,
+        orderId: order.id,
+        totalAmount: order.totalAmount,
+        trackingUrl: `${base}/${order.id}?token=${token}`,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Guest confirmation for order ${order.id} could not be sent: ${(err as Error).message}`,
+      );
+    }
+  }
+
   /** Post-commit only: notifications never run inside the transaction. */
   private notifyAfterPayment({ order, short }: PaymentOutcome): void {
     void this.notificationsService.onOrderStatusChange(
@@ -1043,6 +1179,9 @@ export class OrdersService {
       order.id,
       OrderStatus.ORDER_RECEIVED,
     );
+    // In-platform notifications need an account, so a guest would otherwise
+    // hear nothing at all about the order they just paid for.
+    void this.emailGuestConfirmation(order);
     if (short.length > 0) {
       void this.alertStaff({
         order,

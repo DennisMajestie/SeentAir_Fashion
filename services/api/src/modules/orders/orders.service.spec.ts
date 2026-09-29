@@ -13,6 +13,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PermissionsService } from '../users/permissions.service';
 import { UsersService } from '../users/users.service';
 import { WholesaleService } from '../wholesale/wholesale.service';
+import { OrderAccessToken } from './entities/order-access-token.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
 import { Payment, PaymentMethod, PaymentRecordStatus } from './entities/payment.entity';
@@ -240,6 +241,14 @@ describe('OrdersService — payment rules', () => {
         { provide: getRepositoryToken(Payment), useValue: h.paymentRepo },
         { provide: getRepositoryToken(OrderStatusEvent), useValue: h.eventRepo },
         { provide: getRepositoryToken(DeliveryLeg), useValue: h.legRepo },
+        {
+          provide: getRepositoryToken(OrderAccessToken),
+          useValue: {
+            create: jest.fn((v) => v),
+            save: jest.fn(async (v) => v),
+            findOne: jest.fn(),
+          },
+        },
         { provide: OrderStatusBus, useValue: new OrderStatusBus() },
         { provide: CatalogueService, useValue: {} },
         { provide: InventoryService, useValue: inventoryService },

@@ -12,6 +12,7 @@ import { UsersService } from '../users/users.service';
 import { WholesaleService } from '../wholesale/wholesale.service';
 import { AccountingService } from '../accounting/accounting.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { OrderAccessToken } from './entities/order-access-token.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order } from './entities/order.entity';
 import { Payment } from './entities/payment.entity';
@@ -24,6 +25,15 @@ const wholesaler: AuthenticatedUser = {
   id: 'wh-1',
   email: 'wholesaler@seentair.test',
   role: RoleName.WHOLESALER,
+};
+
+/** Retail orders must carry a destination; these cases are about gating and
+    stock, so they take the address as given. Wholesale is exempt today. */
+const SHIP_TO = {
+  state: 'Lagos',
+  city: 'Yaba',
+  line: '12 Herbert Macaulay Way',
+  phone: '+2348000000000',
 };
 
 describe('OrdersService — wholesale rules', () => {
@@ -67,6 +77,7 @@ describe('OrdersService — wholesale rules', () => {
         { provide: getRepositoryToken(Payment), useValue: {} },
         { provide: getRepositoryToken(OrderStatusEvent), useValue: {} },
         { provide: getRepositoryToken(DeliveryLeg), useValue: {} },
+        { provide: getRepositoryToken(OrderAccessToken), useValue: {} },
         { provide: OrderStatusBus, useValue: new OrderStatusBus() },
         { provide: CatalogueService, useValue: catalogueService },
         { provide: InventoryService, useValue: inventoryService },
@@ -125,7 +136,10 @@ describe('OrdersService — wholesale rules', () => {
 
   it('retail customers are unaffected by wholesale gates', async () => {
     const customer: AuthenticatedUser = { id: 'c1', email: 'c@x.test', role: RoleName.CUSTOMER };
-    const order = await service.create({ items: [{ variantId: 'v1', quantity: 1 }] }, customer);
+    const order = await service.create(
+      { items: [{ variantId: 'v1', quantity: 1 }], shippingAddress: SHIP_TO },
+      customer,
+    );
     expect(wholesaleService.assertApprovedAccount).not.toHaveBeenCalled();
     expect(order.items[0].unitPrice).toBe(9000);
     expect(order.channel).toBe('retail');
@@ -133,7 +147,7 @@ describe('OrdersService — wholesale rules', () => {
 
   it('a wholesaler-role account ordering from the retail storefront gets a retail order', async () => {
     const order = await service.create(
-      { items: [{ variantId: 'v1', quantity: 1 }], source: 'storefront' },
+      { items: [{ variantId: 'v1', quantity: 1 }], source: 'storefront', shippingAddress: SHIP_TO },
       wholesaler,
     );
     expect(wholesaleService.assertApprovedAccount).not.toHaveBeenCalled();
@@ -178,13 +192,19 @@ describe('OrdersService — wholesale rules', () => {
     it('accepts a made-to-order line with zero stock on the shelf', async () => {
       // Reproduces the reported storefront failure: 2 bespoke suits, SKU
       // seeded at stock 0, was rejected with "0 available, 2 requested".
-      const order = await service.create({ items: [{ variantId: 'v1', quantity: 2 }] }, customer);
+      const order = await service.create(
+        { items: [{ variantId: 'v1', quantity: 2 }], shippingAddress: SHIP_TO },
+        customer,
+      );
       expect(order.items[0].quantity).toBe(2);
       expect(order.totalAmount).toBe(18000);
     });
 
     it('does not even query stock for a made-to-order line', async () => {
-      await service.create({ items: [{ variantId: 'v1', quantity: 2 }] }, customer);
+      await service.create(
+        { items: [{ variantId: 'v1', quantity: 2 }], shippingAddress: SHIP_TO },
+        customer,
+      );
       expect(inventoryService.currentQuantity).not.toHaveBeenCalled();
     });
 
@@ -227,7 +247,10 @@ describe('OrdersService — wholesale rules', () => {
     variant.availabilityStatus = AvailabilityStatus.OUT_OF_STOCK;
     inventoryService.currentQuantity.mockResolvedValue(0);
     await expect(
-      service.create({ items: [{ variantId: 'v1', quantity: 1 }] }, customer),
+      service.create(
+        { items: [{ variantId: 'v1', quantity: 1 }], shippingAddress: SHIP_TO },
+        customer,
+      ),
     ).rejects.toThrow('Insufficient stock');
   });
 });

@@ -12,6 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { OrderChannel } from '../entities/order.entity';
+import { GuestContactDto } from './guest-contact.dto';
 import { ShippingAddressDto } from './shipping-address.dto';
 
 export class OrderItemDto {
@@ -46,9 +47,24 @@ export class CreateOrderDto {
   @IsNotEmpty()
   source?: string;
 
-  /** Delivery destination (address line, city, state, phone, …). */
+  /**
+   * Delivery destination. Optional at this layer because a staff-recorded
+   * in-store sale is handed over the counter and has nowhere to ship to; for
+   * every retail and wholesale order OrdersService requires it, since GIGL
+   * cannot route a parcel without one.
+   */
   @IsOptional()
   @ValidateNested()
   @Type(() => ShippingAddressDto)
   shippingAddress?: ShippingAddressDto;
+
+  /**
+   * Guest checkout only — who to email and address the parcel to when there is
+   * no account. Rejected when the request carries a JWT: a signed-in customer's
+   * identity comes from the token, never the body.
+   */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => GuestContactDto)
+  guest?: GuestContactDto;
 }

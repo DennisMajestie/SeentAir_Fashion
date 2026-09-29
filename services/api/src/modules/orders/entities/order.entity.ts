@@ -64,6 +64,30 @@ export class Order {
   @JoinColumn({ name: 'customer_id' })
   customer: User | null;
 
+  /**
+   * Guest checkout: who bought, when there is no account. An order carries a
+   * customer OR a guest email, never neither — except a staff-recorded in-store
+   * sale, which legitimately has no contact at all.
+   */
+  @Column({ name: 'guest_name', type: 'varchar', length: 160, nullable: true })
+  guestName: string | null;
+
+  /** Stored lowercased and trimmed: this is the key a later registration claims on. */
+  @Index()
+  @Column({ name: 'guest_email', type: 'varchar', length: 320, nullable: true })
+  guestEmail: string | null;
+
+  /** Set when a verified registration attached this guest order to an account. */
+  @Column({ name: 'claimed_at', type: 'timestamptz', nullable: true })
+  claimedAt: Date | null;
+
+  /**
+   * Not a column. Carries the raw tracking token back to the caller on the one
+   * response that creates a guest order — only its hash is ever stored, so this
+   * is the single moment the plain value exists.
+   */
+  trackingToken?: string;
+
   @Index()
   @Column({ type: 'enum', enum: OrderChannel })
   channel: OrderChannel;

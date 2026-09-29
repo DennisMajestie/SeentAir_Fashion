@@ -2,10 +2,15 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { IS_OPTIONAL_AUTH_KEY } from '../decorators/optional-auth.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthenticatedUser, JwtPayload } from '../interfaces';
 
-/** Global guard: every endpoint requires a Bearer JWT unless marked @Public(). */
+/**
+ * Global guard: every endpoint requires a Bearer JWT unless marked @Public()
+ * (no token read at all) or @OptionalAuth() (token honoured when present,
+ * absence allowed).
+ */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
@@ -21,10 +26,19 @@ export class JwtAuthGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
+    const isOptional = this.reflector.getAllAndOverride<boolean>(IS_OPTIONAL_AUTH_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
     const request = context.switchToHttp().getRequest();
     const authHeader: string | undefined = request.headers['authorization'];
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
-    if (!token) throw new UnauthorizedException('Missing bearer token');
+    if (!token) {
+      // Optional-auth routes carry on with no user; the handler treats that as a guest.
+      if (isOptional) return true;
+      throw new UnauthorizedException('Missing bearer token');
+    }
 
     let payload: JwtPayload;
     try {
