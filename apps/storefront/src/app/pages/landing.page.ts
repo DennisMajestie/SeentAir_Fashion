@@ -56,6 +56,17 @@ const DIFF_KEEP_RATIO = 0.9;
 /** Mask dilation passes — each one grows the garment edge so it overlaps the
     body instead of leaving a hairline of mannequin showing at the seam. */
 const DIFF_DILATE_PASSES = 2;
+/**
+ * Morphological close (dilate then erode by the same radius) applied after the
+ * threshold. The boundary between garment and body is a soft gradient in both
+ * photographs, so roughly half of it scores under DIFF_MIN_SCORE and drops out
+ * as short broken runs — which is what shows as bare mannequin between collar
+ * and sleeve. Closing bridges runs narrower than 2x this radius. It is NOT a
+ * second dilation: the erode puts the silhouette back, so the outer edge does
+ * not creep into the background. Raising the threshold instead would admit
+ * lighting and background noise, which is the failure this replaces.
+ */
+const DIFF_CLOSE_RADIUS = 2;
 
 /**
  * Where up the figure the frames are registered to each other. 0 anchors on the
@@ -65,6 +76,18 @@ const DIFF_DILATE_PASSES = 2;
  * body, lower it if the garment starts riding up off the hips.
  */
 const REGISTER_ANCHOR_BIAS = 0.6;
+
+/**
+ * Lifts the flying garment onto the mannequin's shoulder line, as a fraction of
+ * canvas height. Negative is up. The photographs are cover-fitted, so the figure
+ * scales with the canvas and this has to scale with it too — a fixed pixel nudge
+ * that looked right on desktop would be far too large on a phone.
+ *
+ * This moves the cut panels only. From t > 0.8 the real photograph crossfades in
+ * underneath and the garment settles to exactly where it was shot, so this is a
+ * correction to the mid-flight pose, not to the final frame.
+ */
+const GARMENT_NUDGE_Y = -0.02;
 
 interface FabricPiece {
   /** Canvas-space polygon, the cut shape of this fabric panel. */
@@ -574,6 +597,9 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private piecesByPair: FabricPiece[][] = [];
   /** garmentLuma[i] = mean brightness of that garment, 0 black … 1 white. */
   private garmentLuma: number[] = [];
+  /** Reused offscreen buffer for seam-free panel compositing. */
+  private layerCanvas: HTMLCanvasElement | null = null;
+  private layerCtx: CanvasRenderingContext2D | null = null;
   /** Full stage photographs + their registration shifts (sample space).
       Settled scenes draw the real photo, composites only ever fly. */
   private stageImgs: HTMLImageElement[] = [];
@@ -830,7 +856,18 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     const alphaFloor = 0.25 + 0.6 * darkness; // 0.25 pale … 0.85 black
     const shadowAlpha = 0.35 * (1 - 0.8 * darkness); // 0.35 pale … 0.07 black
     const shadowSpread = 1 - 0.6 * darkness; // blur/offset shrink with it
-    ctx.save();
+    // Panels are composited into ONE offscreen layer, then blitted in a single
+    // draw. Clipping is antialiased, so two abutting panels each carry partial
+    // alpha along the edge they share; drawn straight onto the scene those two
+    // partial edges never sum back to opaque and the pale mannequin shows
+    // through as a hairline. Inside the layer the same partial alphas resolve
+    // against each other first, so the seam closes with the panel geometry
+    // untouched. The buffer is allocated once and reused.
+    const layer = this.panelLayer(this.canvasW, this.canvasH);
+    if (!layer) return; // no 2d context: skip the panels rather than crash
+    const lctx = layer.ctx;
+    lctx.clearRect(0, 0, this.canvasW, this.canvasH);
+    lctx.save();
     for (const p of pieces) {
       const tp = Math.min(1, Math.max(0, (t - p.delay) / (1 - p.delay)));
       const e = 1 - Math.pow(1 - tp, 3); // ease-out: fast flight, gentle seating
@@ -838,22 +875,46 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       const dy = p.sdy * (1 - e);
       const rot = p.srot * (1 - e);
 
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, alphaFloor + tp * 2.5);
-      ctx.shadowColor = `rgba(28, 27, 27, ${shadowAlpha * (1 - e)})`;
-      ctx.shadowBlur = 22 * shadowSpread * (1 - e);
-      ctx.shadowOffsetY = 14 * shadowSpread * (1 - e);
-      ctx.translate(p.cx + dx, p.cy + dy);
-      ctx.rotate(rot);
-      ctx.translate(-p.cx, -p.cy);
-      ctx.beginPath();
-      p.poly.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(garment, 0, 0);
-      ctx.restore();
+      lctx.save();
+      lctx.globalAlpha = Math.min(1, alphaFloor + tp * 2.5);
+      lctx.shadowColor = `rgba(28, 27, 27, ${shadowAlpha * (1 - e)})`;
+      lctx.shadowBlur = 22 * shadowSpread * (1 - e);
+      lctx.shadowOffsetY = 14 * shadowSpread * (1 - e);
+      lctx.translate(p.cx + dx, p.cy + dy);
+      lctx.rotate(rot);
+      lctx.translate(-p.cx, -p.cy);
+      lctx.beginPath();
+      p.poly.forEach(([x, y], i) => (i === 0 ? lctx.moveTo(x, y) : lctx.lineTo(x, y)));
+      lctx.closePath();
+      lctx.clip();
+      lctx.drawImage(garment, 0, 0);
+      lctx.restore();
     }
-    ctx.restore();
+    lctx.restore();
+    // One composite onto the scene. Per-panel alpha already resolved inside the
+    // layer, so this is a straight source-over at full opacity.
+    ctx.drawImage(layer.canvas, 0, 0);
+  }
+
+  /**
+   * The offscreen buffer panels are composited into. Allocated once per canvas
+   * size and reused for the life of the engine — a per-frame allocation here
+   * would churn canvasW x canvasH x 4 bytes every frame of every transition.
+   */
+  private panelLayer(
+    w: number,
+    h: number,
+  ): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+    if (this.layerCanvas && this.layerCanvas.width === w && this.layerCanvas.height === h) {
+      return this.layerCtx ? { canvas: this.layerCanvas, ctx: this.layerCtx } : null;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    this.layerCanvas = canvas;
+    this.layerCtx = ctx;
+    return ctx ? { canvas, ctx } : null;
   }
 
   /**
@@ -1155,17 +1216,33 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       for (let i = 0; i < mask.length; i++) {
         if (!mask[i] && !outside[i]) mask[i] = 1; // enclosed hole → garment
       }
-      for (let pass = 0; pass < DIFF_DILATE_PASSES; pass++) {
-        const dilated = new Uint8Array(mask);
+      const dilateOnce = () => {
+        const out = new Uint8Array(mask);
         for (let y = 1; y < h - 1; y++) {
           for (let x = 1; x < w - 1; x++) {
             const i = y * w + x;
-            if (!mask[i] && (mask[i - 1] || mask[i + 1] || mask[i - w] || mask[i + w]))
-              dilated[i] = 1;
+            if (!mask[i] && (mask[i - 1] || mask[i + 1] || mask[i - w] || mask[i + w])) out[i] = 1;
           }
         }
-        mask.set(dilated);
-      }
+        mask.set(out);
+      };
+      const erodeOnce = () => {
+        const out = new Uint8Array(mask);
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const i = y * w + x;
+            if (mask[i] && !(mask[i - 1] && mask[i + 1] && mask[i - w] && mask[i + w])) out[i] = 0;
+          }
+        }
+        mask.set(out);
+      };
+      // Close first: bridge the broken runs along the boundary while the
+      // silhouette is still its true size, so the erode puts the edge back
+      // exactly where the photograph had it.
+      for (let i = 0; i < DIFF_CLOSE_RADIUS; i++) dilateOnce();
+      for (let i = 0; i < DIFF_CLOSE_RADIUS; i++) erodeOnce();
+      // Then the deliberate outward growth that laps the garment over the body.
+      for (let pass = 0; pass < DIFF_DILATE_PASSES; pass++) dilateOnce();
     }
 
     // -- 2. garment-only image: full-res cover draw, masked by the diff --
@@ -1184,7 +1261,9 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     gctx.drawImage(
       nextImg,
       (this.canvasW - dw) * 0.5 + nextShift.dx * (this.canvasW / w),
-      (this.canvasH - dh) * posY + nextShift.dy * (this.canvasH / h),
+      (this.canvasH - dh) * posY +
+        nextShift.dy * (this.canvasH / h) +
+        this.canvasH * GARMENT_NUDGE_Y,
       dw,
       dh,
     );
@@ -1230,7 +1309,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
         let ny = by + (bh * r) / rows;
         if (r > 0 && r < rows) ny += (Math.random() - 0.5) * (bh / rows) * 0.45;
         if (c > 0 && c < cols) nx += (Math.random() - 0.5) * (bw / cols) * 0.45;
-        nodes[r].push([nx, ny]);
+        nodes[r].push([nx, ny + this.canvasH * GARMENT_NUDGE_Y]);
       }
     }
     const centerX = bx + bw / 2;
