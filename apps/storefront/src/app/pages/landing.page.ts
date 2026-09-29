@@ -57,6 +57,15 @@ const DIFF_KEEP_RATIO = 0.9;
     body instead of leaving a hairline of mannequin showing at the seam. */
 const DIFF_DILATE_PASSES = 2;
 
+/**
+ * Where up the figure the frames are registered to each other. 0 anchors on the
+ * feet (bare in every frame, but the far end from the garment, so any framing
+ * difference between two photographs shows up at the shoulders); 1 anchors on
+ * the body centroid, mid-torso. Raise it if the shoulders still sit off the
+ * body, lower it if the garment starts riding up off the hips.
+ */
+const REGISTER_ANCHOR_BIAS = 0.6;
+
 interface FabricPiece {
   /** Canvas-space polygon, the cut shape of this fabric panel. */
   poly: Array<[number, number]>;
@@ -563,6 +572,8 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private garments: Array<HTMLCanvasElement | null> = [];
   /** piecesByPair[i] = the cut fabric panels for that transition */
   private piecesByPair: FabricPiece[][] = [];
+  /** garmentLuma[i] = mean brightness of that garment, 0 black … 1 white. */
+  private garmentLuma: number[] = [];
   /** Full stage photographs + their registration shifts (sample space).
       Settled scenes draw the real photo, composites only ever fly. */
   private stageImgs: HTMLImageElement[] = [];
@@ -573,7 +584,12 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
   private engineFailed = false;
   private ticking = false;
   private lastDrawnKey = '';
-  private readonly isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  /** Read live, not cached: setupEngine() re-runs on resize, and a value fixed
+      at construction left a window resized across 640px building panels for
+      the width it was first loaded at. */
+  private get isMobile(): boolean {
+    return typeof window !== 'undefined' && window.innerWidth < 640;
+  }
 
   private readonly onScroll = () => {
     if (this.ticking) return;
@@ -805,6 +821,15 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // 4. The current act's cut panels, mid-flight.
+    //    Dark fabric cannot fade in through transparency the way pale fabric
+    //    can: black at 25% over a light mannequin composites to grey, and the
+    //    blurred drop shadow adds more of it right where the garment meets bare
+    //    body — the shoulder line. So both effects back off as the garment gets
+    //    darker. A pale garment (luma ~1) keeps exactly the original look.
+    const darkness = 1 - Math.min(1, Math.max(0, this.garmentLuma[seg] ?? 1));
+    const alphaFloor = 0.25 + 0.6 * darkness; // 0.25 pale … 0.85 black
+    const shadowAlpha = 0.35 * (1 - 0.8 * darkness); // 0.35 pale … 0.07 black
+    const shadowSpread = 1 - 0.6 * darkness; // blur/offset shrink with it
     ctx.save();
     for (const p of pieces) {
       const tp = Math.min(1, Math.max(0, (t - p.delay) / (1 - p.delay)));
@@ -814,10 +839,10 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       const rot = p.srot * (1 - e);
 
       ctx.save();
-      ctx.globalAlpha = Math.min(1, 0.25 + tp * 2.5);
-      ctx.shadowColor = `rgba(28, 27, 27, ${0.35 * (1 - e)})`;
-      ctx.shadowBlur = 22 * (1 - e);
-      ctx.shadowOffsetY = 14 * (1 - e);
+      ctx.globalAlpha = Math.min(1, alphaFloor + tp * 2.5);
+      ctx.shadowColor = `rgba(28, 27, 27, ${shadowAlpha * (1 - e)})`;
+      ctx.shadowBlur = 22 * shadowSpread * (1 - e);
+      ctx.shadowOffsetY = 14 * shadowSpread * (1 - e);
       ctx.translate(p.cx + dx, p.cy + dy);
       ctx.rotate(rot);
       ctx.translate(-p.cx, -p.cy);
@@ -883,7 +908,13 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       // Sample at reduced resolution for cheap diffing, mapped back to
       // canvas space with the same cover math as the CSS images
       // (object-fit: cover; object-position: center 20%).
-      const sampleW = this.isMobile ? 240 : 400;
+      // Mask density has to track the canvas, not a breakpoint. A flat 240
+      // samples across a 546px stage is ~2.3 canvas px per mask cell, so the
+      // edge of a black piece — the hardest thing for the diff to resolve —
+      // quantises into steps against the mannequin instead of blending. The
+      // clamp keeps small phones as cheap as before and caps the diffing cost
+      // at the old desktop figure.
+      const sampleW = Math.max(240, Math.min(400, Math.round(this.canvasW / 1.6)));
       const sampleH = Math.round((sampleW * this.canvasH) / this.canvasW);
       const frames = images.map((img, i) =>
         this.coverSample(img, sampleW, sampleH, this.stages[i].posY ?? 0.1),
@@ -894,9 +925,17 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
       // the body centroid, and align before diffing. Garments then land
       // exactly on the persistent base mannequin.
       const anchors = frames.map((f) => this.bodyAnchor(f, sampleW, sampleH));
+      // Vertical registration is exact AT the anchor and drifts with distance
+      // from it, so anchoring purely on the feet put the whole framing error at
+      // the shoulders — the far end of the figure, and exactly where a garment
+      // meets the body. Biasing the anchor up toward the body centroid moves
+      // the accurate point into the torso; what drifts instead is the legs and
+      // feet, which are bare mannequin in every frame and carry no garment.
+      const anchorY = (a: { cy: number; feetY: number }) =>
+        a.feetY + (a.cy - a.feetY) * REGISTER_ANCHOR_BIAS;
       const shifts = anchors.map((a) => ({
         dx: Math.round(anchors[0].cx - a.cx),
-        dy: Math.round(anchors[0].feetY - a.feetY),
+        dy: Math.round(anchorY(anchors[0]) - anchorY(a)),
       }));
       this.stageImgs = images;
       this.frameShifts = shifts;
@@ -905,6 +944,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
 
       this.garments = [];
       this.piecesByPair = [];
+      this.garmentLuma = [];
       for (let i = 0; i < frames.length - 1; i++) {
         const built = this.buildGarmentPanels(
           frames[i],
@@ -918,6 +958,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
         );
         this.garments.push(built.garment);
         this.piecesByPair.push(built.pieces);
+        this.garmentLuma.push(built.luma);
       }
       this.engineReady = true;
       this.lastDrawnKey = '';
@@ -952,7 +993,11 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
    * body centroid x and the lowest body row (the feet, bare in every
    * frame, hence a stable registration anchor).
    */
-  private bodyAnchor(f: Uint8ClampedArray, w: number, h: number): { cx: number; feetY: number } {
+  private bodyAnchor(
+    f: Uint8ClampedArray,
+    w: number,
+    h: number,
+  ): { cx: number; cy: number; feetY: number } {
     const corner = (x: number, y: number) => {
       const i = (y * w + x) * 4;
       return [f[i], f[i + 1], f[i + 2]];
@@ -960,8 +1005,18 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     const cs = [corner(2, 2), corner(w - 3, 2), corner(2, h - 3), corner(w - 3, h - 3)];
     const bg = [0, 1, 2].map((c) => cs.reduce((s2, v) => s2 + v[c], 0) / 4);
     let sumX = 0;
+    let sumY = 0;
     let count = 0;
     let feetY = 0;
+    /**
+     * How many body pixels make a row count as "still the figure". This has to
+     * be a FRACTION of the width, not a count: as an absolute 3 it meant 1.25%
+     * of a 240-wide sample but 0.75% of a 400-wide one, so a wider sample
+     * caught fainter rows (shadow, floor grain), moved feetY down, and shifted
+     * the whole frame's registration — the garment then seated off the body.
+     * 1.25% reproduces the original behaviour at 240.
+     */
+    const minRowHits = Math.max(3, Math.round(w * 0.0125));
     for (let y = 0; y < h; y++) {
       let rowHits = 0;
       for (let x = 0; x < w; x++) {
@@ -969,13 +1024,14 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
         const d = Math.abs(f[i] - bg[0]) + Math.abs(f[i + 1] - bg[1]) + Math.abs(f[i + 2] - bg[2]);
         if (d > 45) {
           sumX += x;
+          sumY += y;
           count++;
           rowHits++;
         }
       }
-      if (rowHits >= 3) feetY = y;
+      if (rowHits >= minRowHits) feetY = y;
     }
-    return { cx: count ? sumX / count : w / 2, feetY };
+    return { cx: count ? sumX / count : w / 2, cy: count ? sumY / count : h / 2, feetY };
   }
 
   /** Draw an image with CSS-cover semantics into a small sampling canvas. */
@@ -1009,7 +1065,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
     posY = 0.2,
     prevShift: { dx: number; dy: number } = { dx: 0, dy: 0 },
     nextShift: { dx: number; dy: number } = { dx: 0, dy: 0 },
-  ): { garment: HTMLCanvasElement | null; pieces: FabricPiece[] } {
+  ): { garment: HTMLCanvasElement | null; pieces: FabricPiece[]; luma: number } {
     // -- 1. binary diff mask at sample resolution --
     const mask = new Uint8Array(w * h);
     const scored: Array<{ x: number; y: number; score: number }> = [];
@@ -1031,7 +1087,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
         if (score > DIFF_MIN_SCORE) scored.push({ x, y, score });
       }
     }
-    if (scored.length < 40) return { garment: null, pieces: [] };
+    if (scored.length < 40) return { garment: null, pieces: [], luma: 1 };
     // Keep the strongest diffs — the garment, not scene lighting. The weakest
     // of a black piece are its shadowed folds and the edge meeting the body,
     // so cutting too deep here is what leaves a dark garment full of holes.
@@ -1064,7 +1120,7 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
         if (c.y > maxY) maxY = c.y;
       }
     });
-    if (maxX - minX < 6 || maxY - minY < 6) return { garment: null, pieces: [] };
+    if (maxX - minX < 6 || maxY - minY < 6) return { garment: null, pieces: [], luma: 1 };
 
     // --- Solidify the garment: fill enclosed holes so seated cloth never
     //     shows the body through it (flood-fill the outside; whatever the
@@ -1234,6 +1290,21 @@ export class LandingPage implements OnInit, AfterViewInit, OnDestroy {
         });
       }
     }
-    return { garment: pieces.length > 0 ? garment : null, pieces };
+    // Mean luminance of the fabric itself (0 = black, 1 = white), measured over
+    // the masked pixels of the source frame. drawPieces uses it to keep a dark
+    // garment from washing out grey while it flies in.
+    let lumaSum = 0;
+    let lumaCount = 0;
+    for (let i = 0; i < mask.length; i++) {
+      if (!mask[i]) continue;
+      const p = i * 4;
+      lumaSum += (next[p] * 0.299 + next[p + 1] * 0.587 + next[p + 2] * 0.114) / 255;
+      lumaCount++;
+    }
+    return {
+      garment: pieces.length > 0 ? garment : null,
+      pieces,
+      luma: lumaCount ? lumaSum / lumaCount : 1,
+    };
   }
 }
