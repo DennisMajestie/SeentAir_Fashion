@@ -73,37 +73,11 @@
   --danger: #ff7a70;
 }
 
-/* ---------- hero exemption ----------
-   The scroll-dressing landing is officially frozen. In light OR dark it
-   keeps its approved golden headline, gold slider and ivory veil, so
-   swapping --primary (even back to rust) or the canvas to near-black never
-   bleeds into the hero. Foreground-content edits only, per client
-   instruction. */
-.hero-wrap,
-.hero-card,
-.hero-grid,
-.hero-main,
-.hero-actions,
-.dressing-scroll,
-.dressing-stage,
-.stage-frame,
-.dressing-static,
-.hero-slider,
-.slider-track,
-.trust-row {
-  --canvas: #fcf9f8;
-  --card: #ffffff;
-  --container: #f6f3f2;
-  --container-2: #efeae8;
-  --line: #e5e2e1;
-  --line-2: #d6d1cf;
-  --ink: #1c1b1b;
-  --muted: #6f6a67;
-  --primary: #8a6a18;
-  --primary-fill: #c9a24b;
-  --primary-tint: #f7efdc;
-  --on-primary: #1c1b1b;
-}
+/* The hero used to pin the light palette onto itself in both themes, so the
+   scroll-dressing landing kept its approved ivory look under dark mode. That
+   exemption is lifted: the hero now reads the same tokens as the rest of the
+   site, so its headline, slider, veil and archive card all follow light/dark.
+   The veil on .dressing-stage is mixed from --canvas for the same reason. */
 
 * {
   box-sizing: border-box;
@@ -200,7 +174,7 @@ code {
     color: var(--ink);
     img {
       display: block;
-      height: 32px;
+      height: 60px;
       width: auto;
       object-fit: contain;
     }
@@ -245,7 +219,10 @@ code {
   justify-content: center;
   border: 1px solid var(--line-2);
   border-radius: var(--radius-pill);
-  background: var(--card);
+  /* Transparent at rest and tinting on hover, exactly like .cart-btn — the
+     other four header icons carry no fill, so a solid one here made this the
+     only chip in the row. */
+  background: transparent;
   color: var(--ink);
   cursor: pointer;
   transition:
@@ -260,6 +237,7 @@ code {
   &:hover {
     color: var(--primary);
     border-color: var(--primary);
+    background: var(--container);
   }
   &:focus-visible {
     outline: 2px solid var(--primary);
@@ -308,6 +286,16 @@ code {
   color: var(--ink);
   text-decoration: none;
   border-radius: var(--radius-pill);
+  /* These are <button>s, so with no background/border of their own they fell
+     back to the browser's default button chrome — a grey fill and a border —
+     while .theme-toggle and .menu-toggle set theirs explicitly. appearance
+     also clears iOS Safari's own button styling. */
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   transition:
     color 0.15s ease,
     background-color 0.15s ease;
@@ -401,7 +389,7 @@ code {
   }
   .logo-footer img {
     display: block;
-    height: 36px;
+    height: 70px;
     width: auto;
     object-fit: contain;
   }
@@ -553,6 +541,9 @@ code {
 .search-bar {
   width: 100%;
   max-width: 460px;
+  /* First element on the shop page, and <main> has no padding-top, so it
+     carries the gap from the header that .shop-hero used to provide. */
+  margin: 1.5rem 0 0;
   background: var(--card);
   border: 1px solid var(--line-2);
   color: var(--ink);
@@ -1230,7 +1221,9 @@ code {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 0.9rem 2.2rem;
+  /* Tighter than the old bare-label spacing: each item now carries its own
+     padding, so the wide column gap would read as drift between the pills. */
+  gap: 0.5rem 0.6rem;
   padding: 0.9rem var(--wrap-x);
   margin-block: 0.5rem 0;
   background: var(--container);
@@ -1238,7 +1231,11 @@ code {
   .trust-item {
     display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
+    gap: 0.5rem;
+    padding: 0.45rem 0.9rem;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
     font-family: 'Inter', sans-serif;
     font-size: 0.68rem;
     font-weight: 700;
@@ -1580,7 +1577,8 @@ code {
 }
 .shop-hero {
   position: relative;
-  margin: 1.5rem 0 0.5rem;
+  /* Sits under the search bar now, which owns the gap from the header. */
+  margin: 1rem 0 0.5rem;
   min-height: 320px;
   border-radius: var(--radius);
   overflow: hidden;
@@ -2532,11 +2530,13 @@ textarea {
     position: absolute;
     inset: 0;
     z-index: 1;
+    /* Mixed from --canvas rather than the literal ivory it used to be, so the
+       veil darkens with the theme instead of washing the photograph pale. */
     background: linear-gradient(
       100deg,
-      rgba(252, 249, 248, 0.82) 0%,
-      rgba(252, 249, 248, 0.28) 46%,
-      rgba(252, 249, 248, 0.1) 100%
+      color-mix(in srgb, var(--canvas) 82%, transparent) 0%,
+      color-mix(in srgb, var(--canvas) 28%, transparent) 46%,
+      color-mix(in srgb, var(--canvas) 10%, transparent) 100%
     );
     pointer-events: none;
   }
@@ -2902,8 +2902,14 @@ textarea {
   /* Phones: a compact caption at the bottom, not a wall over the scene.
      The full archive card still shows, above the headline. */
   .hero-wrap {
+    /* Capped so the copy stays a caption rather than a wall over the scene.
+       It must NOT clip: the block is bottom-aligned, so anything taller than
+       the cap overflows upward, and the card sits at the top (order: -1) —
+       `overflow: hidden` therefore sliced the card's top off at the acts whose
+       headline wraps to two lines, which is worst on short phones. Letting it
+       overflow visibly costs a little of the photograph at those acts and
+       keeps the card whole, which is what the rule below intends. */
     max-height: 62%;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;

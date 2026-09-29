@@ -6,7 +6,6 @@ import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
 import { SWATCHES, ProductCardComponent } from '../product-card.component';
-import { SeentairTiltCardComponent } from '../tilt-card.component';
 
 type SortKey = 'featured' | 'newest' | 'price-asc' | 'price-desc';
 
@@ -33,8 +32,17 @@ function collectionKey(name: string): string {
     size/colour filters, availability badges, review stars and quick-add. */
 @Component({
   selector: 'app-shop',
-  imports: [CommonModule, FormsModule, ProductCardComponent, SeentairTiltCardComponent],
+  imports: [CommonModule, FormsModule, ProductCardComponent],
   template: `
+    <input
+      class="search-bar"
+      type="search"
+      placeholder="[ SEARCH PRODUCTS / SKU / FABRIC ]"
+      [ngModel]="query()"
+      (ngModelChange)="query.set($event)"
+      aria-label="Search products"
+    />
+
     <div class="shop-hero" style="background-image:url('assets/shop-0.jpg')">
       <div class="hero-body">
         <p class="page-kicker">Collection 04 / Aba</p>
@@ -45,15 +53,6 @@ function collectionKey(name: string): string {
         </p>
       </div>
     </div>
-
-    <input
-      class="search-bar"
-      type="search"
-      placeholder="[ SEARCH PRODUCTS / SKU / FABRIC ]"
-      [ngModel]="query()"
-      (ngModelChange)="query.set($event)"
-      aria-label="Search products"
-    />
 
     <div class="pill-bar">
       <button class="pill" [class.active]="category() === null" (click)="category.set(null)">
@@ -144,9 +143,7 @@ function collectionKey(name: string): string {
     } @else {
       <div class="grid">
         @for (product of filtered(); track product.id; let i = $index) {
-          <app-tilt-card>
-            <app-product-card [product]="product" [index]="i" [rating]="ratingOf(product.id)" />
-          </app-tilt-card>
+          <app-product-card [product]="product" [index]="i" [rating]="ratingOf(product.id)" />
         }
       </div>
     }

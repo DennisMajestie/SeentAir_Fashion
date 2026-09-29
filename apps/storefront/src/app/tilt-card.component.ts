@@ -108,6 +108,18 @@ export class TiltEnvironmentService {
       perspective: 1000px;
       --tilt-radius: var(--radius, 16px);
     }
+    /* Fill a fixed-size parent (a product card's .thumb, which is a flex box
+       with its own aspect-ratio) rather than sizing to content, so the
+       photograph tilts inside its own frame. The projected image is already
+       covered by the global .thumb img rule, so it needs nothing here. */
+    :host(.fill) {
+      width: 100%;
+      height: 100%;
+      flex: 1 1 auto;
+    }
+    :host(.fill) .tilt-surface {
+      height: 100%;
+    }
     /* Lifted cards protrude into the grid gap; keep them above their neighbours. */
     :host(.is-raised) {
       z-index: 1;

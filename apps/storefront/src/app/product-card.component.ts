@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { Product, ProductVariant } from './api.service';
 import { BrandAlertService } from './brand-alert.service';
 import { CartService } from './cart.service';
+import { SeentairTiltCardComponent } from './tilt-card.component';
 import { WishlistService } from './wishlist.service';
 
 /** Colour-name → swatch hex for the little dots on cards and quick-add. */
@@ -28,15 +29,19 @@ export const SWATCHES: Record<string, string> = {
  */
 @Component({
   selector: 'app-product-card',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, SeentairTiltCardComponent],
   template: `
     <div class="card product-card" [class.soldout]="isSoldOut(product())">
       <a class="thumb" [routerLink]="['/product', product().id]">
-        <img
-          [src]="product().variants[0]?.imageUrl || 'assets/' + fallback(index())"
-          [alt]="product().name"
-          loading="lazy"
-        />
+        <!-- The tilt belongs to the photograph, not the whole card: the badge,
+             wishlist and quick-add sit above it and stay put. -->
+        <app-tilt-card class="fill">
+          <img
+            [src]="product().variants[0]?.imageUrl || 'assets/' + fallback(index())"
+            [alt]="product().name"
+            loading="lazy"
+          />
+        </app-tilt-card>
         @if (badge(product()); as b) {
           <span class="badge" [class.badge-out]="b === 'Sold out'">{{ b }}</span>
         }
