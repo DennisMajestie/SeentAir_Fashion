@@ -271,6 +271,31 @@ code {
   .header-actions {
     margin-left: auto;
   }
+  /* Header icons read as plain glyphs on mobile — no outline ring. The hover
+     state is neutralised too: a tap leaves it stuck on a touch screen. Focus
+     rings are outlines, not borders, so keyboard focus is unaffected. */
+  .site-header .header-actions button,
+  .site-header .header-actions button:hover {
+    border-color: transparent;
+  }
+
+  /* Cart / wishlist / search panels: anchored to their own 44px button, a
+     340px panel runs off the left edge of a phone (the cart button is second
+     from the right, so its left edge lands at roughly -39px on a 360px
+     screen). Dropping the button's positioning context hands the panel to
+     .site-header, which is sticky and therefore already a containing block:
+     top: calc(100% + 10px) then means "below the header" instead of "below
+     the button", and the gutters match every other section on the page.
+     Scoped under .site-header so these beat the base .mini-cart/.search-panel
+     rules, which sit further down the file at equal specificity. */
+  .site-header .mini-cart {
+    position: static;
+  }
+  .site-header .mini-panel {
+    left: var(--wrap-x);
+    right: var(--wrap-x);
+    width: auto;
+  }
 }
 .cart-btn {
   position: relative;
@@ -606,7 +631,7 @@ code {
     width: 3.2rem;
     text-align: center;
     border: none;
-    border-inline: 1px solid var(--line);
+    // border-inline: 1px solid var(--line);
     margin: 0;
     padding: 0;
     background: transparent;
