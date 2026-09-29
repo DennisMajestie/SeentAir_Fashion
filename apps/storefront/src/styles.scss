@@ -2348,10 +2348,18 @@ textarea {
   border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent);
 }
 
-.auth-trust {
-  margin-top: 1.6rem;
-}
+    .auth-trust {
+      margin-top: 1.6rem;
+    }
 
+    .auth-fine {
+      margin: 1.1rem 0 0;
+      text-align: center;
+      font-size: 0.75rem;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+    }
+    
 .auth-box,
 .success-box,
 .review-box {

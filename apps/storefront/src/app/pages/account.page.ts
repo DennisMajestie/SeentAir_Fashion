@@ -151,6 +151,8 @@ import { ApiService, Order } from '../api.service';
             }
           </form>
 
+          <p class="auth-fine">Secured connection. Authorised users only.</p>
+
           <div class="trust-row auth-trust">
             <span>Full payment</span>
             <span>Tracked dispatch</span>

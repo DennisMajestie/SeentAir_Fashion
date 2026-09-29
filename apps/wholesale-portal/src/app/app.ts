@@ -176,24 +176,25 @@ import { ThemeService } from './theme.service';
                     </svg>
                   }
                 </button>
-                <div class="secure">
-                  <span class="material-symbols-outlined" aria-hidden="true">lock</span>
-                  <span>B2B Secure</span>
+                  <div class="secure">
+                    <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+                    <span>Secured connection</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <p class="lede">Authorised Retailers &amp; Stockists Only</p>
+              <p class="lede">Authorised Retailers &amp; Stockists Only</p>
           </header>
 
           <div class="auth-card">
             <div class="tagbar">
-              <span>Account Authentication</span>
-              <span>v2.4.0</span>
+              <span>Wholesale buyers</span>
             </div>
+
+            <h1 class="auth-title">Welcome back.</h1>
 
             <form class="auth-form" (ngSubmit)="signIn()" novalidate>
               <div class="field">
-                <label for="ws-email">Business Email</label>
+                <label for="ws-email">Email</label>
                 <input
                   id="ws-email"
                   type="email"
@@ -211,7 +212,7 @@ import { ThemeService } from './theme.service';
 
               <div class="field">
                 <div class="label-row">
-                  <label for="ws-password">Account Password</label>
+                  <label for="ws-password">Password</label>
                   <button class="link-inline" type="button" (click)="forgot()">Forgot?</button>
                 </div>
                 <div class="input-affix">
@@ -238,9 +239,11 @@ import { ThemeService } from './theme.service';
               </div>
 
               <button class="cta auth-submit" type="submit" [disabled]="busy()">
-                <span>{{ busy() ? 'Signing in…' : 'Sign In to Wholesale' }}</span>
+                <span>{{ busy() ? 'Signing in…' : 'Sign in' }}</span>
                 <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
               </button>
+
+              <p class="auth-fine">Secured connection. Authorised users only.</p>
 
               @if (error()) {
                 <p class="auth-error" role="alert">{{ error() }}</p>
