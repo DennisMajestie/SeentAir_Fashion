@@ -230,12 +230,13 @@ import { environment } from '../environments/environment';
                     Sign in →
                   }
                 </button>
-                @if (formError()) {
-                  <p class="field-err form-err">{{ formError() }}</p>
-                }
-              </form>
-            </div>
-          } @else {
+                  @if (formError()) {
+                    <p class="field-err form-err">{{ formError() }}</p>
+                  }
+                  <p class="auth-fine">Secured connection. Authorised users only.</p>
+                </form>
+              </div>
+            } @else {
             <div class="auth-wrap">
               <form class="auth-card" (ngSubmit)="submitCode()" novalidate>
                 <p class="eyebrow">Two-factor check</p>

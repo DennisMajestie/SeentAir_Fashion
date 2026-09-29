@@ -18,10 +18,7 @@ import { ThemeService } from '../theme.service';
   template: `
     <div class="auth-shell">
       <header class="auth-topstrip">
-        <span class="term-chip"
-          ><span class="dot ok"></span> Secure Protocol TLS / Encrypted Session</span
-        >
-        <span class="term-chip strip-node">Node: ABA-HQ: Aba</span>
+        <span class="term-chip"><span class="dot ok"></span> Secured connection</span>
         <button
           class="theme-toggle"
           type="button"
@@ -61,26 +58,22 @@ import { ThemeService } from '../theme.service';
         </button>
       </header>
 
-      <main class="auth-main">
-        <p class="clearance"><span class="dot"></span> Tier-1 institutional clearance required</p>
-        <div class="wordmark">
-          <img src="assets/logo.png" alt="SEENTAIR" height="34" />
-          <span class="wordmark-tag">Partners // Portal</span>
-        </div>
-        <p class="auth-sub">
-          Private access for Seentair Limited registered shareholders and institutional equity
-          partners. Strictly confidential financial and manufacturing telemetry.
-        </p>
-
-        <div class="auth-card">
-          <form class="phase" (ngSubmit)="signIn()" [class.dimmed]="phase() === 2">
-            <div class="phase-head">
-              <span class="phase-tag">Phase 01</span>
-              <h1>Partner identity</h1>
-              <span class="phase-side mono">Portal v1</span>
-            </div>
-            <label class="field">
-              Authorized corporate email
+        <main class="auth-main">
+          <p class="eyebrow">Partner access</p>
+          <div class="wordmark">
+            <img src="assets/logo.png" alt="SEENTAIR" height="34" />
+            <span class="wordmark-tag">Partners // Portal</span>
+          </div>
+          <h1>Welcome back.</h1>
+          <p class="auth-sub">
+            Private access for Seentair Limited registered shareholders and institutional equity
+            partners.
+          </p>
+  
+          <div class="auth-card">
+            <form class="phase" (ngSubmit)="signIn()" [class.dimmed]="phase() === 2">
+              <label class="field">
+                Email
               <input
                 type="email"
                 name="email"
@@ -92,7 +85,7 @@ import { ThemeService } from '../theme.service';
             </label>
             <label class="field">
               <span class="field-row">
-                <span>Master passkey</span>
+                <span>Password</span>
                 <button class="link forgot-link" type="button" (click)="forgot()">Forgot?</button>
               </span>
               <span class="pw-wrap">
@@ -115,12 +108,12 @@ import { ThemeService } from '../theme.service';
                 </button>
               </span>
             </label>
-            <p class="fine">Terminal lease renews automatically over a secure session cookie.</p>
+            <p class="fine">Secured connection. Authorised users only.</p>
             <button class="cta block" type="submit" [disabled]="busy() || phase() === 2">
               @if (busy() && phase() === 1) {
-                Authorizing…
+                Signing in…
               } @else {
-                Authorize access to terminal
+                Sign in
               }
             </button>
             @if (phase() === 1 && error()) {
@@ -132,25 +125,22 @@ import { ThemeService } from '../theme.service';
           </form>
 
           <form class="phase phase-2" (ngSubmit)="verify()" [class.dimmed]="phase() === 1">
-            <div class="phase-head">
-              <span class="phase-tag gold-tag">Phase 02 // Challenge</span>
-              <h1>Two-step hardware verification</h1>
-              <span class="phase-side chip">Restricted</span>
-            </div>
+            <p class="eyebrow">Two-factor check</p>
+            <h1>Verify it's you.</h1>
             @if (phase() === 2) {
               <div class="challenge-note">
                 <strong>Security challenge active.</strong>
-                Enter the 6-digit rotating code from the authenticator app enrolled on this investor
-                account.
+                Enter the 6-digit code from the authenticator app on your account.
               </div>
             } @else {
               <div class="challenge-note idle">
-                Activates after identity authorization when two-step verification is enrolled on the
-                account.
+                Activates after sign-in when two-step verification is enrolled on the account.
               </div>
             }
             <label class="field">
-              One-time security token
+              <span class="field-row">
+                <span>Code</span>
+              </span>
               <input
                 class="otp"
                 type="text"
@@ -172,29 +162,18 @@ import { ThemeService } from '../theme.service';
               @if (busy() && phase() === 2) {
                 Verifying…
               } @else {
-                Verify identity &amp; authorize session
+                Verify
               }
             </button>
             @if (phase() === 2) {
               <p class="fine">Codes rotate every 30 seconds, attempts are rate-limited.</p>
-              <button class="link" type="button" (click)="restart()">
-                Start over with email &amp; passkey
-              </button>
+              <button class="link" type="button" (click)="restart()">Start over</button>
               @if (error()) {
                 <p class="error">{{ error() }}</p>
               }
             }
           </form>
         </div>
-
-        <p class="station-line mono">
-          Status:
-          @if (phase() === 2) {
-            challenge issued: awaiting verification
-          } @else {
-            pre-authorization: credentials required
-          }
-        </p>
 
         <!-- GAP: reference P1 shows live pre-auth KPI figures (run rate, equity retained, hub ops,
              dividend cycle); no unauthenticated telemetry endpoint exists, so these tiles carry
@@ -254,23 +233,18 @@ import { ThemeService } from '../theme.service';
           margin-left: auto;
         }
       }
-      @media (max-width: 520px) {
-        .strip-node {
-          display: none;
-        }
-      }
       .auth-main {
         width: min(880px, 100%);
         margin: 0 auto;
         padding: 1.6rem 1rem 3rem;
       }
-      .clearance {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.45rem;
-        font-size: var(--type-label-sm);
-        font-weight: 700;
+            .eyebrow {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 0.45rem;
+              font-size: var(--type-label-sm);
+              font-weight: 700;
         letter-spacing: 0.18em;
         text-transform: uppercase;
         color: var(--acid-ink);
@@ -336,36 +310,6 @@ import { ThemeService } from '../theme.service';
         .phase.phase-2 {
           border-left: none;
           border-top: 1px solid var(--hairline);
-        }
-      }
-      .phase-head {
-        display: flex;
-        align-items: baseline;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-        border-bottom: 1px solid var(--hairline);
-        padding-bottom: 0.55rem;
-        margin-bottom: 0.4rem;
-        h1 {
-          font-size: 0.9rem;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-        .phase-side {
-          margin-left: auto;
-          color: var(--ink-dim);
-          font-size: var(--type-label-sm);
-        }
-      }
-      .phase-tag {
-        font-size: var(--type-label-sm);
-        font-weight: 700;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: var(--ink-dim);
-        flex-basis: 100%;
-        &.gold-tag {
-          color: var(--acid-ink);
         }
       }
       .fine {
@@ -445,14 +389,6 @@ import { ThemeService } from '../theme.service';
         color: var(--ok);
         border: 1px solid var(--ok);
         background: color-mix(in srgb, var(--ok) 8%, var(--panel));
-      }
-      .station-line {
-        margin: 0.8rem 0 1.4rem;
-        text-align: center;
-        color: var(--ink-dim);
-        font-size: var(--type-label-sm);
-        text-transform: uppercase;
-        letter-spacing: 0.14em;
       }
       .auth-kpis .kpi-value.sm {
         font-size: 0.95rem;

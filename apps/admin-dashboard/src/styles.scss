@@ -2034,6 +2034,14 @@ $ops-canvas: var(--obsidian);
     }
   }
 
+  .auth-fine {
+    margin: var(--space-md, 0.9rem) 0 0;
+    text-align: center;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    color: var(--muted, #6b6f76);
+  }
+
   .pw-wrap {
     position: relative;
     display: block;

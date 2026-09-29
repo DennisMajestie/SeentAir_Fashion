@@ -749,12 +749,25 @@ label {
   }
 }
 
-.auth-card {
-  background: var(--icard);
-  border: 1px solid var(--ihair);
-  padding: var(--space-lg);
-  border-radius: var(--radius);
-  .tagbar {
+    .auth-card {
+      background: var(--icard);
+      border: 1px solid var(--ihair);
+      padding: var(--space-lg);
+      border-radius: var(--radius);
+      .auth-title {
+        font-size: var(--type-heading-lg);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+        margin: 0 0 var(--space-sm);
+      }
+      .auth-fine {
+        margin: var(--space-md) 0 0;
+        text-align: center;
+        font-size: var(--type-label-md);
+        color: var(--muted);
+      }
+      .tagbar {
     display: flex;
     justify-content: space-between;
     background: var(--ilow);
