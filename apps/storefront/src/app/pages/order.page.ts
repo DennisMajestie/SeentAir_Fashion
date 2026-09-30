@@ -885,7 +885,7 @@ export class OrderPage implements OnInit, OnDestroy {
     if (!o || this.paying()) return;
     this.paying.set(true);
     this.paymentError.set(null);
-    this.api.payWithPaystack(o.id, o.totalAmount).subscribe({
+    this.api.payWithPaystack(o.id, o.totalAmount, undefined, this.guestToken).subscribe({
       next: (res) => {
         this.paying.set(false);
         // Leave the app: Paystack hosts the payment, then redirects back here.

@@ -119,16 +119,21 @@ export class OrdersController {
    * Offline methods → staff record the full payment manually.
    */
   @Post('orders/:id/payment')
+  @OptionalAuth()
   @ApiBearerAuth()
   pay(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RecordPaymentDto,
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() user?: AuthenticatedUser,
+    @Query('token') token?: string,
   ) {
     if (dto.method === PaymentMethod.PAYSTACK) {
-      return this.ordersService.initPaystackPayment(id, user, dto.email);
+      // A guest pays the order it just placed, before any account exists, so it
+      // proves ownership the same way tracking does. Only Paystack is reachable
+      // without a session: recordOfflinePayment needs staff permissions.
+      return this.ordersService.initPaystackPayment(id, user, dto.email, token);
     }
-    return this.ordersService.recordOfflinePayment(id, dto, user);
+    return this.ordersService.recordOfflinePayment(id, dto, user!);
   }
 
   /** Reorder: same items, repriced at current prices/tier. */

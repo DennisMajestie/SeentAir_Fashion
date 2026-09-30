@@ -431,6 +431,13 @@ export class CheckoutPage {
   readonly orderId = signal<string | null>(null);
   readonly paystackUrl = signal<string | null>(null);
   readonly paidTotal = signal(0);
+  /**
+   * The guest's tracking token, as returned when the order was placed. Paying
+   * needs it: a guest has no session, so it is how the API knows this payment
+   * belongs to this order. Held in memory for the retry path below, and the
+   * emailed link is the durable copy.
+   */
+  private guestToken?: string;
   /** Why the payment session failed. Separate from error(), which only renders
       in the pre-order branch and is therefore invisible once an order exists. */
   readonly paymentError = signal<string | null>(null);
@@ -552,6 +559,7 @@ export class CheckoutPage {
         // still opens the order after the Paystack round-trip; the same link
         // is emailed, so losing this is inconvenient, not fatal.
         if (order.trackingToken) {
+          this.guestToken = order.trackingToken;
           try {
             localStorage.setItem(`seentair.order.${order.id}`, order.trackingToken);
           } catch {
@@ -582,20 +590,22 @@ export class CheckoutPage {
     this.startingPayment.set(true);
     this.paymentError.set(null);
     const receipt = this.receiptEmail.trim();
-    this.api.payWithPaystack(orderId, this.paidTotal(), receipt || undefined).subscribe({
-      next: (res) => {
-        this.paystackUrl.set(res.authorizationUrl);
-        this.startingPayment.set(false);
-        this.placing.set(false);
-      },
-      error: (err) => {
-        this.startingPayment.set(false);
-        this.placing.set(false);
-        // Keep the server's reason: "Paystack is not configured" and a bad
-        // amount need very different responses from the customer, and a generic
-        // sentence throws that away.
-        this.paymentError.set(err?.error?.message ?? 'The payment link could not be created.');
-      },
-    });
+    this.api
+      .payWithPaystack(orderId, this.paidTotal(), receipt || undefined, this.guestToken)
+      .subscribe({
+        next: (res) => {
+          this.paystackUrl.set(res.authorizationUrl);
+          this.startingPayment.set(false);
+          this.placing.set(false);
+        },
+        error: (err) => {
+          this.startingPayment.set(false);
+          this.placing.set(false);
+          // Keep the server's reason: "Paystack is not configured" and a bad
+          // amount need very different responses from the customer, and a generic
+          // sentence throws that away.
+          this.paymentError.set(err?.error?.message ?? 'The payment link could not be created.');
+        },
+      });
   }
 }

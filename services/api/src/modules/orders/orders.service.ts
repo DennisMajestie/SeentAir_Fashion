@@ -551,20 +551,28 @@ export class OrdersService {
     return this.completePayment(order.id, dto.method, dto.amount, actor.id);
   }
 
-  /** Start a Paystack payment for the caller's own (or staff-managed) order. */
+  /**
+   * Start a Paystack payment for the caller's own order, or for a guest order
+   * they hold the tracking token for (the same proof /tracking accepts). No
+   * session is required: guest checkout pays before an account exists.
+   */
   async initPaystackPayment(
     orderId: string,
-    user: AuthenticatedUser,
+    user?: AuthenticatedUser,
     emailOverride?: string,
+    rawToken?: string,
   ): Promise<{ authorizationUrl: string; reference: string }> {
-    const order = await this.findById(orderId, user);
+    const order = await this.findById(orderId, user, rawToken);
     this.assertPayable(order, order.totalAmount);
     // A guest order has no account behind it, so the address it was placed with
-    // is the one Paystack bills and receipts.
-    const email = this.resolvePaystackEmail(
-      order.customer?.email ?? order.guestEmail ?? user.email,
-      emailOverride,
-    );
+    // is the one Paystack bills and receipts. The guest's email is required at
+    // checkout, so the guest branch always resolves; user.email is the fallback
+    // for an order placed while signed in.
+    const fallback = order.customer?.email ?? order.guestEmail ?? user?.email;
+    if (!fallback) {
+      throw new BadRequestException('No email on this order to bill');
+    }
+    const email = this.resolvePaystackEmail(fallback, emailOverride);
     const reference = `seentair-${order.id}-${randomUUID().slice(0, 8)}`;
     const init = await this.paystackService.initializeTransaction(
       email,

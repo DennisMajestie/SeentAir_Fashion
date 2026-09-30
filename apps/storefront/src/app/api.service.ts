@@ -273,17 +273,23 @@ export class ApiService {
 
   /** `email` overrides where Paystack sends the receipt. The API refuses it in
       production unless PAYSTACK_EMAIL_OVERRIDE_ALLOWED is explicitly on, so
-      only send it when the shopper actually changed it. */
+      only send it when the shopper actually changed it.
+      `token` pays a guest order with no session; ignored when signed in. */
   payWithPaystack(
     orderId: string,
     amount: number,
     email?: string,
+    token?: string,
   ): Observable<{ authorizationUrl: string }> {
-    return this.http.post<{ authorizationUrl: string }>(`${API_BASE}/orders/${orderId}/payment`, {
-      method: 'paystack',
-      amount,
-      ...(email ? { email } : {}),
-    });
+    const query = token ? `?token=${encodeURIComponent(token)}` : '';
+    return this.http.post<{ authorizationUrl: string }>(
+      `${API_BASE}/orders/${orderId}/payment${query}`,
+      {
+        method: 'paystack',
+        amount,
+        ...(email ? { email } : {}),
+      },
+    );
   }
 
   notifications(): Observable<{

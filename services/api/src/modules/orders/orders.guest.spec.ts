@@ -17,8 +17,12 @@ import { WholesaleService } from '../wholesale/wholesale.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderAccessToken } from './entities/order-access-token.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
-import { Order, OrderChannel, OrderStatus } from './entities/order.entity';
-import { Payment } from './entities/payment.entity';
+import { Order, OrderChannel, OrderStatus, PaymentStatus } from './entities/order.entity';
+import {
+  Payment,
+  PaymentMethod,
+  PaymentRecordStatus,
+} from './entities/payment.entity';
 import { OrderStatusBus } from './order-status.bus';
 import { OrdersService } from './orders.service';
 import { PaystackService } from './paystack.service';
@@ -55,6 +59,18 @@ describe('OrdersService — guest checkout', () => {
     product: { id: 'p1', name: 'Box Tee', basePrice: 9000 },
   };
   const catalogueService = { findVariantById: jest.fn(async () => variant) };
+  const paymentRepo = {
+    findOne: jest.fn(),
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => v),
+  };
+  const paystackService = {
+    configured: true,
+    initializeTransaction: jest.fn(async () => ({
+      authorizationUrl: 'https://checkout.test/xyz',
+      reference: 'seentair-o1-deadbeef',
+    })),
+  };
   const inventoryService = {
     currentQuantity: jest.fn(async () => 100),
     record: jest.fn(),
@@ -89,7 +105,7 @@ describe('OrdersService — guest checkout', () => {
       providers: [
         OrdersService,
         { provide: getRepositoryToken(Order), useValue: orderRepo },
-        { provide: getRepositoryToken(Payment), useValue: { findOne: jest.fn() } },
+        { provide: getRepositoryToken(Payment), useValue: paymentRepo },
         {
           provide: getRepositoryToken(OrderStatusEvent),
           useValue: { find: jest.fn(async (): Promise<unknown[]> => []) },
@@ -103,7 +119,7 @@ describe('OrdersService — guest checkout', () => {
         { provide: InventoryService, useValue: inventoryService },
         { provide: PermissionsService, useValue: permissionsService },
         { provide: UsersService, useValue: usersService },
-        { provide: PaystackService, useValue: { configured: true } },
+        { provide: PaystackService, useValue: paystackService },
         { provide: WholesaleService, useValue: wholesaleService },
         { provide: AccountingService, useValue: { record: jest.fn() } },
         { provide: NotificationsService, useValue: { onOrderStatusChange: jest.fn() } },
@@ -289,6 +305,125 @@ describe('OrdersService — guest checkout', () => {
     it('reports zero when the address placed no guest orders', async () => {
       orderRepo.update.mockResolvedValueOnce({ affected: 0 });
       expect(await service.claimGuestOrders('u1', 'nobody@example.com')).toBe(0);
+    });
+  });
+
+  // ---- paying without an account ----
+
+  describe('paying a guest order', () => {
+    const guestOrder = (over: Record<string, unknown> = {}) =>
+      ({
+        id: 'o1',
+        customer: null,
+        guestEmail: 'ada@example.com',
+        guestName: 'Ada Obi',
+        paymentStatus: PaymentStatus.UNPAID,
+        totalAmount: 18000,
+        items: [],
+        ...over,
+      }) as never;
+
+    const hashOf = (raw: string) => createHash('sha256').update(raw).digest('hex');
+
+    it('starts a Paystack session for a guest holding the order token', async () => {
+      // The token is the only thing that authorises this call: there is no
+      // session, which is exactly how the storefront pays straight after placing
+      // an order as a guest.
+      accessTokenRepo.findOne.mockResolvedValueOnce({
+        id: 't1',
+        orderId: 'o1',
+        tokenHash: hashOf('good-token'),
+        expiresAt: new Date(Date.now() + 86_400_000),
+      });
+      orderRepo.findOne.mockResolvedValueOnce(guestOrder());
+
+      const result = await service.initPaystackPayment('o1', undefined, undefined, 'good-token');
+
+      expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+        // No account on the order, so the guest address placed with it is billed.
+        'ada@example.com',
+        18000,
+        expect.stringMatching(/^seentair-o1-[0-9a-f]{8}$/),
+        // No callback base configured in this stub, so no redirect is promised.
+        null,
+      );
+      expect(result.authorizationUrl).toBe('https://checkout.test/xyz');
+      expect(paymentRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: PaymentMethod.PAYSTACK,
+          amount: 18000,
+          status: PaymentRecordStatus.PENDING,
+          recordedBy: null,
+        }),
+      );
+    });
+
+    it('refuses a guest payment with no token and no session', async () => {
+      // No token means no proof of ownership, and the order id is not enough:
+      // findById throws before any order is loaded.
+      await expect(service.initPaystackPayment('o1')).rejects.toThrow(NotFoundException);
+      expect(paystackService.initializeTransaction).not.toHaveBeenCalled();
+      expect(paymentRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses a token minted for a different order', async () => {
+      accessTokenRepo.findOne.mockResolvedValueOnce({
+        id: 't1',
+        orderId: 'other-order',
+        tokenHash: hashOf('good-token'),
+        expiresAt: new Date(Date.now() + 86_400_000),
+      });
+      await expect(
+        service.initPaystackPayment('o1', undefined, undefined, 'good-token'),
+      ).rejects.toThrow(NotFoundException);
+      expect(paystackService.initializeTransaction).not.toHaveBeenCalled();
+    });
+
+    it('refuses an expired token', async () => {
+      accessTokenRepo.findOne.mockResolvedValueOnce({
+        id: 't1',
+        orderId: 'o1',
+        tokenHash: hashOf('stale'),
+        expiresAt: new Date(Date.now() - 1000),
+      });
+      await expect(
+        service.initPaystackPayment('o1', undefined, undefined, 'stale'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('still refuses part-payments, token or not', async () => {
+      accessTokenRepo.findOne.mockResolvedValueOnce({
+        id: 't1',
+        orderId: 'o1',
+        tokenHash: hashOf('good-token'),
+        expiresAt: new Date(Date.now() + 86_400_000),
+      });
+      orderRepo.findOne.mockResolvedValueOnce(guestOrder({ totalAmount: 18000 }));
+      // The full-payment rule is enforced on the order total, never on the
+      // client's amount, so a token cannot be used to underpay.
+      await expect(
+        service.initPaystackPayment('o1', undefined, undefined, 'good-token'),
+      ).resolves.toBeDefined();
+      expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+        'ada@example.com',
+        18000,
+        expect.any(String),
+        null,
+      );
+    });
+
+    it('an account holder still pays without presenting a token', async () => {
+      orderRepo.findOne.mockResolvedValueOnce(
+        guestOrder({ customer: { id: 'c1' }, guestEmail: null }),
+      );
+      const result = await service.initPaystackPayment('o1', customer);
+      expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+        'c@x.test',
+        18000,
+        expect.any(String),
+        null,
+      );
+      expect(result.reference).toEqual(expect.any(String));
     });
   });
 });
