@@ -13,6 +13,7 @@ import {
   RawBodyRequest,
   Req,
   Sse,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -117,16 +118,26 @@ export class OrdersController {
   /**
    * Paystack → returns an authorization URL for the customer to pay.
    * Offline methods → staff record the full payment manually.
+   *
+   * @OptionalAuth for the same reason as create(): a guest who just placed an
+   * order has to be able to pay for it, and they authenticate with ?token=
+   * (the tracking token from checkout). The offline branch is never open to a
+   * token — marking an order paid without money moving is a staff action.
    */
   @Post('orders/:id/payment')
+  @OptionalAuth()
   @ApiBearerAuth()
   pay(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RecordPaymentDto,
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() user?: AuthenticatedUser,
+    @Query('token') token?: string,
   ) {
     if (dto.method === PaymentMethod.PAYSTACK) {
-      return this.ordersService.initPaystackPayment(id, user, dto.email);
+      return this.ordersService.initPaystackPayment(id, user, dto.email, token);
+    }
+    if (!user) {
+      throw new UnauthorizedException('Recording an offline payment requires a staff login');
     }
     return this.ordersService.recordOfflinePayment(id, dto, user);
   }

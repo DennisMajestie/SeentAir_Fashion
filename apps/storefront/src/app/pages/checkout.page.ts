@@ -582,7 +582,15 @@ export class CheckoutPage {
     this.startingPayment.set(true);
     this.paymentError.set(null);
     const receipt = this.receiptEmail.trim();
-    this.api.payWithPaystack(orderId, this.paidTotal(), receipt || undefined).subscribe({
+    // Guest orders authenticate to the payment endpoint with the token stored
+    // at placement. Absent for account orders, where the session does the job.
+    let token: string | undefined;
+    try {
+      token = localStorage.getItem(`seentair.order.${orderId}`) ?? undefined;
+    } catch {
+      /* private mode: an account session may still carry this through */
+    }
+    this.api.payWithPaystack(orderId, this.paidTotal(), receipt || undefined, token).subscribe({
       next: (res) => {
         this.paystackUrl.set(res.authorizationUrl);
         this.startingPayment.set(false);

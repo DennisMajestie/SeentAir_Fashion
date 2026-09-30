@@ -278,12 +278,19 @@ export class ApiService {
     orderId: string,
     amount: number,
     email?: string,
+    token?: string,
   ): Observable<{ authorizationUrl: string }> {
-    return this.http.post<{ authorizationUrl: string }>(`${API_BASE}/orders/${orderId}/payment`, {
-      method: 'paystack',
-      amount,
-      ...(email ? { email } : {}),
-    });
+    // A guest has no session: the tracking token from checkout is what lets
+    // them pay for the order they just placed.
+    const qs = token ? `?token=${encodeURIComponent(token)}` : '';
+    return this.http.post<{ authorizationUrl: string }>(
+      `${API_BASE}/orders/${orderId}/payment${qs}`,
+      {
+        method: 'paystack',
+        amount,
+        ...(email ? { email } : {}),
+      },
+    );
   }
 
   notifications(): Observable<{

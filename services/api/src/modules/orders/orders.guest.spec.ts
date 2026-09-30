@@ -79,6 +79,19 @@ describe('OrdersService — guest checkout', () => {
     findOne: jest.fn(),
   };
 
+  const paymentRepo = {
+    findOne: jest.fn(),
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => ({ id: 'pay-1', ...v })),
+  };
+  const paystackService = {
+    configured: true,
+    initializeTransaction: jest.fn(async (_email: string, _amount: number, reference: string) => ({
+      authorizationUrl: 'https://checkout.paystack.com/x',
+      reference,
+    })),
+  };
+
   const order = (dto: Partial<CreateOrderDto>): CreateOrderDto =>
     ({ items: [{ variantId: 'v1', quantity: 1 }], ...dto }) as CreateOrderDto;
 
@@ -89,7 +102,7 @@ describe('OrdersService — guest checkout', () => {
       providers: [
         OrdersService,
         { provide: getRepositoryToken(Order), useValue: orderRepo },
-        { provide: getRepositoryToken(Payment), useValue: { findOne: jest.fn() } },
+        { provide: getRepositoryToken(Payment), useValue: paymentRepo },
         {
           provide: getRepositoryToken(OrderStatusEvent),
           useValue: { find: jest.fn(async (): Promise<unknown[]> => []) },
@@ -103,7 +116,7 @@ describe('OrdersService — guest checkout', () => {
         { provide: InventoryService, useValue: inventoryService },
         { provide: PermissionsService, useValue: permissionsService },
         { provide: UsersService, useValue: usersService },
-        { provide: PaystackService, useValue: { configured: true } },
+        { provide: PaystackService, useValue: paystackService },
         { provide: WholesaleService, useValue: wholesaleService },
         { provide: AccountingService, useValue: { record: jest.fn() } },
         { provide: NotificationsService, useValue: { onOrderStatusChange: jest.fn() } },
@@ -268,6 +281,73 @@ describe('OrdersService — guest checkout', () => {
     it('no token and no session is a 404, never a listing of the order', async () => {
       await expect(service.tracking('o1')).rejects.toThrow(NotFoundException);
       expect(orderRepo.findOne).not.toHaveBeenCalled();
+    });
+  });
+
+  // ---- paying for a guest order ----
+  //
+  // The bug this guards against: create() was @OptionalAuth but pay() was not,
+  // so a guest could place an order and then get 401 trying to pay for it.
+
+  describe('guest payment', () => {
+    const tokenRow = (orderId: string, raw: string) =>
+      ({
+        id: 't1',
+        orderId,
+        tokenHash: createHash('sha256').update(raw).digest('hex'),
+        expiresAt: new Date(Date.now() + 86_400_000),
+      }) as never;
+    const unpaidGuestOrder = () => ({
+      id: 'o1',
+      status: OrderStatus.AWAITING_PAYMENT,
+      paymentStatus: 'unpaid',
+      totalAmount: 24000,
+      customer: null,
+      guestEmail: GUEST.email,
+      items: [],
+    });
+
+    it('a guest with a valid token can start a Paystack payment, billed to the guest email', async () => {
+      accessTokenRepo.findOne.mockResolvedValueOnce(tokenRow('o1', 'good-token'));
+      orderRepo.findOne.mockResolvedValueOnce(unpaidGuestOrder());
+      const init = await service.initPaystackPayment('o1', undefined, undefined, 'good-token');
+      expect(init.authorizationUrl).toContain('paystack');
+      expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+        GUEST.email,
+        24000,
+        expect.stringMatching(/^seentair-o1-/),
+        null, // callback URL: unset in this harness's ConfigService stub
+      );
+      expect(paymentRepo.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('a guest with no token gets a 404 — never a hint the order exists', async () => {
+      await expect(service.initPaystackPayment('o1')).rejects.toThrow(NotFoundException);
+      expect(paystackService.initializeTransaction).not.toHaveBeenCalled();
+    });
+
+    it("a token for someone else's order is a 404, not a 403", async () => {
+      accessTokenRepo.findOne.mockResolvedValueOnce(tokenRow('other-order', 'good-token'));
+      await expect(
+        service.initPaystackPayment('o1', undefined, undefined, 'good-token'),
+      ).rejects.toThrow(NotFoundException);
+      expect(paystackService.initializeTransaction).not.toHaveBeenCalled();
+    });
+
+    it('a signed-in customer still pays without any token', async () => {
+      orderRepo.findOne.mockResolvedValueOnce({
+        ...unpaidGuestOrder(),
+        customer: { id: customer.id, email: customer.email },
+        guestEmail: null,
+      });
+      await service.initPaystackPayment('o1', customer);
+      expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+        customer.email,
+        24000,
+        expect.stringMatching(/^seentair-o1-/),
+        null,
+      );
+      expect(accessTokenRepo.findOne).not.toHaveBeenCalled();
     });
   });
 

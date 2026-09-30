@@ -551,20 +551,30 @@ export class OrdersService {
     return this.completePayment(order.id, dto.method, dto.amount, actor.id);
   }
 
-  /** Start a Paystack payment for the caller's own (or staff-managed) order. */
+  /**
+   * Start a Paystack payment for the caller's own (or staff-managed) order.
+   *
+   * A guest has no session, so they present the tracking token minted at
+   * checkout instead. findById already treats a missing or wrong token as a
+   * 404, so a stranger cannot start a payment against someone else's order —
+   * and this is the only thing a token can do to an order's money: recording
+   * an offline payment stays behind a real login with full payments access.
+   */
   async initPaystackPayment(
     orderId: string,
-    user: AuthenticatedUser,
+    user?: AuthenticatedUser,
     emailOverride?: string,
+    rawToken?: string,
   ): Promise<{ authorizationUrl: string; reference: string }> {
-    const order = await this.findById(orderId, user);
+    const order = await this.findById(orderId, user, rawToken);
     this.assertPayable(order, order.totalAmount);
     // A guest order has no account behind it, so the address it was placed with
     // is the one Paystack bills and receipts.
-    const email = this.resolvePaystackEmail(
-      order.customer?.email ?? order.guestEmail ?? user.email,
-      emailOverride,
-    );
+    const billTo = order.customer?.email ?? order.guestEmail ?? user?.email;
+    if (!billTo) {
+      throw new BadRequestException('No email address to bill this order to');
+    }
+    const email = this.resolvePaystackEmail(billTo, emailOverride);
     const reference = `seentair-${order.id}-${randomUUID().slice(0, 8)}`;
     const init = await this.paystackService.initializeTransaction(
       email,
