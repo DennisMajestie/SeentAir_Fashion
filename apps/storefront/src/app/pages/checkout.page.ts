@@ -6,6 +6,10 @@ import { ApiService, ShippingAddress } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
 
+/** Middle dot, kept as a named constant so the stage labels stay readable and
+    the character never has to survive a copy-paste through a shell. */
+const DOT = '\u00b7';
+
 /** GIGL delivers nationwide, so the state list is all 36 plus FCT. */
 const NIGERIAN_STATES = [
   'Abia',
@@ -57,21 +61,20 @@ const NIGERIAN_STATES = [
   template: `
     <div class="stage-bar u-rise">
       <div class="stage-label-line">
-        <b>{{ orderId() ? 'Stage 03 · Order placed' : 'Stage 02 · Final payment' }}</b>
-        <span>Step {{ orderId() ? 3 : 2 }} of 3</span>
+        <b>{{ stageTitle() }}</b>
+        <span>Step {{ currentStep() }} of 4</span>
       </div>
       <div
         class="stage-segs"
         role="progressbar"
-        [attr.aria-label]="
-          orderId() ? 'Checkout progress, step 3 of 3' : 'Checkout progress, step 2 of 3'
-        "
+[attr.aria-label]="'Checkout progress, step ' + currentStep() + ' of 4'"
         aria-valuemin="1"
-        aria-valuemax="3"
-        [attr.aria-valuenow]="orderId() ? 3 : 2"
+        aria-valuemax="4"
+        [attr.aria-valuenow]="currentStep()"
       >
-        <span class="seg on"></span><span class="seg on"></span
-        ><span class="seg" [class.on]="!!orderId()"></span>
+        <span class="seg on"></span><span class="seg" [class.on]="currentStep() >= 3"></span
+        ><span class="seg" [class.on]="currentStep() >= 4"></span
+        ><span class="seg" [class.on]="currentStep() >= 5"></span>
       </div>
     </div>
     <h1 class="page-title">Cart & checkout</h1>
@@ -238,13 +241,14 @@ const NIGERIAN_STATES = [
           }
 
           <div #details class="checkout-details">
-            @if (!api.isLoggedIn) {
-              <p class="section-label">Your details</p>
-              <!-- No account needed to buy. Name and email only: the email
-                   carries the receipt and the tracking link, and Paystack
-                   cannot take a payment without one. Signing in is offered,
-                   never required. -->
-              <div class="auth-box checkout-auth">
+            @if (onDetailsStage()) {
+              @if (!api.isLoggedIn) {
+                <p class="section-label">Your details</p>
+                <!-- No account needed to buy. Name and email only: the email
+                     carries the receipt and the tracking link, and Paystack
+                     cannot take a payment without one. Signing in is offered,
+                     never required. -->
+                <div class="auth-box checkout-auth">
                 <label
                   >Full name
                   <input [(ngModel)]="name" name="name" required placeholder="e.g. Kojo Mensah" />
@@ -282,6 +286,23 @@ const NIGERIAN_STATES = [
                   }}
                 </button>
               </div>
+              @if (detailsError()) {
+                <div class="notice notice-error u-rise" role="alert">
+                  <svg
+                    class="notice-icon"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <circle cx="10" cy="10" r="8.2" />
+                    <path d="M10 5.6v5.4M10 13.9h.01" stroke-linecap="round" />
+                  </svg>
+                  <span>{{ detailsError() }}</span>
+                </div>
+              }
               @if (signinError()) {
                 <div class="notice notice-error u-rise" role="alert">
                   <svg
@@ -299,10 +320,10 @@ const NIGERIAN_STATES = [
                   <span>{{ signinError() }}</span>
                 </div>
               }
-            }
-
-            <p class="section-label">Delivery address</p>
-            <div class="auth-box checkout-auth">
+              }
+            } @else {
+              <p class="section-label">Delivery address</p>
+              <div class="auth-box checkout-auth">
               <label
                 >State
                 <select [(ngModel)]="shipState" name="shipState" required>
@@ -377,6 +398,7 @@ const NIGERIAN_STATES = [
                 </p>
               </div>
             }
+            }
           </div>
         </div>
 
@@ -401,16 +423,21 @@ const NIGERIAN_STATES = [
 
       <div class="sticky-cta u-rise-2">
         <div class="scta-inner">
-          <span class="scta-trust">Final payment · secured by Paystack</span>
-          <button class="cta" type="button" (click)="proceed()" [disabled]="placing()">
+          <span class="scta-trust">{{ ctaTrust() }}</span>
+          <button class="cta" type="button" (click)="primaryAction()" [disabled]="placing()">
             @if (placing()) {
               <span class="btn-loading"
                 ><span class="spinner" aria-hidden="true"></span>Placing order…</span
               >
             } @else {
-              {{ api.isLoggedIn ? 'Proceed to payment →' : 'Sign in to continue' }}
+              {{ primaryLabel() }}
             }
           </button>
+          @if (!onDetailsStage()) {
+            <!-- Address typos are the common miss, so going back is offered rather
+                 than forcing a restart. Values survive: nothing is cleared. -->
+            <button class="link" type="button" (click)="toDetails()">← Back to your details</button>
+          }
         </div>
       </div>
     }
@@ -428,6 +455,9 @@ export class CheckoutPage {
   readonly error = signal<string | null>(null);
   readonly signinError = signal<string | null>(null);
   readonly deliveryError = signal<string | null>(null);
+  /** Why stage 02 (your details) is not satisfied. Separate from deliveryError()
+      so each step reports only its own problem, on the step that owns it. */
+  readonly detailsError = signal<string | null>(null);
   readonly orderId = signal<string | null>(null);
   readonly paystackUrl = signal<string | null>(null);
   readonly paidTotal = signal(0);
@@ -443,6 +473,46 @@ export class CheckoutPage {
   );
 
   readonly NIGERIAN_STATES = NIGERIAN_STATES;
+
+  /**
+   * Which checkout step is showing, 2 or 3. Cart is step 1 (its own page) and
+   * payment is step 4, keyed off orderId(). Split from one long form because a
+   * single screen carrying name, email, receipt and a five-field address is a
+   * wall: each step asks one question and validates only what it owns.
+   */
+  readonly stage = signal<2 | 3>(2);
+  readonly onDetailsStage = computed(() => this.stage() === 2);
+
+  /** Which of the four steps the bar shows. Cart is step 1 on its own page. */
+  readonly currentStep = computed(() => {
+    if (this.orderId()) return 4;
+    return this.stage();
+  });
+
+  readonly stageTitle = computed(() => {
+    if (this.orderId()) return 'Stage 04 ' + DOT + ' Order placed';
+    return this.stage() === 2
+      ? 'Stage 02 ' + DOT + ' Your details'
+      : 'Stage 03 ' + DOT + ' Delivery address';
+  });
+
+  readonly primaryLabel = computed(() => {
+    if (this.stage() === 2) return 'Continue to delivery →';
+    return this.api.isLoggedIn ? 'Proceed to payment →' : 'Place order and pay →';
+  });
+
+  readonly ctaTrust = computed(() =>
+    this.stage() === 2 ? 'Step 2 of 4 · no account needed' : 'Final payment · secured by Paystack',
+  );
+
+  /** One button, two jobs: the details step advances, the delivery step places. */
+  primaryAction(): void {
+    if (this.stage() === 2) {
+      this.toDelivery();
+      return;
+    }
+    this.proceed();
+  }
 
   name = '';
   phone = '';
@@ -487,6 +557,42 @@ export class CheckoutPage {
     });
   }
 
+  /**
+   * Advance from the details step to the delivery step. A signed-in customer has
+   * nothing to fill in here (their details are already on the order), so the step
+   * is skipped rather than shown empty.
+   */
+  toDelivery(): void {
+    if (this.placing()) return;
+    if (!this.api.isLoggedIn) {
+      const missing = this.guestMissing();
+      if (missing) {
+        this.detailsError.set(missing);
+        this.details()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+    }
+    this.detailsError.set(null);
+    this.stage.set(3);
+    // Land at the top of the new step rather than where the old form's button sat.
+    queueMicrotask(() =>
+      this.details()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
+  }
+
+  /**
+   * Back to the details step from delivery. Values are untouched, so this is
+   * purely for the common case of mistyping a street address and noticing it.
+   */
+  toDetails(): void {
+    if (this.placing()) return;
+    this.stage.set(2);
+    queueMicrotask(() =>
+      this.details()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
+  }
+
+  /** Places the order. Only reachable once both steps are satisfied. */
   proceed(): void {
     if (this.placing()) return;
     // A guest is not turned away, only asked for the two fields the order
@@ -494,13 +600,15 @@ export class CheckoutPage {
     if (!this.api.isLoggedIn) {
       const missingGuest = this.guestMissing();
       if (missingGuest) {
-        this.deliveryError.set(missingGuest);
+        this.stage.set(2);
+        this.detailsError.set(missingGuest);
         this.details()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
       }
     }
     const missing = this.deliveryMissing();
     if (missing) {
+      this.stage.set(3);
       this.deliveryError.set(missing);
       this.details()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
