@@ -4,6 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService, Order } from '../api.service';
 
+/** Only the sign-in address is persisted; never the password or session token. */
+const REMEMBERED_EMAIL_KEY = 'seentair.rememberedEmail';
+
 @Component({
   selector: 'app-account',
   imports: [CommonModule, FormsModule, RouterLink],
@@ -22,29 +25,6 @@ import { ApiService, Order } from '../api.service';
                 : 'One account for orders, returns and drop notifications. No spam.'
             }}
           </p>
-
-          <div class="auth-tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              class="auth-tab"
-              [class.active]="mode() === 'signin'"
-              [attr.aria-selected]="mode() === 'signin'"
-              (click)="setMode('signin')"
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              role="tab"
-              class="auth-tab"
-              [class.active]="mode() === 'register'"
-              [attr.aria-selected]="mode() === 'register'"
-              (click)="setMode('register')"
-            >
-              Create account
-            </button>
-          </div>
 
           <form class="auth-form" (ngSubmit)="submit()" novalidate>
             @if (mode() === 'register') {
@@ -99,12 +79,7 @@ import { ApiService, Order } from '../api.service';
             }
 
             <div class="field">
-              <div class="label-row">
-                <label for="ac-password">Password</label>
-                @if (mode() === 'signin') {
-                  <button class="link-inline" type="button" (click)="forgot()">Forgot?</button>
-                }
-              </div>
+              <label for="ac-password">Password</label>
               <div class="input-affix">
                 <input
                   id="ac-password"
@@ -131,33 +106,67 @@ import { ApiService, Order } from '../api.service';
               }
             </div>
 
-            <button class="cta auth-submit" type="submit" [disabled]="busy()">
-              {{
-                busy()
-                  ? mode() === 'signin'
-                    ? 'Signing in…'
-                    : 'Creating account…'
-                  : mode() === 'signin'
-                    ? 'Sign in'
-                    : 'Create account'
-              }}
-            </button>
+            @if (mode() === 'signin') {
+              <div class="auth-row">
+                <label class="auth-check">
+                  <input type="checkbox" name="remember" [(ngModel)]="remember" />
+                  <span>Remember me</span>
+                </label>
+                <button class="link-inline auth-forgot" type="button" (click)="forgot()">
+                  Forgot password
+                </button>
+              </div>
+            }
 
-            @if (error()) {
-              <p class="auth-error" role="alert">{{ error() }}</p>
-            }
-            @if (info()) {
-              <p class="auth-info" role="status">{{ info() }}</p>
-            }
+            <button class="cta auth-submit" type="submit" [disabled]="busy()">
+              @if (busy()) {
+                <span class="auth-spinner" aria-hidden="true"></span>
+              }
+              <span>
+                {{
+                  busy()
+                    ? mode() === 'signin'
+                      ? 'Signing in…'
+                      : 'Creating account…'
+                    : mode() === 'signin'
+                      ? 'Sign in'
+                      : 'Create account'
+                }}
+              </span>
+            </button>
           </form>
 
-          <p class="auth-fine">Secured connection. Authorised users only.</p>
+          @if (error()) {
+            <p class="auth-error" role="alert">{{ error() }}</p>
+          }
+          @if (info()) {
+            <p class="auth-info" role="status">{{ info() }}</p>
+          }
+
+          <div class="auth-divider"><span>or</span></div>
+
+          <p class="auth-switch">
+            @if (mode() === 'signin') {
+              Don't have an account?
+              <button class="link-inline" type="button" (click)="setMode('register')">
+                Create one
+              </button>
+            } @else {
+              Already have an account?
+              <button class="link-inline" type="button" (click)="setMode('signin')">Sign in</button>
+            }
+          </p>
 
           <div class="trust-row auth-trust">
             <span>Full payment</span>
             <span>Tracked dispatch</span>
             <span>12h returns</span>
           </div>
+
+          <p class="auth-fine">
+            <a routerLink="/policies">Terms</a> · <a routerLink="/policies">Privacy</a> ·
+            <a routerLink="/policies">Help</a>
+          </p>
         </div>
       </section>
     } @else {
@@ -212,6 +221,8 @@ export class AccountPage implements OnInit {
   email = '';
   phone = '';
   password = '';
+  /** Remembers the email address only, never the password or session token. */
+  remember = true;
 
   setMode(mode: 'signin' | 'register'): void {
     this.mode.set(mode);
@@ -246,6 +257,12 @@ export class AccountPage implements OnInit {
   }
 
   ngOnInit(): void {
+    const saved = this.readRememberedEmail();
+    if (saved) {
+      this.email = saved;
+    } else {
+      this.remember = false;
+    }
     if (this.api.isLoggedIn) this.loadOrders();
   }
 
@@ -264,8 +281,12 @@ export class AccountPage implements OnInit {
     };
 
     if (this.mode() === 'signin') {
-      this.api.login(this.email.trim(), this.password).subscribe({
-        next: done,
+      const addr = this.email.trim();
+      this.api.login(addr, this.password).subscribe({
+        next: () => {
+          this.persistRememberedEmail(addr);
+          done();
+        },
         error: (e: { status?: number }) => {
           this.busy.set(false);
           this.error.set(
@@ -309,5 +330,25 @@ export class AccountPage implements OnInit {
   private loadOrders(): void {
     this.api.myOrders().subscribe((res) => this.orders.set(res.data));
     this.api.notifications().subscribe((res) => this.notifications.set(res.data));
+  }
+
+  private readRememberedEmail(): string | null {
+    try {
+      return localStorage.getItem(REMEMBERED_EMAIL_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  private persistRememberedEmail(addr: string): void {
+    try {
+      if (this.remember) {
+        localStorage.setItem(REMEMBERED_EMAIL_KEY, addr);
+      } else {
+        localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+      }
+    } catch {
+      /* Private-mode storage denial must not break sign-in. */
+    }
   }
 }

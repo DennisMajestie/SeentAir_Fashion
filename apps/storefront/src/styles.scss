@@ -219,7 +219,7 @@ code {
   justify-content: center;
   border: 1px solid var(--line-2);
   border-radius: var(--radius-pill);
-  /* Transparent at rest and tinting on hover, exactly like .cart-btn — the
+  /* Transparent at rest and tinting on hover, exactly like .cart-btn â€” the
      other four header icons carry no fill, so a solid one here made this the
      only chip in the row. */
   background: transparent;
@@ -249,7 +249,7 @@ code {
   .header-actions {
     margin-left: auto;
   }
-  /* Header icons read as plain glyphs on mobile — no outline ring. The hover
+  /* Header icons read as plain glyphs on mobile â€” no outline ring. The hover
      state is neutralised too: a tap leaves it stuck on a touch screen. Focus
      rings are outlines, not borders, so keyboard focus is unaffected. */
   .site-header .header-actions button,
@@ -287,7 +287,7 @@ code {
   text-decoration: none;
   border-radius: var(--radius-pill);
   /* These are <button>s, so with no background/border of their own they fell
-     back to the browser's default button chrome — a grey fill and a border —
+     back to the browser's default button chrome â€” a grey fill and a border â€”
      while .theme-toggle and .menu-toggle set theirs explicitly. appearance
      also clears iOS Safari's own button styling. */
   appearance: none;
@@ -495,7 +495,7 @@ code {
   padding-bottom: 0.5rem;
   margin: 2.2rem 0 1rem;
   &::before {
-    content: '■';
+    content: 'â– ';
     color: var(--primary);
     font-size: 0.55rem;
   }
@@ -2159,26 +2159,169 @@ textarea {
   }
 }
 
-/* ---------- customer sign-in / create account ---------- */
+/* ---------- customer sign-in / create account ----------
+   Full-bleed photo surface. There is deliberately NO card: the form column
+   sits straight on form-bg.jpg so nothing reads as a white panel floating on
+   a picture. Legibility comes from a fixed dark scrim plus per-field
+   translucent surfaces, not from a container. All colour is a local
+   on-photo palette so the screen stays legible in BOTH themes - the site's
+   light tokens (dark ink on ivory) would vanish against the photograph. */
 .auth-screen {
-  display: flex;
-  justify-content: center;
-  padding-block: clamp(2rem, 6vw, 4.5rem);
+  /* Every colour the overlay needs is declared here, so no rule below has to
+     know which theme is active. The light theme re-declares the same names
+     under :root[data-theme='light'] further down. */
+  --photo-ink: #f7f2e9;
+  --photo-muted: #ddd5c8;
+  --photo-line: rgb(247 242 233 / 0.52);
+  --photo-line-strong: rgb(247 242 233 / 0.78);
+  --photo-field: rgb(14 12 10 / 0.55);
+  --photo-field-focus: rgb(14 12 10 / 0.72);
+  --photo-placeholder: rgb(221 213 200 / 0.6);
+  --photo-gold: #f0dcae;
+  --photo-gold-fill: #c9a24b;
+  --photo-on-gold: #1c1b1b;
+  --photo-danger: #ffb4ab;
+  --photo-danger-bg: rgb(186 26 26 / 0.32);
+  --photo-danger-line: rgb(255 180 171 / 0.45);
+  --photo-ok: #b6f0cd;
+  --photo-ok-bg: rgb(27 127 59 / 0.32);
+  --photo-ok-line: rgb(182 240 205 / 0.45);
+  --photo-base: #14110e;
+  /* Channels only, no alpha: the scrim gradients share one alpha ramp and
+     simply flip from a black wash to a white one per theme. */
+  --photo-wash: 10 8 7;
+
+  /* Escape main's 1280px cap and its inline padding so the photo runs to both
+     window edges. clamp() guards the width so a viewport without a space for
+     a classic scrollbar can never open a horizontal scrollbar. */
+  position: relative;
+  isolation: isolate;
+  width: auto;
+  margin-inline: calc(50% - 50vw);
+  min-height: calc(100svh - var(--header-h));
+  display: grid;
+  justify-items: start;
+  align-content: center;
+  /* Share the header's gutter exactly. .wrap-col centres --wrap-max and pads
+     by --wrap-x, so the distance from the window edge to the header logo is
+     max(0, (100vw - --wrap-max)/2) + --wrap-x. Reusing it here means the form
+     column starts precisely under the logo at every width, while the photo
+     still runs full bleed behind both. */
+  padding-inline: calc(max(0px, (100vw - var(--wrap-max)) / 2) + var(--wrap-x));
+  padding-block: clamp(2.5rem, 6vw, 4rem) clamp(3rem, 7vw, 4.5rem);
+  background-color: var(--photo-base);
+  background-image: url('/assets/form-bg.jpg');
+  background-size: cover;
+  background-position: center 26%;
+  background-repeat: no-repeat;
+
+  /* Scrim: guarantees AA text contrast over an unknown photograph. The
+     horizontal wash is heaviest under the left-hand column and lifts toward
+     the right so the picture still reads, while the vertical pass keeps the
+     sticky header and the fine print legible. */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        ellipse 62% 74% at 24% 48%,
+        rgb(var(--photo-wash) / 0.5) 0%,
+        rgb(var(--photo-wash) / 0.24) 62%,
+        transparent 100%
+      ),
+      linear-gradient(
+        90deg,
+        rgb(var(--photo-wash) / 0.92) 0%,
+        rgb(var(--photo-wash) / 0.88) 30%,
+        rgb(var(--photo-wash) / 0.72) 45%,
+        rgb(var(--photo-wash) / 0.4) 70%,
+        rgb(var(--photo-wash) / 0.3) 100%
+      ),
+      linear-gradient(
+        180deg,
+        rgb(var(--photo-wash) / 0.5) 0%,
+        rgb(var(--photo-wash) / 0.08) 26%,
+        rgb(var(--photo-wash) / 0.66) 100%
+      );
+  }
 }
+
+/* Below the two-column breakpoint the column re-centres and the scrim goes
+   back to a symmetric wash, because a left-weighted gradient would leave one
+   side of a narrow screen too bright to read. */
+@media (max-width: 899px) {
+  .auth-screen {
+    justify-items: center;
+    padding-inline: var(--wrap-x);
+
+    &::before {
+      background:
+        radial-gradient(
+          ellipse 92% 56% at 50% 46%,
+          rgb(var(--photo-wash) / 0.62) 0%,
+          rgb(var(--photo-wash) / 0.82) 55%,
+          rgb(var(--photo-wash) / 0.9) 100%
+        ),
+        linear-gradient(
+          180deg,
+          rgb(var(--photo-wash) / 0.55) 0%,
+          rgb(var(--photo-wash) / 0.12) 26%,
+          rgb(var(--photo-wash) / 0.7) 100%
+        );
+    }
+  }
+}
+
+/* Light theme: the wash flips from black to warm ivory, so the photograph is
+   still readable but the type on top of it goes dark. Only the tokens change,
+   which keeps one set of rules for both themes. Specificity is
+   (0,3,0) against .auth-screen's (0,1,0), so order does not matter. */
+:root[data-theme='light'] .auth-screen {
+  --photo-ink: #241f1a;
+  --photo-muted: #4b423a;
+  --photo-line: rgb(44 35 26 / 0.5);
+  --photo-line-strong: rgb(32 25 18 / 0.72);
+  --photo-field: rgb(255 255 255 / 0.78);
+  --photo-field-focus: rgb(255 255 255 / 0.95);
+  --photo-placeholder: rgb(56 49 42 / 0.82);
+  /* Darker than the dark theme's #f0dcae, which vanishes on ivory. Bronze,
+     not yellow: #7a5a12 measured 3.76:1 over a washed photo at 900px. */
+  --photo-gold: #6a4d0d;
+  --photo-gold-fill: #c9a24b;
+  --photo-on-gold: #1c1b1b;
+  --photo-danger: #a8231c;
+  --photo-danger-bg: rgb(168 35 28 / 0.14);
+  --photo-danger-line: rgb(168 35 28 / 0.4);
+  --photo-ok: #12632c;
+  --photo-ok-bg: rgb(18 99 44 / 0.14);
+  --photo-ok-line: rgb(18 99 44 / 0.4);
+  --photo-base: #f6f1e9;
+  --photo-wash: 252 249 243;
+}
+
+/* The column: no fill, just a hairline frame. The approved direction called
+   for no white panel, so the photograph still reads straight through - the
+   border only marks where the form begins and ends. */
 .auth-card {
   width: 100%;
-  max-width: 440px;
-  background: var(--card);
-  border: 1px solid var(--line);
+  max-width: 420px;
+  margin: 0;
+  padding: clamp(1.5rem, 4vw, 2.4rem) clamp(1.1rem, 3.5vw, 1.9rem);
+  background: none;
+  border: 1px solid var(--photo-line);
   border-radius: var(--radius);
-  padding: clamp(1.4rem, 4vw, 2.2rem);
+  text-align: center;
 }
+
 .auth-eyebrow {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--primary);
+  color: var(--photo-gold);
   margin: 0 0 0.5rem;
 }
 .auth-title {
@@ -2188,56 +2331,46 @@ textarea {
   font-size: clamp(1.9rem, 6vw, 2.5rem);
   line-height: 0.92;
   margin: 0;
-  color: var(--ink);
+  color: var(--photo-ink);
 }
 .auth-lede {
   font-size: 0.92rem;
   line-height: 1.55;
-  color: var(--muted);
-  margin: 0.7rem 0 0;
+  color: var(--photo-muted);
+  margin: 0.7rem auto 0;
   max-width: 34ch;
 }
 
-.auth-tabs {
+/* Sign in / Create account used to be a two-tab pill. The approved layout
+   carries a plain text switch under a divider instead, so the tab strip and
+   its styles are gone; these two classes only style that switch. */
+.auth-divider {
   display: flex;
-  gap: 4px;
-  margin: 1.5rem 0 1.2rem;
-  background: var(--container);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  padding: 4px;
-}
-.auth-tab {
-  flex: 1;
-  min-height: 40px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.76rem;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 1.5rem 0 0.9rem;
+  color: var(--photo-muted);
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-  &:hover {
-    color: var(--ink);
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--photo-line);
   }
-  &.active {
-    background: var(--primary-fill);
-    color: var(--on-primary);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
-  }
+}
+.auth-switch {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--photo-muted);
 }
 
 .auth-form .field {
   margin-bottom: 1rem;
+  text-align: left;
 }
 .auth-form label,
 .auth-form .label-row label {
@@ -2245,7 +2378,7 @@ textarea {
   margin: 0 0 0.4rem;
   font-size: 0.7rem;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--photo-muted);
   text-transform: uppercase;
   letter-spacing: 0.14em;
 }
@@ -2256,33 +2389,43 @@ textarea {
   gap: 1rem;
 }
 .auth-form .optional {
-  color: var(--line-2);
+  color: var(--photo-line-strong);
   font-weight: 600;
   letter-spacing: 0.1em;
 }
-.auth-form input {
+.auth-form input[type='text'],
+.auth-form input[type='email'],
+.auth-form input[type='tel'],
+.auth-form input[type='password'] {
   display: block;
   width: 100%;
   max-width: none;
   min-height: 52px;
   margin: 0;
   padding: 0 0.9rem;
-  background: var(--container);
-  color: var(--ink);
-  border: 1px solid var(--line-2);
+  background: var(--photo-field);
+  color: var(--photo-ink);
+  border: 1px solid var(--photo-line);
   border-radius: var(--radius-field);
   font-family: 'Inter', sans-serif;
   font-size: 1rem;
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out);
   &::placeholder {
-    color: var(--line-2);
+    color: var(--photo-placeholder);
+  }
+  &:hover {
+    border-color: var(--photo-line-strong);
   }
   &:focus {
     outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-tint);
+    border-color: var(--photo-gold);
+    background: var(--photo-field-focus);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--photo-gold);
+    outline-offset: 2px;
   }
   &[aria-invalid='true'] {
     border-color: var(--danger);
@@ -2300,11 +2443,12 @@ textarea {
   right: 6px;
   transform: translateY(-50%);
   min-height: 40px;
+  min-width: 44px;
   padding: 0 0.8rem;
   border-radius: var(--radius-pill);
   background: transparent;
-  border: 1px solid var(--line-2);
-  color: var(--muted);
+  border: 1px solid var(--photo-line);
+  color: var(--photo-muted);
   cursor: pointer;
   font-family: 'Inter', sans-serif;
   font-size: 0.68rem;
@@ -2312,46 +2456,118 @@ textarea {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   &:hover {
-    color: var(--primary);
-    border-color: var(--primary);
+    color: var(--photo-gold);
+    border-color: var(--photo-gold);
   }
   &:focus-visible {
-    outline: 2px solid var(--primary);
+    outline: 2px solid var(--photo-gold);
     outline-offset: 2px;
   }
 }
+
+/* Remember me + Forgot password. */
+.auth-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.2rem 0 1.1rem;
+}
+.auth-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 44px;
+  margin: 0;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  color: var(--photo-muted) !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  cursor: pointer;
+  input {
+    width: 18px;
+    height: 18px;
+    min-height: 0;
+    margin: 0;
+    accent-color: var(--photo-gold-fill);
+    cursor: pointer;
+  }
+  &:focus-within {
+    outline: 2px solid var(--photo-gold);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+}
 .link-inline {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.15rem;
   background: none;
   border: 0;
-  padding: 0;
   cursor: pointer;
-  color: var(--primary);
+  color: var(--photo-gold);
   text-decoration: underline;
+  text-underline-offset: 3px;
   font-family: 'Inter', sans-serif;
-  font-size: 0.7rem;
+  font-size: 0.85rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  &:hover {
+    color: var(--photo-ink);
+  }
   &:focus-visible {
-    outline: 2px solid var(--primary);
+    outline: 2px solid var(--photo-gold);
     outline-offset: 2px;
   }
+}
+.auth-forgot {
+  flex: none;
+  font-size: 0.78rem;
 }
 .field-hint {
   margin: 0.35rem 0 0;
   font-size: 0.75rem;
-  color: var(--muted);
+  color: var(--photo-muted);
 }
 .field-error {
   margin: 0.35rem 0 0;
   font-size: 0.78rem;
-  color: var(--danger);
+  color: var(--photo-danger);
 }
 
 .auth-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
   width: 100%;
+  min-height: 52px;
   margin-top: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
+
+/* Busy spinner inside the submit button. */
+.auth-spinner {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid rgb(28 27 27 / 0.28);
+  border-top-color: var(--photo-on-gold);
+  animation: auth-spin 0.7s linear infinite;
+}
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .auth-error,
 .auth-info {
   margin: 0.9rem 0 0;
@@ -2359,20 +2575,22 @@ textarea {
   border-radius: var(--radius);
   font-size: 0.85rem;
   line-height: 1.45;
+  text-align: left;
 }
 .auth-error {
-  color: var(--danger);
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  color: var(--photo-danger);
+  background: var(--photo-danger-bg);
+  border: 1px solid var(--photo-danger-line);
 }
 .auth-info {
-  color: var(--ok);
-  background: color-mix(in srgb, var(--ok) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent);
+  color: var(--photo-ok);
+  background: var(--photo-ok-bg);
+  border: 1px solid var(--photo-ok-line);
 }
 
 .auth-trust {
   margin-top: 1.6rem;
+  color: var(--photo-muted);
 }
 
 .auth-fine {
@@ -2380,7 +2598,43 @@ textarea {
   text-align: center;
   font-size: 0.75rem;
   letter-spacing: 0.02em;
-  color: var(--muted);
+  color: var(--photo-muted);
+  a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    &:hover {
+      color: var(--photo-ink);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--photo-gold);
+      outline-offset: 2px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-row {
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+  }
+  /* 100svh is the small-viewport height; the photo still covers when a
+     mobile browser's URL bar collapses. */
+  .auth-screen {
+    background-position: center 22%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-spinner {
+    animation-duration: 2.4s;
+  }
+  .auth-form input,
+  .affix-btn,
+  .link-inline,
+  .auth-fine a {
+    transition: none;
+  }
 }
 
 .auth-box,
@@ -2904,7 +3158,7 @@ textarea {
   .hero-wrap {
     /* Capped so the copy stays a caption rather than a wall over the scene.
        It must NOT clip: the block is bottom-aligned, so anything taller than
-       the cap overflows upward, and the card sits at the top (order: -1) —
+       the cap overflows upward, and the card sits at the top (order: -1) â€”
        `overflow: hidden` therefore sliced the card's top off at the acts whose
        headline wraps to two lines, which is worst on short phones. Letting it
        overflow visibly costs a little of the photograph at those acts and
