@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService, CustomOrder } from '../api.service';
 import { pill } from '../status-pill';
+import { LedgerComponent, StripComponent } from '../ui/primitives';
 
 interface Milestone {
   label: string;
@@ -11,14 +12,15 @@ interface Milestone {
 }
 
 /**
- * W10, Custom request status: bespoke-request header, production milestone
- * lifecycle, strike-off sample panel, batch parameters and the consignee
- * sign-off terminal (quote acceptance / sample approval), all wired to the
- * live custom-orders API.
+ * W10, Custom request status.
+ *
+ * A gated production record, not a list: the lifecycle track stays a track and
+ * nothing collapses, because at each stage the buyer has exactly one decision
+ * to make and the surrounding facts must all be visible when they make it.
  */
 @Component({
   selector: 'app-custom-status',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, StripComponent, LedgerComponent],
   template: `
     <a class="link backlink" routerLink="/custom">
       <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
@@ -26,34 +28,18 @@ interface Milestone {
     </a>
 
     @if (request(); as req) {
-      <div class="cart-strip">
-        <span class="left"
-          ><span class="chip"
-            >Custom bespoke request #CR-{{ req.id.slice(0, 8).toUpperCase() }}</span
-          ></span
-        >
-        <span class="muted small">Lodged {{ req.createdAt | date: 'dd MMM yyyy' }}</span>
-      </div>
-
-      <section class="panel">
-        <div class="oc-top">
-          <h1 style="font-size: var(--type-heading-md); max-width: 30ch">{{ title(req) }}</h1>
-          <span class="status" [class]="'status ' + pill(req.status)">
-            {{ req.status.replaceAll('_', ' ') }}</span
-          >
-        </div>
-        <p class="muted small" style="margin: var(--space-sm) 0 0">{{ req.description }}</p>
+      <se-strip label="Custom bespoke request" [badge]="'#CR-' + code(req)" trailing>
+        <span stripTrailing class="status {{ pill(req.status) }}">
+          {{ req.status.replaceAll('_', ' ') }}
+        </span>
+        <h1 class="cs-title">{{ title(req) }}</h1>
+        <p class="muted small" style="margin: 0 0 var(--space-sm)">{{ req.description }}</p>
         <!-- GAP: attached techpack chip awaits the custom-order asset pipeline -->
-        <p class="meta-line muted" style="margin-top: var(--space-sm)">
-          <span
-            class="material-symbols-outlined"
-            style="font-size:14px; vertical-align:-2px"
-            aria-hidden="true"
-            >verified</span
-          >
-          Factory-backed contract · full payment before production
+        <p class="policy-line">
+          <strong>Factory-backed contract.</strong> Full payment is required before production
+          begins. Lodged {{ req.createdAt | date: 'dd MMM yyyy' }}.
         </p>
-      </section>
+      </se-strip>
 
       <div class="lifecycle">
         <div class="lc-head">
@@ -82,33 +68,15 @@ interface Milestone {
       </div>
 
       @if (req.reviewNote) {
-        <section class="panel">
-          <div class="tagbar"><span>Factory review note</span><span>Production desk</span></div>
-          <p class="small" style="margin:0">“{{ req.reviewNote }}”</p>
-        </section>
+        <se-strip label="Factory review note" badge="Production desk">
+          <p class="small" style="margin: 0">“{{ req.reviewNote }}”</p>
+        </se-strip>
       }
 
       @if (req.status === 'quoted') {
-        <div class="section-head">
-          <h2>Quotation &amp; pricing</h2>
-          <span class="aside">Awaiting your acceptance</span>
-        </div>
-        <section class="panel">
+        <se-strip label="Quotation & pricing" badge="Awaiting your acceptance">
           @if (quote(); as q) {
-            <div class="ledger">
-              <div class="lg-row total">
-                <span
-                  >Quoted production cost<br />
-                  <span
-                    class="muted"
-                    style="font-weight:400; font-size: var(--type-body-sm); text-transform:none; letter-spacing:normal"
-                  >
-                    raw material + sewing + branding + packaging</span
-                  ></span
-                >
-                <span class="v">₦{{ q.amount | number: '1.0-2' }}</span>
-              </div>
-            </div>
+            <se-ledger [rows]="quoteRows(q)" />
             @if (q.note) {
               <p class="muted small">{{ q.note }}</p>
             }
@@ -121,7 +89,7 @@ interface Milestone {
               View quotation
             </button>
           }
-        </section>
+        </se-strip>
       }
 
       @if (req.status === 'quote_accepted') {
@@ -129,89 +97,50 @@ interface Milestone {
           <span class="material-symbols-outlined" aria-hidden="true">payments</span>
           <div>
             <strong>Awaiting settlement</strong>
-            Full payment (bank transfer / POS) is due now: the desk confirms it, then the
-            strike-off sample enters production. No part-payments.
+            Full payment (bank transfer / POS) is due now: the desk confirms it, then the strike-off
+            sample enters production. No part-payments.
           </div>
         </div>
       }
 
-      <div class="section-head">
-        <h2>Manufacturing strike-off sample</h2>
-        <span class="aside">{{ sampleStageLabel(req) }}</span>
-      </div>
-      <section class="panel">
-        <p class="small muted" style="margin:0 0 var(--space-sm)">
-          The factory produces one physical sample for your verification, seams, prints and fabric
-          weight: before any bulk cutting starts.
+      <se-strip label="Manufacturing strike-off sample" [badge]="sampleStageLabel(req)">
+        <p class="small muted" style="margin: 0 0 var(--space-sm)">
+          The factory produces one physical sample for your verification: seams, prints and fabric
+          weight, before any bulk cutting starts.
         </p>
         <!-- GAP: sample photography (multi-angle gallery in the reference) awaits
              the S3 media pipeline on custom orders; the stage copy is live data. -->
         @if (req.status === 'sample_in_production') {
-          <div class="moq-banner met" style="margin:0">
-            <span class="material-symbols-outlined" aria-hidden="true"
-              >precision_manufacturing</span
-            >
-            <div>
-              <strong>Your sample is in production at the Aba workshop.</strong>
-              <span class="sub"
-                >Once it reaches you, record your decision in the sign-off terminal below, full
-                production only starts after your approval.</span
-              >
-            </div>
+          <div class="status-strip ok">
+            <span class="dot" aria-hidden="true"></span>
+            <span>
+              <strong>Your sample is in production at the Aba workshop.</strong> Once it reaches
+              you, record your decision in the sign-off terminal below: full production only starts
+              after your approval.
+            </span>
           </div>
         } @else if (currentStage() >= 4) {
-          <p class="small" style="margin:0"><strong>Sample stage passed.</strong></p>
+          <p class="small" style="margin: 0"><strong>Sample stage passed.</strong></p>
         } @else {
-          <p class="small muted" style="margin:0">
+          <p class="small muted" style="margin: 0">
             Sample production begins after quotation acceptance and confirmed settlement.
           </p>
         }
-      </section>
+      </se-strip>
 
-      <div class="section-head">
-        <h2>Batch parameters</h2>
-        <span class="aside">{{ req.quantity }} units total</span>
-      </div>
-      <section class="panel">
-        <div class="scroll-hint" style="margin-top:0"><span>Ratio breakdown</span></div>
-        <div class="size-grid" style="margin-bottom: var(--space-md)">
+      <se-strip label="Batch parameters" [badge]="req.quantity + ' units total'">
+        <div class="size-grid">
           @for (part of sizeParts(req); track part) {
-            <div class="sz" style="padding: var(--space-sm)">
-              <span class="s-l" style="margin-bottom:0">{{ part }}</span>
+            <div class="sz">
+              <span class="s-l">{{ part }}</span>
             </div>
           }
         </div>
-        <div class="ledger">
-          <div class="lg-row">
-            <span>Fabric</span><span class="v">{{ req.fabricQuality }}</span>
-          </div>
-          <div class="lg-row">
-            <span>Approved colourways</span><span class="v">{{ req.colours }}</span>
-          </div>
-          <div class="lg-row">
-            <span>Target delivery</span><span class="v">{{ req.desiredDate }}</span>
-          </div>
-          @if (paidAt(); as when) {
-            <div class="lg-row">
-              <span>Settled</span>
-              <span class="v">{{ when | date: 'dd MMM yyyy' }} (desk-confirmed)</span>
-            </div>
-          }
-          @if (quote(); as q) {
-            <div class="lg-row total">
-              <span>Locked production cost</span>
-              <span class="v">₦{{ q.amount | number: '1.0-2' }}</span>
-            </div>
-          }
-        </div>
-      </section>
+        <se-ledger [rows]="batchRows(req)" />
+      </se-strip>
 
       @if (req.status === 'sample_in_production') {
-        <div class="section-head">
-          <h2>Consignee sign-off terminal</h2>
-          <span class="aside" style="color: var(--primary)">Authorised signatory</span>
-        </div>
-        <section class="panel">
+        <se-strip label="Consignee sign-off terminal" badge="Authorised signatory">
           <label
             >Revision notes (optional)
             <textarea
@@ -244,7 +173,7 @@ interface Milestone {
             <span class="material-symbols-outlined" aria-hidden="true">sync_problem</span>
             Request changes / revise sample
           </button>
-        </section>
+        </se-strip>
       }
       @if (message()) {
         <p class="success">{{ message() }}</p>
@@ -299,9 +228,13 @@ export class CustomStatusPage implements OnInit {
     });
   }
 
+  code(req: CustomOrder): string {
+    return req.id.slice(0, 8).toUpperCase();
+  }
+
   title(req: CustomOrder): string {
     const words = req.description.trim().split(/\s+/).slice(0, 6).join(' ');
-    return words.toUpperCase() || `CUSTOM REQUEST ${req.id.slice(0, 8).toUpperCase()}`;
+    return words.toUpperCase() || `CUSTOM REQUEST ${this.code(req)}`;
   }
 
   /** Map API status onto the six lifecycle stages. */
@@ -329,6 +262,42 @@ export class CustomStatusPage implements OnInit {
 
   paidAt(): string | null {
     return this.request()?.paidAt ?? null;
+  }
+
+  quoteRows(q: { amount: number; note: string | null }): Array<LedgerRow> {
+    return [
+      {
+        label: 'Quoted production cost',
+        value: `₦${this.money(q.amount)}`,
+        note: 'raw material + sewing + branding + packaging',
+        total: true,
+      },
+    ];
+  }
+
+  batchRows(req: CustomOrder): Array<LedgerRow> {
+    const rows: Array<LedgerRow> = [
+      { label: 'Fabric', value: req.fabricQuality, numeric: false },
+      { label: 'Approved colourways', value: req.colours, numeric: false },
+      { label: 'Target delivery', value: req.desiredDate, numeric: false },
+    ];
+    const paid = req.paidAt;
+    if (paid) {
+      rows.push({
+        label: 'Settled',
+        value: `${this.day(paid)} (desk-confirmed)`,
+        numeric: false,
+      });
+    }
+    const q = this.quote();
+    if (q) {
+      rows.push({
+        label: 'Locked production cost',
+        value: `₦${this.money(q.amount)}`,
+        total: true,
+      });
+    }
+    return rows;
   }
 
   loadQuote(id: string): void {
@@ -371,4 +340,28 @@ export class CustomStatusPage implements OnInit {
       this.request.set(res.data.find((r) => r.id === id) ?? null);
     });
   }
+
+  private money(value: number): string {
+    return value.toLocaleString('en-NG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  private day(value: string): string {
+    return new Intl.DateTimeFormat('en-NG', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date(value));
+  }
+}
+
+/** The one row shape `se-ledger` accepts. */
+interface LedgerRow {
+  label: string;
+  value: string;
+  note?: string;
+  total?: boolean;
+  numeric?: boolean;
 }

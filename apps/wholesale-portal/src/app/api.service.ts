@@ -1,15 +1,25 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, of, tap } from 'rxjs';
 import { API_BASE, TokenStore } from './auth-token.store';
 
 export { API_BASE, authInterceptor } from './auth-token.store';
+
+/**
+ * A variant's availability is a display status only. Stock quantity is derived
+ * from the inventory ledger and is never sent to a wholesale buyer - the
+ * server re-checks it when the batch is committed.
+ */
+export type AvailabilityStatus = 'in_stock' | 'out_of_stock' | 'made_to_order';
 
 export interface PricingVariant {
   id: string;
   sku: string;
   size: string | null;
   colour: string | null;
+  /** Null when the variant has no photography yet. */
+  imageUrl: string | null;
+  availabilityStatus: AvailabilityStatus;
   retailPrice: number;
   wholesalePrice: number;
 }
@@ -18,6 +28,8 @@ export interface PricingProduct {
   id: string;
   name: string;
   category: string | null;
+  /** First variant image, or null. The UI has a no-image state for that. */
+  imageUrl: string | null;
   retailPrice: number;
   wholesalePrice: number;
   variants: PricingVariant[];
@@ -25,6 +37,13 @@ export interface PricingProduct {
 
 export interface Pricing {
   tier: { name: string; discountPercent: number } | null;
+  /**
+   * False when the account has no tier (or a 0% one), in which case
+   * wholesalePrice === retailPrice for every product by construction. The UI
+   * must not show a discount comparison in that case.
+   */
+  hasDiscount: boolean;
+  /** Configured minimum for the whole catalogue, not per-account. */
   moq: number;
   total: number;
   data: PricingProduct[];
@@ -136,6 +155,22 @@ export class ApiService {
 
   pricing(): Observable<Pricing> {
     return this.http.get<Pricing>(`${API_BASE}/wholesale/pricing?limit=50`);
+  }
+
+  /**
+   * Derived stock for the given variants.
+   *
+   * `null` means "not stocked" - a made-to-order variant or an unknown id.
+   * A number is informational only: the order service re-derives stock from
+   * the ledger when the batch is committed, so this can go stale between
+   * load and checkout.
+   */
+  stock(variantIds: string[]): Observable<Record<string, number | null>> {
+    if (variantIds.length === 0) return of({});
+    const q = variantIds.join(',');
+    return this.http.get<Record<string, number | null>>(
+      `${API_BASE}/wholesale/stock?variantIds=${q}`,
+    );
   }
 
   applyForAccount(): Observable<unknown> {

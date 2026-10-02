@@ -3,15 +3,30 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService, Invoice } from '../api.service';
 import { pill } from '../status-pill';
+import { FactsComponent, LedgerComponent, StripComponent } from '../ui/primitives';
 
 /**
- * W7, Invoice detail: commercial document header, issuer / consignee
- * panels, itemized manifest, quality-guarantee note, commercial ledger
- * and document actions. Built entirely from the live invoice record.
+ * Date formatting for facts built in TypeScript. `Intl` rather than injecting
+ * `DatePipe`, which a standalone component only receives if it declares the
+ * pipe — a dependency that fails at runtime, not at build time.
+ */
+const dayFormat = new Intl.DateTimeFormat('en-NG', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+
+/**
+ * W7, Invoice detail: the commercial document for one order.
+ *
+ * A document, not a list, so this page uses `se-strip` throughout and never
+ * collapses anything: everything on an invoice has to stay visible and
+ * printable at once. The manifest stays a real `<table>` because a ledger
+ * with per-line totals is exactly the thing a flexbox will not line up.
  */
 @Component({
   selector: 'app-invoice-detail',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, StripComponent, FactsComponent, LedgerComponent],
   template: `
     <a class="link backlink" routerLink="/orders">
       <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
@@ -19,153 +34,96 @@ import { pill } from '../status-pill';
     </a>
 
     @if (invoice(); as inv) {
-      <div class="doc-head">
-        <div class="dh-row">
-          <span class="chip">{{ paid(inv) ? 'Commercial tax invoice' : 'Pro-forma invoice' }}</span>
-          @if (paid(inv)) {
-            <span class="chip okc">Paid in full · {{ payMethod(inv) }}</span>
-          } @else {
-            <span class="chip accent">{{ inv.paymentStatus.replaceAll('_', ' ') }}</span>
-          }
-        </div>
-        <p class="muted small" style="margin: var(--space-sm) 0 0">Document issued</p>
-        <div class="dh-num">INV-{{ inv.orderId.slice(0, 8).toUpperCase() }}</div>
-        <div class="dh-code">
-          Order production code
-          <strong>#SNT-{{ inv.orderId.slice(0, 8).toUpperCase() }}</strong>
-        </div>
+      <se-strip
+        label="Document issued"
+        [badge]="paid(inv) ? 'Commercial tax invoice' : 'Pro-forma invoice'"
+        trailing
+      >
+        <span stripTrailing class="status {{ pill(inv.status) }}">{{
+          inv.status.replaceAll('_', ' ')
+        }}</span>
+        <div class="doc-num">INV-{{ code(inv) }}</div>
+        <p class="muted small" style="margin: 0 0 var(--space-sm)">
+          Order production code #SNT-{{ code(inv) }}
+        </p>
+        <se-facts [facts]="settlementFacts(inv)" />
+      </se-strip>
+
+      <div class="parties">
+        <se-strip label="Manufacturer / issuer" badge="Aba hub">
+          <p class="party-name">Seentair Limited</p>
+          <p class="muted small" style="margin: 0">
+            Streetwear manufacturer: single factory, Aba, Nigeria.
+          </p>
+          <se-ledger [rows]="issuerRows()" />
+        </se-strip>
+
+        <se-strip label="Billed to &amp; consignee" badge="Verified buyer">
+          <p class="party-name">{{ buyer()?.name ?? 'Wholesale account' }}</p>
+          <p class="muted small" style="margin: 0">Approved Seentair wholesale buyer.</p>
+          <se-ledger [rows]="buyerRows()" />
+        </se-strip>
       </div>
 
-      <div class="meta-grid">
-        <div class="mg">
-          <span class="m-l">Issue date</span>
-          <span class="m-v">{{ inv.createdAt | date: 'dd MMM yyyy' }}</span>
+      <se-strip
+        label="Itemized manifest"
+        [badge]="
+          lines(inv) + (lines(inv) === 1 ? ' line' : ' lines') + ' · ' + units(inv) + ' units'
+        "
+      >
+        <div class="table-scroll">
+          <table class="table">
+            <caption class="sr-only">
+              Items on invoice
+              {{
+                code(inv)
+              }}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Item &amp; SKU</th>
+                <th scope="col" class="num">Qty</th>
+                <th scope="col" class="num">Unit price</th>
+                <th scope="col" class="num">Line total</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of inv.items; track item.sku) {
+                <tr>
+                  <td>
+                    <code>{{ item.sku }}</code>
+                  </td>
+                  <td class="num">{{ item.quantity }} pcs</td>
+                  <td class="num">₦{{ item.unitPrice | number: '1.0-2' }}</td>
+                  <td class="num">
+                    <strong>₦{{ item.lineTotal | number: '1.0-2' }}</strong>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
-        <div class="mg">
-          <span class="m-l">Settlement date</span>
-          <span class="m-v">{{
-            inv.payments[0] ? (inv.payments[0].date | date: 'dd MMM yyyy') : '-'
-          }}</span>
-        </div>
-        <div class="mg">
-          <span class="m-l">Payment ref</span>
-          <span class="m-v">{{
-            inv.payments[0] ? inv.payments[0].id.slice(0, 8).toUpperCase() : 'Pending'
-          }}</span>
-        </div>
-        <div class="mg">
-          <span class="m-l">Channel</span> <span class="m-v">Wholesale portal</span>
-        </div>
-      </div>
+      </se-strip>
 
-      <!-- GAP: issuer RC / TIN / registered street address are not exposed by any
-           config endpoint: the block carries only what the business docs state. -->
-      <div class="party">
-        <div class="p-head">
-          <span>Manufacturer / issuer</span><span class="chip">Aba hub</span>
-        </div>
-        <div class="p-name">Seentair Limited</div>
-        <p class="p-sub">Streetwear manufacturer: single factory, Aba, Nigeria.</p>
-        <div class="p-foot"><span>Finance desk</span><span class="v">+234 1 888 7400</span></div>
-      </div>
-
-      <div class="party">
-        <div class="p-head">
-          <span>Billed to &amp; consignee</span><span class="chip okc">Verified buyer</span>
-        </div>
-        <div class="p-name">{{ buyer()?.name ?? 'Wholesale account' }}</div>
-        <p class="p-sub">Approved Seentair wholesale buyer.</p>
-        <div class="p-foot">
-          <span>Account email</span><span class="v">{{ buyer()?.email ?? '-' }}</span>
-        </div>
-      </div>
-
-      <div class="section-head">
-        <h2>Itemized manifest</h2>
-        <span class="aside"
-          >{{ lines(inv) }} line{{ lines(inv) === 1 ? '' : 's' }} · {{ units(inv) }} units</span
-        >
-      </div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Item &amp; SKU</th>
-            <th class="num">Qty</th>
-            <th class="num">Unit price</th>
-            <th class="num">Line total</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (item of inv.items; track item.sku) {
-            <tr>
-              <td>
-                <code>{{ item.sku }}</code>
-              </td>
-              <td class="num">{{ item.quantity }} pcs</td>
-              <td class="num">₦{{ item.unitPrice | number: '1.0-2' }}</td>
-              <td class="num">
-                <strong>₦{{ item.lineTotal | number: '1.0-2' }}</strong>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-
-      <section class="panel">
-        <div class="tagbar">
-          <span
-            ><span
-              class="material-symbols-outlined"
-              style="font-size:14px; vertical-align:-2px"
-              aria-hidden="true"
-              >verified</span
-            >
-            Manufacturing quality guarantee</span
-          >
-        </div>
-        <p class="small muted" style="margin:0">
+      <se-strip label="Manufacturing quality guarantee">
+        <p class="small muted" style="margin: 0">
           Every batch passes factory quality control before dispatch. Defective rejects are
           destroyed and never shipped; garments with minor factory errors are repaired and restocked
           under a recorded reason code. Each movement writes to the immutable audit log.
         </p>
         <!-- GAP: signed audit code + factory-controller signature block awaits the
-             audit-log export endpoint; the guarantee text above states only live policy. -->
-      </section>
+             audit-log export endpoint; the guarantee text states only live policy. -->
+      </se-strip>
 
-      <div class="section-head"><h2>Commercial ledger</h2></div>
-      <section class="panel">
-        <div class="ledger">
-          <div class="lg-row">
-            <span>Merchandise subtotal ({{ units(inv) }} units)</span>
-            <span class="v">₦{{ subtotal(inv) | number: '1.0-2' }}</span>
-          </div>
-          <div class="lg-row disc">
-            <span>Wholesale tier rate</span> <span class="v">Applied at order time</span>
-          </div>
-          <!-- GAP: freight and statutory-charge lines await the logistics/fees module;
-               the server-computed order total is authoritative. -->
-          <div class="lg-row total">
-            <span
-              >Total {{ paid(inv) ? 'settled' : 'payable' }}<br />
-              @if (paid(inv)) {
-                <span
-                  class="success"
-                  style="font-weight:400; font-size: var(--type-body-sm); text-transform:none; letter-spacing:normal"
-                >
-                  Paid in full via {{ payMethod(inv) }}</span
-                >
-              }
-            </span>
-            <span class="v">₦{{ inv.totalAmount | number: '1.0-2' }}</span>
-          </div>
-        </div>
+      <se-strip label="Commercial ledger">
+        <se-ledger [rows]="ledgerRows(inv)" />
         @for (payment of inv.payments; track payment.id) {
           <p class="muted small" style="margin: var(--space-sm) 0 0">
             Paid ₦{{ payment.amount | number: '1.0-2' }} via
             {{ payment.method.replaceAll('_', ' ') }} on {{ payment.date | date: 'medium' }}
           </p>
         }
-      </section>
+      </se-strip>
 
       <button class="cta" style="width:100%" (click)="print()">
         <span class="material-symbols-outlined" aria-hidden="true">download</span>
@@ -173,13 +131,11 @@ import { pill } from '../status-pill';
       </button>
       <!-- GAP: server-rendered PDF + WhatsApp share await the document service;
            browser print-to-PDF covers the download meanwhile. -->
-      <div class="actions" style="justify-content:center">
+      <div class="actions" style="justify-content: center">
         <button class="link" disabled title="WhatsApp desk line pending messaging-provider setup">
           Share via WhatsApp desk
         </button>
-        <span class="status" [class]="'status ' + pill(inv.status)">{{
-          inv.status.replaceAll('_', ' ')
-        }}</span>
+        <span class="status {{ pill(inv.status) }}">{{ inv.status.replaceAll('_', ' ') }}</span>
       </div>
     } @else if (missing()) {
       <p class="error">
@@ -211,6 +167,11 @@ export class InvoiceDetailPage implements OnInit {
     this.api.me().subscribe({ next: (m) => this.buyer.set(m), error: () => undefined });
   }
 
+  /** Shared by the invoice number, the production code and the caption. */
+  code(inv: Invoice): string {
+    return inv.orderId.slice(0, 8).toUpperCase();
+  }
+
   paid(inv: Invoice): boolean {
     return inv.paymentStatus === 'paid';
   }
@@ -227,8 +188,63 @@ export class InvoiceDetailPage implements OnInit {
     return inv.items.length;
   }
 
+  settlementFacts(inv: Invoice): Array<{ label: string; value: string; numeric?: boolean }> {
+    const settlement = inv.payments[0];
+    return [
+      { label: 'Issue date', value: dayFormat.format(new Date(inv.createdAt)) },
+      {
+        label: this.paid(inv) ? 'Settlement date' : 'Payment ref',
+        value: !settlement
+          ? 'Pending'
+          : this.paid(inv)
+            ? dayFormat.format(new Date(settlement.date))
+            : settlement.id.slice(0, 8).toUpperCase(),
+      },
+      { label: 'Channel', value: 'Wholesale portal' },
+    ];
+  }
+
+  issuerRows(): Array<{ label: string; value: string; numeric?: boolean }> {
+    return [{ label: 'Finance desk', value: '+234 1 888 7400', numeric: false }];
+  }
+
+  buyerRows(): Array<{ label: string; value: string; numeric?: boolean }> {
+    return [{ label: 'Account email', value: this.buyer()?.email ?? '—', numeric: false }];
+  }
+
+  ledgerRows(
+    inv: Invoice,
+  ): Array<{ label: string; value: string; note?: string; total?: boolean; numeric?: boolean }> {
+    const subtotal = this.subtotal(inv);
+    const total: { label: string; value: string; note?: string; total: boolean } = {
+      label: this.paid(inv) ? 'Total settled' : 'Total payable',
+      value: `₦${this.money(inv.totalAmount)}`,
+      total: true,
+    };
+    if (this.paid(inv)) total.note = 'Paid in full via ' + this.payMethod(inv);
+    return [
+      {
+        label: `Merchandise subtotal (${this.units(inv)} units)`,
+        value: `₦${this.money(subtotal)}`,
+        numeric: false,
+      },
+      { label: 'Wholesale tier rate', value: 'Applied at order time', numeric: false },
+      // GAP: freight and statutory-charge lines await the logistics/fees module;
+      // the server-computed order total is authoritative.
+      total,
+    ];
+  }
+
   subtotal(inv: Invoice): number {
     return inv.items.reduce((n, i) => n + i.lineTotal, 0);
+  }
+
+  /** Two decimals, matching the numbers the manifest table prints. */
+  private money(value: number): string {
+    return value.toLocaleString('en-NG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   }
 
   print(): void {

@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService, Pricing } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartLine, CartService } from '../cart.service';
+import { EmptyComponent, LedgerComponent, RowComponent, StripComponent } from '../ui/primitives';
 
 interface CartGroup {
   productId: string;
@@ -21,211 +22,208 @@ interface CartGroup {
  * freight options, factory policy & SLA, production cost summary and
  * settlement method. Commit places the order through POST /orders (the
  * server re-prices at the buyer's tier and enforces MOQ).
+ *
+ * Built on the shared primitives, with one deliberate difference from the
+ * Orders log: batch rows start **open**. A buyer is not scanning here, they are
+ * verifying an allocation before committing money to it, so hiding the
+ * breakdown behind a click would be the wrong default. The primitive supports
+ * both behaviours because open state is controlled by the page, not the row.
  */
 @Component({
   selector: 'app-cart',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    StripComponent,
+    RowComponent,
+    LedgerComponent,
+    EmptyComponent,
+  ],
   template: `
     <a class="link backlink" routerLink="/catalogue">
-      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span> Bulk cart &amp;
+      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span> Bulk cart &
       checkout
     </a>
 
-    <div class="cart-strip">
-      <span class="left"
-        ><span class="dot"></span> Wholesale cart ({{ cart.units() }} units total ·
-        {{ moqMet() ? 'MOQ met' : 'MOQ ' + moq() + ' short by ' + moqShort() }})</span
-      >
-      <span class="chip">Draft batch</span>
+    <!-- MOQ state as a tone on a flat strip, not a floating pill bar. -->
+    <div class="status-strip" [class.ok]="moqMet()" [class.warn]="!moqMet()">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="left">
+        {{ cart.units() }} unit{{ cart.units() === 1 ? '' : 's' }} selected
+        @if (moqKnown()) {
+          @if (moqMet()) {
+            · minimum of {{ moq() }} met
+          } @else {
+            · {{ moqShort() }} short of the {{ moq() }} minimum
+          }
+        } @else {
+          · minimum being confirmed
+        }
+      </span>
+      <span class="strip-badge">{{ cart.units() > 0 ? 'Draft batch' : 'Empty' }}</span>
     </div>
 
     @if (cart.units() === 0 && !orderResult()) {
-      <div class="empty-state">
-        <span class="empty-state-icon" aria-hidden="true"
-          ><svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="9" />
-            <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
-        ></span>
-        <h2 class="empty-state-title">Your draft batch is empty</h2>
-        <p class="empty-state-sub">
-          Build it from the <a class="link" routerLink="/catalogue">catalogue</a>.
-        </p>
-      </div>
+      <se-empty
+        icon="shopping_cart"
+        title="Your draft batch is empty"
+        sub="Add units from the catalogue, then come back to commit the batch."
+        ctaLabel="Browse catalogue"
+        ctaHref="/catalogue"
+      />
     }
 
     @if (cart.units() > 0) {
-      <div class="section-head">
-        <h2>1. Batch production items ({{ groups().length }})</h2>
-        <span class="aside">{{ moqMet() ? 'Ready for cutting' : 'Below MOQ' }}</span>
-      </div>
-      @for (group of groups(); track group.productId) {
-        <article class="ordercard">
-          <div class="oc-top">
-            <div>
-              <span class="oc-id">{{ group.productName }}</span>
-              <span class="oc-meta">SKU: {{ group.sku }}</span>
-            </div>
-            <span class="chip">{{ group.units }} units</span>
-          </div>
-          <div class="oc-line" style="display:block">
-            <div style="display:flex; justify-content:space-between; gap: var(--space-md)">
-              <span class="l">Colourway | cut breakdown</span>
-              <span class="l" style="text-align:right">Allocated units</span>
-            </div>
-            @for (cw of group.colourways; track cw.colour) {
-              <div
-                style="display:flex; justify-content:space-between; gap: var(--space-md); margin-top: 4px"
-              >
-                <span>{{ cw.colour }}: {{ cw.breakdown }}</span>
-                <span class="num">{{ cw.pcs }} pcs</span>
-              </div>
-            }
-          </div>
-          <div class="oc-top" style="margin-top: var(--space-md); align-items:center">
-            <span class="tabular small"
-              >₦{{ group.unitPrice | number: '1.0-2' }} / unit -
-              <strong>₦{{ group.amount | number: '1.0-2' }}</strong></span
-            >
-            <span style="display:flex; gap: var(--space-lg)">
-              <a class="link" [routerLink]="['/catalogue', group.productId, 'matrix']"
-                >Edit matrix</a
-              >
-              <button class="link" (click)="cart.removeProduct(group.productId)">Remove</button>
-            </span>
-          </div>
-        </article>
-      }
+      <se-strip
+        label="1. Batch production items"
+        [badge]="moqMet() ? 'Ready for cutting' : 'Below MOQ'"
+      >
+        @for (group of groups(); track group.productId) {
+          <se-row
+            [id]="group.productId"
+            [open]="isOpen(group.productId)"
+            (toggled)="onToggle(group.productId, $event)"
+          >
+            <ng-container rowIdent>
+              <span class="drow-code">
+                {{ group.productName }}
+                <span class="chip">{{ group.units }} units</span>
+              </span>
+              <span class="drow-meta">SKU: {{ group.sku }}</span>
+            </ng-container>
 
-      <div class="section-head">
-        <h2>2. Delivery consignee destination</h2>
-      </div>
+            <ng-container rowTail>
+              <span class="drow-amount">₦{{ group.amount | number: '1.0-2' }}</span>
+            </ng-container>
+
+            <div rowPanel>
+              <!-- Allocation is the thing being verified, so it is a table
+                   with real column alignment, not a run-on string. -->
+              <table class="alloc">
+                <caption class="sr-only">
+                  Size allocation for
+                  {{
+                    group.productName
+                  }}
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Colourway</th>
+                    <th scope="col">Cut breakdown</th>
+                    <th scope="col" class="right">Units</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (cw of group.colourways; track cw.colour) {
+                    <tr>
+                      <td>{{ cw.colour }}</td>
+                      <td class="mono">{{ cw.breakdown }}</td>
+                      <td class="right num">{{ cw.pcs }}</td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="2">Allocated total</td>
+                    <td class="right num">{{ group.units }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <ng-container rowActions>
+              <a class="cta small quiet" [routerLink]="['/catalogue', group.productId, 'matrix']">
+                <span class="material-symbols-outlined" aria-hidden="true">grid_on</span> Edit
+                matrix
+              </a>
+              <button class="cta small quiet" (click)="cart.removeProduct(group.productId)">
+                Remove
+              </button>
+            </ng-container>
+          </se-row>
+        }
+      </se-strip>
+
       <!-- GAP: no buyer address-book endpoint yet, destination is agreed with the
            Aba desk after commit instead of rendering a stored consignee address. -->
-      <section class="panel">
-        <div class="oc-top">
-          <div>
-            <strong>{{ buyerName() ?? 'Wholesale account' }}</strong>
-            <p class="muted small" style="margin: 2px 0 0">
-              Delivery destination and consignee contact are confirmed with the Aba desk once the
-              batch is committed: GIGL dispatch or factory pickup.
-            </p>
-          </div>
-          <span class="chip okc">Verified buyer</span>
-        </div>
-      </section>
+      <se-strip label="2. Delivery consignee destination" badge="Verified buyer">
+        <strong>{{ buyerName() ?? 'Wholesale account' }}</strong>
+        <p class="muted small" style="margin: 2px 0 0">
+          Delivery destination and consignee contact are confirmed with the Aba desk once the batch
+          is committed: GIGL dispatch or factory pickup.
+        </p>
+      </se-strip>
 
-      <div class="section-head">
-        <h2>3. Freight waybill options</h2>
-        <span class="aside">For {{ cart.units() }} units</span>
-      </div>
-      <!-- GAP: no delivery-fee quotation endpoint, freight is quoted on the waybill
-           at dispatch, so no fee figures are shown against each option. -->
-      <label class="radio-opt" [class.selected]="freight === 'gigl'">
-        <input type="radio" name="freight" value="gigl" [(ngModel)]="freight" />
-        <span class="r-body">
-          <span class="r-title"
-            ><span>GIGL freight dispatch</span>
-            <span class="r-price muted">Quoted at dispatch</span></span
-          >
-          <span class="r-sub"
-            >First-line carrier: doorstep commercial drop with tracked waybill.</span
-          >
-        </span>
-      </label>
-      <label class="radio-opt" [class.selected]="freight === 'pickup'">
-        <input type="radio" name="freight" value="pickup" [(ngModel)]="freight" />
-        <span class="r-body">
-          <span class="r-title"
-            ><span>Factory pickup (Aba workshop hub)</span>
-            <span class="r-price">₦0 (Free)</span></span
-          >
-          <span class="r-sub">Collect directly from the Seentair production floor, Aba.</span>
-        </span>
-      </label>
-
-      <div class="policy-strip">
-        <span class="material-symbols-outlined" aria-hidden="true">gavel</span>
-        <div>
-          <strong>Seentair factory policy &amp; SLA</strong>
-          Full payment is required before production batch slot allocation and material cutting. No
-          part-payments, cash on delivery, or staggered releases.
-        </div>
-      </div>
-
-      <div class="section-head">
-        <h2>4. Production cost summary</h2>
-      </div>
-      <section class="panel">
-        <div class="ledger">
-          <div class="lg-row">
-            <span>Garment allocation units</span> <span class="v">{{ cart.units() }} units</span>
-          </div>
-          <div class="lg-row">
-            <span>Merchandise subtotal</span>
-            <span class="v">₦{{ cart.amount() | number: '1.0-2' }}</span>
-          </div>
-          @if (tier(); as t) {
-            <div class="lg-row disc">
-              <span>{{ t.name }} wholesale rate</span>
-              <span class="v">{{ t.discountPercent }}% off retail: applied</span>
-            </div>
-          }
-          <!-- GAP: freight + any statutory charges appear on the final invoice; no
-               quotation endpoint exists to price them here. -->
-          <div class="lg-row">
-            <span>Freight logistics waybill</span> <span class="v muted">On final invoice</span>
-          </div>
-          <div class="lg-row total">
-            <span
-              >Total payable<br />
-              <span
-                class="muted"
-                style="font-weight:400; font-size: var(--type-body-sm); text-transform:none; letter-spacing:normal"
-                >merchandise commit</span
-              ></span
+      <se-strip label="3. Freight waybill options" [badge]="cart.units() + ' units'">
+        <!-- GAP: no delivery-fee quotation endpoint, freight is quoted on the waybill
+             at dispatch, so no fee figures are shown against each option. -->
+        <label class="radio-opt" [class.selected]="freight === 'gigl'">
+          <input type="radio" name="freight" value="gigl" [(ngModel)]="freight" />
+          <span class="r-body">
+            <span class="r-title"
+              ><span>GIGL freight dispatch</span>
+              <span class="r-price muted">Quoted at dispatch</span></span
             >
-            <span class="v">₦{{ cart.amount() | number: '1.0-2' }}</span>
-          </div>
-        </div>
-      </section>
+            <span class="r-sub"
+              >First-line carrier: doorstep commercial drop with tracked waybill.</span
+            >
+          </span>
+        </label>
+        <label class="radio-opt" [class.selected]="freight === 'pickup'">
+          <input type="radio" name="freight" value="pickup" [(ngModel)]="freight" />
+          <span class="r-body">
+            <span class="r-title"
+              ><span>Factory pickup (Aba workshop hub)</span>
+              <span class="r-price">₦0 (Free)</span></span
+            >
+            <span class="r-sub">Collect directly from the Seentair production floor, Aba.</span>
+          </span>
+        </label>
 
-      <div class="section-head">
-        <h2>5. Settlement method</h2>
-      </div>
-      <!-- GAP: Paystack is the confirmed processor, but the portal has no
-           payment-initialisation endpoint yet, settlement today is bank
-           transfer / POS confirmed by the desk, so commit places the order
-           and the desk follows up with payment instructions. -->
-      <label class="radio-opt" [class.selected]="settlement === 'transfer'">
-        <input type="radio" name="settlement" value="transfer" [(ngModel)]="settlement" />
-        <span class="r-body">
-          <span class="r-title"><span>Direct corporate bank transfer / POS</span></span>
-          <span class="r-sub"
-            >Current live flow: the desk confirms your payment, then the batch enters
-            production.</span
-          >
-        </span>
-      </label>
-      <label class="radio-opt" [class.selected]="settlement === 'paystack'">
-        <input type="radio" name="settlement" value="paystack" [(ngModel)]="settlement" />
-        <span class="r-body">
-          <span class="r-title"
-            ><span>Paystack direct merchant gateway</span>
-            <span class="r-price muted">Coming online</span></span
-          >
-          <span class="r-sub"
-            >Instant confirmation: cards, NIBSS transfer, USSD. Awaiting production keys; the desk
-            will settle this order manually meanwhile.</span
-          >
-        </span>
-      </label>
+        <div class="status-strip warn">
+          <span class="dot" aria-hidden="true"></span>
+          <span>
+            <strong>Seentair factory policy &amp; SLA.</strong> Full payment is required before
+            production batch slot allocation and material cutting. No part-payments, cash on
+            delivery, or staggered releases.
+          </span>
+        </div>
+      </se-strip>
+
+      <se-strip label="4. Production cost summary">
+        <se-ledger [rows]="costLedger()" />
+      </se-strip>
+
+      <se-strip label="5. Settlement method">
+        <!-- GAP: Paystack is the confirmed processor, but the portal has no
+             payment-initialisation endpoint yet, settlement today is bank
+             transfer / POS confirmed by the desk, so commit places the order
+             and the desk follows up with payment instructions. -->
+        <label class="radio-opt" [class.selected]="settlement === 'transfer'">
+          <input type="radio" name="settlement" value="transfer" [(ngModel)]="settlement" />
+          <span class="r-body">
+            <span class="r-title"><span>Direct corporate bank transfer / POS</span></span>
+            <span class="r-sub"
+              >Current live flow: the desk confirms your payment, then the batch enters
+              production.</span
+            >
+          </span>
+        </label>
+        <label class="radio-opt" [class.selected]="settlement === 'paystack'">
+          <input type="radio" name="settlement" value="paystack" [(ngModel)]="settlement" />
+          <span class="r-body">
+            <span class="r-title"
+              ><span>Paystack direct merchant gateway</span>
+              <span class="r-price muted">Coming online</span></span
+            >
+            <span class="r-sub"
+              >Instant confirmation: cards, NIBSS transfer, USSD. Awaiting production keys; the desk
+              will settle this order manually meanwhile.</span
+            >
+          </span>
+        </label>
+      </se-strip>
 
       <button
         class="cta"
@@ -240,7 +238,11 @@ interface CartGroup {
       </button>
       @if (!moqMet()) {
         <p class="error" style="text-align:center">
-          Minimum order is {{ moq() }} units: you have {{ cart.units() }}.
+          @if (moqKnown()) {
+            Minimum order is {{ moq() }} units: you have {{ cart.units() }}.
+          } @else {
+            Confirming the batch minimum before this order can be committed.
+          }
         </p>
       }
       <p class="muted small" style="text-align:center; margin-top: var(--space-sm)">
@@ -250,8 +252,7 @@ interface CartGroup {
     }
 
     @if (orderResult(); as result) {
-      <section class="panel">
-        <div class="tagbar"><span>Batch committed</span><span class="success">OK</span></div>
+      <se-strip label="Batch committed" badge="OK">
         <p class="apply-copy">
           Order <code>{{ result.id.slice(0, 8).toUpperCase() }}</code> placed -
           <strong>₦{{ result.totalAmount | number: '1.0-2' }}</strong
@@ -263,20 +264,16 @@ interface CartGroup {
           >
           <a class="link" routerLink="/orders">Orders &amp; invoices</a>
         </div>
-      </section>
+      </se-strip>
     }
     @if (error()) {
       <p class="error">{{ error() }}</p>
     }
 
-    <div class="cart-strip" style="margin-top: var(--space-xl)">
-      <span class="left"
-        ><span class="material-symbols-outlined" style="font-size:16px" aria-hidden="true"
-          >support_agent</span
-        >
-        Need a custom wholesale invoice?</span
-      >
-      <a class="link" href="tel:+23418887400">Call hub</a>
+    <div class="status-strip" style="margin-top: var(--space-xl)">
+      <span class="dot" aria-hidden="true"></span>
+      <span>Need a custom wholesale invoice?</span>
+      <a class="link strip-trailing" href="tel:+23418887400">Call hub</a>
     </div>
   `,
 })
@@ -291,6 +288,13 @@ export class CartPage implements OnInit {
   readonly orderResult = signal<{ id: string; totalAmount: number } | null>(null);
   freight: 'gigl' | 'pickup' = 'gigl';
   settlement: 'transfer' | 'paystack' = 'transfer';
+
+  /**
+   * Batch rows start open so the buyer can verify the allocation before
+   * committing money. Toggling one leaves the rest alone: unlike the Orders
+   * log, this is a review step, not a scan step.
+   */
+  private readonly closedGroups = signal<ReadonlySet<string>>(new Set());
 
   readonly groups = computed<CartGroup[]>(() => {
     const map = new Map<string, CartLine[]>();
@@ -319,21 +323,91 @@ export class CartPage implements OnInit {
     });
   });
 
+  /** The cost summary, built only from figures the API and cart actually hold. */
+  readonly costLedger = computed<
+    Array<{ label: string; value: string; note?: string; total?: boolean; numeric?: boolean }>
+  >(() => {
+    const tier = this.pricing()?.tier;
+    return [
+      { label: 'Garment allocation units', value: `${this.cart.units()} units`, numeric: false },
+      { label: 'Merchandise subtotal', value: `₦${this.money(this.cart.amount())}` },
+      // GAP: freight + statutory charges land on the final invoice; there is no
+      // quotation endpoint to price them here, so they are named, not guessed.
+      {
+        label: 'Freight logistics waybill',
+        value: 'On final invoice',
+        numeric: false,
+        note: 'quoted at dispatch',
+      },
+      ...(tier
+        ? [
+            {
+              label: `${tier.name} wholesale rate`,
+              value: `${tier.discountPercent}% off retail: applied`,
+              numeric: false,
+            },
+          ]
+        : []),
+      { label: 'Total payable', value: `₦${this.money(this.cart.amount())}`, total: true },
+    ];
+  });
+
+  constructor() {
+    // Nothing to collapse until there is a batch; drop closed state for lines
+    // that no longer exist so a re-added product shows its allocation again.
+    effect(() => {
+      const ids = new Set(this.groups().map((g) => g.productId));
+      this.closedGroups.update((closed) => {
+        const next = new Set([...closed].filter((id) => ids.has(id)));
+        return next.size === closed.size ? closed : next;
+      });
+    });
+  }
+
   ngOnInit(): void {
     this.api.me().subscribe({ next: (m) => this.buyerName.set(m.name), error: () => undefined });
     this.api.pricing().subscribe({ next: (p) => this.pricing.set(p), error: () => undefined });
+  }
+
+  isOpen(productId: string): boolean {
+    return !this.closedGroups().has(productId);
+  }
+
+  onToggle(productId: string, open: boolean): void {
+    this.closedGroups.update((closed) => {
+      const next = new Set(closed);
+      if (open) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
   }
 
   tier() {
     return this.pricing()?.tier ?? null;
   }
 
+  /**
+   * The real MOQ, from the API.
+   *
+   * No hardcoded fallback: 20 is the configured default, but the account's
+   * actual minimum is what the server enforces at commit, so guessing one here
+   * could either block a valid order or wave through an invalid one.
+   */
   moq(): number {
-    return this.pricing()?.moq ?? 20;
+    return this.pricing()?.moq ?? 0;
   }
 
+  /** False while pricing is still loading or the call failed. */
+  moqKnown(): boolean {
+    return this.moq() > 0;
+  }
+
+  /**
+   * With an unknown MOQ the client defers to the server rather than blocking or
+   * waving through: POST /orders enforces the minimum regardless.
+   */
   moqMet(): boolean {
-    return this.cart.units() >= this.moq();
+    return !this.moqKnown() || this.cart.units() >= this.moq();
   }
 
   moqShort(): number {
@@ -364,6 +438,13 @@ export class CartPage implements OnInit {
         this.error.set(err?.error?.message ?? 'Order failed.');
         void this.alerts.toast('Order failed: please retry.', { icon: 'error' });
       },
+    });
+  }
+
+  private money(value: number): string {
+    return Math.round(value * 100).toLocaleString('en-NG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     });
   }
 }

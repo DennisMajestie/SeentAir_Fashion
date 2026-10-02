@@ -10,7 +10,10 @@ import { Repository } from 'typeorm';
 import { ApprovalActionType } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { ApprovalsService } from '../approvals/approvals.service';
+import { AvailabilityStatus } from '../catalogue/entities/product-variant.entity';
 import { CatalogueService } from '../catalogue/catalogue.service';
+import { InventoryItemType } from '../inventory/inventory-movement.entity';
+import { InventoryService } from '../inventory/inventory.service';
 import { Order, OrderChannel } from '../orders/entities/order.entity';
 import { Payment, PaymentRecordStatus } from '../orders/entities/payment.entity';
 import { UsersService } from '../users/users.service';
@@ -32,6 +35,7 @@ export class WholesaleService {
     private readonly catalogueService: CatalogueService,
     private readonly approvalsService: ApprovalsService,
     private readonly config: ConfigService,
+    private readonly inventoryService: InventoryService,
   ) {}
 
   get moq(): number {
@@ -98,10 +102,17 @@ export class WholesaleService {
     return account;
   }
 
+  /**
+   * The tier's discount as a number. An account with no tier discounts by 0,
+   * which is what makes its wholesale price equal its retail price.
+   */
+  tierDiscount(tier: PriceTier | null): number {
+    return tier?.discountPercent ?? 0;
+  }
+
   /** Tier discount applied to the retail price; 2dp rounding. */
   applyTierPrice(retailPrice: number, tier: PriceTier | null): number {
-    const discount = tier?.discountPercent ?? 0;
-    return Math.round(retailPrice * (100 - discount)) / 100;
+    return Math.round(retailPrice * (100 - this.tierDiscount(tier))) / 100;
   }
 
   // --- Tiers ---
@@ -164,18 +175,33 @@ export class WholesaleService {
 
   // --- Pricing & invoices ---
 
-  /** The caller's tier-priced catalogue (wholesalers see their own tier). */
+  /**
+   * The caller's tier-priced catalogue (wholesalers see their own tier).
+   *
+   * `imageUrl` is the first variant that actually has one, so the catalogue
+   * list can show a thumbnail without inventing a placeholder asset. It stays
+   * null when no variant carries an image, which the UI renders as its
+   * no-image state.
+   *
+   * `availabilityStatus` is the variant's display status only. Stock quantity
+   * is derived from the inventory ledger and is deliberately NOT projected
+   * here: WHOLESALER has no INVENTORY module access, and the server re-checks
+   * stock on commit.
+   */
   async pricing(user: AuthenticatedUser, page = 1, limit = 20) {
     const account = await this.assertApprovedAccount(user.id);
     const { data, total } = await this.catalogueService.findAll(page, limit);
     return {
       tier: account.tier,
+      /** True when the account has no tier, so wholesale == retail by construction. */
+      hasDiscount: this.tierDiscount(account.tier) > 0,
       moq: this.moq,
       total,
       data: data.map((product) => ({
         id: product.id,
         name: product.name,
         category: product.category,
+        imageUrl: product.variants.find((v) => !!v.imageUrl)?.imageUrl ?? null,
         retailPrice: product.basePrice,
         wholesalePrice: this.applyTierPrice(product.basePrice, account.tier),
         variants: product.variants.map((v) => ({
@@ -183,11 +209,52 @@ export class WholesaleService {
           sku: v.sku,
           size: v.size,
           colour: v.colour,
+          imageUrl: v.imageUrl,
+          availabilityStatus: v.availabilityStatus,
           retailPrice: v.priceOverride ?? product.basePrice,
           wholesalePrice: this.applyTierPrice(v.priceOverride ?? product.basePrice, account.tier),
         })),
       })),
     };
+  }
+
+  /**
+   * Derived stock per variant, for an approved wholesale account.
+   *
+   * Reads the movement ledger through InventoryService rather than widening
+   * the WHOLESALER role's INVENTORY permission: this endpoint is deliberately
+   * narrow (variant ids only, no ledger details, no raw movement history), so
+   * /inventory/* stays staff-only while buyers get the number they need to
+   * size an order.
+   *
+   * `made_to_order` variants report null: they carry no shelf stock, and the
+   * order service skips the stock gate for them. The server still re-checks
+   * everything at commit, so a stale number here can never oversell.
+   */
+  async stock(
+    user: AuthenticatedUser,
+    variantIds: string[],
+  ): Promise<Record<string, number | null>> {
+    await this.assertApprovedAccount(user.id);
+    const wanted = [...new Set(variantIds)].filter((id) => !!id);
+    if (wanted.length === 0) return {};
+
+    const variants = await this.catalogueService.findVariantsByIds(wanted);
+
+    const entries = await Promise.all(
+      wanted.map(async (variantId): Promise<[string, number | null]> => {
+        const variant = variants.get(variantId);
+        if (!variant || variant.availabilityStatus === AvailabilityStatus.MADE_TO_ORDER) {
+          return [variantId, null];
+        }
+        const qty = await this.inventoryService.currentQuantity(
+          InventoryItemType.VARIANT,
+          variantId,
+        );
+        return [variantId, qty];
+      }),
+    );
+    return Object.fromEntries(entries);
   }
 
   /** Order & invoice/payment history for the caller's wholesale account. */

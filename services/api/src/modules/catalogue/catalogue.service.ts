@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { ApprovalActionType } from '../../common/enums';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { TechPack } from '../tech-packs/tech-pack.entity';
@@ -51,6 +51,20 @@ export class CatalogueService {
     });
     if (!product) throw new NotFoundException(`Product ${id} not found`);
     return product;
+  }
+
+  /**
+   * Fetch several variants in one query, keyed by variant id.
+   *
+   * Used by the wholesale availability endpoint, which is given variant ids
+   * but needs each one's `availabilityStatus` before deciding whether to
+   * report a derived stock number. Unknown ids are simply absent from the map
+   * rather than throwing, so one bad id cannot break a whole batch.
+   */
+  async findVariantsByIds(ids: string[]): Promise<Map<string, ProductVariant>> {
+    if (ids.length === 0) return new Map();
+    const variants = await this.variantRepo.find({ where: { id: In(ids) } });
+    return new Map(variants.map((v) => [v.id, v]));
   }
 
   async create(dto: CreateProductDto): Promise<Product> {

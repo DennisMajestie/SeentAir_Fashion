@@ -1,82 +1,58 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { ApiService, Pricing, PricingProduct } from '../api.service';
+import { ApiService, Pricing, PricingProduct, PricingVariant } from '../api.service';
 import { CartService } from '../cart.service';
+import { FactsComponent, LedgerComponent, StripComponent } from '../ui/primitives';
 
 /**
  * W4, Bulk order form: colour × size allocation matrix for one product.
- * MOQ status counts this form plus the existing draft batch; the matrix
- * writes into the shared cart, and the server re-enforces MOQ on commit.
+ *
+ * MOQ status counts this form plus the existing draft batch; the matrix writes
+ * into the shared cart, and the server re-enforces MOQ on commit.
+ *
+ * Built on the shared primitives. The matrix itself stays a real `<table>`: a
+ * numeric grid is the one thing a CSS grid would make harder to read, because
+ * the row and column totals have to line up under their own cells.
  */
 @Component({
   selector: 'app-matrix',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, StripComponent, FactsComponent, LedgerComponent],
   template: `
     <a class="link backlink" routerLink="/catalogue">
       <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span> Back to catalogue
     </a>
 
     @if (product(); as prod) {
-      <section class="panel">
-        <div class="tagbar">
-          <span>Bulk order form</span><span>SKU: {{ prod.variants[0]?.sku }}</span>
-        </div>
-        <h1 style="font-size: var(--type-heading-md)">{{ prod.name }}</h1>
-        <p class="meta-line" style="margin: var(--space-xs) 0 0">
-          <span class="muted">{{ tierName() }} wholesale:</span>
-          <strong class="tabular" style="color: var(--primary); margin: 0 4px"
-            >₦{{ prod.wholesalePrice | number: '1.0-2' }}</strong
-          >
-          <span class="muted">/ unit</span>
-        </p>
-      </section>
+      <se-strip label="Bulk order form" [badge]="'SKU: ' + (prod.variants[0]?.sku ?? '—')">
+        <h1 class="matrix-title">{{ prod.name }}</h1>
+        <se-facts [facts]="headerFacts(prod)" />
+      </se-strip>
 
-      <div class="section-head" style="margin-top: var(--space-md)">
-        <h2>Batch order status</h2>
-        <span class="aside tabular">
-          <strong [style.color]="moqShort() > 0 ? 'var(--primary)' : 'var(--ok)'">{{
-            committedUnits()
-          }}</strong>
-          / {{ moq() }} units MOQ
-        </span>
+      <!-- MOQ state as a tone on a flat strip. Same primitive as the cart and
+           catalogue tray, so the threshold reads the same everywhere. -->
+      <div class="status-strip" [class.ok]="moqShort() === 0" [class.warn]="moqShort() > 0">
+        <span class="dot" aria-hidden="true"></span>
+        @if (moqShort() > 0) {
+          <span>
+            <strong>{{ committedUnits() }} / {{ moq() }} units.</strong> Add {{ moqShort() }} more
+            to reach the {{ moq() }}-unit batch minimum, which counts the {{ cart.units() }} units
+            already in your draft.
+          </span>
+        } @else {
+          <span>
+            <strong>MOQ met: {{ committedUnits() }} units across the batch.</strong> Review the
+            order to commit it to production.
+          </span>
+        }
       </div>
 
-      @if (moqShort() > 0) {
-        <div class="moq-banner" role="status">
-          <span class="material-symbols-outlined" aria-hidden="true">warning</span>
-          <div>
-            <strong
-              >Add {{ moqShort() }} more units to meet the {{ moq() }}-unit minimum
-              requirement.</strong
-            >
-            <span class="sub"
-              >The count includes the {{ cart.units() }} units already in your draft batch. Your
-              tier price is already applied.</span
-            >
-          </div>
-        </div>
-      } @else {
-        <div class="moq-banner met" role="status">
-          <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
-          <div>
-            <strong>MOQ met: {{ committedUnits() }} units committed across the batch.</strong>
-            <span class="sub">Review the order to commit the batch to production.</span>
-          </div>
-        </div>
-      }
-
-      <div class="scroll-hint">
-        <span
-          ><span
-            class="material-symbols-outlined"
-            style="font-size:14px; vertical-align:-2px"
-            aria-hidden="true"
-            >swipe</span
-          >
-          Scroll matrix horizontally</span
-        >
+      <div class="matrix-toolbar">
+        <span class="muted small">
+          <span class="material-symbols-outlined" aria-hidden="true">swipe</span> Scroll
+          horizontally to reach every size
+        </span>
         @if (moqShort() > 0) {
           <button class="cta small quiet" (click)="autoFill()">
             <span class="material-symbols-outlined" aria-hidden="true">bolt</span> +{{ moqShort() }}
@@ -85,100 +61,109 @@ import { CartService } from '../cart.service';
         }
       </div>
 
-      <!-- GAP: per-cell availability counts ("av: 60") from the reference need a
-           stock-visibility endpoint for wholesale buyers; omitted, not faked. -->
       <div class="matrix-scroll">
-        <table class="table compact">
+        <table class="matrix">
+          <caption class="sr-only">
+            Units per colour and size for
+            {{
+              prod.name
+            }}
+          </caption>
           <thead>
             <tr>
-              <th>Colour</th>
+              <th scope="col">Colour</th>
               @for (size of sizes(); track size) {
-                <th class="num">{{ size }}</th>
+                <th scope="col" class="num">{{ size }}</th>
               }
+              <th scope="col" class="num">Row</th>
             </tr>
           </thead>
           <tbody>
             @for (colour of colours(); track colour) {
               <tr>
-                <td class="rowhead">
-                  <span class="c-name"><span class="swatch"></span>{{ colour }}</span>
-                  <span class="c-sub">{{ prod.category ?? 'garment' }}</span>
-                </td>
+                <th scope="row" class="rowhead">
+                  <span class="c-name"
+                    ><span class="swatch" aria-hidden="true"></span>{{ colour }}</span
+                  >
+                </th>
                 @for (size of sizes(); track size) {
                   <td class="num">
                     @if (variantFor(colour, size); as v) {
                       <input
                         type="number"
                         min="0"
-                        [(ngModel)]="quantities[v.id]"
+                        step="1"
+                        inputmode="numeric"
+                        [max]="stockCap(v)"
+                        [ngModel]="qtyOf(v.id)"
+                        (ngModelChange)="setQty(v.id, $event)"
                         [attr.aria-label]="colour + ' size ' + size"
                       />
+                      <!-- Derived stock, from the wholesale availability endpoint.
+                           null means made-to-order or unknown: no cap, no note. -->
+                      @if (stockNote(v); as note) {
+                        <span class="cell-stock">{{ note }}</span>
+                      }
                     } @else {
-                      <span class="na">-</span>
+                      <span class="na" aria-hidden="true">—</span>
                     }
                   </td>
                 }
+                <td class="num rowsum">{{ colourSum(colour) }}</td>
               </tr>
             }
-            <tr class="sumrow">
-              <td>Size sum</td>
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row">Size sum</th>
               @for (size of sizes(); track size) {
                 <td class="num">{{ sizeSum(size) }}</td>
               }
+              <td class="num grand">{{ formUnits() }}</td>
             </tr>
-          </tbody>
+          </tfoot>
         </table>
       </div>
 
-      <div class="section-head">
-        <h2>Production notes</h2>
-        <span class="aside">Seentair factory: Aba</span>
-      </div>
       <!-- GAP: fabric density and lead-time specs are not in the pricing API yet;
-           the boxes carry the real category and factory policy instead. -->
-      <div class="note-boxes">
-        <div class="nb">
-          <span class="n-l">Garment line</span>
-          <span class="n-v">{{ prod.category ?? 'Garment' }}</span>
-        </div>
-        <div class="nb">
-          <span class="n-l">MOQ policy</span>
-          <span class="n-v">{{ moq() }} units · mix &amp; match</span>
-        </div>
-      </div>
+           the strip carries the real category and factory policy instead. -->
+      <se-strip label="Production notes" badge="Seentair factory: Aba">
+        <se-ledger [rows]="noteRows(prod)" />
+      </se-strip>
 
-      <div class="commit-row">
-        <div class="c-cell">
-          <span class="c-l">Batch commitment</span>
-          <strong>{{ formUnits() }}</strong>
-          <span class="muted small">/ {{ moq() }} MOQ units</span>
-        </div>
-        <div class="c-cell right">
-          <span class="c-l">Estimated total</span>
-          <strong>₦{{ formAmount() | number: '1.0-2' }}</strong>
-        </div>
-      </div>
+      <se-strip label="Batch commitment" [badge]="moqShort() === 0 ? 'Ready' : 'Below MOQ'">
+        <se-ledger [rows]="commitRows()" />
 
-      @if (moqShort() > 0 && formUnits() > 0) {
+        @if (moqShort() > 0 && formUnits() > 0) {
+          <button
+            class="cta outline"
+            style="width:100%; margin-top: var(--space-md)"
+            (click)="autoFill()"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true">auto_fix_high</span>
+            + Add {{ moqShort() }} units automatically to meet MOQ
+          </button>
+        }
         <button
-          class="cta outline"
-          style="width:100%; margin-bottom: var(--space-sm)"
-          (click)="autoFill()"
+          class="cta"
+          style="width:100%; margin-top: var(--space-sm)"
+          (click)="addToOrder()"
+          [disabled]="formUnits() === 0"
         >
-          <span class="material-symbols-outlined" aria-hidden="true">auto_fix_high</span>
-          + Add {{ moqShort() }} units automatically to meet MOQ
+          <span class="material-symbols-outlined" aria-hidden="true">
+            {{ moqShort() > 0 ? 'lock' : 'lock_open' }}</span
+          >
+          {{ moqShort() > 0 ? 'Add to order (need ' + moqShort() + ' more)' : 'Add to order' }}
         </button>
-      }
-      <button class="cta" style="width:100%" (click)="addToOrder()" [disabled]="formUnits() === 0">
-        <span class="material-symbols-outlined" aria-hidden="true">
-          {{ moqShort() > 0 ? 'lock' : 'lock_open' }}</span
-        >
-        {{ moqShort() > 0 ? 'Add to order (need ' + moqShort() + ' more)' : 'Add to order' }}
-      </button>
-      <p class="muted small" style="text-align:center; margin-top: var(--space-sm)">
-        The {{ moq() }}-unit minimum applies to the whole batch and is re-checked by the factory
-        API.
-      </p>
+        <p class="muted small" style="text-align:center; margin-top: var(--space-sm)">
+          @if (moqKnown()) {
+            The {{ moq() }}-unit minimum applies to the whole batch and is re-checked by the factory
+            API.
+          } @else {
+            The batch minimum is being confirmed; the factory API re-checks it on commit.
+          }
+        </p>
+      </se-strip>
     } @else if (missing()) {
       <p class="error">
         Product not found in your catalogue. <a class="link" routerLink="/catalogue">Back</a>
@@ -196,7 +181,39 @@ export class MatrixPage implements OnInit {
   readonly product = signal<PricingProduct | null>(null);
   readonly pricingData = signal<Pricing | null>(null);
   readonly missing = signal(false);
-  quantities: Record<string, number> = {};
+
+  /**
+   * Quantities on this form, in a signal rather than a plain object so the
+   * row sums, column sums and commit total all recompute from one source.
+   */
+  readonly quantities = signal<Record<string, number>>({});
+
+  /**
+   * Derived stock per variant, from GET /wholesale/stock.
+   * `null` is made-to-order or unknown, and means "no cap": inventing a limit
+   * would block orderable goods.
+   */
+  readonly stockState = signal<Record<string, number | null>>({});
+
+  readonly formUnits = computed(() =>
+    (this.product()?.variants ?? []).reduce((n, v) => n + (this.qtyOf(v.id) ?? 0), 0),
+  );
+
+  readonly formAmount = computed(() => {
+    const prod = this.product();
+    if (!prod) return 0;
+    const sum = prod.variants.reduce((n, v) => n + this.qtyOf(v.id) * v.wholesalePrice, 0);
+    return Math.round(sum * 100) / 100;
+  });
+
+  /** Units already drafted for other products, plus this form. */
+  readonly committedUnits = computed(() => {
+    const otherUnits = this.cart
+      .lines()
+      .filter((l) => l.productId !== this.product()?.id)
+      .reduce((n, l) => n + l.quantity, 0);
+    return otherUnits + this.formUnits();
+  });
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -207,8 +224,18 @@ export class MatrixPage implements OnInit {
         this.product.set(prod);
         this.missing.set(!prod);
         // Seed from any existing draft lines for this product so EDIT MATRIX round-trips.
+        const seeded: Record<string, number> = {};
         for (const line of this.cart.lines()) {
-          if (line.productId === id) this.quantities[line.variantId] = line.quantity;
+          if (line.productId === id) seeded[line.variantId] = line.quantity;
+        }
+        this.quantities.set(seeded);
+        if (prod && prod.variants.length > 0) {
+          this.api
+            .stock(prod.variants.map((v) => v.id))
+            .subscribe({
+              next: (s) => this.stockState.set(s),
+              error: () => this.stockState.set({}),
+            });
         }
       },
       error: () => this.missing.set(true),
@@ -219,8 +246,97 @@ export class MatrixPage implements OnInit {
     return this.pricingData()?.tier?.name ?? 'Standard';
   }
 
+  /**
+   * The real MOQ, from the API. No hardcoded fallback: 20 is the configured
+   * default, but guessing one here could block a valid allocation or wave
+   * through an invalid one. The server re-checks on commit either way.
+   */
   moq(): number {
-    return this.pricingData()?.moq ?? 20;
+    return this.pricingData()?.moq ?? 0;
+  }
+
+  /** False while pricing is still loading or the call failed. */
+  moqKnown(): boolean {
+    return this.moq() > 0;
+  }
+
+  /** Unknown minimum means "nothing to warn about yet", not "no minimum". */
+  moqShort(): number {
+    if (!this.moqKnown()) return 0;
+    return Math.max(0, this.moq() - this.committedUnits());
+  }
+
+  qtyOf(variantId: string): number {
+    return this.quantities()[variantId] ?? 0;
+  }
+
+  /** Coerce to a non-negative integer, clamped to real derived stock. */
+  setQty(variantId: string, raw: unknown): void {
+    const variant = this.variantById(variantId);
+    const cap = variant ? this.stockCap(variant) : null;
+    let n = Math.max(0, Math.floor(Number(raw) || 0));
+    if (cap !== null && n > cap) n = cap;
+    this.quantities.update((s) => ({ ...s, [variantId]: n }));
+  }
+
+  stockCap(v: PricingVariant): number | null {
+    if (v.availabilityStatus === 'made_to_order') return null;
+    const raw = this.stockState()[v.id];
+    return raw === undefined ? null : raw;
+  }
+
+  stockNote(v: PricingVariant): string {
+    const cap = this.stockCap(v);
+    if (cap === null) return '';
+    if (cap === 0) return 'MTO';
+    return String(cap);
+  }
+
+  headerFacts(prod: PricingProduct): Array<{ label: string; value: string; numeric?: boolean }> {
+    return [
+      { label: 'Wholesale rate', value: `₦${this.money(prod.wholesalePrice)} / unit` },
+      { label: 'Retail', value: `₦${this.money(prod.retailPrice)}` },
+      { label: 'Garment line', value: prod.category ?? 'Garment' },
+      { label: 'Rate card', value: this.tierName() },
+    ];
+  }
+
+  noteRows(prod: PricingProduct): Array<{ label: string; value: string; numeric?: boolean }> {
+    return [
+      { label: 'Garment line', value: prod.category ?? 'Garment', numeric: false },
+      {
+        label: 'Batch minimum',
+        value: this.moqKnown() ? `${this.moq()} units · mix & match` : 'Being confirmed',
+        numeric: false,
+      },
+      { label: 'Factory', value: 'Seentair, Aba', numeric: false },
+    ];
+  }
+
+  commitRows(): Array<{
+    label: string;
+    value: string;
+    note?: string;
+    total?: boolean;
+    numeric?: boolean;
+  }> {
+    return [
+      { label: 'This form', value: `${this.formUnits()} units`, numeric: false },
+      {
+        label: 'Other products in draft',
+        value: `${this.committedUnits() - this.formUnits()} units`,
+        numeric: false,
+      },
+      {
+        label: 'Batch total',
+        value: this.moqKnown()
+          ? `${this.committedUnits()} / ${this.moq()} units`
+          : `${this.committedUnits()} units`,
+        numeric: false,
+        note: this.moqShort() > 0 ? `${this.moqShort()} short` : 'MOQ met',
+      },
+      { label: 'Estimated total', value: `₦${this.money(this.formAmount())}`, total: true },
+    ];
   }
 
   sizes(): string[] {
@@ -247,41 +363,23 @@ export class MatrixPage implements OnInit {
     );
   }
 
-  formUnits(): number {
-    return (this.product()?.variants ?? []).reduce((n, v) => n + (this.quantities[v.id] || 0), 0);
+  private variantById(id: string): PricingVariant | undefined {
+    return this.product()?.variants.find((v) => v.id === id);
   }
 
-  formAmount(): number {
-    const prod = this.product();
-    if (!prod) return 0;
-    return (
-      Math.round(
-        prod.variants.reduce((n, v) => n + (this.quantities[v.id] || 0) * v.wholesalePrice, 0) *
-          100,
-      ) / 100
-    );
-  }
-
-  /** Units already drafted for other products + this form. */
-  committedUnits(): number {
-    const otherUnits = this.cart
-      .lines()
-      .filter((l) => l.productId !== this.product()?.id)
-      .reduce((n, l) => n + l.quantity, 0);
-    return otherUnits + this.formUnits();
-  }
-
-  moqShort(): number {
-    return Math.max(0, this.moq() - this.committedUnits());
+  colourSum(colour: string): number {
+    return (this.product()?.variants ?? [])
+      .filter((v) => (v.colour || 'standard') === colour)
+      .reduce((n, v) => n + this.qtyOf(v.id), 0);
   }
 
   sizeSum(size: string): number {
     return (this.product()?.variants ?? [])
       .filter((v) => (v.size || 'OS') === size)
-      .reduce((n, v) => n + (this.quantities[v.id] || 0), 0);
+      .reduce((n, v) => n + this.qtyOf(v.id), 0);
   }
 
-  /** Spread the missing MOQ units across the matrix round-robin. */
+  /** Spread the missing MOQ units across the matrix round-robin, never past stock. */
   autoFill(): void {
     const variants = this.product()?.variants ?? [];
     if (variants.length === 0) return;
@@ -289,9 +387,15 @@ export class MatrixPage implements OnInit {
     let i = 0;
     while (remaining > 0) {
       const v = variants[i % variants.length];
-      this.quantities[v.id] = (this.quantities[v.id] || 0) + 1;
-      remaining--;
+      const cap = this.stockCap(v);
+      // A cell at its ceiling cannot absorb a unit; skip to the next variant
+      // rather than silently overselling it.
+      if (cap === null || this.qtyOf(v.id) < cap) {
+        this.setQty(v.id, this.qtyOf(v.id) + 1);
+        remaining--;
+      }
       i++;
+      if (i > variants.length * Math.max(remaining, 1) + variants.length) break;
     }
   }
 
@@ -299,7 +403,7 @@ export class MatrixPage implements OnInit {
     const prod = this.product();
     if (!prod) return;
     const lines = prod.variants
-      .filter((v) => (this.quantities[v.id] || 0) > 0)
+      .filter((v) => this.qtyOf(v.id) > 0)
       .map((v) => ({
         variantId: v.id,
         productId: prod.id,
@@ -308,9 +412,13 @@ export class MatrixPage implements OnInit {
         size: v.size,
         colour: v.colour,
         unitPrice: v.wholesalePrice,
-        quantity: this.quantities[v.id] || 0,
+        quantity: this.qtyOf(v.id),
       }));
     this.cart.setProduct(prod.id, lines);
     void this.router.navigate(['/cart']);
+  }
+
+  private money(value: number): string {
+    return value.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 }
