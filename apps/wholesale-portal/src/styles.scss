@@ -41,6 +41,12 @@
   --error-container: #ffdad6;
   --on-error-container: #93000a;
   --ok: #1b7f3b;
+  /* Warn is its own token, not a lighter --error: "awaiting payment" is a
+     routine state a buyer resolves themselves, and painting it danger-red
+     would cry wolf on a genuine stock exception. */
+  --warn: #b26a00;
+  --warn-container: #ffdfb0;
+  --on-warn-container: #4a2800;
 
   /* Focus ring. Must clear 3:1 (WCAG 2.2 non-text) against the canvas it
      sits on, so light uses the deep gold, not the action gold - #c9a24b only
@@ -73,9 +79,47 @@
   --wrap-max: 1120px;
   --wrap-x: 16px;
 
+  /* Geometry mirrors the storefront order/tracking surface exactly:
+     --radius 16px card, --radius-field 12px, --radius-pill 999px. */
   --radius: 16px;
-  --radius-pill: 999px; /* storefront button shape */
-  --radius-field: 0;
+  --radius-pill: 999px;
+  --radius-field: 12px;
+  --radius-sm: 12px; /* nested element, i.e. calc(var(--radius) - 4px) */
+}
+
+/* The pill recipe lifted from the storefront order surface (.ot-badge):
+   inline-flex, uppercase micro-label, generous horizontal padding so the
+   999px radius reads as a capsule rather than a tight tag. */
+@mixin pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: var(--type-label-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: var(--radius-pill);
+  padding: 0.35rem 0.7rem;
+  white-space: nowrap;
+}
+
+/* A rounded container must NOT clip its children here: `.strip` and `.drow`
+   hold `<table>`s whose thead is `position: sticky`, and `overflow: hidden`
+   would make this the scrollport and silently kill the sticky header. Round
+   the outer corners and round the header band explicitly instead. Only use
+   @include clip when the subtree has no sticky descendants (see .facts). */
+@mixin card($r: var(--radius)) {
+  border-radius: $r;
+}
+
+/* The top band of a rounded container carries the outer radius on its own top
+   corners; -1px lines it up with the container's 1px border. */
+@mixin card-top($r: var(--radius)) {
+  border-radius: calc(#{$r} - 1px) calc(#{$r} - 1px) 0 0;
+}
+
+@mixin clip {
+  overflow: hidden;
 }
 
 /* Dark ops theme, gold on near-black, per brief 15.5. Flips surfaces to
@@ -110,6 +154,9 @@
   --error-container: #5c1a1f;
   --on-error-container: #ffdad6;
   --ok: #6fd08a;
+  --warn: #f0b45e;
+  --warn-container: #4a3208;
+  --on-warn-container: #ffe2b0;
   --focus-ring: #d8b25c;
   --hairline: #2b2621;
   --hairline-strong: #f0ece2;
@@ -633,16 +680,6 @@ label {
       object-fit: contain;
     }
   }
-  .chip {
-    display: inline-block;
-    background: var(--ilow);
-    color: var(--iink);
-    font-size: var(--type-label-sm);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 2px 6px;
-  }
   .secure {
     display: flex;
     align-items: center;
@@ -888,6 +925,7 @@ label {
 }
 
 .status-strip {
+  @include card(var(--radius-field));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -958,14 +996,9 @@ label {
 
 /* Generic chip (reference uses these everywhere as micro-labels) */
 .chip {
-  display: inline-block;
+  @include pill;
   background: var(--surface-low);
   color: var(--ink);
-  font-size: var(--type-label-sm);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 2px 6px;
   border: 1px solid transparent;
   &.accent {
     background: var(--primary-action);
@@ -1286,14 +1319,9 @@ label {
       }
     }
     .margin {
+      @include pill;
       background: var(--primary-container);
       color: var(--on-primary-container);
-      font-size: var(--type-label-sm);
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      padding: 2px 6px;
-      white-space: nowrap;
       /* No discount to celebrate - neutral, not a fake saving. */
       &.at-retail {
         background: var(--surface-container);
@@ -1367,11 +1395,7 @@ label {
         min-height: 20px;
       }
       .avail {
-        font-size: var(--type-label-sm);
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        padding: 1px 4px;
+        @include pill;
         background: var(--error-container);
         color: var(--on-error-container);
         &.mto {
@@ -1635,7 +1659,7 @@ body {
   .mt-bar {
     margin-top: var(--space-sm);
     height: 6px;
-    border-radius: 3px;
+    border-radius: var(--radius-pill);
     background: color-mix(in srgb, var(--surface) 22%, transparent);
     overflow: hidden;
   }
@@ -1643,7 +1667,7 @@ body {
   .mt-fill {
     display: block;
     height: 100%;
-    border-radius: 3px;
+    border-radius: var(--radius-pill);
     background: var(--primary-action);
     transition: width 0.2s ease;
     &.met {
@@ -2090,7 +2114,7 @@ body {
 .swal2-popup.ba-toast {
   font-family: inherit;
   border: 1px solid rgba(148, 118, 55, 0.32);
-  border-radius: 16px;
+  border-radius: var(--radius);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
   padding: 1.25rem;
 }
@@ -2107,7 +2131,7 @@ body {
 }
 .ba-btn {
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-pill);
   font: inherit;
   font-size: 0.88rem !important;
   font-weight: 700 !important;
@@ -2183,7 +2207,7 @@ body {
   padding: 2.4rem 1.5rem;
   border: 1.5px dashed var(--hairline);
   background: var(--surface-lowest);
-  border-radius: 14px;
+  @include card;
   .empty-state-icon {
     width: 46px;
     height: 46px;
@@ -2238,11 +2262,13 @@ body {
 
 /* --- strip: the unit of layout, replacing .panel + .tagbar --------------- */
 .strip {
+  @include card;
   background: var(--surface-lowest);
   border: 1px solid var(--hairline);
   margin: var(--space-sm) 0;
 }
 .strip-head {
+  @include card-top;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -2258,11 +2284,11 @@ body {
   color: var(--muted);
 }
 .strip-badge {
+  @include pill;
   margin-left: auto;
-  font-size: var(--type-label-sm);
-  font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
+  background: var(--surface-low);
 }
 .strip-trailing {
   margin-left: auto;
@@ -2283,6 +2309,7 @@ body {
 
 /* --- drow: the collapsible row, replacing .ordercard --------------------- */
 .drow {
+  @include card;
   background: var(--surface-lowest);
   border: 1px solid var(--hairline);
   margin: var(--space-sm) 0;
@@ -2345,6 +2372,8 @@ body {
 
 /* --- facts: one key/value strip, replacing .meta-grid + .stat-grid ------ */
 .facts {
+  @include card;
+  @include clip;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 1px;
@@ -2749,6 +2778,7 @@ body {
   margin: 0 0 var(--space-xs);
 }
 .policy-line {
+  @include card(var(--radius-field));
   margin: 0;
   padding: var(--space-sm) var(--space-md);
   border-left: 2px solid var(--primary);
@@ -2880,6 +2910,126 @@ body {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   margin-left: var(--space-sm);
+}
+
+/* ============================================================
+   Operations tracker, modelled on the storefront order-tracking hero
+   (.ot-badge / .ot-dot / .ot-headline / .ot-progress / .ot-row).
+   One sentence says where the account stands, a segmented track shows how
+   far the batch has moved, and the numbers sit in hairline rows underneath
+   instead of a KPI grid of boxes.
+   ============================================================ */
+.trk-badge {
+  @include pill;
+  color: var(--primary);
+  background: var(--primary-container);
+  margin: 0 0 var(--space-sm);
+  &.warn {
+    color: var(--warn);
+    background: var(--warn-container);
+  }
+  &.ok {
+    color: var(--ok);
+    background: color-mix(in srgb, var(--ok) 12%, transparent);
+  }
+}
+.trk-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+  animation: trk-pulse 1.8s ease-in-out infinite;
+}
+/* Respect a reduced-motion preference: the dot still reads as "live" from its
+   static fill, so dropping the pulse costs no information. */
+@media (prefers-reduced-motion: reduce) {
+  .trk-dot {
+    animation: none;
+  }
+}
+@keyframes trk-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+.trk-headline {
+  font-size: var(--type-heading-md);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  margin: 0 0 0.35rem;
+}
+.trk-next {
+  color: var(--muted);
+  margin: 0 0 var(--space-md);
+  font-size: var(--type-body-md);
+}
+.trk-progress {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 0.5rem;
+}
+.trk-seg {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-container);
+  &.on {
+    background: var(--primary-action);
+  }
+  &.current {
+    box-shadow: 0 0 0 2px var(--primary-container);
+  }
+}
+.trk-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: var(--type-label-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: var(--space-sm);
+}
+.trk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--hairline);
+  &:first-of-type {
+    border-top: none;
+  }
+}
+.trk-row-label {
+  color: var(--muted);
+  font-size: var(--type-label-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.trk-row-value {
+  text-align: right;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--type-body-md);
+  font-weight: 700;
+  &.num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+.trk-row-value.clear {
+  color: var(--ok);
+}
+.trk-row-value.actionable {
+  color: var(--warn);
 }
 /* The pre-login auth card keeps its own brand surface; it just needed its own
    label bar so the app-wide .tagbar class could be retired. */
