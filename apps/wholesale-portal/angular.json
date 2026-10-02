@@ -25,6 +25,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "../storefront/public/assets",
+                "output": "assets"
               }
             ],
             "styles": ["src/styles.scss"],

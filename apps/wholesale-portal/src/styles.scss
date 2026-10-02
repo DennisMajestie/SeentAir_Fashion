@@ -1,8 +1,14 @@
 /* ============================================================
    SEENTAIR WHOLESALE: Approved Stitch design system
    "Utilitarian Industrial B2B" (project 4978034307012465281)
-   Light warm canvas, 1px structural borders, zero shadows,
-   square corners, Inter-only type, storefront gold commit colour.
+   Light warm canvas, 1px structural borders, zero shadows, Inter-only
+   type, storefront gold commit colour.
+
+   Shape: this originally specified square corners throughout. It has since
+   been reconciled with the storefront order-tracking surface, so geometry is
+   centralised in --radius / --radius-field / --radius-pill and read through
+   the card / pill mixins rather than restated per selector. The flat,
+   hairline-only, zero-shadow character is unchanged.
    ============================================================ */
 
 :root {
@@ -617,7 +623,7 @@ label {
     color: var(--ink);
     font-family: 'Inter', sans-serif;
     font-size: var(--type-body-md);
-    border-radius: 0;
+    border-radius: var(--radius-field);
     &:focus {
       outline: 1px solid var(--hairline-strong);
       border-color: var(--hairline-strong);
@@ -766,7 +772,7 @@ label {
   background: var(--icard);
   color: var(--iink);
   border: 1px solid var(--ihair);
-  border-radius: 0;
+  border-radius: var(--radius-field);
   font-family: 'Inter', sans-serif;
   font-size: var(--type-body-md);
   transition: border-color 0.15s ease;
@@ -1178,7 +1184,7 @@ label {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    border-radius: 0;
+    border-radius: var(--radius-field);
   }
 }
 
@@ -1187,6 +1193,11 @@ label {
 .prodrow {
   background: var(--surface-lowest);
   border: 1px solid var(--hairline);
+  /* Matches the storefront product card (.card): 16px. Deliberately no
+     `overflow: hidden` here -- the row holds focusable controls and a focus
+     ring that gets clipped is a ring a keyboard user cannot see. Only the
+     thumbnail clips its own image, below. */
+  border-radius: var(--radius);
   margin: var(--space-sm) 0;
   &.open {
     border-color: var(--hairline-strong);
@@ -1222,6 +1233,9 @@ label {
     height: 56px;
     background: var(--surface-container);
     border: 1px solid var(--hairline);
+    /* Fixed 56px box with nothing focusable inside it, so this is the safe
+       place to clip and round the product image. */
+    border-radius: var(--radius-sm);
     overflow: hidden;
     flex: 0 0 56px;
     img {

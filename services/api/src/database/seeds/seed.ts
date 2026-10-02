@@ -5,9 +5,16 @@ import { RoleName, UserStatus } from '../../common/enums';
 import { Permission } from '../../modules/users/entities/permission.entity';
 import { Role } from '../../modules/users/entities/role.entity';
 import { User } from '../../modules/users/entities/user.entity';
+import {
+  WholesaleAccount,
+  WholesaleAccountStatus,
+} from '../../modules/wholesale/entities/wholesale-account.entity';
+import { PriceTier } from '../../modules/wholesale/entities/price-tier.entity';
 import { PERMISSION_MATRIX } from './permission-matrix';
 
-/** Minimal reference data: roles, the permission matrix, one test user per role. Idempotent. */
+/** Reference data: roles, the permission matrix, one test user per role, and
+ *  an approved wholesale account so the buyer portal is usable locally.
+ *  Idempotent. */
 async function seed(): Promise<void> {
   await AppDataSource.initialize();
   const roleRepo = AppDataSource.getRepository(Role);
@@ -80,6 +87,50 @@ async function seed(): Promise<void> {
     }
   }
   console.log(`Users: ${testUsers.length} test users ensured (password: $SEED_USER_PASSWORD)`);
+
+  // 4. Approved wholesale account for the test wholesaler.
+  //
+  // The WHOLESALER user above is not enough to sign in to the wholesale
+  // portal. Every wholesale read (pricing, invoices, stock) calls
+  // assertApprovedAccount(), which requires a wholesale_accounts row with
+  // status = approved -- so the seeded wholesaler authenticated and then got
+  // rejected on the first call. There is nothing to approve either, because
+  // the row did not exist; admin review only works on an existing account.
+  //
+  // Approving in the seed keeps `npm run seed` sufficient on a fresh machine.
+  // The discount below is a demo value: tier criteria are still Open
+  // Question #2, so in production a staff member assigns the tier.
+  const tierRepo = AppDataSource.getRepository(PriceTier);
+  const accountRepo = AppDataSource.getRepository(WholesaleAccount);
+
+  let demoTier = await tierRepo.findOne({ where: { name: 'Demo wholesale' } });
+  if (!demoTier) {
+    demoTier = await tierRepo.save(
+      tierRepo.create({
+        name: 'Demo wholesale',
+        ruleDescription: 'Seeded for local development. Criteria pending Open Question #2.',
+        discountPercent: 15,
+      }),
+    );
+  }
+
+  const wholesaler = await userRepo.findOne({
+    where: { email: 'wholesaler@seentair.test' },
+    relations: { role: true },
+  });
+  if (!wholesaler) throw new Error('seeded wholesaler user is missing');
+  if (!(await accountRepo.findOne({ where: { user: { id: wholesaler.id } }, relations: { user: true } }))) {
+    await accountRepo.save(
+      accountRepo.create({
+        user: wholesaler,
+        status: WholesaleAccountStatus.APPROVED,
+        tier: demoTier,
+      }),
+    );
+  }
+  console.log(
+    `Wholesale account: approved for ${wholesaler.email} on tier "${demoTier.name}" (${demoTier.discountPercent}% off)`,
+  );
 
   await AppDataSource.destroy();
   console.log('Seed complete.');
