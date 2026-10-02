@@ -852,11 +852,15 @@ label {
   color: var(--on-error-container);
   background: var(--error-container);
   border: 1px solid var(--error-container);
+  /* Matches the storefront alert surface (.ot-alert), which uses the field
+       radius rather than the full card radius. */
+  border-radius: var(--radius-field);
 }
 .auth-info {
   color: var(--ok);
   background: var(--surface-low);
   border: 1px solid var(--hairline);
+  border-radius: var(--radius-field);
 }
 
 .auth-utilities {
@@ -1289,6 +1293,10 @@ label {
       padding: var(--space-xs) var(--space-sm);
       background: var(--surface-low);
       border: 1px solid var(--hairline);
+      /* The pricing ladder tile ("20+ / Flat rate") is a badge, so it takes
+           the pill radius like the rest. It renders as a lozenge rather than a
+           full pill: at ~38px tall the 999px radius clamps to half the height. */
+      border-radius: var(--radius-pill);
       .lad-range {
         font-size: var(--type-label-sm);
         font-weight: 700;
