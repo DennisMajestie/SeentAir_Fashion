@@ -35,6 +35,27 @@ export class WholesaleController {
     return this.wholesaleService.pricing(user, parseInt(page, 10), parseInt(limit, 10));
   }
 
+  /**
+   * Derived stock for the caller's approved wholesale account.
+   *
+   * Deliberately not a widening of the WHOLESALER role: this returns bare
+   * quantities for the requested variant ids and nothing else. The ledger,
+   * movement history and inventory summaries stay behind INVENTORY:VIEW,
+   * which wholesalers do not hold.
+   */
+  @Get('stock')
+  stock(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('variantIds') variantIds = '',
+  ): Promise<Record<string, number | null>> {
+    const ids = variantIds
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .slice(0, 200);
+    return this.wholesaleService.stock(user, ids);
+  }
+
   /** Order & invoice/payment history for the caller's wholesale account. */
   @Get('invoices')
   invoices(

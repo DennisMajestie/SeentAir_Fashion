@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ApprovalsModule } from '../approvals/approvals.module';
 import { CatalogueModule } from '../catalogue/catalogue.module';
+import { InventoryModule } from '../inventory/inventory.module';
 import { Order } from '../orders/entities/order.entity';
 import { Payment } from '../orders/entities/payment.entity';
 import { UsersModule } from '../users/users.module';
@@ -17,6 +18,10 @@ import { WholesaleService } from './wholesale.service';
     UsersModule,
     CatalogueModule,
     ApprovalsModule,
+    // Read-only use: derived stock for the availability endpoint. Importing
+    // the module grants no HTTP access — WHOLESALER still has no INVENTORY
+    // permission, so /inventory/* stays staff-only to buyers.
+    InventoryModule,
   ],
   controllers: [WholesaleController],
   providers: [WholesaleService],
