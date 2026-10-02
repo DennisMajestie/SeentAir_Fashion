@@ -176,19 +176,17 @@ import { ThemeService } from './theme.service';
                     </svg>
                   }
                 </button>
-                  <div class="secure">
-                    <span class="material-symbols-outlined" aria-hidden="true">lock</span>
-                    <span>Secured connection</span>
-                  </div>
+                <div class="secure">
+                  <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+                  <span>Secured connection</span>
                 </div>
               </div>
-              <p class="lede">Authorised Retailers &amp; Stockists Only</p>
+            </div>
+            <p class="lede">Authorised Retailers &amp; Stockists Only</p>
           </header>
 
           <div class="auth-card">
-            <div class="tagbar">
-              <span>Wholesale buyers</span>
-            </div>
+            <div class="auth-tagbar"><span>Wholesale buyers</span></div>
 
             <h1 class="auth-title">Welcome back.</h1>
 
@@ -283,7 +281,8 @@ import { ThemeService } from './theme.service';
                 <div class="txt">
                   <span class="t">Minimum Batch Size</span>
                   <span class="d"
-                    >Strict minimum order quantity (MOQ) of 20 units per silhouette.</span
+                    >A strict per-silhouette minimum, set by the factory and shown in your rate card
+                    once your tier is assigned.</span
                   >
                 </div>
               </div>

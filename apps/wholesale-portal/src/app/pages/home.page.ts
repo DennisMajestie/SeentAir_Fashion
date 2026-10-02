@@ -3,95 +3,62 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService, Invoice, Pricing } from '../api.service';
 import { pill } from '../status-pill';
+import {
+  EmptyComponent,
+  FactsComponent,
+  LedgerComponent,
+  RowComponent,
+  StripComponent,
+} from '../ui/primitives';
 
 /**
- * W2, Wholesale buyer home. Identity + tier card, 2×2 operations KPI grid,
- * catalogue CTA, recent orders, billing & invoices, desk contact.
- * All figures derive from the live API (auth/me, wholesale/pricing,
- * wholesale/invoices, notifications)- nothing is invented.
+ * W2, Wholesale buyer home.
+ *
+ * Identity and tier, the four operational numbers, and the buyer's recent
+ * activity. All figures derive from the live API (auth/me, wholesale/pricing,
+ * wholesale/invoices, notifications) — nothing is invented.
+ *
+ * Recent orders and Billing used to be two separate sections looping the same
+ * three invoices, which meant every number appeared twice. They are now one
+ * section: the row head carries the invoice state, the panel carries the lines
+ * and the money, and the actions are the ones that actually change something.
  */
 @Component({
   selector: 'app-home',
-  imports: [CommonModule, RouterLink],
+  imports: [
+    CommonModule,
+    RouterLink,
+    StripComponent,
+    FactsComponent,
+    LedgerComponent,
+    RowComponent,
+    EmptyComponent,
+  ],
   template: `
-    <section class="id-card">
-      <div class="id-row">
-        <div class="id-name">
-          <span class="material-symbols-outlined mark" aria-hidden="true">verified</span>
-          <h1>{{ buyerName() ?? 'Wholesale buyer' }}</h1>
-        </div>
-        @if (approved()) {
-          <span class="chip okc">Verified</span>
-        } @else {
-          <span class="chip">Pending review</span>
-        }
-      </div>
-      <div class="id-tier">
-        @if (pricing(); as p) {
-          <span
-            ><strong>{{ p.tier?.name ?? 'Standard tier' }}</strong>
-            @if (p.tier) {
-              · {{ p.tier.discountPercent }}% off retail rate active
-            }
-          </span>
-          <a class="link" routerLink="/catalogue">Tier details</a>
-        } @else {
-          <span>Wholesale account awaiting approval, apply from the catalogue.</span>
-          <a class="link" routerLink="/catalogue">Apply</a>
-        }
-      </div>
-    </section>
+    <se-strip label="Wholesale account" [badge]="approved() ? 'Verified' : 'Pending review'">
+      <h1 class="home-h1">{{ buyerName() ?? 'Wholesale buyer' }}</h1>
+      @if (pricing(); as p) {
+        <p class="muted small" style="margin: 0 0 var(--space-sm)">
+          <strong>{{ p.tier?.name ?? 'Standard tier' }}</strong>
+          @if (p.tier) {
+            · {{ p.tier.discountPercent }}% off retail rate active
+          }
+          @if (moqKnown()) {
+            · {{ moq() }}-unit batch minimum
+          }
+        </p>
+        <a class="link" routerLink="/catalogue">Tier details</a>
+      } @else {
+        <p class="muted small" style="margin: 0 0 var(--space-sm)">
+          Wholesale account awaiting approval, apply from the catalogue.
+        </p>
+        <a class="link" routerLink="/catalogue">Apply</a>
+      }
+    </se-strip>
 
-    <div class="kpi-grid">
-      <div class="kpi">
-        <div class="k-head">
-          <span>Open orders</span>
-          <span class="material-symbols-outlined" aria-hidden="true">calendar_today</span>
-        </div>
-        <div class="k-value">
-          <strong>{{ two(openOrders()) }}</strong
-          ><span class="k-sub">Active</span>
-        </div>
-      </div>
-      <div class="kpi">
-        <div class="k-head">
-          <span>Awaiting pay</span>
-          <span class="material-symbols-outlined" aria-hidden="true">warning</span>
-        </div>
-        <div class="k-value" [class.alert]="awaitingPay() > 0">
-          <strong>{{ two(awaitingPay()) }}</strong>
-          @if (awaitingPay() > 0) {
-            <span class="chip accent">Action req</span>
-          } @else {
-            <span class="k-sub">Clear</span>
-          }
-        </div>
-      </div>
-      <div class="kpi">
-        <div class="k-head">
-          <span>In transit</span>
-          <span class="material-symbols-outlined" aria-hidden="true">local_shipping</span>
-        </div>
-        <div class="k-value">
-          <strong>{{ two(inTransit()) }}</strong
-          ><span class="k-sub">GIGL dispatch</span>
-        </div>
-      </div>
-      <div class="kpi">
-        <div class="k-head">
-          <span>Last order</span>
-          <span class="material-symbols-outlined" aria-hidden="true">event</span>
-        </div>
-        <div class="k-value">
-          @if (lastOrder(); as last) {
-            <strong style="font-size: 1rem">{{ last.createdAt | date: 'dd MMM yyyy' }}</strong>
-            <span class="k-sub">{{ last.status.replaceAll('_', ' ') }}</span>
-          } @else {
-            <strong style="font-size: 1rem">-</strong><span class="k-sub">No orders yet</span>
-          }
-        </div>
-      </div>
-    </div>
+    <se-strip label="Operations" flush>
+      <se-facts [facts]="kpis()" />
+    </se-strip>
 
     <a class="cta hero-cta" routerLink="/catalogue">
       <span class="material-symbols-outlined" aria-hidden="true">storefront</span>
@@ -100,128 +67,86 @@ import { pill } from '../status-pill';
     </a>
 
     @if (notices().length > 0) {
-      <section class="panel">
-        <div class="tagbar">
-          <span>Desk notices</span><span>{{ notices().length }}</span>
-        </div>
+      <se-strip label="Desk notices" [badge]="notices().length + ''">
         @for (n of notices(); track n.id) {
-          <p class="small">
+          <p class="small" style="margin: 0 0 var(--space-xs)">
             <span class="status">{{ n.type.replaceAll('_', ' ') }}</span> {{ n.message }}
             <span class="muted">({{ n.sentAt | date: 'short' }})</span>
           </p>
         }
-      </section>
+      </se-strip>
     }
 
-    <div class="section-head">
-      <h2>
-        Recent orders <span class="chip">{{ invoices().length }}</span>
-      </h2>
-      <a class="link" routerLink="/orders">View all orders</a>
-    </div>
-    @if (invoices().length === 0) {
-      <div class="empty-state">
-        <span class="empty-state-icon" aria-hidden="true"
-          ><svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+    <se-strip label="Recent orders & invoices" [badge]="invoices().length + ' total'">
+      <span stripTrailing>
+        <a class="link" routerLink="/orders">View all orders</a>
+      </span>
+      @if (invoices().length === 0) {
+        <se-empty
+          icon="receipt_long"
+          title="No orders yet"
+          sub="Your first wholesale batch will appear here."
+        />
+      } @else {
+        @for (invoice of recent(); track invoice.orderId) {
+          <se-row
+            [id]="invoice.orderId"
+            [open]="openId() === invoice.orderId"
+            (toggled)="onToggle(invoice.orderId, $event)"
           >
-            <circle cx="12" cy="12" r="9" />
-            <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
-        ></span>
-        <h2 class="empty-state-title">No orders yet</h2>
-        <p class="empty-state-sub">Your first wholesale batch will appear here.</p>
-      </div>
-    }
-    @for (invoice of recent(); track invoice.orderId) {
-      <article class="ordercard">
-        <div class="oc-top">
-          <div>
-            <span class="oc-meta">Order identifier</span>
-            <span class="oc-id">#{{ invoice.orderId.slice(0, 8).toUpperCase() }}</span>
-          </div>
-          <span class="status" [class]="'status ' + pill(invoice.status)">
-            {{ invoice.status.replaceAll('_', ' ') }} · {{ invoice.createdAt | date: 'dd MMM' }}
-          </span>
-        </div>
-        <div class="oc-line">
-          <span><span class="l">Volume</span>{{ units(invoice) }} units</span>
-          <span class="num"
-            ><span class="l">Subtotal</span>₦{{ invoice.totalAmount | number: '1.0-2' }}</span
-          >
-        </div>
-        <div class="oc-actions">
-          <button class="cta small outline" (click)="reorder(invoice.orderId)">
-            <span class="material-symbols-outlined" aria-hidden="true">sync</span> Reorder batch
-          </button>
-          <a class="cta small quiet" [routerLink]="['/orders', invoice.orderId, 'invoice']"
-            >Manifest</a
-          >
-        </div>
-      </article>
-    }
+            <span rowIdent>
+              <span class="oc-id">#{{ code(invoice) }}</span>
+              <span class="oc-meta">{{ invoice.createdAt | date: 'dd MMM yyyy' }}</span>
+            </span>
+            <span rowTail>
+              <span class="status {{ pill(invoice.status) }}">
+                {{ invoice.status.replaceAll('_', ' ') }}
+              </span>
+              <span class="home-amount">₦{{ money(invoice.totalAmount) }}</span>
+            </span>
+
+            <ng-container rowPanel>
+              <se-ledger [rows]="invoiceLedger(invoice)" />
+              <p class="muted small" style="margin: var(--space-sm) 0 0">
+                {{ units(invoice) }} units · {{ invoice.items.length }} line(s) ·
+                {{
+                  paid(invoice)
+                    ? 'settled via ' + payMethod(invoice)
+                    : 'payment ' + invoice.paymentStatus.replaceAll('_', ' ')
+                }}
+              </p>
+            </ng-container>
+
+            <span rowActions>
+              <a class="cta small quiet" [routerLink]="['/orders', invoice.orderId, 'invoice']">
+                <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+                {{ paid(invoice) ? 'Download PDF' : 'View invoice' }}
+              </a>
+              @if (!paid(invoice)) {
+                <button class="cta small outline" (click)="reorder(invoice.orderId)">
+                  <span class="material-symbols-outlined" aria-hidden="true">sync</span> Reorder
+                  batch
+                </button>
+              }
+            </span>
+          </se-row>
+        }
+      }
+    </se-strip>
+
     @if (message()) {
       <p class="success">{{ message() }}</p>
-    }
-
-    <div class="section-head">
-      <h2>Billing &amp; invoices</h2>
-      <span class="aside">Aba accounts desk</span>
-    </div>
-    @for (invoice of recent(); track invoice.orderId) {
-      <article class="ordercard" style="padding: var(--space-md) var(--space-lg)">
-        <div class="oc-top">
-          <div>
-            <span class="oc-id">INV-{{ invoice.orderId.slice(0, 8).toUpperCase() }}</span>
-            <span class="oc-meta"
-              >{{ paid(invoice) ? 'Settled amount' : 'Amount due' }}- ₦{{
-                invoice.totalAmount | number: '1.0-2'
-              }}</span
-            >
-          </div>
-          <div
-            style="display:flex; flex-direction:column; align-items:flex-end; gap: var(--space-sm)"
-          >
-            @if (paid(invoice)) {
-              <span class="chip okc">Paid · {{ payMethod(invoice) }}</span>
-              <a class="cta small quiet" [routerLink]="['/orders', invoice.orderId, 'invoice']">
-                <span class="material-symbols-outlined" aria-hidden="true">download</span> Download
-                PDF
-              </a>
-            } @else {
-              <span class="chip accent">{{ invoice.paymentStatus.replaceAll('_', ' ') }}</span>
-              <a class="cta small" [routerLink]="['/orders', invoice.orderId, 'invoice']">
-                <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span> View
-                invoice
-              </a>
-            }
-          </div>
-        </div>
-      </article>
     }
 
     <!-- GAP: no account-manager endpoint yet, desk identity below is the same
          factory support desk the approved W1 screen publishes, not a per-buyer
          assigned rep. Awaits a wholesale account-manager field in the API. -->
-    <div class="section-head">
-      <h2>Factory desk</h2>
-      <span class="aside">Aba hub desk</span>
-    </div>
-    <section class="panel">
-      <div class="oc-top">
-        <div class="id-name">
-          <span class="chip dark" style="padding: 10px 8px">YD</span>
-          <div>
-            <strong>Aba Wholesale Desk</strong>
-            <p class="muted small" style="margin: 2px 0 0">Wholesale operations: Aba factory</p>
-          </div>
-        </div>
-      </div>
-      <div class="oc-actions">
+    <se-strip label="Factory desk" badge="Aba hub desk">
+      <p class="party-name" style="margin: 0 0 var(--space-sm)">Aba Wholesale Desk</p>
+      <p class="muted small" style="margin: 0 0 var(--space-sm)">
+        Wholesale operations: Aba factory
+      </p>
+      <div class="actions">
         <a class="cta small outline" href="tel:+23418887400">
           <span class="material-symbols-outlined" aria-hidden="true">call</span> +234 1 888 7400
         </a>
@@ -234,7 +159,7 @@ import { pill } from '../status-pill';
           <span class="material-symbols-outlined" aria-hidden="true">chat</span> WhatsApp desk
         </button>
       </div>
-    </section>
+    </se-strip>
   `,
 })
 export class HomePage implements OnInit {
@@ -248,6 +173,8 @@ export class HomePage implements OnInit {
     [],
   );
   readonly message = signal<string | null>(null);
+  /** Which invoice row is expanded; null means all collapsed. */
+  readonly openId = signal<string | null>(null);
 
   readonly recent = computed(() => this.invoices().slice(0, 3));
   readonly openOrders = computed(
@@ -277,8 +204,59 @@ export class HomePage implements OnInit {
     });
   }
 
+  /** One at a time, the same rule as the orders log. */
+  onToggle(orderId: string, open: boolean): void {
+    this.openId.set(open ? orderId : null);
+  }
+
+  moq(): number {
+    return this.pricing()?.moq ?? 0;
+  }
+
+  moqKnown(): boolean {
+    return this.moq() > 0;
+  }
+
+  code(invoice: Invoice): string {
+    return invoice.orderId.slice(0, 8).toUpperCase();
+  }
+
   two(n: number): string {
     return n.toString().padStart(2, '0');
+  }
+
+  kpis(): Array<{ label: string; value: string; numeric?: boolean }> {
+    const last = this.lastOrder();
+    return [
+      { label: 'Open orders', value: this.two(this.openOrders()), numeric: true },
+      {
+        label: 'Awaiting payment',
+        value: this.awaitingPay() > 0 ? this.two(this.awaitingPay()) : 'Clear',
+        numeric: true,
+      },
+      { label: 'In transit', value: this.two(this.inTransit()), numeric: true },
+      {
+        label: 'Last order',
+        value: last ? this.day(last.createdAt) + ' · ' + last.status.replaceAll('_', ' ') : '—',
+      },
+    ];
+  }
+
+  invoiceLedger(
+    invoice: Invoice,
+  ): Array<{ label: string; value: string; note?: string; total?: boolean }> {
+    const rows: Array<{ label: string; value: string; note?: string; total?: boolean }> =
+      invoice.items.map((item) => ({
+        label: item.sku,
+        value: `₦${this.money(item.lineTotal)}`,
+        note: `${item.quantity} × ₦${this.money(item.unitPrice)}`,
+      }));
+    rows.push({
+      label: this.paid(invoice) ? 'Total settled' : 'Total due',
+      value: `₦${this.money(invoice.totalAmount)}`,
+      total: true,
+    });
+    return rows;
   }
 
   units(invoice: Invoice): number {
@@ -296,10 +274,23 @@ export class HomePage implements OnInit {
   reorder(orderId: string): void {
     this.api.reorder(orderId).subscribe({
       next: (order) =>
-        this.message.set(
-          `Reorder placed: ${order.id.slice(0, 8)}- repriced at your current tier.`,
-        ),
+        this.message.set(`Reorder placed: ${order.id.slice(0, 8)}- repriced at your current tier.`),
       error: (err) => this.message.set(err?.error?.message ?? 'Reorder failed.'),
     });
+  }
+
+  money(value: number): string {
+    return value.toLocaleString('en-NG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  private day(value: string): string {
+    return new Intl.DateTimeFormat('en-NG', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date(value));
   }
 }

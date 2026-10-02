@@ -3,6 +3,7 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService, DeliveryLegView, Invoice } from '../api.service';
 import { pill } from '../status-pill';
+import { FactsComponent, LedgerComponent, StripComponent } from '../ui/primitives';
 
 /** Fallback poll cadence while the SSE stream is down, and the slow cadence
     used while it is up. Visibility-aware, so a backgrounded tab costs nothing. */
@@ -10,6 +11,20 @@ const POLL_FAST_MS = 15_000;
 const POLL_SLOW_MS = 60_000;
 /** Wait before re-dialling a stream that dropped. */
 const STREAM_RETRY_MS = 30_000;
+
+/**
+ * Date formatting for facts built in TypeScript.
+ *
+ * `Intl` rather than injecting `DatePipe`: a pipe is only injectable when the
+ * component declares it, and a fact builder that silently cannot format a date
+ * is worse than one that never pretends to.
+ */
+const eventFormat = new Intl.DateTimeFormat('en-NG', {
+  day: '2-digit',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+});
 
 interface TrackingEvent {
   status: string;
@@ -31,7 +46,7 @@ interface Stage {
  */
 @Component({
   selector: 'app-tracking',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, StripComponent, FactsComponent, LedgerComponent],
   template: `
     <div
       style="display:flex; justify-content:space-between; align-items:center; gap: var(--space-sm); flex-wrap:wrap"
@@ -43,70 +58,27 @@ interface Stage {
     </div>
 
     @if (loaded()) {
-      <section class="panel">
-        <div class="tagbar">
-          <span>Wholesale freight tracking</span>
-          <span class="status" [class]="'status ' + pill(status())">{{
-            status().replaceAll('_', ' ')
-          }}</span>
-        </div>
-        <h1 style="font-size: var(--type-heading-md)">
-          Order #SNT-{{ orderId().slice(0, 8).toUpperCase() }}
-        </h1>
-        <div class="meta-grid" style="margin-bottom:0">
-          <div class="mg">
-            <span class="m-l">Current status</span>
-            <span class="m-v">{{ status().replaceAll('_', ' ') }}</span>
-          </div>
-          <div class="mg">
-            <span class="m-l">Last event</span>
-            <span class="m-v">{{
-              lastEventAt() ? (lastEventAt() | date: 'dd MMM, HH:mm') : '-'
-            }}</span>
-          </div>
-          <div class="mg">
-            <span class="m-l">Batch volume</span>
-            <span class="m-v">{{ invoice() ? units(invoice()!) + ' garment units' : '-' }}</span>
-          </div>
-          <!-- GAP: consignee destination address awaits the buyer address-book module -->
-          <div class="mg">
-            <span class="m-l">Destination</span> <span class="m-v">Confirmed with desk</span>
-          </div>
-        </div>
+      <se-strip label="Wholesale freight tracking" trailing>
+        <span stripTrailing class="status {{ pill(status()) }}">{{
+          status().replaceAll('_', ' ')
+        }}</span>
+        <h1 class="tl-h1">Order #SNT-{{ orderId().slice(0, 8).toUpperCase() }}</h1>
+        <se-facts [facts]="headerFacts()" />
         <div class="actions">
           <a class="link" [routerLink]="['/orders', orderId(), 'invoice']"
             >Manifest &amp; invoice</a
           >
         </div>
-      </section>
+      </se-strip>
 
       <!-- GAP: live GPS corridor map awaits GIGL telemetry via the logistics
-           adapter: the corridor panel states the real route policy instead. -->
-      <section class="panel">
-        <div class="tagbar">
-          <span
-            ><span
-              class="material-symbols-outlined"
-              style="font-size:14px; vertical-align:-2px"
-              aria-hidden="true"
-              >route</span
-            >
-            Logistics freight corridor</span
-          >
-          <span>Aba: nationwide</span>
-        </div>
-        <div
-          class="leg-row"
-          style="display:flex; justify-content:space-between; gap: var(--space-md); font-size: var(--type-body-sm); color: var(--muted)"
-        >
-          <span>Interstate transit vector</span>
-          <span class="chip dark">Carrier: GIGL</span>
-        </div>
-        <p class="muted small" style="margin: var(--space-sm) 0 0">
+           adapter: the corridor strip states the real route policy instead. -->
+      <se-strip label="Logistics freight corridor" badge="Aba: nationwide">
+        <p class="muted small" style="margin: 0">
           Batches dispatch from the Aba workshop onto the GIGL national freight network. Waybill
           telemetry appears here as the carrier integration comes online.
         </p>
-      </section>
+      </se-strip>
 
       <div class="section-head">
         <h2>Order progress timeline</h2>
@@ -150,18 +122,15 @@ interface Stage {
         }
       </div>
       @if (extraEvents().length > 0) {
-        <section class="panel">
-          <div class="tagbar">
-            <span>Additional ledger events</span><span>{{ extraEvents().length }}</span>
-          </div>
+        <se-strip label="Additional ledger events" [badge]="extraEvents().length + ''">
           @for (event of extraEvents(); track event.createdAt) {
-            <p class="small">
+            <p class="small" style="margin: 0 0 var(--space-xs)">
               <strong>{{ event.status.replaceAll('_', ' ') }}</strong> -
               {{ event.note ?? 'recorded' }}
               <span class="muted">({{ event.createdAt | date: 'medium' }})</span>
             </p>
           }
-        </section>
+        </se-strip>
       }
 
       <div class="section-head">
@@ -170,54 +139,13 @@ interface Stage {
       </div>
       <!-- GAP: multi-leg waybill breakdown (carrier, route vectors, waybill refs)
            awaits the GIGL adapter's shipment API: one honest leg is shown. -->
-      <div class="leg-card">
-        <div class="leg-head">
-          <span
-            ><span
-              class="material-symbols-outlined"
-              style="font-size:14px; vertical-align:-2px"
-              aria-hidden="true"
-              >local_shipping</span
-            >
-            @if (leg(); as l) {
-              Factory dispatch via {{ carrierLabel(l) }}
-            } @else {
-              Factory dispatch via GIGL
-            }
-          </span>
-          <span class="chip" [class.okc]="delivered()">{{
-            delivered() ? 'Delivered' : legStatus()
-          }}</span>
-        </div>
-        <div class="leg-row">
-          <span>Assigned carrier</span>
-          <span class="v">
-            @if (leg(); as l) {
-              {{ carrierLabel(l) }}
-            } @else {
-              GIGL (first-line, pluggable)
-            }
-          </span>
-        </div>
-        <div class="leg-row">
-          <span>Route vector</span>
-          <span class="v">
-            @if (legZone()) {
-              {{ legZone() }}
-            } @else {
-              Aba workshop → consignee hub
-            }
-          </span>
-        </div>
-        <div class="leg-ref">
-          <span>Tracking waybill</span>
-          <span class="v">{{ leg()?.trackingRef ?? 'Issued at dispatch' }}</span>
-        </div>
-        @if (riderFirstName()) {
-          <div class="leg-row">
-            <span>Rider</span><span class="v">{{ riderFirstName() }}</span>
-          </div>
-        }
+      <se-strip
+        label="Freight breakdown"
+        [badge]="
+          leg() ? 'Carrier dispatch via ' + carrierLabel(leg()!) : 'Factory dispatch via GIGL'
+        "
+      >
+        <se-ledger [rows]="freightRows()" />
 
         @if (leg(); as l) {
           <div class="section-head" style="margin-top: var(--space-md)">
@@ -246,14 +174,10 @@ interface Stage {
             Checking every {{ pollSeconds() }}s while this tab is open.
           }
         </p>
-      </div>
+      </se-strip>
 
       @if (invoice(); as inv) {
-        <div class="section-head">
-          <h2>Package manifest</h2>
-          <span class="aside">{{ units(inv) }} units</span>
-        </div>
-        <section class="panel">
+        <se-strip label="Package manifest" [badge]="units(inv) + ' units'">
           @for (item of inv.items; track item.sku) {
             <div class="oc-line" style="margin-top: 0; margin-bottom: var(--space-sm)">
               <span
@@ -264,7 +188,7 @@ interface Stage {
           }
           <!-- GAP: bale counts and gross weights await warehouse packing data -->
           <p class="muted small" style="margin:0">Packed and sealed at the Aba factory floor.</p>
-        </section>
+        </se-strip>
       }
 
       <div class="section-head"><h2>Dispatch support &amp; policy</h2></div>
@@ -559,5 +483,40 @@ export class TrackingPage implements OnInit, OnDestroy {
 
   units(inv: Invoice): number {
     return inv.items.reduce((n, i) => n + i.quantity, 0);
+  }
+
+  headerFacts(): Array<{ label: string; value: string; numeric?: boolean }> {
+    const last = this.lastEventAt();
+    const inv = this.invoice();
+    return [
+      { label: 'Current status', value: this.status().replaceAll('_', ' ') },
+      {
+        label: 'Last event',
+        value: last ? eventFormat.format(new Date(last)) : '—',
+      },
+      { label: 'Batch volume', value: inv ? `${this.units(inv)} garment units` : '—' },
+      // GAP: consignee destination address awaits the buyer address-book module
+      { label: 'Destination', value: 'Confirmed with desk' },
+    ];
+  }
+
+  /** The single freight leg, as ledger rows instead of a bespoke card. */
+  freightRows(): Array<{ label: string; value: string; note?: string; total?: boolean }> {
+    const l = this.leg();
+    const rows: Array<{ label: string; value: string; note?: string; total?: boolean }> = [
+      {
+        label: 'Assigned carrier',
+        value: l ? this.carrierLabel(l) : 'GIGL (first-line, pluggable)',
+      },
+      { label: 'Route vector', value: this.legZone() || 'Aba workshop → consignee hub' },
+      { label: 'Tracking waybill', value: l?.trackingRef ?? 'Issued at dispatch' },
+    ];
+    if (this.riderFirstName()) rows.push({ label: 'Rider', value: this.riderFirstName()! });
+    rows.push({
+      label: 'Leg status',
+      value: this.delivered() ? 'Delivered' : this.legStatus(),
+      total: true,
+    });
+    return rows;
   }
 }

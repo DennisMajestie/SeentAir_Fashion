@@ -4,44 +4,45 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService, Invoice, Pricing } from '../api.service';
 import { pill } from '../status-pill';
+import {
+  EmptyComponent,
+  FactsComponent,
+  LedgerComponent,
+  RowComponent,
+  StripComponent,
+} from '../ui/primitives';
 
 /**
- * W6, Orders & invoices: procurement log stats, status filter chips,
- * order/date filters, batch cards with contextual actions, and a real
- * CSV batch-statement export built from the live invoice ledger.
+ * W6, Orders & invoices: the procurement log.
+ *
+ * Built on the shared primitives so it reads as part of the same system as the
+ * catalogue:
+ *  - each order is a `se-row` that collapses by default and expands in place to
+ *    reveal its line items, so a buyer scanning 200 orders sees the numbers
+ *    first and the detail only when asked
+ *  - the summary is one `se-facts` strip, not a bespoke stat grid
+ *  - the money summary is one `se-ledger`
+ *
+ * No order card is fabricated: every figure comes from the live invoice ledger,
+ * and the CSV export writes exactly the rows on screen.
  */
 @Component({
   selector: 'app-orders',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    StripComponent,
+    RowComponent,
+    FactsComponent,
+    LedgerComponent,
+    EmptyComponent,
+  ],
   template: `
-    <section class="panel">
-      <div class="tagbar">
-        <span
-          ><span
-            class="material-symbols-outlined"
-            style="font-size:14px; vertical-align:-2px"
-            aria-hidden="true"
-            >receipt_long</span
-          >
-          Procurement log</span
-        >
-        <span>{{ today | date: 'MMM yyyy' }}</span>
-      </div>
-      <div class="stat-grid" style="margin:0">
-        <div class="stat">
-          <span class="s-label">Active commitments</span>
-          <strong class="tabular">₦{{ activeCommitments() | number: '1.0-2' }}</strong>
-          <span class="s-sub"
-            >{{ openBatches() }} batch{{ openBatches() === 1 ? '' : 'es' }} in pipeline</span
-          >
-        </div>
-        <div class="stat">
-          <span class="s-label">Lifetime volume</span>
-          <strong class="tabular">{{ lifetimeUnits() }} units</strong>
-          <span class="s-sub">{{ tierLabel() }}</span>
-        </div>
-      </div>
-    </section>
+    <se-strip label="Procurement log" [badge]="periodLabel()">
+      <span stripTrailing>{{ today | date: 'MMM yyyy' }}</span>
+      <se-facts [facts]="summary()" />
+    </se-strip>
 
     <div class="filter-chips" role="tablist" aria-label="Order status">
       <button [class.active]="statusFilter() === null" (click)="statusFilter.set(null)">
@@ -72,64 +73,70 @@ import { pill } from '../status-pill';
       </select>
     </div>
 
+    <!-- One open row at a time: the procurement log is scanned, not read. -->
     @if (filtered().length === 0) {
-      <p class="muted">No wholesale orders match the current filter.</p>
+      <se-empty
+        icon="receipt_long"
+        [title]="emptyTitle()"
+        [sub]="emptySub()"
+        ctaLabel="Browse catalogue"
+        ctaHref="/catalogue"
+      />
     }
     @for (invoice of filtered(); track invoice.orderId) {
-      <article class="ordercard">
-        <div class="oc-top">
-          <div>
-            <span class="oc-id"
-              >#SNT-{{ invoice.orderId.slice(0, 8).toUpperCase() }}
-              @if (!isPaid(invoice)) {
-                <span class="chip accent">Action req</span>
-              } @else if (isDelivered(invoice)) {
-                <span class="chip">Archived</span>
-              } @else {
-                <span class="chip soft">Batch run</span>
-              }
-            </span>
-            <span class="oc-meta"
-              >{{ invoice.createdAt | date: 'dd MMM yyyy' }} · Factory batch</span
-            >
-          </div>
-          <div class="oc-amount">
-            <strong>₦{{ invoice.totalAmount | number: '1.0-2' }}</strong>
-            <span>{{ units(invoice) }} units</span>
-          </div>
+      <se-row
+        [id]="invoice.orderId"
+        [open]="openId() === invoice.orderId"
+        (toggled)="onToggle(invoice.orderId, $event)"
+      >
+        <ng-container rowIdent>
+          <span class="drow-code">
+            #{{ shortId(invoice) }}
+            <span class="chip" [class.okc]="isPaid(invoice)" [class.accent]="!isPaid(invoice)">{{
+              stateLabel(invoice)
+            }}</span>
+          </span>
+          <span class="drow-meta"
+            >{{ invoice.createdAt | date: 'dd MMM yyyy' }} · {{ units(invoice) }} units</span
+          >
+        </ng-container>
+
+        <ng-container rowTail>
+          <span class="drow-amount">₦{{ invoice.totalAmount | number: '1.0-2' }}</span>
+          <span class="status" [class]="'status ' + pill(invoice.paymentStatus)">{{
+            isPaid(invoice) ? 'Paid' : invoice.paymentStatus.replaceAll('_', ' ')
+          }}</span>
+        </ng-container>
+
+        <div rowPanel>
+          <se-ledger [rows]="lineLedger(invoice)" />
+
+          <dl class="kv">
+            <div>
+              <dt>Payment</dt>
+              <dd>
+                {{ isPaid(invoice) ? 'Paid · ' + payMethod(invoice) : 'Awaiting settlement' }}
+              </dd>
+            </div>
+            <div>
+              <dt>Batch status</dt>
+              <dd>
+                <span class="status" [class]="'status ' + pill(invoice.status)">{{
+                  invoice.status.replaceAll('_', ' ')
+                }}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Placed</dt>
+              <dd>{{ invoice.createdAt | date: 'dd MMM yyyy, HH:mm' }}</dd>
+            </div>
+          </dl>
         </div>
 
-        <div class="oc-line">
-          <span>
-            <span class="l">Batch contents</span>
-            @for (item of invoice.items; track item.sku) {
-              <span class="small"
-                >{{ item.quantity }}× <code>{{ item.sku }}</code>
-                @if (!$last) {
-                  ·
-                }
-              </span>
-            }
-          </span>
-        </div>
-
-        <div class="oc-chips">
-          <span class="status" [class]="'status ' + pill(invoice.paymentStatus)">
-            {{
-              isPaid(invoice)
-                ? 'Paid · ' + payMethod(invoice)
-                : invoice.paymentStatus.replaceAll('_', ' ')
-            }}
-          </span>
-          <span class="status" [class]="'status ' + pill(invoice.status)">
-            {{ invoice.status.replaceAll('_', ' ') }}
-          </span>
-        </div>
-
-        <div class="oc-actions">
+        <ng-container rowActions>
           @if (!isPaid(invoice)) {
-            <!-- GAP: no payment-slip upload endpoint, the desk verifies transfers;
-                 the pro-forma stands in for the reference's UPLOAD SLIP action. -->
+            <!-- GAP: no payment-slip upload endpoint; the desk verifies transfers,
+                 so the pro-forma stands in for an UPLOAD SLIP action. -->
             <a class="cta small" [routerLink]="['/orders', invoice.orderId, 'invoice']">
               <span class="material-symbols-outlined" aria-hidden="true">description</span>
               Pro-forma
@@ -157,9 +164,10 @@ import { pill } from '../status-pill';
               <span class="material-symbols-outlined" aria-hidden="true">sync</span> Reorder batch
             </button>
           }
-        </div>
-      </article>
+        </ng-container>
+      </se-row>
     }
+
     @if (message()) {
       <p class="success">{{ message() }}</p>
     }
@@ -192,6 +200,8 @@ export class OrdersPage implements OnInit {
   readonly pricing = signal<Pricing | null>(null);
   readonly message = signal<string | null>(null);
   readonly statusFilter = signal<string | null>(null);
+  /** Open order id. Starts empty: the log is scanned, not read. */
+  readonly openId = signal<string | null>(null);
   query = '';
   range: '90' | '365' | 'all' = '90';
 
@@ -211,6 +221,35 @@ export class OrdersPage implements OnInit {
       label: key.replaceAll('_', ' '),
     }));
   });
+
+  /** The one `se-facts` strip, built from the live ledger. */
+  readonly summary = computed<Array<{ label: string; value: string; numeric?: boolean }>>(() => [
+    {
+      label: 'Active commitments',
+      value: `₦${this.n(this.activeCommitments())}`,
+      numeric: true,
+    },
+    {
+      label: 'In pipeline',
+      value: `${this.openBatches()} batch${this.openBatches() === 1 ? '' : 'es'}`,
+    },
+    { label: 'Lifetime volume', value: `${this.lifetimeUnits()} units`, numeric: true },
+    { label: 'Rate card', value: this.tierLabel() },
+  ]);
+
+  readonly periodLabel = computed(() =>
+    this.range === 'all' ? 'All time' : this.range === '365' ? 'Last 12 months' : 'Last 90 days',
+  );
+
+  readonly emptyTitle = computed(() =>
+    this.invoices().length === 0 ? 'No orders yet' : 'No orders match this filter',
+  );
+
+  readonly emptySub = computed(() =>
+    this.invoices().length === 0
+      ? 'Your first bulk order will appear here once the factory confirms it.'
+      : 'Try clearing the status chip or widening the date range.',
+  );
 
   ngOnInit(): void {
     this.api.invoices().subscribe((res) => this.invoices.set(res.data));
@@ -236,6 +275,47 @@ export class OrdersPage implements OnInit {
     });
   }
 
+  /** One open row at a time, so the log never becomes a wall of open panels. */
+  onToggle(id: string, open: boolean): void {
+    this.openId.set(open ? id : null);
+  }
+
+  shortId(invoice: Invoice): string {
+    return invoice.orderId.slice(0, 8).toUpperCase();
+  }
+
+  stateLabel(invoice: Invoice): string {
+    if (!this.isPaid(invoice)) return 'Action req';
+    if (this.isDelivered(invoice)) return 'Archived';
+    return 'Batch run';
+  }
+
+  /**
+   * The invoice's own lines as ledger rows, then the order total.
+   *
+   * Amounts are the values the API sent, so this reconciles with the CSV
+   * export row for row.
+   */
+  lineLedger(invoice: Invoice): Array<{
+    label: string;
+    value: string;
+    note?: string;
+    total?: boolean;
+  }> {
+    return [
+      ...invoice.items.map((item) => ({
+        label: `${item.quantity}× ${item.sku}`,
+        value: `₦${this.n(item.lineTotal)}`,
+        note: `₦${this.n(item.unitPrice)} ea`,
+      })),
+      {
+        label: 'Batch total',
+        value: `₦${this.n(invoice.totalAmount)}`,
+        total: true,
+      },
+    ];
+  }
+
   units(invoice: Invoice): number {
     return invoice.items.reduce((n, i) => n + i.quantity, 0);
   }
@@ -255,9 +335,7 @@ export class OrdersPage implements OnInit {
   reorder(orderId: string): void {
     this.api.reorder(orderId).subscribe({
       next: (order) => {
-        this.message.set(
-          `Reorder placed: ${order.id.slice(0, 8)}- repriced at your current tier.`,
-        );
+        this.message.set(`Reorder placed: ${order.id.slice(0, 8)}- repriced at your current tier.`);
         this.api.invoices().subscribe((res) => this.invoices.set(res.data));
       },
       error: (err) => this.message.set(err?.error?.message ?? 'Reorder failed.'),
@@ -299,5 +377,10 @@ export class OrdersPage implements OnInit {
     a.download = `seentair-batch-statement-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  /** Grouped thousands, no decimals: these are ledger figures, not unit prices. */
+  private n(value: number): string {
+    return Math.round(value).toLocaleString('en-NG');
   }
 }
