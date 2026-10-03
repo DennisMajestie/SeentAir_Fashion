@@ -32,13 +32,17 @@ function rgb(value: string): string {
   return `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`;
 }
 
-describe('ops login polish', () => {
+describe('ops login photo overlay', () => {
   let fixture: ComponentFixture<App>;
 
   const el = <T extends Element>(sel: string): T => fixture.nativeElement.querySelector(sel) as T;
 
   const styleOf = (sel: string, pseudo?: string): CSSStyleDeclaration =>
     getComputedStyle(el(sel), pseudo ?? null);
+
+  /** Custom property value on the overlay root, which is where tokens live. */
+  const token = (name: string): string =>
+    getComputedStyle(el('.auth-screen')).getPropertyValue(name).trim();
 
   const build = (theme: 'light' | 'dark'): void => {
     localStorage.clear();
@@ -57,129 +61,116 @@ describe('ops login polish', () => {
 
   afterEach(() => fixture?.destroy());
 
-  // ---- item 1: brand panel is always dark, form side still switches -------
-  describe('item 1 — brand panel decoupled from the app theme', () => {
-    it('renders a dark brand panel while the form side is light', () => {
+  // ---- the photo backdrop ------------------------------------------------
+  describe('photo backdrop', () => {
+    it('runs the background full bleed, not inside a capped frame', () => {
       build('light');
-      const brand = styleOf('.brand-panel').backgroundColor;
-      const form = styleOf('.auth-col').backgroundColor;
-
-      expect(rgb(brand)).toBe('rgb(15, 14, 12)');
-      expect(rgb(form)).toBe('rgb(251, 249, 244)');
+      const s = styleOf('.auth-screen');
+      // No max-width cap: the whole point is that the photo reaches both edges.
+      expect(s.maxWidth).toBe('none');
+      expect(s.backgroundImage).toContain('form-bg.jpg');
+      expect(s.backgroundSize).toBe('cover');
     });
 
-    it('keeps the brand panel dark when the app theme is dark', () => {
+    it('spans the full window width with no side inset', () => {
+      build('light');
+      const s = styleOf('.auth-screen');
+      // A block-level element fills its parent, so assert the rendered width
+      // reaches the viewport rather than checking for a computed 'auto'.
+      const viewport = document.documentElement.clientWidth;
+      expect(Math.round(parseFloat(s.width))).toBeGreaterThanOrEqual(viewport - 2);
+      expect(s.marginLeft).toBe('0px');
+      expect(s.marginRight).toBe('0px');
+      expect(s.isolation).toBe('isolate');
+    });
+
+    it('drops the old two-column split shell', () => {
+      build('light');
+      expect(el('.login-shell')).toBeNull();
+      expect(el('.brand-panel')).toBeNull();
+    });
+  });
+
+  // ---- no card, no panel -------------------------------------------------
+  describe('the form is not a panel', () => {
+    it('leaves the card background transparent so the photo reads through', () => {
       build('dark');
-      expect(rgb(styleOf('.brand-panel').backgroundColor)).toBe('rgb(15, 14, 12)');
-      expect(rgb(styleOf('.auth-col').backgroundColor)).toBe('rgb(15, 14, 12)');
+      // rgba(0,0,0,0) is the computed form of `transparent`.
+      expect(styleOf('.auth-card').backgroundColor).toBe('rgba(0, 0, 0, 0)');
     });
 
-    it('does not repaint the brand panel when the theme is toggled', () => {
-      build('light');
-      const before = rgb(styleOf('.brand-panel').backgroundColor);
-
-      el<HTMLButtonElement>('.login-theme-toggle').click();
-      fixture.detectChanges();
-
-      expect(TestBed.inject(ThemeService).theme()).toBe('dark');
-      expect(rgb(styleOf('.brand-panel').backgroundColor)).toBe(before);
+    it('frames it with a hairline border instead', () => {
+      build('dark');
+      const card = styleOf('.auth-card');
+      expect(card.borderTopWidth).toBe('1px');
+      expect(card.borderTopStyle).toBe('solid');
     });
   });
 
-  // ---- item 7: toggle belongs to the form pane ----------------------------
-  describe('item 7 — theme toggle placement and icon swap', () => {
-    it('is a descendant of the form pane, not the shell', () => {
+  // ---- left-hand column on desktop, re-centred on narrow -----------------
+  describe('column placement', () => {
+    it('places the column at the start of the grid, not centred', () => {
       build('light');
-      const toggle = el<HTMLButtonElement>('.login-theme-toggle');
-      const col = el('.auth-col');
-
-      expect(col.contains(toggle)).toBe(true);
-      expect(el('.login-shell').querySelector(':scope > .login-theme-toggle')).toBeNull();
+      expect(styleOf('.auth-screen').justifyItems).toBe('start');
     });
 
-    it('swaps its own icon and label on click', () => {
+    it('keeps the column at a readable max width', () => {
       build('light');
-      const toggle = el<HTMLButtonElement>('.login-theme-toggle');
+      expect(parseFloat(styleOf('.auth-col').maxWidth)).toBeLessThanOrEqual(420);
+    });
 
-      // light theme -> moon
-      expect(toggle.getAttribute('aria-label')).toBe('Switch to dark mode');
-      expect(toggle.querySelector('path')?.getAttribute('d')).toContain('M21 12.8');
-
-      toggle.click();
-      fixture.detectChanges();
-
-      // dark theme -> sun
-      expect(toggle.getAttribute('aria-label')).toBe('Switch to light mode');
-      expect(toggle.querySelector('circle')?.getAttribute('r')).toBe('4');
+    it('gives the column the app gutter rather than an arbitrary inset', () => {
+      build('light');
+      const padding = styleOf('.auth-screen').paddingLeft;
+      expect(padding).not.toBe('');
+      expect(padding).toMatch(/px/);
     });
   });
 
-  // ---- item 2: grid focal point ------------------------------------------
-  describe('item 2 — grid focal point', () => {
-    it('shows the glow layer that was previously display:none', () => {
-      build('light');
-      expect(styleOf('.brand-glow').display).not.toBe('none');
+  // ---- the scrim guarantees AA over an unknown photograph ---------------
+  describe('scrim contrast', () => {
+    it('darkens the photo in the default (dark) theme', () => {
+      build('dark');
+      expect(token('--photo-wash')).toBe('10 8 7');
     });
 
-    it('draws the glow as a radial gradient anchored off-centre', () => {
+    it('washes with ivory in the light theme, so dark type reads', () => {
       build('light');
-      const bg = styleOf('.brand-glow').backgroundImage;
+      expect(token('--photo-wash')).toBe('252 249 243');
+      expect(luminance(rgb(styleOf('.auth-card h1').color))).toBeLessThan(0.2);
+    });
+
+    it('paints the scrim behind the content, not over it', () => {
+      build('dark');
+      const before = getComputedStyle(el('.auth-screen'), '::before');
+      expect(before.zIndex).toBe('-1');
+      expect(before.backgroundImage).toContain('linear-gradient');
+      expect(before.pointerEvents).toBe('none');
+    });
+
+    it('carries a horizontal wash under the column plus a radial and vertical pass', () => {
+      build('dark');
+      const bg = getComputedStyle(el('.auth-screen'), '::before').backgroundImage;
+      // Sass emits `180deg` as the default `to bottom`, so the vertical pass is
+      // asserted by its layer count and the horizontal one by its explicit angle.
+      expect(bg).toContain('90deg');
       expect(bg).toContain('radial-gradient');
-      expect(bg).toContain('88% 92%'); // bottom-right anchor
-    });
-
-    it('keeps the grid lines visible against the now-dark panel', () => {
-      build('light');
-      const grid = styleOf('.brand-grid').backgroundImage;
-      expect(grid).not.toBe('none');
-      // near-black ink at 6% would vanish; the panel ink tint must be light
-      expect(grid).toContain('240, 236, 226');
+      expect(bg.split('gradient(').length - 1).toBe(3);
     });
   });
 
-  // ---- item 3: outlined headline legibility ------------------------------
-  describe('item 3 — outlined headline contrast', () => {
-    it('uses a stroke of at least 1.5px', () => {
+  // ---- inputs are legible on the photograph ------------------------------
+  describe('field legibility', () => {
+    it('meets WCAG AA for the password placeholder against its own field', () => {
       build('light');
-      const width = parseFloat(
-        styleOf('.brand-headline span').getPropertyValue('-webkit-text-stroke-width'),
-      );
-      expect(width).toBeGreaterThanOrEqual(1.5);
+      const input = '.auth-card input[name="password"]';
+      const placeholder = styleOf(input, '::placeholder').getPropertyValue('color');
+      expect(
+        contrast(rgb(placeholder), rgb(styleOf(input).backgroundColor)),
+      ).toBeGreaterThanOrEqual(4.5);
     });
 
-    it('meets WCAG AA for the stroke against the panel it is drawn on', () => {
-      build('light');
-      const stroke = styleOf('.brand-headline span').getPropertyValue('-webkit-text-stroke-color');
-      const panel = styleOf('.brand-panel').backgroundColor;
-      expect(contrast(rgb(stroke), rgb(panel))).toBeGreaterThanOrEqual(4.5);
-    });
-  });
-
-  // ---- item 4: seam between the two columns ------------------------------
-  describe('item 4 — panel seam', () => {
-    it('draws a gradient rule on the column boundary', () => {
-      build('light');
-      const after = getComputedStyle(el('.brand-panel'), '::after');
-      expect(after.width).toBe('1px');
-      expect(after.backgroundImage).toContain('linear-gradient');
-    });
-  });
-
-  // ---- item 5: password placeholder contrast -----------------------------
-  describe('item 5 — password field legibility', () => {
-    it('meets WCAG AA against the rendered input background', () => {
-      build('light');
-      const placeholder = styleOf(
-        '.auth-card input[name="password"]',
-        '::placeholder',
-      ).getPropertyValue('color');
-      const bg = styleOf('.auth-card input[name="password"]').backgroundColor;
-
-      expect(rgb(placeholder)).toBe('rgb(95, 94, 94)');
-      expect(contrast(rgb(placeholder), rgb(bg))).toBeGreaterThanOrEqual(4.5);
-    });
-
-    it('still meets AA in dark mode', () => {
+    it('meets WCAG AA for the placeholder in dark mode too', () => {
       build('dark');
       const input = '.auth-card input[name="password"]';
       const placeholder = styleOf(input, '::placeholder').getPropertyValue('color');
@@ -187,10 +178,29 @@ describe('ops login polish', () => {
         contrast(rgb(placeholder), rgb(styleOf(input).backgroundColor)),
       ).toBeGreaterThanOrEqual(4.5);
     });
+
+    it('gives fields a 44px-plus hit target', () => {
+      build('light');
+      expect(
+        parseFloat(styleOf('.auth-card input[name="password"]').minHeight),
+      ).toBeGreaterThanOrEqual(44);
+    });
+
+    it('draws a visible focus ring', () => {
+      build('light');
+      const input = el<HTMLInputElement>('.auth-card input[name="password"]');
+      input.focus();
+      fixture.detectChanges();
+      // Focusing a text input matches :focus-visible in Chrome, so the ring is
+      // readable from the element's own computed style rather than the pseudo.
+      const s = getComputedStyle(input);
+      expect(s.outlineWidth).toBe('2px');
+      expect(s.outlineStyle).toBe('solid');
+    });
   });
 
-  // ---- item 6: the two inline actions match -------------------------------
-  describe('item 6 — "Forgot?" and "Show" match', () => {
+  // ---- inline actions match ----------------------------------------------
+  describe('"Forgot?" and "Show" match', () => {
     it('renders both in the same colour', () => {
       build('light');
       expect(rgb(styleOf('.forgot').color)).toBe(rgb(styleOf('.pw-toggle').color));
@@ -205,82 +215,45 @@ describe('ops login polish', () => {
       build('light');
       const a = styleOf('.forgot');
       const b = styleOf('.pw-toggle');
-
       expect(a.fontWeight).toBe(b.fontWeight);
       expect(a.letterSpacing).toBe(b.letterSpacing);
       expect(a.textTransform).toBe(b.textTransform);
-      expect(a.textTransform).toBe('uppercase');
-    });
-
-    it('gives both an explicit focus ring', () => {
-      build('light');
-      // hover underline replaces the always-on underline, so both read alike
-      expect(styleOf('.forgot').textDecorationLine).not.toContain('underline');
-      expect(styleOf('.pw-toggle').textDecorationLine).not.toContain('underline');
     });
   });
 
-  // ---- item 8: the clock actually ticks ----------------------------------
-  describe('item 8 — live clock', () => {
-    it('updates on a one-second interval', () => {
-      jasmine.clock().install();
-      try {
-        // tickClock reads a real `new Date()`, so the fake clock must also
-        // supply the date or the rendered seconds never move.
-        jasmine.clock().mockDate(new Date('2026-10-02T06:09:46Z'));
-        build('light');
-        const first = el('.clock').textContent?.trim() ?? '';
-        expect(first).toMatch(/\d{2}:\d{2}:\d{2} WAT/);
-
-        jasmine.clock().mockDate(new Date('2026-10-02T06:09:47Z'));
-        jasmine.clock().tick(1000);
-        fixture.detectChanges();
-
-        expect(el('.clock').textContent?.trim()).not.toBe(first);
-      } finally {
-        jasmine.clock().uninstall();
-      }
+  // ---- theme toggle ------------------------------------------------------
+  describe('theme toggle', () => {
+    it('lives inside the form column, not the shell', () => {
+      build('light');
+      const toggle = el<HTMLButtonElement>('.login-theme-toggle');
+      expect(el('.auth-col').contains(toggle)).toBe(true);
     });
 
-    it('clears the interval on destroy', () => {
+    it('swaps its own icon and label on click', () => {
       build('light');
-      // Real timers here: spying on clearInterval while the jasmine clock is
-      // installed makes ngOnDestroy throw on the fake timer id.
-      const spy = spyOn(window, 'clearInterval');
-      fixture.destroy();
-      expect(spy).toHaveBeenCalled();
+      const toggle = el<HTMLButtonElement>('.login-theme-toggle');
+
+      expect(toggle.getAttribute('aria-label')).toBe('Switch to dark mode');
+      expect(toggle.querySelector('path')?.getAttribute('d')).toContain('M21 12.8');
+
+      toggle.click();
+      fixture.detectChanges();
+
+      expect(TestBed.inject(ThemeService).theme()).toBe('dark');
+      expect(toggle.getAttribute('aria-label')).toBe('Switch to light mode');
+      expect(toggle.querySelector('circle')?.getAttribute('r')).toBe('4');
+    });
+
+    it('takes the photo palette rather than the header palette', () => {
+      build('dark');
+      const bg = rgb(styleOf('.login-theme-toggle').backgroundColor);
+      const card = rgb(styleOf('.auth-card').backgroundColor);
+      expect(bg).not.toBe(card);
     });
   });
 
-  // ---- item 10: wide-screen framing --------------------------------------
-  describe('item 10 — capped, centred shell', () => {
-    it('caps the shell width and centres it', () => {
-      build('light');
-      const s = styleOf('.login-shell');
-      expect(s.maxWidth).toBe('1380px');
-      expect(s.marginLeft).toBe(s.marginRight);
-    });
-
-    it('caps each column', () => {
-      build('light');
-      const tracks = (styleOf('.login-shell').gridTemplateColumns.match(/[\d.]+px/g) ?? []).map(
-        (t) => parseFloat(t),
-      );
-      expect(tracks.length).toBe(2);
-      expect(tracks[0]).toBeLessThanOrEqual(760);
-      expect(tracks[1]).toBeLessThanOrEqual(620);
-    });
-
-    it('puts a solid dark fill outside the shell in light mode', () => {
-      build('light');
-      expect(rgb(getComputedStyle(el('.login-shell'), '::before').backgroundColor)).toBe(
-        'rgb(15, 14, 12)',
-      );
-    });
-  });
-
-  // ---- item 9: button affordance (structural, not pseudo-class) ----------
-  describe('item 9 — sign-in affordance', () => {
+  // ---- sign-in affordance ------------------------------------------------
+  describe('sign-in affordance', () => {
     it('still renders the in-flight spinner while the request is running', () => {
       build('light');
       const cta = el<HTMLButtonElement>('.cta.signin');
@@ -299,6 +272,23 @@ describe('ops login polish', () => {
       const transition = styleOf('.cta.signin').transitionProperty;
       expect(transition).toContain('transform');
       expect(transition).toContain('box-shadow');
+    });
+  });
+
+  // ---- the removed brand panel -------------------------------------------
+  describe('retired brand panel', () => {
+    it('no longer runs the drop clock', () => {
+      build('light');
+      expect(el('.clock')).toBeNull();
+      // The signal is gone from the component, not merely hidden by CSS.
+      expect('clock' in fixture.componentInstance).toBe(false);
+    });
+
+    it('clears no interval on destroy any more', () => {
+      build('light');
+      const spy = spyOn(window, 'clearInterval');
+      fixture.destroy();
+      expect(spy).not.toHaveBeenCalled();
     });
   });
 });

@@ -22,27 +22,7 @@ import { environment } from '../environments/environment';
   ],
   template: `
     @if (!api.isLoggedIn) {
-      <main class="login-shell">
-        <aside class="brand-panel">
-          <span class="brand-grid" aria-hidden="true"></span>
-          <span class="brand-glow" aria-hidden="true"></span>
-          <div class="brand-content">
-            <img
-              class="brand-logo"
-              src="assets/logo.png"
-              alt="SEENTAIR Operations"
-              width="160"
-              height="32"
-            />
-            <h1 class="brand-headline">Run<br /><span>The drop.</span></h1>
-          </div>
-          <footer class="brand-foot">
-            <span><i class="status-dot" aria-hidden="true"></i> All systems operational</span>
-            <span>Drop 004 · Live</span>
-            <span class="clock">{{ clock() }}</span>
-          </footer>
-        </aside>
-
+      <div class="auth-screen">
         <section class="auth-col">
           <button
             class="theme-toggle login-theme-toggle"
@@ -238,7 +218,7 @@ import { environment } from '../environments/environment';
             </div>
           } @else {
             <div class="auth-wrap">
-              <form class="auth-card" (ngSubmit)="submitCode()" novalidate>
+              <form class="auth-card auth-card-narrow" (ngSubmit)="submitCode()" novalidate>
                 <p class="eyebrow">Two-factor check</p>
                 <h1>Verify it's you.</h1>
                 <p class="subtext">Enter the 6-digit code from your authenticator app.</p>
@@ -265,7 +245,7 @@ import { environment } from '../environments/environment';
             </div>
           }
         </section>
-      </main>
+      </div>
     } @else {
       <div class="app-shell">
         <header class="site-header" [class.scrolled]="scrolled()">
@@ -508,7 +488,6 @@ export class App implements OnInit, OnDestroy {
   readonly loading = signal(false);
   readonly success = signal(false);
   readonly shake = signal(false);
-  readonly clock = signal('');
 
   email = '';
   password = '';
@@ -522,13 +501,9 @@ export class App implements OnInit, OnDestroy {
   newPassword = '';
   newPassword2 = '';
 
-  private clockTimer?: ReturnType<typeof setInterval>;
-
   private readonly emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   ngOnInit(): void {
-    this.tickClock();
-    this.clockTimer = setInterval(() => this.tickClock(), 1000);
     if (typeof window !== 'undefined') {
       this.onScroll();
       window.addEventListener('scroll', this.onScroll, { passive: true });
@@ -537,24 +512,11 @@ export class App implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.clockTimer) clearInterval(this.clockTimer);
     window.removeEventListener('scroll', this.onScroll);
   }
 
   toggleMenu(): void {
     this.menuOpen.update((v) => !v);
-  }
-
-  private tickClock(): void {
-    this.clock.set(
-      new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'Africa/Lagos',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      }).format(new Date()) + ' WAT',
-    );
   }
 
   onSubmit(): void {
