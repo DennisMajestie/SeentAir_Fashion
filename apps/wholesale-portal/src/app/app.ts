@@ -181,7 +181,6 @@ import { ThemeService } from './theme.service';
                 </div>
               </div>
             </div>
-            <p class="lede">Authorised Retailers &amp; Stockists Only</p>
           </header>
 
           <div class="auth-card">
