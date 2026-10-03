@@ -595,7 +595,7 @@ export class ProductionPage implements OnInit {
         this.inspector.set(`${p.name} (${p.role.replaceAll('_', ' ')})`);
         this.meEmail = p.email;
       },
-      error: () => undefined,
+      error: (e) => this.fail(e, 'Could not load your profile.'),
     });
     this.api.users().subscribe((res) => {
       this.staff.set(res.data as unknown as Array<Record<string, unknown>>);
@@ -634,7 +634,12 @@ export class ProductionPage implements OnInit {
             this.costs.set(new Map(costs));
           }
         },
-        error: () => undefined, // no cost recorded yet
+        // 404 means this batch has no cost recorded yet, which is a normal
+        // state. Any other failure is a failed read, and swallowing it would
+        // show a real production cost as though none existed.
+        error: (e) => {
+          if (e?.status !== 404) this.fail(e, 'Could not read a batch cost.');
+        },
       });
       this.api.qcRejections(b.id).subscribe({
         next: (r) => {
@@ -643,7 +648,10 @@ export class ProductionPage implements OnInit {
             this.rejections.set(new Map(rejects));
           }
         },
-        error: () => undefined,
+        // An empty list is a real answer here, so unlike batchCost there is no
+        // 404 to allow. A failure used to leave the panel blank, which read as
+        // "no rejections recorded" on a batch that may well have some.
+        error: (e) => this.fail(e, 'Could not read QC rejections.'),
       });
     }
   }
@@ -684,14 +692,14 @@ export class ProductionPage implements OnInit {
       next: (b) => this.detail.set(b),
       error: (e) => this.fail(e, 'Could not load that batch.'),
     });
-    this.api.plannedVsConsumed(batch.id).subscribe({
-      next: (rows) => {
-        const cache = new Map(this.bomCache());
-        cache.set(batch.id, (rows ?? []) as unknown as Array<Record<string, unknown>>);
-        this.bomCache.set(cache);
-      },
-      error: () => undefined,
-    });
+      this.api.plannedVsConsumed(batch.id).subscribe({
+        next: (rows) => {
+          const cache = new Map(this.bomCache());
+          cache.set(batch.id, (rows ?? []) as unknown as Array<Record<string, unknown>>);
+          this.bomCache.set(cache);
+        },
+        error: (e) => this.fail(e, 'Could not compare planned against consumed.'),
+      });
     this.api.batchTelemetry(batch.id).subscribe({
       next: (rows) => this.telemetry.set(rows as unknown as Array<Record<string, unknown>>),
       error: () => this.telemetry.set([]),

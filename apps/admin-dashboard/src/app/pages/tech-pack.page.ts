@@ -445,7 +445,14 @@ export class TechPackPage implements OnInit {
               this.costBatchRef.set(b.id.slice(0, 8));
             }
           },
-          error: () => undefined,
+          // 404 genuinely means this batch has no cost recorded yet. Anything
+          // else is a failed read, and treating that as "no cost" would report
+          // a real production cost as zero.
+          error: (e) => {
+            if (e?.status !== 404) {
+              this.error.set(e?.error?.message ?? 'Could not read batch cost.');
+            }
+          },
         });
       }
     });
@@ -474,13 +481,13 @@ export class TechPackPage implements OnInit {
         if (found) {
           this.api.techPackRevisions(found['id'] as string).subscribe({
             next: (revs) => this.revisions.set(revs),
-            error: () => this.revisions.set([]),
+            error: (e) => this.error.set(e?.error?.message ?? 'Could not load pack revisions.'),
           });
         } else {
           this.revisions.set([]);
         }
       },
-      error: () => undefined,
+      error: (e) => this.error.set(e?.error?.message ?? 'Could not load tech packs.'),
     });
   }
 
@@ -583,11 +590,11 @@ export class TechPackPage implements OnInit {
     });
   }
 
-  private reloadRevisions(id: string): void {
-    this.api.techPackRevisions(id).subscribe({
-      next: (revs) => this.revisions.set(revs),
-      error: () => undefined,
-    });
+    private reloadRevisions(id: string): void {
+      this.api.techPackRevisions(id).subscribe({
+        next: (revs) => this.revisions.set(revs),
+        error: (e) => this.error.set(e?.error?.message ?? 'Could not load pack revisions.'),
+      });
   }
 
   sizeCols(gm: Record<string, unknown>): string[] {

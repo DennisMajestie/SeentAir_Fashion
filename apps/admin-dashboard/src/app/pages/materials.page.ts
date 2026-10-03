@@ -584,11 +584,11 @@ export class MaterialsAdminPage implements OnInit {
   private inspectRefresh(id: string): void {
     this.api.material(id).subscribe({
       next: (m) => this.selected.set(m as unknown as MaterialRow),
-      error: () => undefined,
+      error: (e) => this.fail(e, 'Could not load that material.'),
     });
     this.api.movements(id, 'material').subscribe({
       next: (res) => this.ledger.set((res.data as unknown as MovementRow[]).slice(0, 8)),
-      error: () => undefined,
+      error: (e) => this.fail(e, 'Could not load its movement ledger.'),
     });
   }
 }
