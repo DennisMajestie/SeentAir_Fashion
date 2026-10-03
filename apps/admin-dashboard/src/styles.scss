@@ -640,11 +640,12 @@ code {
 }
 /* Sits top-right of the form column (.auth-col is its positioning context)
    so it never floats over the middle of the photograph. */
+/* The toggle now sits in the header bar, inside .header-actions, exactly
+   where the account page keeps it. It used to be absolutely positioned
+   against .auth-col, which is what made it read as part of the sign-in card;
+   as a plain flex child of the bar it is just the trailing control again. */
 .login-theme-toggle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 6;
+  flex: 0 0 auto;
 }
 @media (max-width: 760px) {
   .header-actions {
@@ -1846,11 +1847,21 @@ $ops-gold-ink: var(--acid-ink);
   /* Row 1 is the wordmark bar, row 2 takes the remaining height and centres
        the form column. The `1fr` min is `auto`, so a form taller than the
        viewport grows the row and the page scrolls instead of clipping. */
+  /* The storefront's wrap tokens, copied from its :root (.wrap-col). The
+     account page's header bar and form column both sit inside this measure,
+     so declaring them here is what lets the sign-in screen line up with it
+     instead of guessing its own. */
+  --wrap-max: 1280px;
+  --wrap-x: clamp(20px, 4vw, 56px);
+
   grid-template-rows: auto 1fr;
   justify-items: start;
-  /* Share the app's gutter: the distance from the window edge to
-     the shell content, so the column never floats arbitrarily. */
-  padding-inline: var(--wrap-x, clamp(20px, 4vw, 56px));
+  /* No inline padding on the screen itself. The bar has to span the full
+     window, so each child applies the offset itself: .auth-head-inner
+     centres with max-width, .auth-col offsets with margin-inline-start.
+     Padding here as well would double the gutter and push the wordmark out
+     past the account page's line. */
+  padding-inline: 0;
   padding-block: clamp(2.5rem, 6vw, 4rem) clamp(3rem, 7vw, 4.5rem);
   background-color: var(--photo-base);
   background-image: url('/assets/form-bg.jpg');
@@ -1912,10 +1923,11 @@ $ops-gold-ink: var(--acid-ink);
    the admin palette, which renames the storefront's tokens: --canvas becomes
    --obsidian (the body background) and --line becomes --hairline.
 
-   The storefront takes its inline gutter from .wrap-col. Here .auth-screen's
-   padding-inline already sets that gutter for the whole column, so the inner
-   wrapper is deliberately padding-block only -- adding inline padding too
-   would double it.
+   The storefront takes its inline gutter from .wrap-col, so .auth-head-inner
+   does the same here -- same --wrap-max, same --wrap-x -- rather than leaning
+   on .auth-screen's padding. That is why .auth-screen no longer pads inline:
+   the bar needs to span the window, so the offset has to live on the two
+   children that actually need it.
 
    The width/max-width/margin-left the logged-in .site-header carries are
    omitted on purpose: those offset the bar clear of the 224px ops sidebar, and
@@ -1938,13 +1950,29 @@ $ops-gold-ink: var(--acid-ink);
     backdrop-filter 0.3s ease,
     box-shadow 0.3s ease;
   .auth-head-inner {
+    /* The account page's bar is .wrap-col.header-inner, so this carries the
+       same cap and gutter. Without the cap the wordmark sat hard against the
+       window edge on a wide screen while every section below it was centred
+       on the 1280px measure - the two visibly disagreed. */
+    max-width: var(--wrap-max);
+    margin-inline: auto;
+    padding-inline: var(--wrap-x);
+    padding-block: 0.8rem;
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem 1.5rem;
     align-items: center;
     justify-content: flex-start;
-    padding-block: 0.8rem;
     width: 100%;
+  }
+  /* Same element the account page uses to hold its trailing controls, so the
+     theme toggle lands where it does there: pushed to the leading edge of
+     that group, opposite the wordmark. */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
   }
   &.scrolled {
     background: color-mix(in srgb, var(--obsidian) 88%, transparent);
@@ -1985,6 +2013,14 @@ $ops-gold-ink: var(--acid-ink);
 @media (max-width: 899px) {
   .auth-screen {
     justify-items: center;
+
+    /* Narrower than --wrap-max there is no leftover space to split, so the
+       offset collapses to a bare gutter. Left in place it would re-centre the
+       card and then shove it right by that gutter, so drop it and let
+       justify-items do the centring on its own. */
+    .auth-col {
+      margin-inline-start: 0;
+    }
 
     &::before {
       background:
@@ -2032,10 +2068,21 @@ $ops-gold-ink: var(--acid-ink);
 }
 
 .auth-col {
-  /* Positioning context for the theme toggle. */
+  /* Positioning context for the card's own overlays. */
   position: relative;
   /* Grid row 2 is the flexible one; centre the column inside it. */
   align-self: center;
+  /* Same measure as the account page: whatever space is left over
+     --wrap-max is split evenly, then the gutter added, so the card starts
+     directly under the wordmark. max() keeps it at zero on narrow screens,
+     where there is no leftover space to split.
+
+     The calc() wrapper is load-bearing, not decoration. Written as a bare
+     `max(...) + var(--wrap-x)` the Sass minifier drops the `+`, emitting
+     `max(...)var(--wrap-x)` - invalid CSS, so the whole declaration is
+     discarded and the column silently falls back to no offset. The
+     storefront wraps the identical expression at styles.scss:2210. */
+  margin-inline-start: calc(max(0px, (100% - var(--wrap-max)) / 2) + var(--wrap-x));
   width: 100%;
   max-width: 420px;
 }

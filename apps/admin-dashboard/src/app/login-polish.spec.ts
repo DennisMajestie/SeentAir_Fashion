@@ -130,11 +130,15 @@ describe('ops login photo overlay', () => {
       expect(parseFloat(styleOf('.auth-col').maxWidth)).toBeLessThanOrEqual(420);
     });
 
-    it('gives the column the app gutter rather than an arbitrary inset', () => {
+    it('hangs the column off the same measure the wordmark bar uses', () => {
       build('light');
-      const padding = styleOf('.auth-screen').paddingLeft;
-      expect(padding).not.toBe('');
-      expect(padding).toMatch(/px/);
+      // The bar centres itself with max-width; the column has to reach the
+      // same line, so it splits the leftover space above --wrap-max instead of
+      // sitting at a fixed inset from the window edge. max()/clamp() can
+      // serialise unresolved and the result is viewport-dependent, so this
+      // only pins that the offset is declared at all.
+      expect(styleOf('.auth-col').marginInlineStart).not.toBe('');
+      expect(styleOf('.auth-col').marginInlineStart).not.toBe('0px');
     });
   });
 
@@ -162,6 +166,17 @@ describe('ops login photo overlay', () => {
       expect(styleOf('.auth-col').alignSelf).toBe('center');
       // Row 1 takes the bar, row 2 the flexible remainder.
       expect(styleOf('.auth-screen').gridTemplateRows).not.toBe('');
+    });
+
+    it('caps the bar at the account page measure instead of spanning the window', () => {
+      build('light');
+      const inner = styleOf('.auth-head-inner');
+      // .wrap-col on the storefront: 1280px cap, centred.
+      expect(parseFloat(inner.maxWidth)).toBe(1280);
+      expect(parseFloat(inner.paddingLeft)).toBeGreaterThan(0);
+      // The screen therefore no longer pads inline, or the gutter would double
+      // and push the wordmark past the account page's line.
+      expect(parseFloat(styleOf('.auth-screen').paddingLeft)).toBe(0);
     });
 
     it('leaves the photograph unbroken behind the bar until something scrolls', () => {
@@ -329,10 +344,20 @@ describe('ops login photo overlay', () => {
 
   // ---- theme toggle ------------------------------------------------------
   describe('theme toggle', () => {
-    it('lives inside the form column, not the shell', () => {
+    it('lives in the header bar, not the form column', () => {
       build('light');
       const toggle = el<HTMLButtonElement>('.login-theme-toggle');
-      expect(el('.auth-col').contains(toggle)).toBe(true);
+      // The account page keeps its toggle in .header-actions inside the bar.
+      // It used to be absolutely positioned against .auth-col here, which made
+      // it read as part of the sign-in card.
+      expect(el('.auth-head-inner').contains(toggle)).toBe(true);
+      expect(el('.auth-col').contains(toggle)).toBe(false);
+      expect(el('.auth-card').contains(toggle)).toBe(false);
+    });
+
+    it('is no longer pinned over the card', () => {
+      build('light');
+      expect(styleOf('.login-theme-toggle').position).not.toBe('absolute');
     });
 
     it('swaps its own icon and label on click', () => {

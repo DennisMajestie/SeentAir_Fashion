@@ -28,49 +28,51 @@ import { environment } from '../environments/environment';
             <span class="logo">
               <img class="auth-logo" src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
             </span>
+            <div class="header-actions">
+              <button
+                class="theme-toggle login-theme-toggle"
+                type="button"
+                [attr.aria-label]="
+                  theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+                "
+                [attr.title]="theme.theme() === 'dark' ? 'Light mode' : 'Dark mode'"
+                (click)="theme.toggle()"
+              >
+                @if (theme.theme() === 'dark') {
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <circle cx="12" cy="12" r="4" />
+                    <path
+                      d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+                    />
+                  </svg>
+                } @else {
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+                  </svg>
+                }
+              </button>
+            </div>
           </div>
         </header>
         <section class="auth-col">
-          <button
-            class="theme-toggle login-theme-toggle"
-            type="button"
-            [attr.aria-label]="
-              theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
-            "
-            [attr.title]="theme.theme() === 'dark' ? 'Light mode' : 'Dark mode'"
-            (click)="theme.toggle()"
-          >
-            @if (theme.theme() === 'dark') {
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <circle cx="12" cy="12" r="4" />
-                <path
-                  d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
-                />
-              </svg>
-            } @else {
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
-              </svg>
-            }
-          </button>
           @if (!challengeToken() && resetMode()) {
             <div class="auth-wrap">
               <form
@@ -140,7 +142,7 @@ import { environment } from '../environments/environment';
 
                 <button class="cta signin" type="submit" [disabled]="loading()">
                   {{
-                    loading() ? 'Working…' : resetSent() ? 'Set new password' : 'Send reset token →'
+                    loading() ? 'Workingâ€¦' : resetSent() ? 'Set new password' : 'Send reset token â†’'
                   }}
                 </button>
                 <button class="link" type="button" (click)="backToSignin()">Back to sign in</button>
@@ -184,7 +186,7 @@ import { environment } from '../environments/environment';
                       [type]="showPassword ? 'text' : 'password'"
                       [(ngModel)]="password"
                       name="password"
-                      placeholder="••••••••"
+                      placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                       autocomplete="current-password"
                       required
                     />
@@ -210,11 +212,11 @@ import { environment } from '../environments/environment';
                 >
                   @if (loading()) {
                     <span class="spinner" aria-hidden="true"></span>
-                    Signing in…
+                    Signing inâ€¦
                   } @else if (success()) {
-                    ✓ Signed in
+                    âœ“ Signed in
                   } @else {
-                    Sign in →
+                    Sign in â†’
                   }
                 </button>
                 @if (formError()) {
