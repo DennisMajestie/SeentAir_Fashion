@@ -179,9 +179,33 @@ describe('ops login photo overlay', () => {
       expect(parseFloat(styleOf('.auth-screen').paddingLeft)).toBe(0);
     });
 
-    it('leaves the photograph unbroken behind the bar until something scrolls', () => {
+    it('sits flush against the top edge, rather than part-way down the photo', () => {
       build('dark');
-      expect(styleOf('.auth-head').backgroundColor).toBe('rgba(0, 0, 0, 0)');
+      // The bar is a grid row inside .auth-screen. If the screen pads its own
+      // top the bar starts 40-64px down the photograph, so on first paint
+      // there is no bar at the top - it only becomes one once a scroll pins it
+      // and .scrolled paints a background. The account page's bar is flush
+      // from the first paint; this one has to be too.
+      expect(parseFloat(styleOf('.auth-screen').paddingTop)).toBe(0);
+      expect(styleOf('.auth-head').top).toBe('0px');
+    });
+
+    it('reads as a bar immediately, not only once something has scrolled', () => {
+      build('dark');
+      // The account page gets away with a transparent header because it sits
+      // on a solid canvas. This one sits on a photograph, so transparent would
+      // leave a bare floating wordmark. This test previously asserted
+      // rgba(0, 0, 0, 0) here - i.e. it pinned the invisible-until-scrolled
+      // behaviour that was reported as a bug.
+      expect(styleOf('.auth-head').backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+    });
+
+    it('keeps the column clear of the bar now the screen no longer pads its top', () => {
+      build('dark');
+      // The vertical rhythm moved off .auth-screen onto the column, so the bar
+      // can reach the top edge without the form crowding up under it.
+      const pad = styleOf('.auth-col').paddingTop;
+      expect(parseFloat(pad)).toBeGreaterThan(0);
     });
 
     it('inverts the near-black wordmark on the dark photo so it can be seen', () => {
@@ -196,7 +220,7 @@ describe('ops login photo overlay', () => {
       expect(styleOf('.auth-logo').filter).not.toContain('invert');
     });
 
-    it('carries the storefront account-page bar verbatim', () => {
+    it('carries the storefront account-page bar, save the background', () => {
       build('dark');
       const head = styleOf('.auth-head');
       // Ported from the storefront's .site-header. z-index 20 is the value that
@@ -206,8 +230,10 @@ describe('ops login photo overlay', () => {
       expect(head.display).toBe('block');
       expect(head.borderBottomWidth).toBe('1px');
       expect(head.borderBottomStyle).toBe('solid');
-      // Transparent at rest so the photograph runs unbroken behind it.
-      expect(head.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+      // It does NOT keep the storefront's transparent-at-rest background: on a
+      // solid canvas that is invisible-but-fine, whereas over this photograph
+      // it left no bar at all until a scroll. Asserted separately below.
+      expect(head.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
 
       // The mark takes the storefront's 60px, not the login bar's old 32px.
       expect(styleOf('.auth-logo').height).toBe('60px');

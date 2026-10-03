@@ -1862,7 +1862,13 @@ $ops-gold-ink: var(--acid-ink);
      Padding here as well would double the gutter and push the wordmark out
      past the account page's line. */
   padding-inline: 0;
-  padding-block: clamp(2.5rem, 6vw, 4rem) clamp(3rem, 7vw, 4.5rem);
+  /* No block padding either, for the same reason: it would push the bar down
+     the photograph, leaving it floating mid-photo and invisible until a scroll
+     pinned it to the top and .scrolled gave it a background. The account page
+     has its bar flush against the top edge from first paint, so this one does
+     too - the vertical rhythm moves to .auth-col, the only thing that needs
+     it. */
+  padding-block: 0;
   background-color: var(--photo-base);
   background-image: url('/assets/form-bg.jpg');
   background-size: cover;
@@ -1942,7 +1948,20 @@ $ops-gold-ink: var(--acid-ink);
   width: 100%;
   /* Notch/status-bar clearance on notched devices. */
   padding-top: env(safe-area-inset-top);
-  background: transparent;
+  /* Onto a translucent wash from the first paint rather than transparent.
+
+     The account page can leave this transparent: there it sits on a solid
+     --canvas, so the bar reads as present anyway. Here it sits on a
+     photograph, and a transparent bar over a photo is just a floating
+     wordmark - the bar did not read as a bar at all until a scroll both
+     pinned it and triggered .scrolled. This matches the wholesale login,
+     which needed the same treatment over the same photograph.
+
+     --obsidian flips with the theme, so the wash is dark on the dark login
+     and light on the light one. .scrolled deepens it. */
+  background: color-mix(in srgb, var(--obsidian) 62%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid transparent;
   transition:
     background 0.3s ease,
@@ -2083,6 +2102,10 @@ $ops-gold-ink: var(--acid-ink);
      discarded and the column silently falls back to no offset. The
      storefront wraps the identical expression at styles.scss:2210. */
   margin-inline-start: calc(max(0px, (100% - var(--wrap-max)) / 2) + var(--wrap-x));
+  /* The vertical rhythm the screen used to carry. It lives on the column now
+     so the bar can sit flush against the top edge instead of being pushed
+     down the photograph by the container's padding. */
+  padding-block: clamp(2.5rem, 6vw, 4rem) clamp(3rem, 7vw, 4.5rem);
   width: 100%;
   max-width: 420px;
 }
