@@ -1843,8 +1843,11 @@ $ops-gold-ink: var(--acid-ink);
   min-height: 100vh;
   min-height: 100svh;
   display: grid;
+  /* Row 1 is the wordmark bar, row 2 takes the remaining height and centres
+       the form column. The `1fr` min is `auto`, so a form taller than the
+       viewport grows the row and the page scrolls instead of clipping. */
+  grid-template-rows: auto 1fr;
   justify-items: start;
-  align-content: center;
   /* Share the app's gutter: the distance from the window edge to
      the shell content, so the column never floats arbitrarily. */
   padding-inline: var(--wrap-x, clamp(20px, 4vw, 56px));
@@ -1858,8 +1861,14 @@ $ops-gold-ink: var(--acid-ink);
   font-family: 'Inter', sans-serif;
 
   /* Scrim: the horizontal wash is heaviest under the left-hand
-     column and lifts toward the right so the photograph still
-     reads; the vertical pass keeps the fine print legible. */
+       column and lifts toward the right so the photograph still
+       reads; the vertical pass keeps the fine print legible.
+
+       Kept deliberately light. The three layers compound, so the
+       left edge is roughly 1 - (0.70 x 0.48 x 0.66) = 0.76 covered
+       while the right side falls to single digits - the photograph
+       has to survive the right-hand two thirds of the screen or the
+       whole point of the full-bleed treatment is lost. */
   &::before {
     content: '';
     position: absolute;
@@ -1869,25 +1878,63 @@ $ops-gold-ink: var(--acid-ink);
     background:
       radial-gradient(
         ellipse 62% 74% at 24% 48%,
-        rgb(var(--photo-wash) / 0.5) 0%,
-        rgb(var(--photo-wash) / 0.24) 62%,
+        rgb(var(--photo-wash) / 0.28) 0%,
+        rgb(var(--photo-wash) / 0.12) 62%,
         transparent 100%
       ),
       linear-gradient(
         90deg,
-        rgb(var(--photo-wash) / 0.92) 0%,
-        rgb(var(--photo-wash) / 0.88) 30%,
-        rgb(var(--photo-wash) / 0.72) 45%,
-        rgb(var(--photo-wash) / 0.4) 70%,
-        rgb(var(--photo-wash) / 0.3) 100%
+        rgb(var(--photo-wash) / 0.52) 0%,
+        rgb(var(--photo-wash) / 0.46) 30%,
+        rgb(var(--photo-wash) / 0.3) 45%,
+        rgb(var(--photo-wash) / 0.1) 70%,
+        rgb(var(--photo-wash) / 0.04) 100%
       ),
       linear-gradient(
         180deg,
-        rgb(var(--photo-wash) / 0.5) 0%,
-        rgb(var(--photo-wash) / 0.08) 26%,
-        rgb(var(--photo-wash) / 0.66) 100%
+        rgb(var(--photo-wash) / 0.3) 0%,
+        rgb(var(--photo-wash) / 0.04) 26%,
+        rgb(var(--photo-wash) / 0.38) 100%
       );
   }
+}
+
+/* The wordmark bar.
+
+   The ops header sits behind api.isLoggedIn, so before this the sign-in
+   screen carried no branding at all - while the storefront renders its
+   own header while signed out. That gap is why the two never looked
+   alike. Sticky, so it holds still when a long form (password reset,
+   MFA challenge) pushes past the fold. */
+.auth-head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  /* Transparent at rest so the photograph runs unbroken behind it; the wash
+     only arrives once something scrolls up underneath. */
+  background: transparent;
+  transition:
+    background 0.3s ease,
+    backdrop-filter 0.3s ease;
+  &.scrolled {
+    background: color-mix(in srgb, var(--photo-base) 72%, transparent);
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* logo.png is monochrome near-black ink - measured mean luminance 0.005,
+   brightest pixel 0.337, saturation 0.0000. On --photo-base #14110e that is
+   invisible, so the dark theme inverts it to a light mark; inverted it
+   reads at roughly 0.995 and the alpha channel is left untouched. */
+.auth-logo {
+  display: block;
+  width: auto;
+  height: 32px;
+  filter: invert(1);
 }
 
 /* Below this width the column re-centres and the scrim returns to
@@ -1901,15 +1948,15 @@ $ops-gold-ink: var(--acid-ink);
       background:
         radial-gradient(
           ellipse 92% 56% at 50% 46%,
-          rgb(var(--photo-wash) / 0.62) 0%,
-          rgb(var(--photo-wash) / 0.82) 55%,
-          rgb(var(--photo-wash) / 0.9) 100%
+          rgb(var(--photo-wash) / 0.4) 0%,
+          rgb(var(--photo-wash) / 0.5) 55%,
+          rgb(var(--photo-wash) / 0.56) 100%
         ),
         linear-gradient(
           180deg,
-          rgb(var(--photo-wash) / 0.55) 0%,
-          rgb(var(--photo-wash) / 0.12) 26%,
-          rgb(var(--photo-wash) / 0.7) 100%
+          rgb(var(--photo-wash) / 0.36) 0%,
+          rgb(var(--photo-wash) / 0.06) 26%,
+          rgb(var(--photo-wash) / 0.44) 100%
         );
     }
   }
@@ -1935,11 +1982,18 @@ $ops-gold-ink: var(--acid-ink);
   --photo-danger-line: rgb(148 32 26 / 0.4);
   --photo-base: #f6f1e9;
   --photo-wash: 252 249 243;
+  /* The light theme washes the photo to ivory, where the original near-black
+     ink already reads, so the dark theme's inversion is undone here. */
+  .auth-logo {
+    filter: none;
+  }
 }
 
 .auth-col {
   /* Positioning context for the theme toggle. */
   position: relative;
+  /* Grid row 2 is the flexible one; centre the column inside it. */
+  align-self: center;
   width: 100%;
   max-width: 420px;
 }

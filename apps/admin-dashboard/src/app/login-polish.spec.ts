@@ -127,6 +127,50 @@ describe('ops login photo overlay', () => {
     });
   });
 
+  // ---- the wordmark header ------------------------------------------------
+
+  describe('wordmark header', () => {
+    it('brands the sign-in screen, which the logged-out shell otherwise has none of', () => {
+      build('dark');
+      // The ops header is behind api.isLoggedIn, so without this bar the page
+      // renders a bare form on a photograph with no wordmark anywhere.
+      expect(el('.auth-head')).toBeTruthy();
+      expect(el('.auth-logo')).toBeTruthy();
+      expect(el('.auth-screen .site-header')).toBeNull();
+    });
+
+    it('keeps the wordmark on screen instead of scrolling it away', () => {
+      build('dark');
+      const head = styleOf('.auth-head');
+      expect(head.position).toBe('sticky');
+      expect(head.top).toBe('0px');
+    });
+
+    it('sits above the form column, which centres in the row beneath it', () => {
+      build('dark');
+      expect(styleOf('.auth-col').alignSelf).toBe('center');
+      // Row 1 takes the bar, row 2 the flexible remainder.
+      expect(styleOf('.auth-screen').gridTemplateRows).not.toBe('');
+    });
+
+    it('leaves the photograph unbroken behind the bar until something scrolls', () => {
+      build('dark');
+      expect(styleOf('.auth-head').backgroundColor).toBe('rgba(0, 0, 0, 0)');
+    });
+
+    it('inverts the near-black wordmark on the dark photo so it can be seen', () => {
+      build('dark');
+      // logo.png measures mean luminance 0.005 - on --photo-base #14110e the
+      // unfiltered mark is invisible, so the dark theme flips it to light.
+      expect(styleOf('.auth-logo').filter).toContain('invert');
+    });
+
+    it('restores the original ink in the light theme, which washes to ivory', () => {
+      build('light');
+      expect(styleOf('.auth-logo').filter).not.toContain('invert');
+    });
+  });
+
   // ---- the scrim guarantees AA over an unknown photograph ---------------
   describe('scrim contrast', () => {
     it('darkens the photo in the default (dark) theme', () => {
