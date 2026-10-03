@@ -1076,11 +1076,46 @@ export class OrdersService {
    * can never be redirected away from the customer.
    */
   private resolvePaystackEmail(fallback: string, override?: string): string {
-    if (!override) return fallback;
-    if (!this.config.get<boolean>('paystack.emailOverrideAllowed')) {
-      throw new ForbiddenException('Paystack email override is not permitted on this environment');
+    if (override) {
+      if (!this.config.get<boolean>('paystack.emailOverrideAllowed')) {
+        throw new ForbiddenException(
+          'Paystack email override is not permitted on this environment',
+        );
+      }
+      return override;
     }
-    return override;
+    if (!OrdersService.isUndeliverableEmail(fallback)) return fallback;
+    // A reserved TLD, which is every seeded account. Paystack rejects these on
+    // the *initialise* call, so this used to surface as an opaque 503 from
+    // deep inside the SDK with nothing charged and nothing to act on.
+    if (!this.config.get<boolean>('paystack.emailOverrideAllowed')) {
+      throw new BadRequestException(
+        `${fallback} is not a deliverable address, so this charge cannot be receipted. ` +
+          'Set PAYSTACK_DEV_INBOX to an inbox you control to run payments locally.',
+      );
+    }
+    const devInbox = this.config.get<string>('paystack.devInbox') ?? '';
+    if (!devInbox) {
+      throw new BadRequestException(
+        `${fallback} is not a deliverable address, so this charge cannot be receipted. ` +
+          'Set PAYSTACK_DEV_INBOX to an inbox you control to run payments locally.',
+      );
+    }
+    return devInbox;
+  }
+
+  /**
+   * True for addresses Paystack will refuse outright: the RFC 2606 reserved TLDs
+   * plus RFC 6761's `.invalid` and `.localhost`. Deliberately narrow — an odd
+   * but syntactically valid address should still reach Paystack and be judged
+   * there, rather than being silently redirected by us.
+   */
+  private static isUndeliverableEmail(email: string): boolean {
+    const domain = email.trim().toLowerCase().split('@').pop() ?? '';
+    // The TLD is the last label, not the whole domain: seentair.test ends in
+    // `.test` even though the domain string is not equal to it.
+    const tld = domain.split('.').pop() ?? '';
+    return ['test', 'example', 'invalid', 'localhost'].includes(tld);
   }
 
   /** Offline path: one transaction, then post-commit notifications. */
