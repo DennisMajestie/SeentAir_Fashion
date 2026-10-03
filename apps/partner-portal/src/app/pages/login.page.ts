@@ -107,7 +107,7 @@ import { ThemeService } from '../theme.service';
                 </button>
               </span>
             </label>
-            <p class="fine">Secured connection. Authorised users only.</p>
+            <p class="fine">Authorised users only.</p>
             <button class="cta block" type="submit" [disabled]="busy() || phase() === 2">
               @if (busy() && phase() === 1) {
                 Signing in…
