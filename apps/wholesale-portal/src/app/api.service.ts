@@ -199,6 +199,24 @@ export class ApiService {
   }
 
   /**
+   * Settles one invoice with Paystack, in full.
+   *
+   * The route already existed and already allowed an authenticated wholesale
+   * buyer; nothing in this app called it, so the money could only ever be
+   * recorded offline by staff. `amount` is the invoice total because wholesale
+   * is full payment upfront — the API rejects any other figure (appendix 08),
+   * so this sends the total rather than inviting an entry.
+   *
+   * Callers must leave the app: Paystack hosts the payment and redirects back.
+   */
+  payWithPaystack(orderId: string, amount: number): Observable<{ authorizationUrl: string }> {
+    return this.http.post<{ authorizationUrl: string }>(`${API_BASE}/orders/${orderId}/payment`, {
+      method: 'paystack',
+      amount,
+    });
+  }
+
+  /**
    * Live status push for one order. Uses `fetch` + a stream reader rather than
    * `EventSource`, which cannot send an Authorization header and would force
    * the token into a query string. Frames are notifications only, this

@@ -54,6 +54,13 @@
   --warn-container: #ffdfb0;
   --on-warn-container: #4a2800;
 
+  /* Settled-payment tint: the client's lime, #92ED148D, which is that hue at
+     55% alpha. Composited over --surface it lands on rgb(193,242,121), which
+     clears 13:1 against --ink. Kept as one token so the banner, the pill and
+     the swatch cannot drift apart. */
+  --pay-tint: #92ed148d;
+  --pay-edge: #6f9c10;
+
   /* Focus ring. Must clear 3:1 (WCAG 2.2 non-text) against the canvas it
      sits on, so light uses the deep gold, not the action gold - #c9a24b only
      reaches 2.28:1 on --surface. */
@@ -163,6 +170,12 @@
   --warn: #f0b45e;
   --warn-container: #4a3208;
   --on-warn-container: #ffe2b0;
+
+  /* Same hue as the light --pay-tint, but 15% rather than 55%. At 55% the
+     lime composites to rgb(85,135,15) on the dark canvas and only reaches
+     3.6:1 against --ink, which fails body text; at 15% it clears 12:1. */
+  --pay-tint: #92ed1426;
+  --pay-edge: #92ed14;
   --focus-ring: #d8b25c;
   --hairline: #2b2621;
   --hairline-strong: #f0ece2;
@@ -566,6 +579,73 @@ strong {
 
 /* ---------- Status pills ---------- */
 
+/* Payment status banner. Sits first on invoice detail, orders and home.
+   Outstanding is the default state, because that is the state that exists to
+   demand something; `.settled` is the opt-in green. Wraps rather than clips,
+   so the CTA stays reachable on a phone instead of being cut off. */
+.paybar {
+  @include card(var(--radius-field));
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  color: var(--ink);
+  &.settled {
+    border-color: var(--pay-edge);
+    background: var(--pay-tint);
+  }
+  .paybar-icon {
+    flex: 0 0 auto;
+    font-size: 20px;
+    color: var(--warn);
+  }
+  &.settled .paybar-icon {
+    color: var(--pay-edge);
+  }
+  .paybar-body {
+    flex: 1 1 240px;
+    min-width: 0;
+  }
+  .paybar-title {
+    margin: 0;
+    font-size: var(--type-label-md);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .paybar-sub {
+    margin: 2px 0 0;
+    font-size: var(--type-label-sm);
+    color: var(--muted);
+  }
+  .paybar-cta {
+    flex: 0 0 auto;
+  }
+  .paybar-alt {
+    flex: 0 0 auto;
+    font-size: var(--type-label-sm);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    color: var(--muted);
+    &:hover {
+      color: var(--ink);
+    }
+  }
+}
+
+/* Below 460px the CTA cannot share the row with a 240px body, so it takes the
+   full width rather than being squeezed into an unpressable stub. */
+@media (max-width: 460px) {
+  .paybar .paybar-cta {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .status {
   @include pill;
   display: inline-block;
@@ -836,12 +916,15 @@ label {
   font-size: var(--type-body-sm);
   line-height: 1.45;
 }
-.auth-error {
+/* `.pay-error` is the same surface on the invoice page: a failed Paystack
+     handoff is reported in the error colour, next to the banner that caused it. */
+.auth-error,
+.pay-error {
   color: var(--on-error-container);
   background: var(--error-container);
   border: 1px solid var(--error-container);
   /* Matches the storefront alert surface (.ot-alert), which uses the field
-       radius rather than the full card radius. */
+     radius rather than the full card radius. */
   border-radius: var(--radius-field);
 }
 .auth-info {

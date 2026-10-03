@@ -345,4 +345,53 @@ describe('OrdersPage', () => {
       expect(button.disabled).toBe(true);
     });
   });
+
+  describe('payment banner', () => {
+    function banner(): HTMLElement | null {
+      return fixture.nativeElement.querySelector('.paybar');
+    }
+
+    it('demands action when an order is unpaid', async () => {
+      await boot([invoice({ paymentStatus: 'pending' })]);
+      const el = banner();
+      expect(el).toBeTruthy();
+      expect(el!.classList.contains('settled')).toBe(false);
+      expect(text()).toContain('Action required');
+      expect(text()).toContain('1 of 1 orders awaiting payment');
+    });
+
+    it('confirms settlement once everything is paid', async () => {
+      await boot([invoice({ paymentStatus: 'paid' })]);
+      expect(banner()!.classList.contains('settled')).toBe(true);
+      expect(text()).toContain('Nothing to pay');
+      expect(text()).not.toContain('Action required');
+    });
+
+    it('counts the unpaid majority, not just the first row', async () => {
+      await boot([
+        invoice({ orderId: 'aaaa1111-0000-0000-0000-000000000001', paymentStatus: 'paid' }),
+        invoice({ orderId: 'bbbb2222-0000-0000-0000-000000000002', paymentStatus: 'pending' }),
+        invoice({ orderId: 'cccc3333-0000-0000-0000-000000000003', paymentStatus: 'pending' }),
+      ]);
+      expect(text()).toContain('2 of 3 orders awaiting payment');
+    });
+
+    it('offers no settle action when nothing is owed', async () => {
+      await boot([invoice({ paymentStatus: 'paid' })]);
+      expect(banner()!.querySelector('.paybar-cta')).toBeNull();
+    });
+
+    it('points the settle action at an unpaid invoice', async () => {
+      await boot([
+        invoice({ orderId: 'aaaa1111-0000-0000-0000-000000000001', paymentStatus: 'pending' }),
+      ]);
+      const cta = banner()!.querySelector('.paybar-cta') as HTMLAnchorElement;
+      expect(cta.getAttribute('href')).toContain('/orders/');
+    });
+
+    it('stays hidden when there are no orders at all', async () => {
+      await boot([]);
+      expect(banner()).toBeNull();
+    });
+  });
 });

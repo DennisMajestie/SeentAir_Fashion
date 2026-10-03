@@ -3,7 +3,13 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService, Invoice, Pricing } from '../api.service';
 import { pill } from '../status-pill';
-import { EmptyComponent, LedgerComponent, RowComponent, StripComponent } from '../ui/primitives';
+import {
+  EmptyComponent,
+  LedgerComponent,
+  PayBannerComponent,
+  RowComponent,
+  StripComponent,
+} from '../ui/primitives';
 
 /**
  * W2, Wholesale buyer home.
@@ -31,8 +37,18 @@ import { EmptyComponent, LedgerComponent, RowComponent, StripComponent } from '.
     LedgerComponent,
     RowComponent,
     EmptyComponent,
+    PayBannerComponent,
   ],
   template: `
+    @if (invoices().length) {
+      <se-pay
+        [paid]="unpaidCount() === 0"
+        [sub]="paymentHeadline()"
+        [action]="unpaidCount() === 0 ? '' : 'View invoices'"
+        actionHref="/orders"
+      />
+    }
+
     <se-strip label="Wholesale account" [badge]="approved() ? 'Verified' : 'Pending review'">
       <h1 class="home-h1">{{ buyerName() ?? 'Wholesale buyer' }}</h1>
       @if (pricing(); as p) {
@@ -378,6 +394,24 @@ export class HomePage implements OnInit {
 
   paid(invoice: Invoice): boolean {
     return invoice.paymentStatus === 'paid';
+  }
+
+  /** Same roll-up as the orders log, so the two screens never disagree. */
+  unpaidCount(): number {
+    return this.invoices().filter((i) => !this.paid(i)).length;
+  }
+
+  paymentHeadline(): string {
+    const unpaid = this.unpaidCount();
+    const total = this.invoices().length;
+    if (unpaid === 0)
+      return 'All ' + total + ' order' + (total === 1 ? '' : 's') + ' settled. Nothing to pay.';
+    return (
+      unpaid +
+      ' of ' +
+      total +
+      ' orders awaiting payment. Wholesale is full payment upfront; nothing enters production until it clears.'
+    );
   }
 
   payMethod(invoice: Invoice): string {
