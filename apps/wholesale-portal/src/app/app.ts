@@ -130,7 +130,6 @@ import { ThemeService } from './theme.service';
             <div class="wordmark-row">
               <div class="wordmark">
                 <img src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
-                <span class="chip">WHOLESALE PORTAL</span>
               </div>
               <!-- The site header is hidden while logged out, so the theme
                    toggle has to live here too or a dark-mode visitor has no

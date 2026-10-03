@@ -202,7 +202,6 @@ a {
 main {
   max-width: 1120px;
   margin: 0 auto;
-  padding: var(--space-xl) var(--space-lg) 5rem;
 }
 
 h1,
@@ -785,7 +784,7 @@ label {
     flex-wrap: wrap;
     img {
       display: block;
-      height: 28px;
+      height: 60px;
       width: auto;
       object-fit: contain;
     }
