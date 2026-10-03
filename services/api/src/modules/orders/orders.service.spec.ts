@@ -29,7 +29,7 @@ const finance: AuthenticatedUser = {
 };
 const customer: AuthenticatedUser = {
   id: 'cust-1',
-  email: 'ada@seentair.test',
+  email: 'ada@realcompany.ng',
   role: RoleName.CUSTOMER,
 };
 
@@ -180,15 +180,20 @@ describe('OrdersService — payment rules', () => {
   };
   // Paystack email override is permitted by default outside production, and the
   // callback base is blank unless a test sets it. One stable object so tests can
-  // flip what the injected instance reads.
+  // flip what the injected instance reads. `devInbox` is set because every seeded
+  // account is @seentair.test, which Paystack refuses; without a configured
+  // inbox no local payment can be initialised at all.
   let emailOverrideAllowed = true;
+  let devInbox = 'paystack-receipts@seentair.test.local';
   const configValues: Record<string, unknown> = {
     'paystack.emailOverrideAllowed': emailOverrideAllowed,
+    'paystack.devInbox': devInbox,
     'paystack.callbackUrlBase': '',
   };
   const config = {
     get: jest.fn((key: string) => {
       if (key === 'paystack.emailOverrideAllowed') return emailOverrideAllowed;
+      if (key === 'paystack.devInbox') return devInbox;
       return configValues[key];
     }) as (k: string) => unknown,
   };
@@ -209,6 +214,7 @@ describe('OrdersService — payment rules', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     emailOverrideAllowed = true;
+    devInbox = 'paystack-receipts@seentair.test.local';
     inventoryService.record.mockReset();
     h = harness();
     h.setOrder({
@@ -323,12 +329,15 @@ describe('OrdersService — payment rules', () => {
   // ---- Paystack payment init: receipt email override ----
 
   it('charges the order customer when no email override is given', async () => {
-    h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+    // A deliverable address, so this tests its own intent: no override means
+    // the customer's own address. The reserved-TLD case is covered by the
+    // "Paystack receipt address" block below.
+    h.order()['customer'] = { id: 'cust-1', email: 'ada@realcompany.ng' };
     await service.initPaystackPayment('o1', customer);
     // 4th arg: the Paystack return URL. null here because the suite's config
     // stub has no callback base configured.
     expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
-      'ada@seentair.test',
+      'ada@realcompany.ng',
       17000,
       expect.stringMatching(/^seentair-o1-/),
       null,
@@ -336,7 +345,7 @@ describe('OrdersService — payment rules', () => {
   });
 
   it('an override redirects the receipt — seeded .test addresses cannot be charged', async () => {
-    h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+    h.order()['customer'] = { id: 'cust-1', email: 'ada@realcompany.ng' };
     await service.initPaystackPayment('o1', customer, 'real.inbox@example.com');
     expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
       'real.inbox@example.com',
@@ -351,10 +360,10 @@ describe('OrdersService — payment rules', () => {
       // Mirrors mail.resetUrlBase: the API owns the URL so a client cannot turn
       // it into an open redirect.
       configValues['paystack.callbackUrlBase'] = 'https://seent-air-fashion.vercel.app';
-      h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+      h.order()['customer'] = { id: 'cust-1', email: 'ada@realcompany.ng' };
       await service.initPaystackPayment('o1', customer);
       expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
-        'ada@seentair.test',
+        'ada@realcompany.ng',
         17000,
         expect.any(String),
         'https://seent-air-fashion.vercel.app/o1',
@@ -363,10 +372,10 @@ describe('OrdersService — payment rules', () => {
 
     it('does not double up slashes when the base has a trailing one', async () => {
       configValues['paystack.callbackUrlBase'] = 'https://app.test/';
-      h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+      h.order()['customer'] = { id: 'cust-1', email: 'ada@realcompany.ng' };
       await service.initPaystackPayment('o1', customer);
       expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
-        'ada@seentair.test',
+        'ada@realcompany.ng',
         17000,
         expect.any(String),
         'https://app.test/o1',
@@ -375,10 +384,10 @@ describe('OrdersService — payment rules', () => {
 
     it('sends no callback at all when the base is blank', async () => {
       configValues['paystack.callbackUrlBase'] = '';
-      h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+      h.order()['customer'] = { id: 'cust-1', email: 'ada@realcompany.ng' };
       await service.initPaystackPayment('o1', customer);
       expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
-        'ada@seentair.test',
+        'ada@realcompany.ng',
         17000,
         expect.any(String),
         null,
@@ -388,7 +397,7 @@ describe('OrdersService — payment rules', () => {
 
   it('the override is refused where it is not allowed, so a live charge keeps the customer address', async () => {
     emailOverrideAllowed = false;
-    h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+    h.order()['customer'] = { id: 'cust-1', email: 'ada@realcompany.ng' };
     await expect(
       service.initPaystackPayment('o1', customer, 'attacker@example.com'),
     ).rejects.toThrow(ForbiddenException);
@@ -396,7 +405,7 @@ describe('OrdersService — payment rules', () => {
   });
 
   it('records a PENDING payment row against the reference Paystack returned', async () => {
-    h.order()['customer'] = { id: 'cust-1', email: 'ada@seentair.test' };
+    h.order()['customer'] = { id: 'cust-1', email: 'ada@realcompany.ng' };
     await service.initPaystackPayment('o1', customer);
     expect(h.paymentRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -406,6 +415,62 @@ describe('OrdersService — payment rules', () => {
         reference: expect.stringMatching(/^seentair-o1-/),
       }),
     );
+  });
+
+  // ---- Paystack receipt address: reserved TLDs ----
+
+  /**
+   * Every seeded account is @seentair.test and Paystack rejects the reserved
+   * TLD on initialise, so without a local fallback no development payment can
+   * be started. These pin that: substitute when configured, refuse clearly
+   * when not, and never touch a real buyer's address.
+   */
+  describe('Paystack receipt address', () => {
+    it('receipts a seeded .test account at the configured dev inbox', async () => {
+      h.order()['customer'] = { id: 'cust-1', email: 'wholesaler@seentair.test' };
+      await service.initPaystackPayment('o1', customer);
+      // First arg only: these tests are about the receipt address, and the
+      // callback arg is null here because the harness sets no callback base.
+      expect(paystackService.initializeTransaction.mock.calls[0][0]).toBe(devInbox);
+    });
+
+    it('leaves a real buyer address completely alone', async () => {
+      h.order()['customer'] = { id: 'cust-1', email: 'buyer@realcompany.ng' };
+      await service.initPaystackPayment('o1', customer);
+      expect(paystackService.initializeTransaction.mock.calls[0][0]).toBe('buyer@realcompany.ng');
+    });
+
+    it('refuses with an actionable message when no dev inbox is configured', async () => {
+      devInbox = '';
+      h.order()['customer'] = { id: 'cust-1', email: 'wholesaler@seentair.test' };
+      await expect(service.initPaystackPayment('o1', customer)).rejects.toThrow(
+        /PAYSTACK_DEV_INBOX/,
+      );
+    });
+
+    it('refuses rather than substituting when overrides are off, as in production', async () => {
+      emailOverrideAllowed = false;
+      devInbox = 'paystack-receipts@seentair.test.local';
+      h.order()['customer'] = { id: 'cust-1', email: 'wholesaler@seentair.test' };
+      await expect(service.initPaystackPayment('o1', customer)).rejects.toThrow(
+        /not a deliverable address/,
+      );
+      expect(paystackService.initializeTransaction).not.toHaveBeenCalled();
+    });
+
+    it('still lets an explicit client override win when permitted', async () => {
+      h.order()['customer'] = { id: 'cust-1', email: 'wholesaler@seentair.test' };
+      await service.initPaystackPayment('o1', customer, 'override@inbox.test');
+      expect(paystackService.initializeTransaction.mock.calls[0][0]).toBe('override@inbox.test');
+    });
+
+    it('refuses an explicit override in production, as before', async () => {
+      emailOverrideAllowed = false;
+      h.order()['customer'] = { id: 'cust-1', email: 'buyer@realcompany.ng' };
+      await expect(
+        service.initPaystackPayment('o1', customer, 'attacker@evil.test'),
+      ).rejects.toThrow(/not permitted/);
+    });
   });
 
   // ---- Paystack webhook: idempotency ----

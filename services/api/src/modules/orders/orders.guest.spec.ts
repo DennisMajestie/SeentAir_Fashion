@@ -31,9 +31,12 @@ const SHIP_TO = {
 };
 const GUEST = { name: 'Ada Obi', email: 'ada@example.com' };
 
+// A deliverable address, so the assertion below proves the charge is billed to
+// the signed-in customer rather than the guest. Reserved-TLD accounts are
+// covered by the "Paystack receipt address" block in orders.service.spec.ts.
 const customer: AuthenticatedUser = {
   id: 'c1',
-  email: 'c@x.test',
+  email: 'c@realcompany.ng',
   role: RoleName.CUSTOMER,
 };
 
@@ -121,7 +124,21 @@ describe('OrdersService — guest checkout', () => {
         { provide: AccountingService, useValue: { record: jest.fn() } },
         { provide: NotificationsService, useValue: { onOrderStatusChange: jest.fn() } },
         { provide: OrderStatusBus, useValue: { publish: jest.fn() } },
-        { provide: ConfigService, useValue: { get: jest.fn(() => '') } },
+        // Non-production defaults, not a blanket ''. `emailOverrideAllowed` defaults
+        // on outside production and `devInbox` stands in for seeded @seentair.test
+        // accounts, which Paystack refuses as undeliverable. Returning '' for
+        // every key made this suite look like production and blocked its own
+        // signed-in-customer payment test.
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              if (key === 'paystack.emailOverrideAllowed') return true;
+              if (key === 'paystack.devInbox') return 'guest-receipts@seentair.test.local';
+              return '';
+            }),
+          },
+        },
         { provide: getDataSourceToken(), useValue: { transaction: jest.fn() } },
       ],
     }).compile();

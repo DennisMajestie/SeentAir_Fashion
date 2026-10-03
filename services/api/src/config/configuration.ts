@@ -111,6 +111,18 @@ export default () => ({
       if (raw === undefined || raw === '') return process.env.NODE_ENV !== 'production';
       return raw === 'true';
     })(),
+    /**
+     * Where a non-production charge is receipted when the buyer's own address
+     * is undeliverable. Seeded accounts are all `@seentair.test`, and Paystack
+     * rejects the reserved `.test` TLD outright, so without this a local
+     * payment cannot be started at all. Set it to any inbox you control.
+     *
+     * Server-side on purpose: the alternative is letting each client pass the
+     * receipt address, which turns a local convenience into a way to redirect
+     * a customer's receipt. Empty means "not configured" and payment init then
+     * fails with an explanation rather than Paystack's opaque 503.
+     */
+    devInbox: process.env.PAYSTACK_DEV_INBOX?.trim() ?? '',
   },
   production: {
     // Confirmed stages, customizable to real factory-floor terms (appendix 02).
