@@ -1906,34 +1906,76 @@ $ops-gold-ink: var(--acid-ink);
    own header while signed out. That gap is why the two never looked
    alike. Sticky, so it holds still when a long form (password reset,
    MFA challenge) pushes past the fold. */
+/* The storefront account-page header, ported verbatim from
+   apps/storefront/src/styles.scss (.site-header) so the ops sign-in carries the
+   same bar the customer account screen does. Two substitutions were forced by
+   the admin palette, which renames the storefront's tokens: --canvas becomes
+   --obsidian (the body background) and --line becomes --hairline.
+
+   The storefront takes its inline gutter from .wrap-col. Here .auth-screen's
+   padding-inline already sets that gutter for the whole column, so the inner
+   wrapper is deliberately padding-block only -- adding inline padding too
+   would double it.
+
+   The width/max-width/margin-left the logged-in .site-header carries are
+   omitted on purpose: those offset the bar clear of the 224px ops sidebar, and
+   the sign-in screen has no sidebar. The inner wrapper is .auth-head-inner
+   rather than .header-inner so it cannot pick up the logged-in header's
+   `padding: 0.8rem 22px` and `max-width: 1312px`. */
 .auth-head {
   position: sticky;
   top: 0;
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
+  z-index: 20;
+  display: block;
   width: 100%;
-  /* Transparent at rest so the photograph runs unbroken behind it; the wash
-     only arrives once something scrolls up underneath. */
+  /* Notch/status-bar clearance on notched devices. */
+  padding-top: env(safe-area-inset-top);
   background: transparent;
+  border-bottom: 1px solid transparent;
   transition:
     background 0.3s ease,
-    backdrop-filter 0.3s ease;
+    border-color 0.3s ease,
+    backdrop-filter 0.3s ease,
+    box-shadow 0.3s ease;
+  .auth-head-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    align-items: center;
+    justify-content: flex-start;
+    padding-block: 0.8rem;
+    width: 100%;
+  }
   &.scrolled {
-    background: color-mix(in srgb, var(--photo-base) 72%, transparent);
+    background: color-mix(in srgb, var(--obsidian) 88%, transparent);
     backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom-color: var(--hairline);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--hairline) 60%, transparent);
+  }
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    color: var(--ink);
+    img {
+      display: block;
+      height: 60px;
+      width: auto;
+      object-fit: contain;
+    }
   }
 }
 
 /* logo.png is monochrome near-black ink - measured mean luminance 0.005,
    brightest pixel 0.337, saturation 0.0000. On --photo-base #14110e that is
    invisible, so the dark theme inverts it to a light mark; inverted it
-   reads at roughly 0.995 and the alpha channel is left untouched. */
+   reads at roughly 0.995 and the alpha channel is left untouched.
+
+   Sizing is not declared here: it comes from the ported .auth-head .logo img
+   rule, which carries the storefront's 60px mark. Only the photo-contrast
+   filter is this element's own concern. */
 .auth-logo {
-  display: block;
-  width: auto;
-  height: 32px;
   filter: invert(1);
 }
 

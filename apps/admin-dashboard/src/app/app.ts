@@ -24,7 +24,11 @@ import { environment } from '../environments/environment';
     @if (!api.isLoggedIn) {
       <div class="auth-screen">
         <header class="auth-head" [class.scrolled]="scrolled()">
-          <img class="auth-logo" src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
+          <div class="auth-head-inner">
+            <span class="logo">
+              <img class="auth-logo" src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
+            </span>
+          </div>
         </header>
         <section class="auth-col">
           <button

@@ -32,6 +32,17 @@ function rgb(value: string): string {
   return `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`;
 }
 
+/**
+ * Reads backdrop-filter in either spelling. The styleshipped -webkit- fallback
+ * is absent from the TS DOM lib, hence the cast; the admin header blurs with
+ * both, matching the storefront bar.
+ */
+function backdropBlur(style: CSSStyleDeclaration): string {
+  const legacy = (style as CSSStyleDeclaration & { webkitBackdropFilter?: string })
+    .webkitBackdropFilter;
+  return style.backdropFilter || legacy || '';
+}
+
 describe('ops login photo overlay', () => {
   let fixture: ComponentFixture<App>;
 
@@ -168,6 +179,57 @@ describe('ops login photo overlay', () => {
     it('restores the original ink in the light theme, which washes to ivory', () => {
       build('light');
       expect(styleOf('.auth-logo').filter).not.toContain('invert');
+    });
+
+    it('carries the storefront account-page bar verbatim', () => {
+      build('dark');
+      const head = styleOf('.auth-head');
+      // Ported from the storefront's .site-header. z-index 20 is the value that
+      // actually changed: the login bar used to sit at 6, which would have let
+      // the form column overlap it once the bar gained the storefront's height.
+      expect(head.zIndex).toBe('20');
+      expect(head.display).toBe('block');
+      expect(head.borderBottomWidth).toBe('1px');
+      expect(head.borderBottomStyle).toBe('solid');
+      // Transparent at rest so the photograph runs unbroken behind it.
+      expect(head.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+
+      // The mark takes the storefront's 60px, not the login bar's old 32px.
+      expect(styleOf('.auth-logo').height).toBe('60px');
+
+      // And the inner wrapper is the storefront's flex row.
+      const inner = styleOf('.auth-head-inner');
+      expect(inner.display).toBe('flex');
+      expect(inner.alignItems).toBe('center');
+      expect(inner.justifyContent).toBe('flex-start');
+    });
+
+    it('keeps the bar clear of the ops sidebar it does not have', () => {
+      build('dark');
+      // The logged-in .site-header offsets itself past the 224px sidebar with a
+      // calc() width and a margin-left. Copying that verbatim would have shoved
+      // the sign-in bar off-centre, so the port must not carry it.
+      const head = styleOf('.auth-head');
+      expect(head.marginLeft).toBe('0px');
+      expect(head.maxWidth).toBe('none');
+      expect(head.width).not.toContain('224px');
+    });
+
+    it('washes and draws a hairline in only once something scrolls', () => {
+      build('dark');
+      const head = el<HTMLElement>('.auth-head');
+      expect(getComputedStyle(head).borderBottomColor).toBe('rgba(0, 0, 0, 0)');
+
+      // The bar transitions border-color and background over 0.3s, and
+      // getComputedStyle reports a transition's value at t=0, so the toggle
+      // would still read as the resting state. Suppress it for the assertion.
+      head.style.transition = 'none';
+      head.classList.add('scrolled');
+      const scrolled = getComputedStyle(head);
+      // --hairline in the dark theme, and the wash has arrived.
+      expect(scrolled.borderBottomColor).toBe('rgb(43, 38, 33)');
+      expect(scrolled.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+      expect(backdropBlur(scrolled)).toContain('blur');
     });
   });
 
