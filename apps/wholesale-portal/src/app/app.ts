@@ -126,7 +126,7 @@ import { ThemeService } from './theme.service';
     <main>
       @if (!api.isLoggedIn) {
         <section class="auth-screen">
-          <header class="ws-header">
+          <header class="ws-header" [class.scrolled]="scrolled()">
             <div class="wordmark-row">
               <div class="wordmark">
                 <img src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />

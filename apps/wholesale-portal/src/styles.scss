@@ -744,11 +744,34 @@ label {
   padding-block: var(--space-lg);
 }
 
+/* The sign-in header is a real header: it stays put while the auth card and the
+   trust badges scroll under it, so the wordmark and the "Secured connection"
+   line are still on screen at the bottom of a long form.
+
+   `position: sticky` rather than `fixed` on purpose. Fixed would take it out of
+   flow and force compensating padding onto everything below it, on a screen
+   whose height varies with the copy and the viewport. Sticky needs no such
+   compensation and stops at the end of .auth-screen on its own.
+
+   The background is opaque at rest, not only once scrolled: a translucent
+   header would let the form show through it the entire time. The hairline
+   arrives on .scrolled, matching .site-header, and the system's depth rule —
+   a hairline and a background step, never a shadow — is kept. */
 .ws-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-lg) 0;
+  padding-top: calc(var(--space-lg) + env(safe-area-inset-top));
+  background: var(--surface);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.3s ease;
+  &.scrolled {
+    border-bottom-color: var(--hairline);
+  }
   .wordmark-row {
     display: flex;
     align-items: center;
