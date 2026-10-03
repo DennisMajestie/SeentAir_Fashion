@@ -504,6 +504,24 @@ code {
     letter-spacing: 0.02em;
     box-shadow: 0 0 0 2px var(--obsidian);
   }
+  /* Replaces the count when a source could not be read. Gold, not --danger:
+     the count badge means "this many need you", and a red "!" would claim a
+     severity we do not actually know. */
+  .ops-badge.err {
+    background: var(--gold);
+    color: var(--obsidian);
+    font-size: 0.66rem;
+    animation: ops-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes ops-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
 }
 .ops-pop {
   position: absolute;
@@ -600,13 +618,26 @@ code {
     font-size: 0.62rem;
     color: var(--ink-dim);
   }
-  .ops-pop-empty {
-    padding: 1rem 0.6rem;
-    text-align: center;
-    color: var(--ink-dim);
-    font-size: 0.72rem;
+    .ops-pop-empty {
+      padding: 1rem 0.6rem;
+      text-align: center;
+      color: var(--ink-dim);
+      font-size: 0.72rem;
+    }
+    /* Sits above the rows so a partial failure is read before the list it
+       qualifies, and is never the only thing standing in for missing data. */
+    .ops-pop-error {
+      margin: 0 0 0.4rem;
+      padding: 0.6rem 0.7rem;
+      border: 1px solid color-mix(in srgb, var(--gold) 42%, transparent);
+      border-left: 3px solid var(--gold);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--gold) 12%, transparent);
+      color: var(--ink);
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
   }
-}
 .theme-toggle {
   width: 44px;
   height: 44px;
@@ -709,6 +740,12 @@ code {
   .sidebar,
   .scrim {
     transition: none;
+  }
+  /* The degraded-bell pulse is the only looping animation in the chrome, and
+     it is also the one that most needs to be readable at a glance, so under
+     reduced motion it holds a steady opacity rather than disappearing. */
+  .ops-badge.err {
+    animation: none;
   }
 }
 

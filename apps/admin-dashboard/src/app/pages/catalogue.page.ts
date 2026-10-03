@@ -438,7 +438,7 @@ export class CatalogueAdminPage implements OnInit {
     this.load();
     this.api.tiers().subscribe({
       next: (t) => this.tiers.set(t as unknown as TierRow[]),
-      error: () => undefined,
+      error: (e) => this.fail(e, 'Could not load wholesale tiers.'),
     });
     this.api.inventorySummary().subscribe({
       next: (rows) => {
@@ -446,12 +446,12 @@ export class CatalogueAdminPage implements OnInit {
         for (const r of rows) if (r.itemType === 'variant') m.set(r.itemId, r.currentQuantity);
         this.stockMap.set(m);
       },
-      error: () => undefined,
+      error: (e) => this.fail(e, 'Could not load stock levels.'),
     });
     this.api.pendingApprovals().subscribe({
       next: (a) =>
         this.pendingPriceChanges.set(a.filter((x) => x.actionType === 'price_change').length),
-      error: () => undefined,
+      error: (e) => this.fail(e, 'Could not load pending price approvals.'),
     });
   }
 
@@ -564,7 +564,7 @@ export class CatalogueAdminPage implements OnInit {
           this.rawMaterials.set(
             m as unknown as Array<{ id: string; name: string; unit: string | null }>,
           ),
-        error: () => undefined,
+        error: (e) => this.fail(e, 'Could not load raw materials.'),
       });
     }
   }

@@ -71,13 +71,32 @@ const QUICK_ACTIONS: ActionRow[] = [
           (click)="toggleBell()"
         >
           <span class="ops-ico" aria-hidden="true">notifications</span>
-          @if (attentionCount() > 0) {
+          @if (degraded()) {
+            <span
+              class="ops-badge err"
+              [title]="blind()
+                ? 'Cannot reach the server, so this count is unknown'
+                : 'Partly loaded: ' + degradedSources() + ' could not be read'"
+              >!</span
+            >
+          } @else if (attentionCount() > 0) {
             <span class="ops-badge">{{ attentionCount() > 9 ? '9+' : attentionCount() }}</span>
           }
         </button>
 
         @if (bellOpen()) {
           <div class="ops-pop" role="region" aria-label="Needs your attention">
+            @if (degraded()) {
+              <p class="ops-pop-error" role="status">
+                @if (blind()) {
+                  Cannot reach the server. Nothing below can be confirmed, so this is
+                  not an all-clear.
+                } @else {
+                  Could not read {{ degradedSources() }}. Anything not listed may still
+                  need you.
+                }
+              </p>
+            }
             @for (it of attentionRows(); track it.key) {
               <a
                 class="ops-pop-item"
@@ -96,7 +115,11 @@ const QUICK_ACTIONS: ActionRow[] = [
               </a>
             }
             @if (attentionRows().length === 0) {
-              <p class="ops-pop-empty">All clear: nothing needs you right now.</p>
+              @if (degraded()) {
+                <p class="ops-pop-empty">Nothing confirmed yet. The list above explains why.</p>
+              } @else {
+                <p class="ops-pop-empty">All clear: nothing needs you right now.</p>
+              }
             }
           </div>
         }
@@ -138,11 +161,36 @@ export class AppOpsbarComponent implements OnInit, OnDestroy {
   private readonly approvals = signal<Approval[]>([]);
   private readonly lowStock = signal<LowStock | null>(null);
   private readonly returnList = signal<ReturnRequest[]>([]);
+  /** Per-source failure flags. Tracked separately rather than as one boolean so
+      a single failing endpoint still lets the others through: losing lowStock
+      should not hide the approvals the owner does need to act on. */
+  private readonly approvalsFailed = signal(false);
+  private readonly lowStockFailed = signal(false);
+  private readonly returnsFailed = signal(false);
   readonly bellOpen = signal(false);
   readonly actionsOpen = signal(false);
   readonly quickActions = QUICK_ACTIONS;
   private timer?: ReturnType<typeof setInterval>;
   private onPointer: (e: PointerEvent) => void;
+
+  /** Any source behind us right now, so the counts are incomplete. */
+  readonly degraded = computed<boolean>(
+    () => this.approvalsFailed() || this.lowStockFailed() || this.returnsFailed(),
+  );
+
+  /** Everything behind us. The bell must not read "all clear" in this state. */
+  readonly blind = computed<boolean>(
+    () => this.approvalsFailed() && this.lowStockFailed() && this.returnsFailed(),
+  );
+
+  /** Wording for the banner. Names only the sources that actually failed. */
+  readonly degradedSources = computed<string>(() => {
+    const parts: string[] = [];
+    if (this.approvalsFailed()) parts.push('approvals');
+    if (this.lowStockFailed()) parts.push('stock levels');
+    if (this.returnsFailed()) parts.push('returns');
+    return parts.join(', ');
+  });
 
   constructor() {
     this.onPointer = (e: PointerEvent): void => {
@@ -161,13 +209,28 @@ export class AppOpsbarComponent implements OnInit, OnDestroy {
   }
 
   private refresh(): void {
-    this.api
-      .pendingApprovals()
-      .subscribe({ next: (a) => this.approvals.set(a), error: () => undefined });
-    this.api.lowStock().subscribe({ next: (ls) => this.lowStock.set(ls), error: () => undefined });
+    // Each source clears its own flag on success, so a blip that resolves on
+    // the next 60s tick stops showing as degraded without a full reload.
+    this.api.pendingApprovals().subscribe({
+      next: (a) => {
+        this.approvals.set(a);
+        this.approvalsFailed.set(false);
+      },
+      error: () => this.approvalsFailed.set(true),
+    });
+    this.api.lowStock().subscribe({
+      next: (ls) => {
+        this.lowStock.set(ls);
+        this.lowStockFailed.set(false);
+      },
+      error: () => this.lowStockFailed.set(true),
+    });
     this.api.returns().subscribe({
-      next: (r) => this.returnList.set(r.data.filter((x) => x.status === 'requested')),
-      error: () => undefined,
+      next: (r) => {
+        this.returnList.set(r.data.filter((x) => x.status === 'requested'));
+        this.returnsFailed.set(false);
+      },
+      error: () => this.returnsFailed.set(true),
     });
   }
 
@@ -233,12 +296,15 @@ export class AppOpsbarComponent implements OnInit, OnDestroy {
     return rows;
   });
 
+  /** Total needing attention. Deliberately uncapped: the badge renders "9+"
+      above nine, so clamping here made that branch unreachable and flattened
+      50 approvals and 9 approvals to the same "9". */
   readonly attentionCount = computed<number>(() => {
     let n = this.approvals().length;
     n += this.lowStock()?.materials.length ?? 0;
     n += this.lowStock()?.variants.length ?? 0;
     n += this.returnList().length;
-    return Math.min(n, 9);
+    return n;
   });
 
   toggleBell(): void {

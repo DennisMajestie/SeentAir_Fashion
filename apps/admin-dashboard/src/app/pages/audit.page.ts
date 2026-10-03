@@ -22,19 +22,28 @@ import { ApiService, AuditEntry } from '../api.service';
       </div>
       <div class="ops-actions">
         <span class="live-chip">Automatic</span>
-        <button class="cta small ghost" type="button" (click)="verifyIntegrity()">
-          Verify data integrity
+        <button class="cta small ghost" type="button" (click)="verifyIntegrity()" [disabled]="verifying()">
+          {{ verifying() ? 'Verifying...' : 'Verify data integrity' }}
         </button>
+        @if (verifyError()) {
+          <span class="chip bad" role="status">Integrity check failed to run &mdash; unverified</span>
+        }
         @if (verifyResult(); as v) {
           <span class="chip" [class.ok]="v.broken === 0" [class.bad]="v.broken > 0">
-            {{ v.broken === 0 ? 'hash-chain valid' : v.broken + ' broken link(s)' }} ·
+            {{ v.broken === 0 ? 'hash-chain valid' : v.broken + ' broken link(s)' }} &middot;
             {{ v.valid }}/{{ v.total }}
           </span>
         }
       </div>
     </div>
 
-    @if (verifyResult(); as v) {
+    @if (verifyError()) {
+      <div class="rule-strip" style="border-color: var(--danger);">
+        <strong>Integrity check did not complete.</strong> The server could not be reached, so the
+        hash chain is currently <em>unverified</em>. Absence of a result here is not a pass &mdash;
+        retry before relying on this log as evidence.
+      </div>
+    } @else if (verifyResult(); as v) {
       <div class="rule-strip" [style.borderColor]="v.broken > 0 ? 'var(--danger)' : ''">
         <strong>Hash-chain integrity check</strong>- every audit entry is SHA-256 chained to the
         previous one.
@@ -46,6 +55,13 @@ import { ApiService, AuditEntry } from '../api.service';
         @if (v.headHash) {
           <code class="mono">{{ v.headHash }}</code>
         }
+      </div>
+    }
+
+    @if (loadError()) {
+      <div class="rule-strip" style="border-color: var(--danger);">
+        <strong>Could not load the activity log.</strong> The figures below are empty because the
+        request failed, not because nothing was recorded.
       </div>
     }
 
@@ -152,7 +168,15 @@ import { ApiService, AuditEntry } from '../api.service';
           }
           @if (entries().length === 0) {
             <tr>
-              <td colspan="5" class="muted small">No entries match this filter window.</td>
+              <td colspan="5" class="muted small">
+                @if (loadError()) {
+                  The log could not be read. This is a failed request, not an empty log.
+                } @else if (filtered()) {
+                  No entries match this filter window.
+                } @else {
+                  No entries recorded yet.
+                }
+              </td>
             </tr>
           }
         </tbody>
@@ -172,6 +196,14 @@ export class AuditPage implements OnInit {
     broken: number;
     headHash: string | null;
   } | null>(null);
+  /** Set when the entry fetch fails. Distinguishes "the log is genuinely empty"
+      from "we could not read the log", which on this screen is the difference
+      between a quiet day and a blind one. */
+  readonly loadError = signal(false);
+  /** Separate from loadError: the integrity check is the one control on the
+      page whose silence would read as good news, so it never fails quietly. */
+  readonly verifyError = signal(false);
+  readonly verifying = signal(false);
   fAction = '';
   fFrom = '';
   fTo = '';
@@ -199,9 +231,19 @@ export class AuditPage implements OnInit {
         to: this.fTo ? `${this.fTo}T23:59:59` : undefined,
         limit: 50,
       })
-      .subscribe((res) => {
-        this.entries.set(res.data);
-        this.total.set(res.total);
+      .subscribe({
+        next: (res) => {
+          this.entries.set(res.data);
+          this.total.set(res.total);
+          this.loadError.set(false);
+        },
+        error: () => {
+          // Drop any rows already on screen: leaving stale entries under a
+          // fresh filter would misreport what the window currently contains.
+          this.entries.set([]);
+          this.total.set(0);
+          this.loadError.set(true);
+        },
       });
   }
 
@@ -236,6 +278,20 @@ export class AuditPage implements OnInit {
   }
 
   verifyIntegrity(): void {
-    this.api.auditVerify().subscribe((res) => this.verifyResult.set(res));
+    this.verifying.set(true);
+    this.verifyError.set(false);
+    this.api.auditVerify().subscribe({
+      next: (res) => {
+        this.verifyResult.set(res);
+        this.verifying.set(false);
+      },
+      error: () => {
+        // Clear any earlier passing result so a stale "hash-chain valid" cannot
+        // outlive the check it came from and stand in for this one.
+        this.verifyResult.set(null);
+        this.verifyError.set(true);
+        this.verifying.set(false);
+      },
+    });
   }
 }

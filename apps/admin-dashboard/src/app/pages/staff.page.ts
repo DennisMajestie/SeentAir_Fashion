@@ -422,7 +422,7 @@ export class StaffAdminPage implements OnInit {
         if (!this.mRole && !prefer && rows.length > 0) this.mRole = rows[0].name;
         this.setMatrixRole(prefer);
       },
-      error: () => undefined,
+      error: (e) => this.error.set(e?.error?.message ?? 'Could not load the permissions matrix.'),
     });
   }
 
