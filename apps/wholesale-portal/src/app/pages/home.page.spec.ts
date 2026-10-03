@@ -170,4 +170,31 @@ describe('HomePage operations tracker', () => {
     expect(f.componentInstance.opsStatus()).toBe('All settled');
     expect(text(f)).toContain('Operations');
   });
+
+  describe('HomePage payment banner', () => {
+    function bar(f: ComponentFixture<HomePage>): HTMLElement | null {
+      return (f.nativeElement as HTMLElement).querySelector('.paybar');
+    }
+
+    it('is absent on an account with no orders, rather than claiming all is well', async () => {
+      const f = await mount([]);
+      expect(bar(f)).toBeNull();
+    });
+
+    it('confirms settlement when every order is paid', async () => {
+      const f = await mount([invoice('processing', 'paid')]);
+      expect(bar(f)!.classList.contains('settled')).toBe(true);
+      expect(text(f)).toContain('Nothing to pay');
+      expect(text(f)).not.toContain('Action required');
+    });
+
+    it('demands action and links to the log when an order is unpaid', async () => {
+      const f = await mount([invoice('processing', 'pending')]);
+      expect(bar(f)!.classList.contains('settled')).toBe(false);
+      expect(text(f)).toContain('Action required');
+      expect(text(f)).toContain('awaiting payment');
+      const cta = bar(f)!.querySelector('.paybar-cta') as HTMLAnchorElement;
+      expect(cta.getAttribute('href')).toBe('/orders');
+    });
+  });
 });

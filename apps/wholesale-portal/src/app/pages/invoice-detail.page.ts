@@ -3,7 +3,12 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService, Invoice } from '../api.service';
 import { pill } from '../status-pill';
-import { FactsComponent, LedgerComponent, StripComponent } from '../ui/primitives';
+import {
+  FactsComponent,
+  LedgerComponent,
+  PayBannerComponent,
+  StripComponent,
+} from '../ui/primitives';
 
 /**
  * Date formatting for facts built in TypeScript. `Intl` rather than injecting
@@ -26,7 +31,14 @@ const dayFormat = new Intl.DateTimeFormat('en-NG', {
  */
 @Component({
   selector: 'app-invoice-detail',
-  imports: [CommonModule, RouterLink, StripComponent, FactsComponent, LedgerComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    StripComponent,
+    FactsComponent,
+    LedgerComponent,
+    PayBannerComponent,
+  ],
   template: `
     <a class="link backlink" routerLink="/orders">
       <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
@@ -34,6 +46,27 @@ const dayFormat = new Intl.DateTimeFormat('en-NG', {
     </a>
 
     @if (invoice(); as inv) {
+      <se-pay
+        [paid]="paid(inv)"
+        [title]="'Paid in full'"
+        [sub]="
+          paid(inv)
+            ? 'Settled ' + payMethod(inv) + '. Nothing further is needed on this order.'
+            : 'Payable in full before production starts. Wholesale is full payment upfront; there are no part-payments.'
+        "
+        [action]="paid(inv) ? '' : 'Pay ' + naira(inv.totalAmount) + ' now'"
+        [actionHref]="paid(inv) ? '' : 'tel:+23418887400'"
+        [payable]="!paid(inv)"
+        [busy]="paying()"
+        (pay)="payNow(inv)"
+        secondary="Prefer to transfer? Call the finance desk"
+        [secondaryHref]="paid(inv) ? '' : 'tel:+23418887400'"
+      />
+
+      @if (payError(); as msg) {
+        <p class="pay-error" role="alert">{{ msg }}</p>
+      }
+
       <se-strip
         label="Document issued"
         [badge]="paid(inv) ? 'Commercial tax invoice' : 'Pro-forma invoice'"
@@ -153,6 +186,9 @@ export class InvoiceDetailPage implements OnInit {
   readonly invoice = signal<Invoice | null>(null);
   readonly buyer = signal<{ name: string; email: string } | null>(null);
   readonly missing = signal(false);
+  /** True while the Paystack handoff is in flight, so the button cannot double-fire. */
+  readonly paying = signal(false);
+  readonly payError = signal<string | null>(null);
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -244,6 +280,45 @@ export class InvoiceDetailPage implements OnInit {
     return value.toLocaleString('en-NG', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
+    });
+  }
+
+  /** Formatted naira total, for the pay button. Public because the template reads it. */
+  naira(value: number): string {
+    return `₦${this.money(value)}`;
+  }
+
+  /**
+   * Hands the invoice to Paystack and leaves the app.
+   *
+   * The amount sent is the invoice total, never an editable field: wholesale is
+   * full payment upfront, so there is nothing for a buyer to choose and an
+   * editable amount would only invite an error the API rejects anyway.
+   */
+  payNow(inv: Invoice): void {
+    if (this.paying()) return;
+    this.paying.set(true);
+    this.payError.set(null);
+    this.api.payWithPaystack(inv.orderId, inv.totalAmount).subscribe({
+      next: (res) => {
+        // Never navigate to an empty URL: a blank authorizationUrl would
+        // reload the invoice in place and look like a silent failure.
+        if (!res?.authorizationUrl) {
+          this.paying.set(false);
+          this.payError.set('Paystack returned no checkout URL. Nothing has been charged.');
+          return;
+        }
+        // Paystack hosts the payment; the webhook settles it and the browser
+        // returns here afterwards.
+        window.location.href = res.authorizationUrl;
+      },
+      error: (err) => {
+        this.paying.set(false);
+        this.payError.set(
+          err?.error?.message ??
+            'Could not reach Paystack. Nothing has been charged — try again, or call the finance desk.',
+        );
+      },
     });
   }
 

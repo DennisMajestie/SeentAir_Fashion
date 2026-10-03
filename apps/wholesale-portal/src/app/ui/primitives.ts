@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, booleanAttribute, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 /**
  * Structural strip: the unit of layout across the whole portal.
@@ -211,6 +212,94 @@ export class EmptyComponent {
   readonly ctaHref = input('');
 }
 
+/**
+ * Payment state, at the top of every screen that owes the buyer a number.
+ *
+ * Payment used to be a fact you scrolled down to: on an invoice it sat in the
+ * settlement ledger, below the manifest. That is the wrong place for it. A
+ * buyer opening an invoice needs to know within the first screen whether the
+ * order is settled or whether it is waiting on them, so this is the first
+ * element on invoice detail, orders and home alike.
+ *
+ * The two states mean opposite things and deliberately do not share a colour:
+ * settled is the client's lime tint (--pay-tint), outstanding is the --warn
+ * family already used for awaiting-payment elsewhere. Painting an unpaid
+ * invoice green would be the single most misleading thing on the page.
+ *
+ * `role="status"` so the state is announced when the page loads, rather than
+ * being something a screen reader user has to go hunting for.
+ */
+@Component({
+  selector: 'se-pay',
+  imports: [CommonModule, RouterLink],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="paybar" [class.settled]="paid()" role="status">
+      <span class="material-symbols-outlined paybar-icon" aria-hidden="true">{{
+        paid() ? 'verified' : 'error'
+      }}</span>
+      <div class="paybar-body">
+        <p class="paybar-title">{{ paid() ? title() : 'Action required' }}</p>
+        <p class="paybar-sub">{{ sub() }}</p>
+      </div>
+      @if (action()) {
+        @if (payable()) {
+          <button
+            type="button"
+            class="cta small paybar-cta"
+            [disabled]="busy()"
+            (click)="pay.emit()"
+          >
+            {{ busy() ? 'Opening Paystack…' : action() }}
+          </button>
+        } @else if (internal()) {
+          <a class="cta small paybar-cta" [routerLink]="actionHref()">{{ action() }}</a>
+        } @else {
+          <a class="cta small paybar-cta" [href]="actionHref()">{{ action() }}</a>
+        }
+      }
+      @if (secondary() && secondaryHref()) {
+        <a class="paybar-alt" [href]="secondaryHref()">{{ secondary() }}</a>
+      }
+    </div>
+  `,
+})
+export class PayBannerComponent {
+  /** True when payment is settled. False renders the action-required state. */
+  readonly paid = input(false);
+  readonly title = input('Paid in full');
+  readonly sub = input('');
+  readonly action = input('');
+  readonly actionHref = input('');
+  /**
+   * Renders the action as a real `<button>` that starts a payment, rather than
+   * a link. Needed because the Paystack handoff is an API call followed by a
+   * redirect: an anchor would have to carry a transaction created at page load,
+   * which leaves an abandoned transaction behind on every invoice view.
+   */
+  readonly payable = input(false);
+  readonly busy = input(false);
+  readonly pay = output<void>();
+  /**
+   * A quieter way out, kept beside the primary action. Card is not the only
+   * way an Aba factory takes money: a buyer paying by transfer needs the desk
+   * number as much as the one paying by card needs the button.
+   */
+  readonly secondary = input('');
+  readonly secondaryHref = input('');
+
+  /**
+   * The action is sometimes an in-app destination and sometimes `tel:`. A plain
+   * `href="/orders"` would throw away the router and hard-reload the portal, so
+   * in-app paths get a real `routerLink` and only true externals get `href`.
+   * `//` is excluded: that is protocol-relative, not an internal path.
+   */
+  internal(): boolean {
+    const href = this.actionHref();
+    return href.startsWith('/') && !href.startsWith('//');
+  }
+}
+
 /** Row + facts + ledger + strip, the vocabulary every page now shares. */
 export const PRIMITIVES = [
   StripComponent,
@@ -218,4 +307,5 @@ export const PRIMITIVES = [
   FactsComponent,
   LedgerComponent,
   EmptyComponent,
+  PayBannerComponent,
 ];

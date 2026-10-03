@@ -8,6 +8,7 @@ import {
   EmptyComponent,
   FactsComponent,
   LedgerComponent,
+  PayBannerComponent,
   RowComponent,
   StripComponent,
 } from '../ui/primitives';
@@ -37,8 +38,18 @@ import {
     FactsComponent,
     LedgerComponent,
     EmptyComponent,
+    PayBannerComponent,
   ],
   template: `
+    @if (invoices().length) {
+      <se-pay
+        [paid]="unpaidCount() === 0"
+        [sub]="paymentHeadline()"
+        [action]="unpaidCount() === 0 ? '' : 'Settle oldest'"
+        [actionHref]="oldestUnpaidId() ? '/orders/' + oldestUnpaidId() + '/invoice' : ''"
+      />
+    }
+
     <se-strip label="Procurement log" [badge]="periodLabel()">
       <span stripTrailing>{{ today | date: 'MMM yyyy' }}</span>
       <se-facts [facts]="summary()" />
@@ -322,6 +333,39 @@ export class OrdersPage implements OnInit {
 
   isPaid(invoice: Invoice): boolean {
     return invoice.paymentStatus === 'paid';
+  }
+
+  /**
+   * Payment roll-up for the banner above the log.
+   *
+   * Aggregated rather than per-row: a hundred-row list of individual banners
+   * would shout at a buyer who owes on one order, and would be invisible to a
+   * buyer who owes on none. One line at the top is the honest summary.
+   */
+  unpaidCount(): number {
+    return this.invoices().filter((i) => !this.isPaid(i)).length;
+  }
+
+  /** Oldest unpaid order, so "settle" points at the one that has waited longest. */
+  oldestUnpaidId(): string {
+    const due = this.invoices()
+      .filter((i) => !this.isPaid(i))
+      .map((i) => i.orderId)
+      .sort((a, b) => a.localeCompare(b));
+    return due[0] ?? '';
+  }
+
+  paymentHeadline(): string {
+    const unpaid = this.unpaidCount();
+    const total = this.invoices().length;
+    if (unpaid === 0)
+      return 'All ' + total + ' order' + (total === 1 ? '' : 's') + ' settled. Nothing to pay.';
+    return (
+      unpaid +
+      ' of ' +
+      total +
+      ' orders awaiting payment. Wholesale is full payment upfront; nothing enters production until it clears.'
+    );
   }
 
   isDelivered(invoice: Invoice): boolean {
