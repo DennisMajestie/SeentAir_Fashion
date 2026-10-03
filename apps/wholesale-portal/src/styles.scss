@@ -728,19 +728,137 @@ label {
    Sign-in & apply (approved W1)
    ============================================================ */
 
+/* The sign-in photograph escapes its column with margin-inline: calc(50% - 50vw),
+   and `vw` includes the classic scrollbar, so on a browser that reserves
+   scrollbar width the bleed lands a few pixels past the viewport and opens a
+   horizontal scrollbar.
+
+   This guard belongs on the ROOT element, not on body. Per CSS Overflow, a
+   body overflow is propagated up to the viewport and the body itself reverts to
+   `visible` - so `body { overflow-x: clip }` looks right and clips nothing,
+   which is exactly what the regression test in app.spec.ts caught.
+
+   `clip` rather than `hidden` is deliberate: `hidden` would establish a scroll
+   container and silently break position: sticky on the sign-in header. Only the
+   inline axis is clipped, so vertical scrolling and sticky both survive. */
+html {
+  overflow-x: clip;
+}
+
+/* ============================================================
+   Sign-in over the storefront photograph
+   ============================================================
+
+   The storefront sign-in runs on form-bg.jpg behind a dark scrim. Wholesale
+   reuses that photograph -- angular.json already mounts
+   ../storefront/public/assets into this app's assets/ folder, so the file is
+   present at /assets/form-bg.jpg with no asset-pipeline change.
+
+   The photograph lives on ::before, which escapes the 620px column with
+   margin-inline: calc(50% - 50vw). body carries overflow-x: clip so that escape
+   cannot open a horizontal scrollbar on a browser reserving classic-scrollbar
+   width; `clip` rather than `hidden` specifically because it does not create a
+   scroll container, which would break the sticky header below.
+
+   Colour is handled by REMAPPING the login's tokens, not by rewriting the ~20
+   rules that consume them. --icard/--ilow/--ihair/--iink/--imuted/--iter are
+   declared here and nowhere else, and the handful of site tokens the login
+   leaks in (--ink, --muted, --muted-faint, --hairline, --surface-low,
+   --surface-lowest) are overridden to the same palette. Every existing rule
+   therefore keeps working untouched, and light theme costs one flipped block
+   rather than a second copy of the form. */
 .auth-screen {
-  --icard: #ffffff;
-  --ilow: #f6f3ee;
-  --ihair: #e4e2dd;
-  --iink: #1b1c19;
-  --imuted: #5f5e5e;
-  --iter: #5d5c58;
+  /* On-photo palette. These are the storefront's own validated values, reused
+     so the two sign-ins read as the same product. */
+  --photo-ink: #f7f2e9;
+  --photo-muted: #ddd5c8;
+  --photo-line: rgb(247 242 233 / 0.34);
+  --photo-line-strong: rgb(247 242 233 / 0.62);
+  --photo-base: #14110e;
+  /* Channels only, no alpha: the scrim and every frosted surface share one
+     ramp and flip wholesale from a black wash to an ivory one in light theme. */
+  --photo-wash: 10 8 7;
+
+  --icard: rgb(var(--photo-wash) / 0.5);
+  --ilow: rgb(var(--photo-wash) / 0.26);
+  --ihair: var(--photo-line);
+  --iink: var(--photo-ink);
+  --imuted: var(--photo-muted);
+  --iter: var(--photo-muted);
+
+  --ink: var(--photo-ink);
+  --muted: var(--photo-muted);
+  --muted-faint: rgb(221 213 200 / 0.62);
+  --hairline: var(--photo-line);
+  --surface-low: rgb(var(--photo-wash) / 0.26);
+  --surface-lowest: rgb(var(--photo-wash) / 0.42);
+
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: var(--space-lg);
   max-width: 620px;
+  /* min-height, never height: the column may legitimately exceed the viewport
+     on a short window, and min-height lets it grow so centring can never clip
+     the form the way a fixed height would. */
+  min-height: 100svh;
   margin: 0 auto;
   padding-block: var(--space-lg);
+  color: var(--photo-ink);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    margin-inline: calc(50% - 50vw);
+    pointer-events: none;
+    background-color: var(--photo-base);
+    /* Three gradient layers over the photograph, back to front. The vertical
+       pass is what keeps the sticky wordmark and the fine print readable; the
+       radial lifts the middle so the picture still reads through the centre of
+       the scrim; the horizontal pass keeps both screen edges off the raw image.
+       Wholesale's column is centred, so this is symmetric at every width and
+       needs no second breakpoint the way the storefront's left-weighted wash
+       does. */
+    background-image:
+      radial-gradient(
+        ellipse 78% 62% at 50% 46%,
+        rgb(var(--photo-wash) / 0.34) 0%,
+        rgb(var(--photo-wash) / 0.16) 62%,
+        transparent 100%
+      ),
+      linear-gradient(
+        180deg,
+        rgb(var(--photo-wash) / 0.58) 0%,
+        rgb(var(--photo-wash) / 0.1) 24%,
+        rgb(var(--photo-wash) / 0.7) 100%
+      ),
+      linear-gradient(90deg, rgb(var(--photo-wash) / 0.46) 0%, rgb(var(--photo-wash) / 0.28) 100%),
+      url('/assets/form-bg.jpg');
+    background-size: cover, cover, cover, cover;
+    background-position:
+      center,
+      center,
+      center,
+      center 26%;
+    background-repeat: no-repeat;
+  }
+}
+
+/* Light theme: the wash flips from near-black to warm ivory, so the photograph
+   stays readable and the type on top of it goes dark. Only tokens change, which
+   is the whole reason the palette above is token-driven. Specificity (0,3,0)
+   against .auth-screen's (0,1,0), so source order is irrelevant. */
+:root[data-theme='light'] .auth-screen {
+  --photo-ink: #241f1a;
+  --photo-muted: #4b423a;
+  --photo-line: rgb(44 35 26 / 0.3);
+  --photo-line-strong: rgb(32 25 18 / 0.5);
+  --photo-base: #efe9df;
+  --photo-wash: 247 242 233;
 }
 
 /* The sign-in header is a real header: it stays put while the auth card and the
@@ -752,10 +870,15 @@ label {
    whose height varies with the copy and the viewport. Sticky needs no such
    compensation and stops at the end of .auth-screen on its own.
 
-   The background is opaque at rest, not only once scrolled: a translucent
-   header would let the form show through it the entire time. The hairline
-   arrives on .scrolled, matching .site-header, and the system's depth rule —
-   a hairline and a background step, never a shadow — is kept. */
+   The background is a frosted wash rather than a solid one, matching the card.
+   A bare translucent header is the trap here: it looks right until something
+   scrolls behind it, then the password field shows through the wordmark. What
+   makes it safe is backdrop-filter — anything behind the bar is blurred out of
+   legibility rather than merely dimmed. The @supports fallback further down
+   hardens it to a solid wash where blur is unavailable, so the guarantee holds
+   either way. The hairline still arrives on .scrolled, matching .site-header,
+   and the depth rule — a hairline and a background step, never a shadow — is
+   kept. */
 .ws-header {
   position: sticky;
   top: 0;
@@ -763,13 +886,15 @@ label {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-lg) 0;
+  // padding: var(--space-lg) 0;
   padding-top: calc(var(--space-lg) + env(safe-area-inset-top));
-  background: var(--surface);
+  background: rgb(var(--photo-wash) / 0.62);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
   border-bottom: 1px solid transparent;
   transition: border-color 0.3s ease;
   &.scrolled {
-    border-bottom-color: var(--hairline);
+    border-bottom-color: var(--photo-line-strong);
   }
   .wordmark-row {
     display: flex;
@@ -801,9 +926,15 @@ label {
   }
 }
 
+/* Frosted, not solid: the form is contained but the photograph still reads
+   through it, which is the point of this treatment. The card is a touch more
+   transparent than the inputs that sit on it (--icard is 0.5, this is 0.34) so
+   every field keeps a visible edge instead of dissolving into the panel. */
 .auth-card {
-  background: var(--icard);
-  border: 1px solid var(--ihair);
+  background: rgb(var(--photo-wash) / 0.34);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  border: 1px solid var(--photo-line);
   padding: var(--space-lg);
   border-radius: var(--radius);
   .auth-title {
@@ -818,6 +949,19 @@ label {
     text-align: center;
     font-size: var(--type-label-md);
     color: var(--muted);
+  }
+}
+
+/* Where backdrop-filter is unsupported the frosted surfaces would degrade to
+   plain translucency, which is exactly the show-through the header comment
+   warns about. Harden both to near-solid there. Placed after .auth-card so
+   source order carries these overrides against the rules above. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .auth-card {
+    background: rgb(var(--photo-wash) / 0.93);
+  }
+  .ws-header {
+    background: rgb(var(--photo-wash) / 0.96);
   }
 }
 
@@ -969,6 +1113,7 @@ label {
 .apply-panel {
   background: var(--ilow);
   border: 1px solid var(--ihair);
+  border-radius: var(--radius);
   padding: var(--space-lg);
   display: flex;
   flex-direction: column;
