@@ -19,8 +19,7 @@ import { ThemeService } from '../theme.service';
     <div class="auth-shell">
       <header class="auth-topstrip">
         <span class="wordmark">
-          <img src="assets/logo.png" alt="SEENTAIR" height="34" />
-          <span class="wordmark-tag">Partners // Portal</span>
+          <img src="assets/logo.png" alt="SEENTAIR" height="60" />
         </span>
         <span class="term-chip"><span class="dot ok"></span> Secured connection</span>
         <button
@@ -377,17 +376,12 @@ import { ThemeService } from '../theme.service';
         gap: 0.6rem;
         img {
           display: block;
-          height: 34px;
+          /* 60px, matching .site-header on the storefront and .auth-head on the
+             ops login. It was 34px here, which is the height the wordmark had
+             back when it sat inside .auth-main as page furniture rather than as
+             the navbar's brand. */
+          height: 60px;
           width: auto;
-        }
-        .wordmark-tag {
-          font-size: var(--type-label-md);
-          font-weight: 700;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          color: var(--ink-dim);
-          border-left: 1px solid var(--hairline-2);
-          padding-left: 0.6rem;
         }
       }
       .auth-sub {
