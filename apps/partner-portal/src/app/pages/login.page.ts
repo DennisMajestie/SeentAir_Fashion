@@ -18,6 +18,10 @@ import { ThemeService } from '../theme.service';
   template: `
     <div class="auth-shell">
       <header class="auth-topstrip">
+        <span class="wordmark">
+          <img src="assets/logo.png" alt="SEENTAIR" height="34" />
+          <span class="wordmark-tag">Partners // Portal</span>
+        </span>
         <span class="term-chip"><span class="dot ok"></span> Secured connection</span>
         <button
           class="theme-toggle"
@@ -60,10 +64,6 @@ import { ThemeService } from '../theme.service';
 
         <main class="auth-main">
           <p class="eyebrow">Partner access</p>
-          <div class="wordmark">
-            <img src="assets/logo.png" alt="SEENTAIR" height="34" />
-            <span class="wordmark-tag">Partners // Portal</span>
-          </div>
           <h1>Welcome back.</h1>
           <p class="auth-sub">
             Private access for Seentair Limited registered shareholders and institutional equity
@@ -217,26 +217,140 @@ import { ThemeService } from '../theme.service';
   `,
   styles: [
     `
+      /* Shared sign-in background: the same photograph the ops and wholesale
+         sign-in screens use (assets/form-bg.jpg). Its own tokens are declared
+         here because this screen sits directly on the photo, while the other
+         two sit on a photo behind their own scrims. */
       .auth-shell {
+        --photo-ink: #f7f2e9;
+        --photo-muted: #ddd5c8;
+        --photo-line: rgb(247 242 233 / 0.52);
+        --photo-gold: #f0dcae;
+        --photo-base: #14110e;
+        /* Channels only, no alpha: the scrim layers share one ramp. */
+        --photo-wash: 10 8 7;
+
+        position: relative;
+        isolation: isolate;
         min-height: 100vh;
+        min-height: 100svh;
         display: flex;
         flex-direction: column;
+        background-color: var(--photo-base);
+        background-image: url('/assets/form-bg.jpg');
+        background-size: cover;
+        background-position: center 26%;
+        background-repeat: no-repeat;
+        color: var(--photo-ink);
+
+        /* Scrim, shaped like the ops login's: heaviest under the left-hand
+           column so the form reads, lifting to the right so the photograph
+           survives the right-hand half of the screen. */
+        &::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          z-index: -1;
+          pointer-events: none;
+          background:
+            radial-gradient(
+              ellipse 62% 74% at 24% 48%,
+              rgb(var(--photo-wash) / 0.28) 0%,
+              rgb(var(--photo-wash) / 0.12) 62%,
+              transparent 100%
+            ),
+            linear-gradient(
+              90deg,
+              rgb(var(--photo-wash) / 0.52) 0%,
+              rgb(var(--photo-wash) / 0.46) 30%,
+              rgb(var(--photo-wash) / 0.3) 45%,
+              rgb(var(--photo-wash) / 0.1) 70%,
+              rgb(var(--photo-wash) / 0.04) 100%
+            ),
+            linear-gradient(
+              180deg,
+              rgb(var(--photo-wash) / 0.3) 0%,
+              rgb(var(--photo-wash) / 0.04) 26%,
+              rgb(var(--photo-wash) / 0.38) 100%
+            );
+        }
+      }
+
+      /* The light theme washes the photo to ivory and flips the ink to match,
+         the same move as the ops login. Without this the dark ink would sit on
+         an unwashed dark photograph. */
+      :host-context(:root[data-theme='light']) .auth-shell {
+        --photo-ink: #241f1a;
+        --photo-muted: #4b423a;
+        --photo-line: rgb(44 35 26 / 0.62);
+        --photo-gold: #6a4d0d;
+        --photo-base: #f6f1e9;
+        --photo-wash: 252 249 243;
+      }
+
+      /* Text that sits on the photograph rather than on a panel. Each selector is
+         prefixed with .auth-shell so it outranks the element's own rule further
+         down this block (.auth-footer, .auth-sub and the eyebrow each set their
+         own colour at single-class specificity). */
+      .auth-shell .auth-main h1,
+      .auth-shell .auth-main .eyebrow {
+        color: var(--photo-ink);
+      }
+      .auth-shell .auth-main .eyebrow {
+        color: var(--photo-gold);
+      }
+      .auth-shell .auth-sub {
+        color: var(--photo-muted);
+      }
+      .auth-shell .auth-footer {
+        color: var(--photo-muted);
+      }
+      /* The eyebrow's dot is a background fill, not text. */
+      .auth-shell .auth-main .eyebrow .dot {
+        background: var(--photo-gold);
+      }
+
+      /* logo.png is monochrome near-black, so it disappears on the dark bar in
+         the dark theme. It had no filter before this change either, but it used
+         to sit on --panel-2; against the frosted bar it has to be flipped. */
+      :host-context(:root[data-theme='dark']) .auth-topstrip .wordmark img {
+        filter: invert(1);
       }
       .auth-topstrip {
         display: flex;
         align-items: center;
         gap: 0.5rem;
         padding: calc(0.5rem + env(safe-area-inset-top, 0px)) 1rem 0.5rem;
-        border-bottom: 1px solid var(--hairline);
-        background: var(--panel);
-        .theme-toggle {
+        border-bottom: 1px solid var(--photo-line);
+        /* Frosted rather than the flat --panel it used to be, so the bar belongs
+           to the photograph instead of sitting on it as an opaque strip. */
+        background: color-mix(in srgb, var(--photo-base) 62%, transparent);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        /* Pushed right, which is what puts the chip immediately before the
+           toggle: the auto margin sits on the chip, not on the button. With it
+           on .theme-toggle the chip was pinned to the far left and the two were
+           pushed to opposite ends of the bar. */
+        .term-chip {
           margin-left: auto;
+          color: var(--photo-ink);
         }
+      }
+      /* The wordmark moved up out of .auth-main into the bar, so it no longer
+         centres - it belongs at the leading edge with the controls opposite. */
+      .auth-topstrip .wordmark {
+        justify-content: flex-start;
       }
       .auth-main {
         width: min(880px, 100%);
         margin: 0 auto;
         padding: 1.6rem 1rem 3rem;
+      }
+      /* Centre the sign-in heading. The eyebrow and the sub-copy either side of
+         it are already centred, so the h1 was the one line breaking the
+         column's vertical axis. */
+      .auth-main h1 {
+        text-align: center;
       }
             .eyebrow {
               display: flex;
@@ -286,8 +400,15 @@ import { ThemeService } from '../theme.service';
       .auth-card {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        border: 1px solid var(--hairline);
-        background: var(--panel);
+        border: 1px solid var(--photo-line);
+        /* Frosted, but deliberately held near-opaque. The form's own text still
+           uses the theme's --ink, which expects a --panel-coloured surface, so
+           dropping this much further would put that ink straight on the
+           photograph and break contrast in both themes. The ops login can go to
+           0.34 alpha because it remaps every text token on the card. */
+        background: color-mix(in srgb, var(--panel) 88%, transparent);
+        backdrop-filter: blur(18px) saturate(1.15);
+        -webkit-backdrop-filter: blur(18px) saturate(1.15);
         border-radius: var(--radius);
         overflow: hidden;
       }
@@ -396,7 +517,9 @@ import { ThemeService } from '../theme.service';
       .auth-footer {
         margin-top: auto;
         padding: 1.2rem 1rem;
-        border-top: 1px solid var(--hairline);
+        /* --photo-line, not --hairline: this rule sits on the photograph, and
+           the hairline is near-invisible against it in both themes. */
+        border-top: 1px solid var(--photo-line);
         text-align: center;
         color: var(--ink-dim);
         font-size: var(--type-label-sm);
