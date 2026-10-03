@@ -142,7 +142,7 @@ import { environment } from '../environments/environment';
 
                 <button class="cta signin" type="submit" [disabled]="loading()">
                   {{
-                    loading() ? 'Workingâ€¦' : resetSent() ? 'Set new password' : 'Send reset token â†’'
+                    loading() ? 'Working\u2026' : resetSent() ? 'Set new password' : 'Send reset token \u2192'
                   }}
                 </button>
                 <button class="link" type="button" (click)="backToSignin()">Back to sign in</button>
@@ -186,7 +186,6 @@ import { environment } from '../environments/environment';
                       [type]="showPassword ? 'text' : 'password'"
                       [(ngModel)]="password"
                       name="password"
-                      placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                       autocomplete="current-password"
                       required
                     />
@@ -212,11 +211,11 @@ import { environment } from '../environments/environment';
                 >
                   @if (loading()) {
                     <span class="spinner" aria-hidden="true"></span>
-                    Signing inâ€¦
+                    Signing in\u2026
                   } @else if (success()) {
-                    âœ“ Signed in
+                    \u2713 Signed in
                   } @else {
-                    Sign in â†’
+                    Sign in \u2192
                   }
                 </button>
                 @if (formError()) {
