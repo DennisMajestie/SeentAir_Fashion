@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
+import { Observable, of, throwError } from 'rxjs';
 import { ApiService, DeliveryLegView, WholesaleTracking } from '../api.service';
 import { TrackingPage } from './tracking.page';
 
@@ -203,5 +203,75 @@ describe('Wholesale TrackingPage', () => {
     await settle();
     expect(text()).toContain('Delivery updates');
     expect(text()).not.toContain('Corridor updates');
+  });
+
+  /**
+   * A lost session and a missing order are indistinguishable from the client:
+   * tracking() answers both with 404 on purpose, so an unauthenticated caller
+   * cannot probe which order ids exist. Rendering "not found" for what is
+   * really an expired session sends people hunting for a broken order -- and it
+   * is not a rare edge case, it is what a SameSite=Lax refresh cookie produces
+   * on every page reload (COOKIE_SECURE=false in a deployed env). So a signed-out
+   * visitor is sent to sign in and back to the order they were reading.
+   */
+  describe('session loss is not reported as a missing order', () => {
+    /**
+     * The real Router is kept (the template's routerLink needs
+     * createUrlTree) and only `navigate` is spied on.
+     */
+    const mountSession = (loggedIn: boolean, trackingResult: () => Observable<WholesaleTracking>) => {
+      TestBed.configureTestingModule({
+        imports: [TrackingPage],
+        providers: [
+          provideRouter([]),
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { paramMap: { get: () => ORDER_ID } } },
+          },
+          {
+            provide: ApiService,
+            useValue: {
+              isLoggedIn: loggedIn,
+              tracking: trackingResult,
+              invoices: () => of({ data: [], total: 0 }),
+              orderStream: () => Promise.resolve(),
+            },
+          },
+        ],
+      });
+      const router = TestBed.inject(Router);
+      const navigate = spyOn(router, 'navigate').and.resolveTo(true);
+      fixture = TestBed.createComponent(TrackingPage);
+      element = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+      return { navigate, router };
+    };
+
+    it('redirects to sign-in with a return url when the session is gone', async () => {
+      const { navigate, router } = mountSession(false, () => throwError(() => ({ status: 404 })));
+      await settle();
+
+      expect(navigate).toHaveBeenCalledWith(['/'], {
+        queryParams: { returnUrl: router.url, reason: 'session' },
+      });
+    });
+
+    it('does not claim the order is missing', async () => {
+      mountSession(false, () => throwError(() => ({ status: 404 })));
+      await settle();
+
+      expect(text()).not.toContain('not found');
+      expect(fixture.componentInstance.failed()).toBe(false);
+    });
+
+    it('still reports a genuine failure while signed in', async () => {
+      // Signed in and still 404 -> the order really is missing, and the page
+      // must say so rather than bouncing the user to login.
+      const { navigate } = mountSession(true, () => throwError(() => ({ status: 404 })));
+      await settle();
+
+      expect(navigate).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.failed()).toBe(true);
+    });
   });
 });

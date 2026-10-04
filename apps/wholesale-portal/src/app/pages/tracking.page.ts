@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService, DeliveryLegView, Invoice } from '../api.service';
 import { pill } from '../status-pill';
 import { FactsComponent, LedgerComponent, StripComponent } from '../ui/primitives';
@@ -229,6 +229,7 @@ interface Stage {
 export class TrackingPage implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   readonly pill = pill;
   readonly orderId = signal('');
   readonly status = signal('');
@@ -311,7 +312,20 @@ export class TrackingPage implements OnInit, OnDestroy {
           this.deliveries.set(t.deliveries ?? []);
           settled?.(true);
         },
-        error: () => settled?.(false),
+        error: () => {
+          // A lost session and a missing order are indistinguishable from here:
+          // the API answers both with 404 on purpose, so an unauthenticated
+          // caller cannot probe which order ids exist. Reporting "not found"
+          // for what is really an expired session sent people hunting for a
+          // broken order. Send them to sign in and back to this order instead.
+          if (!this.api.isLoggedIn) {
+            this.router.navigate(['/'], {
+              queryParams: { returnUrl: this.router.url, reason: 'session' },
+            });
+            return;
+          }
+          settled?.(false);
+        },
       });
     });
   }
