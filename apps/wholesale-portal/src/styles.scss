@@ -2448,24 +2448,47 @@ body {
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
   padding: 1.25rem;
 }
+/* SweetAlert2 ships the popup at width/min-width 32em (512px) with a 1.875em
+   (30px) title, which reads as an alert rather than a confirm. On the batch
+   commit that is two taps and a paragraph, so it was eating most of a phone
+   screen. Narrow the card and drop the title two steps. Toasts keep the library
+   width: truncating a short status line looks broken, not compact. */
+.swal2-popup.ba-popup {
+  width: 24em;
+  min-width: 0;
+  max-width: calc(100vw - 2rem);
+  padding: 0.95rem 1.05rem;
+}
 .swal2-title.ba-title {
   color: inherit;
   font-weight: 700;
   letter-spacing: -0.01em;
+  font-size: 1.1875rem;
+  padding: 0;
 }
 .swal2-html-container.ba-html {
   color: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.45;
 }
+/* The question icon defaults to a 5em box, which is taller than the message it
+   sits above. Scaled down proportionally -- width/height/line-height are in em,
+   so they follow the font-size rather than needing separate values. */
 .ba-icon {
   border-color: currentcolor !important;
+  font-size: 3em !important;
+  width: 3em !important;
+  height: 3em !important;
+  line-height: 3em !important;
+  margin: 0 auto 0.5rem !important;
 }
 .ba-btn {
   border: none;
   border-radius: var(--radius-pill);
   font: inherit;
-  font-size: 0.88rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 700 !important;
-  padding: 0.7rem 1.15rem !important;
+  padding: 0.55rem 0.95rem !important;
   cursor: pointer;
 }
 .ba-btn.ba-confirm {
