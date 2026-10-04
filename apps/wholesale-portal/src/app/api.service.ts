@@ -177,6 +177,24 @@ export class ApiService {
     return this.http.post(`${API_BASE}/wholesale/accounts`, {});
   }
 
+  /**
+   * Public wholesale application. No token is attached -- this is the path a
+   * first-time buyer takes before they have an account, so it provisions one.
+   */
+  applyForAccess(payload: {
+    name: string;
+    email: string;
+    password: string;
+    businessName: string;
+    buyerType: string;
+    businessPhone?: string;
+    city: string;
+    state: string;
+    openingVolume?: number;
+  }): Observable<unknown> {
+    return this.http.post(`${API_BASE}/wholesale/apply`, payload);
+  }
+
   invoices(): Observable<{ data: Invoice[]; total: number }> {
     return this.http.get<{ data: Invoice[]; total: number }>(`${API_BASE}/wholesale/invoices`);
   }

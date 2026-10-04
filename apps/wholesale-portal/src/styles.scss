@@ -1014,6 +1014,64 @@ html {
     border-color: var(--error);
   }
 }
+// The application form reuses the sign-in card, so selects have to match the
+// input treatment exactly or the card reads as two different systems.
+.auth-form select {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 var(--space-md);
+  background: var(--icard);
+  color: var(--iink);
+  border: 1px solid var(--ihair);
+  border-radius: var(--radius-field);
+  font-family: 'Inter', sans-serif;
+  font-size: var(--type-body-md);
+  &:focus {
+    outline: 1px solid var(--hairline-strong);
+    border-color: var(--hairline-strong);
+  }
+}
+// City + state side by side. Collapses to one column before the select text
+// has room, otherwise Abia gets clipped.
+.auth-form .field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+  @media (max-width: 30rem) {
+    grid-template-columns: 1fr;
+  }
+}
+.auth-form .field-hint {
+  margin: var(--space-xs) 0 0;
+  color: var(--muted);
+  font-size: var(--type-label-sm);
+}
+.apply-receipt {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-xs) var(--space-md);
+  margin: 0 0 var(--space-md);
+  padding: var(--space-md);
+  background: var(--icard);
+  border: 1px solid var(--ihair);
+  border-radius: var(--radius-field);
+  dt {
+    color: var(--muted);
+    font-size: var(--type-label-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  dd {
+    margin: 0;
+    color: var(--iink);
+  }
+}
+.apply-back {
+  margin: var(--space-md) 0 0;
+  text-align: center;
+}
 .input-affix {
   position: relative;
   input {

@@ -186,8 +186,13 @@ import { ThemeService } from './theme.service';
           <div class="auth-card">
             <div class="auth-tagbar"><span>Wholesale buyers</span></div>
 
-            <h1 class="auth-title">Welcome back.</h1>
+            @if (mode() === 'signin') {
+              <h1 class="auth-title">Welcome back.</h1>
+            } @else {
+              <h1 class="auth-title">Apply for wholesale access.</h1>
+            }
 
+            @if (mode() === 'signin') {
             <form class="auth-form" (ngSubmit)="signIn()" novalidate>
               <div class="field">
                 <label for="ws-email">Email</label>
@@ -262,8 +267,163 @@ import { ThemeService } from './theme.service';
               </button>
             </div>
             <p class="auth-desk">Direct desk: Aba desk +234 1 888 7400</p>
+            } @else {
+              @if (applyDone(); as submitted) {
+                <div class="auth-form">
+                  <p class="auth-info" role="status">
+                    Application received. Sign in any time to track the review; the Aba desk
+                    vets applications within 24 operational hours.
+                  </p>
+                  <dl class="apply-receipt small">
+                    <dt>Applicant</dt>
+                    <dd>{{ apply.businessName }}</dd>
+                    <dt>Email</dt>
+                    <dd>{{ submitted }}</dd>
+                    <dt>Location</dt>
+                    <dd>{{ apply.city }}, {{ apply.state }}</dd>
+                    <dt>Buyer type</dt>
+                    <dd>{{ apply.buyerType }}</dd>
+                  </dl>
+                  <button class="cta auth-submit" type="button" (click)="showSignInForm()">
+                    <span>Back to sign in</span>
+                    <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                  </button>
+                </div>
+              } @else {
+              <form class="auth-form" (ngSubmit)="submitApplication()" novalidate>
+                <div class="field">
+                  <label for="ap-name">Full name</label>
+                  <input
+                    id="ap-name"
+                    name="apName"
+                    autocomplete="name"
+                    [(ngModel)]="apply.name"
+                    placeholder="Ada Okeke"
+                  />
+                </div>
+
+                <div class="field">
+                  <label for="ap-business">Business name</label>
+                  <input
+                    id="ap-business"
+                    name="apBusiness"
+                    autocomplete="organization"
+                    [(ngModel)]="apply.businessName"
+                    placeholder="Okeke Fashion Boutique"
+                  />
+                </div>
+
+                <div class="field">
+                  <label for="ap-email">Email</label>
+                  <input
+                    id="ap-email"
+                    name="apEmail"
+                    type="email"
+                    inputmode="email"
+                    autocomplete="email"
+                    [(ngModel)]="email"
+                    placeholder="orders@store.ng"
+                  />
+                </div>
+
+                <div class="field">
+                  <label for="ap-password">Password</label>
+                  <input
+                    id="ap-password"
+                    name="apPassword"
+                    [type]="showPassword() ? 'text' : 'password'"
+                    autocomplete="new-password"
+                    [(ngModel)]="password"
+                    placeholder="At least 8 characters"
+                  />
+                </div>
+
+                <div class="field">
+                  <label for="ap-type">Buyer type</label>
+                  <select id="ap-type" name="apType" [(ngModel)]="apply.buyerType">
+                    @for (t of buyerTypes; track t.value) {
+                      <option [value]="t.value">{{ t.label }}</option>
+                    }
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="ap-phone">Phone <span class="muted">(optional)</span></label>
+                  <input
+                    id="ap-phone"
+                    name="apPhone"
+                    type="tel"
+                    inputmode="tel"
+                    autocomplete="tel"
+                    [(ngModel)]="apply.phone"
+                    placeholder="+234 800 000 0000"
+                  />
+                </div>
+
+                <div class="field-pair">
+                  <div class="field">
+                    <label for="ap-city">City</label>
+                    <input
+                      id="ap-city"
+                      name="apCity"
+                      autocomplete="address-level2"
+                      [(ngModel)]="apply.city"
+                      placeholder="Aba"
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="ap-state">State</label>
+                    <select id="ap-state" name="apState" [(ngModel)]="apply.state">
+                      <option value="">Select…</option>
+                      @for (s of states; track s) {
+                        <option [value]="s">{{ s }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="ap-volume">
+                    Opening order estimate
+                    <span class="muted">(units, optional)</span>
+                  </label>
+                  <input
+                    id="ap-volume"
+                    name="apVolume"
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    step="1"
+                    [(ngModel)]="apply.openingVolume"
+                    placeholder="20"
+                  />
+                  <p class="field-hint">Minimum batch is 20 units per silhouette.</p>
+                </div>
+
+                <button class="cta auth-submit" type="submit" [disabled]="applyBusy()">
+                  <span>{{ applyBusy() ? 'Submitting…' : 'Submit application' }}</span>
+                  <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                </button>
+
+                <p class="auth-fine">
+                  Your account is created with this application and stays read-only until the
+                  factory approves it.
+                </p>
+
+                @if (error()) {
+                  <p class="auth-error" role="alert">{{ error() }}</p>
+                }
+                <p class="apply-back">
+                  <button class="link-inline" type="button" (click)="showSignInForm()">
+                    Already applied? Back to sign in
+                  </button>
+                </p>
+              </form>
+              }
+            }
           </div>
 
+            @if (mode() === 'signin') {
           <div class="apply-panel">
             <div class="apply-head">
               <h2 class="muted">Not a wholesale buyer yet?</h2>
@@ -313,15 +473,7 @@ import { ThemeService } from './theme.service';
                 </div>
               </div>
             </div>
-            <button
-              class="cta outline"
-              type="button"
-              (click)="
-                info.set(
-                  'Sign in above, then use “Apply for a wholesale account” in the catalogue to submit your application.'
-                )
-              "
-            >
+            <button class="cta outline" type="button" (click)="showApplyForm()">
               <span>Apply for Wholesale Access</span>
               <span class="material-symbols-outlined" aria-hidden="true">assignment_ind</span>
             </button>
@@ -329,6 +481,7 @@ import { ThemeService } from './theme.service';
               >Applications typically vetted within 24 operational hours</span
             >
           </div>
+            }
 
           <div class="status-strip">
             <div class="status-line">
@@ -403,6 +556,114 @@ export class App implements OnDestroy {
   readonly touched = signal(false);
   email = '';
   password = '';
+
+  /**
+   * The sign-in card doubles as the application form. A first-time bulk buyer
+   * has no account, so making them sign in first dead-ends at the login screen
+   * -- which is what the old "Apply for Wholesale Access" button did: it only
+   * printed an instruction to sign in and come back.
+   */
+  readonly mode = signal<'signin' | 'apply'>('signin');
+  readonly applyBusy = signal(false);
+  readonly applyTouched = signal(false);
+  readonly applyDone = signal<string | null>(null);
+  apply = {
+    name: '',
+    businessName: '',
+    city: '',
+    state: '',
+    phone: '',
+    buyerType: 'retailer',
+    openingVolume: '',
+  };
+
+  readonly buyerTypes = [
+    { value: 'retailer', label: 'Fashion retailer / boutique' },
+    { value: 'online_reseller', label: 'Online reseller' },
+    { value: 'institution', label: 'Institution / uniform buyer' },
+    { value: 'distributor', label: 'Distributor' },
+    { value: 'other', label: 'Other' },
+  ];
+
+  readonly states = [
+    'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+    'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'Gombe', 'Imo', 'Jigawa',
+    'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa', 'Niger',
+    'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara',
+  ];
+
+  /** Returns the first problem, or null when the form is ready to send. */
+  applyError(): string | null {
+    if (!this.apply.name.trim()) return 'Enter your full name.';
+    if (!this.emailValid()) return 'Enter a valid email address.';
+    if (this.password.length < 8) return 'Choose a password of at least 8 characters.';
+    if (!this.apply.businessName.trim()) return 'Enter your business name.';
+    if (!this.apply.city.trim()) return 'Enter your city.';
+    if (!this.apply.state) return 'Select your state.';
+    if (this.apply.openingVolume && (!/^\d+$/.test(this.apply.openingVolume) || +this.apply.openingVolume < 1)) {
+      return 'Opening volume must be a whole number of units.';
+    }
+    return null;
+  }
+
+  showApplyForm(): void {
+    this.mode.set('apply');
+    this.error.set(null);
+    this.info.set(null);
+    this.applyTouched.set(false);
+    this.applyDone.set(null);
+  }
+
+  showSignInForm(): void {
+    this.mode.set('signin');
+    this.error.set(null);
+    this.info.set(null);
+    this.applyTouched.set(false);
+  }
+
+  submitApplication(): void {
+    this.applyTouched.set(true);
+    this.error.set(null);
+    this.info.set(null);
+    const problem = this.applyError();
+    if (problem) {
+      this.error.set(problem);
+      return;
+    }
+
+    this.applyBusy.set(true);
+    const volume = this.apply.openingVolume.trim();
+    this.api
+      .applyForAccess({
+        name: this.apply.name.trim(),
+        email: this.email.trim(),
+        password: this.password,
+        businessName: this.apply.businessName.trim(),
+        buyerType: this.apply.buyerType,
+        businessPhone: this.apply.phone.trim() || undefined,
+        city: this.apply.city.trim(),
+        state: this.apply.state,
+        openingVolume: volume ? +volume : undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.applyBusy.set(false);
+          this.applyDone.set(this.email.trim());
+          this.password = '';
+          this.error.set(null);
+        },
+        error: (e: { status?: number; error?: { message?: string | string[] } }) => {
+          this.applyBusy.set(false);
+          const raw = e?.error?.message;
+          const first = Array.isArray(raw) ? raw[0] : raw;
+          this.error.set(
+            e?.status === 429
+              ? 'Too many applications from this device. Wait a minute, then try again.'
+              : (first ?? 'That application could not be submitted. Try again.'),
+          );
+        },
+      });
+  }
 
   emailValid(): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email.trim());

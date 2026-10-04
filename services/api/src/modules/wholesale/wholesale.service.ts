@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ApprovalActionType } from '../../common/enums';
+import { ApprovalActionType, RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { AvailabilityStatus } from '../catalogue/entities/product-variant.entity';
@@ -18,6 +18,7 @@ import { Order, OrderChannel } from '../orders/entities/order.entity';
 import { Payment, PaymentRecordStatus } from '../orders/entities/payment.entity';
 import { UsersService } from '../users/users.service';
 import { CreateTierDto } from './dto/create-tier.dto';
+import { CreateWholesaleApplicationDto } from './dto/create-application.dto';
 import { ReviewAccountDto } from './dto/review-account.dto';
 import { UpdateTierDto } from './dto/update-tier.dto';
 import { PriceTier } from './entities/price-tier.entity';
@@ -57,6 +58,53 @@ export class WholesaleService {
         user: await this.usersService.findById(user.id),
         status: WholesaleAccountStatus.PENDING,
         tier: null,
+      }),
+    );
+  }
+
+  /**
+   * Public application from an unauthenticated visitor (appendix 06).
+   *
+   * Creates the customer account and the pending wholesale application
+   * together, because a first-time buyer has no account to apply from and the
+   * portal's sign-in form doubles as the application form.
+   *
+   * The account is created with the customer role and a pending application
+   * attached. It cannot buy wholesale stock until staff approve -- the gate is
+   * the account status, checked by assertApprovedAccount. No role change is
+   * needed for the wholesale portal channel, which orders.service.ts selects
+   * from dto.source.
+   *
+   * Sequential rather than transactional: usersService.create is a single save
+   * and this is a second single save, so the only failure mode is a customer
+   * account with no application attached -- a record staff can still see, not
+   * a silently wrong wholesale account.
+   */
+  async applyPublic(dto: CreateWholesaleApplicationDto): Promise<WholesaleAccount> {
+    // Reuse create() so email uniqueness and bcrypt hashing stay in one place.
+    // It throws ConflictException on a known email, which the controller
+    // surfaces as "already registered, sign in and apply from the catalogue" --
+    // attaching an application to an account whose ownership we cannot prove
+    // would let anyone annotate a stranger's record.
+    const user = await this.usersService.create({
+      name: dto.name,
+      email: dto.email,
+      phone: dto.businessPhone,
+      password: dto.password,
+      role: RoleName.CUSTOMER,
+    });
+
+    return this.accountRepo.save(
+      this.accountRepo.create({
+        user,
+        status: WholesaleAccountStatus.PENDING,
+        tier: null,
+        businessName: dto.businessName,
+        buyerType: dto.buyerType,
+        businessPhone: dto.businessPhone ?? null,
+        city: dto.city,
+        state: dto.state,
+        openingVolume: dto.openingVolume ?? null,
       }),
     );
   }

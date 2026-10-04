@@ -3,18 +3,22 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { CreateTierDto } from './dto/create-tier.dto';
+import { CreateWholesaleApplicationDto } from './dto/create-application.dto';
 import { ReviewAccountDto } from './dto/review-account.dto';
 import { UpdateTierDto } from './dto/update-tier.dto';
 import { WholesaleService } from './wholesale.service';
@@ -24,6 +28,35 @@ import { WholesaleService } from './wholesale.service';
 @Controller('wholesale')
 export class WholesaleController {
   constructor(private readonly wholesaleService: WholesaleService) {}
+
+  /**
+   * Public wholesale application (appendix 06).
+   *
+   * Unauthenticated on purpose: the wholesale portal's sign-in form doubles as
+   * the application form, so a first-time buyer applies before having an
+   * account. Throttled because it provisions a real customer account, and the
+   * generic throttler would otherwise let one script create an unbounded number
+   * of them.
+   */
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('apply')
+  async applyPublic(@Body() dto: CreateWholesaleApplicationDto) {
+    try {
+      return await this.wholesaleService.applyPublic(dto);
+    } catch (e) {
+      // create() throws ConflictException for a known email. Sending those
+      // buyers to the catalogue flow is the useful next step, and the register
+      // endpoint's message leaks whether an address is on file.
+      if (e instanceof HttpException && e.getStatus() === 409) {
+        throw new HttpException(
+          'That email is already registered. Sign in above, then use "Apply for a wholesale account" in the catalogue.',
+          409,
+        );
+      }
+      throw e;
+    }
+  }
 
   /** Tier-priced catalogue for the caller's approved wholesale account. */
   @Get('pricing')
