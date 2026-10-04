@@ -118,11 +118,13 @@ describe('opsbar attention bell', () => {
     expect(fixture.componentInstance.degraded()).toBeTrue();
 
     poll();
-    http.expectOne(URLS.approvals).flush(approvals(1));
+    http.expectOne(URLS.approvals).flush(approvals(0));
     http.expectOne(URLS.lowStock).flush(emptyLowStock());
     http.expectOne(URLS.returns).flush({ data: [], total: 0 });
     fixture.detectChanges();
     expect(fixture.componentInstance.degraded()).toBeFalse();
+    // Zero rows on a healthy read is the only state that may say all-clear.
+    expect(fixture.componentInstance.attentionRows().length).toBe(0);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('All clear');
   });
 });
