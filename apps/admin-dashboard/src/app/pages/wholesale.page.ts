@@ -11,6 +11,14 @@ interface AccountRow {
   createdAt: string;
   user: { name: string; email: string };
   tier: { id: string; name: string } | null;
+  // Application-form details. Null on rows created through the one-click apply
+  // in the catalogue, so every read here has to tolerate null.
+  businessName: string | null;
+  buyerType: string | null;
+  businessPhone: string | null;
+  city: string | null;
+  state: string | null;
+  openingVolume: number | null;
 }
 interface TierRow {
   id: string;
@@ -46,6 +54,7 @@ interface TierRow {
       <thead>
         <tr>
           <th>Business user</th>
+          <th>Applicant</th>
           <th>Applied</th>
           <th>Status</th>
           <th>Tier</th>
@@ -58,6 +67,30 @@ interface TierRow {
             <td>
               <strong>{{ a.user.name }}</strong
               ><br /><span class="muted small">{{ a.user.email }}</span>
+            </td>
+            <!-- Legacy one-click applications have no business details, so
+                 every column here has to tolerate a null rather than assume
+                 the public form was used. -->
+            <td class="small">
+              @if (a.businessName) {
+                <strong>{{ a.businessName }}</strong
+                ><br />
+                <span class="muted">
+                  {{ buyerLabel(a.buyerType) }}
+                  @if (place(a); as where) {
+                    · {{ where }}
+                  }
+                </span>
+                <br />
+                <span class="muted">
+                  @if (a.businessPhone) {
+                    <span class="mono">{{ a.businessPhone }}</span> ·
+                  }
+                  est. {{ a.openingVolume ?? '—' }} units
+                </span>
+              } @else {
+                <span class="muted">one-click apply (no details)</span>
+              }
             </td>
             <td class="mono small">{{ a.createdAt | date: 'mediumDate' }}</td>
             <td>
@@ -90,7 +123,7 @@ interface TierRow {
           @if (detail(); as d) {
             @if (d['id'] === a.id) {
               <tr>
-                <td colspan="5" class="small">
+                <td colspan="6" class="small">
                   <span class="chip acid">account on file</span>
                   Status {{ d['status'] }} · tier {{ tierName(d) }} · applied
                   {{ dt(d['createdAt']) | date: 'medium' }}
@@ -217,6 +250,26 @@ export class WholesaleAdminPage implements OnInit {
   private readonly alerts = inject(BrandAlertService);
   private readonly route = inject(ActivatedRoute);
   readonly accounts = signal<AccountRow[]>([]);
+
+  /** "Aba, Abia" from whatever the applicant supplied; empty when neither. */
+  place(row: { city: string | null; state: string | null }): string {
+    return [row.city, row.state]
+      .filter((v): v is string => !!v && v.length > 0)
+      .join(', ');
+  }
+
+  /** Buyer type is stored as a machine value; staff read a label. */
+  buyerLabel(value: string | null): string {
+    return (
+      {
+        retailer: 'Retailer / boutique',
+        online_reseller: 'Online reseller',
+        institution: 'Institution',
+        distributor: 'Distributor',
+        other: 'Other',
+      }[value ?? ''] ?? '—'
+    );
+  }
   readonly tiers = signal<TierRow[]>([]);
   /** One account's full record, read on demand. */
   readonly detail = signal<Record<string, unknown> | null>(null);
