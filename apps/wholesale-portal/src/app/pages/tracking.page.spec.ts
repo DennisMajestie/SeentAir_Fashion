@@ -274,4 +274,83 @@ describe('Wholesale TrackingPage', () => {
       expect(fixture.componentInstance.failed()).toBe(true);
     });
   });
+
+  /**
+   * A paid batch the ledger could not fully allocate.
+   *
+   * The API used to report this as order_received, so a wholesale buyer who
+   * had paid in full for a batch the factory could not cover was told the order
+   * was received and nothing else. The stored status stays stock_exception
+   * (admin wording) and the customer projection renames it to awaiting_stock.
+   */
+  describe('a paid order awaiting stock is not presented as received', () => {
+    const mountStatus = (status: string) => {
+      TestBed.configureTestingModule({
+        imports: [TrackingPage],
+        providers: [
+          provideRouter([]),
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { paramMap: { get: () => ORDER_ID } } },
+          },
+          {
+            provide: ApiService,
+            useValue: {
+              isLoggedIn: true,
+              tracking: () => of({ ...trackingWith(null), status } as WholesaleTracking),
+              invoices: () => of({ data: [], total: 0 }),
+              orderStream: () => Promise.resolve(),
+            },
+          },
+        ],
+      });
+      fixture = TestBed.createComponent(TrackingPage);
+      element = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+    };
+
+    it('recognises the status', async () => {
+      mountStatus('awaiting_stock');
+      await settle();
+      expect(fixture.componentInstance.awaitingStock()).toBe(true);
+    });
+
+    it('tells the buyer the order is paid but short, and needs nothing from them', async () => {
+      mountStatus('awaiting_stock');
+      await settle();
+
+      expect(text()).toContain('Awaiting stock allocation');
+      expect(text()).toContain('payment is confirmed');
+      expect(text()).toContain('Nothing further is needed from you');
+    });
+
+    it('shows the status as a warning tone, not a neutral one', async () => {
+      mountStatus('awaiting_stock');
+      await settle();
+
+      expect(element.querySelector('.status.warn')).not.toBeNull();
+    });
+
+    it('renders the human label rather than the raw token', async () => {
+      mountStatus('awaiting_stock');
+      await settle();
+
+      expect(text()).toContain('awaiting stock');
+      expect(text()).not.toContain('awaiting_stock');
+    });
+
+    it('leaves the pill off orders that are genuinely just received', async () => {
+      mountStatus('order_received');
+      await settle();
+
+      expect(fixture.componentInstance.awaitingStock()).toBe(false);
+      expect(text()).not.toContain('Awaiting stock allocation');
+    });
+
+    it('does not fire on an unrelated status that merely mentions stock', async () => {
+      mountStatus('in_production');
+      await settle();
+      expect(fixture.componentInstance.awaitingStock()).toBe(false);
+    });
+  });
 });

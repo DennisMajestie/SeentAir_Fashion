@@ -71,6 +71,20 @@ interface Stage {
         </div>
       </se-strip>
 
+      <!-- A paid batch the ledger could not fully allocate. The API used to
+           report this as order_received, which told the buyer everything was
+           fine while the order sat unfulfillable. -->
+      @if (awaitingStock()) {
+        <se-strip label="Awaiting stock allocation" badge="Paid · awaiting stock">
+          <p class="small" style="margin: 0">
+            Your payment is confirmed and the batch is booked, but the workshop cannot allocate
+            every unit yet. The Aba desk is sourcing the shortfall or scheduling the balance into
+            production. Nothing further is needed from you, and this page updates as soon as the
+            stock is allocated.
+          </p>
+        </se-strip>
+      }
+
       <!-- GAP: live GPS corridor map awaits GIGL telemetry via the logistics
            adapter: the corridor strip states the real route policy instead. -->
       <se-strip label="Logistics freight corridor" badge="Aba: nationwide">
@@ -489,6 +503,15 @@ export class TrackingPage implements OnInit, OnDestroy {
 
   delivered(): boolean {
     return /delivered|completed/.test(this.status());
+  }
+
+  /**
+   * Customer-facing flag for a paid order that is short on stock. The API
+   * reports `awaiting_stock`; the stored status stays `stock_exception`, which
+   * is admin wording and never reaches this page.
+   */
+  awaitingStock(): boolean {
+    return /^awaiting[_ ]stock$/.test(this.status().trim().toLowerCase());
   }
 
   legStatus(): string {

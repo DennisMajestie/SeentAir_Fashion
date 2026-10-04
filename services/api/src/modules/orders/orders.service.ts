@@ -143,6 +143,16 @@ export function resolveChannelIntent(
  *  caller's effective access; never from anything the client sends. */
 export type TrackingAudience = 'customer' | 'staff';
 
+/**
+ * Customer-facing name for OrderStatus.STOCK_EXCEPTION.
+ *
+ * Not a member of OrderStatus: it is never stored and never staff-facing, it
+ * exists only in the customer projection of /orders/:id/tracking. The stored
+ * value stays `stock_exception` so admin, the ledger and the staff tracker are
+ * unaffected.
+ */
+export const CUSTOMER_AWAITING_STOCK = 'awaiting_stock';
+
 /** A checkpoint as a customer may see it. `zone` and `note` are absent by
  *  design: zone is an internal corridor label and `note` is free text typed by
  *  staff, which is not guaranteed to be customer-safe. */
@@ -193,7 +203,12 @@ export interface OrderTracking<
   T = CustomerDeliveryLeg,
   E = OrderStatusEvent | CustomerStatusEvent,
 > {
-  status: OrderStatus;
+  /**
+   * A stored OrderStatus, plus CUSTOMER_AWAITING_STOCK in the customer
+   * projection. Typed as a string union rather than OrderStatus because
+   * awaiting_stock is deliberately not a storable order status.
+   */
+  status: OrderStatus | typeof CUSTOMER_AWAITING_STOCK;
   deliveredAt: Date | null;
   events: E[];
   deliveries: T[];
@@ -343,7 +358,16 @@ export class OrdersService {
       channel = OrderChannel.RETAIL;
     } else if (shopFromWholesale && user) {
       channel = OrderChannel.WHOLESALE;
-      // Wholesale gate: approved account + MOQ (appendix 06).
+      // Wholesale gate, server-side: approved account + MOQ (appendix 06).
+      //
+      // `channel` is chosen from `dto.source`, which is client-supplied, so it
+      // cannot itself be the authorisation. assertApprovedAccount() is what
+      // actually decides: it re-reads the account from the database and
+      // requires status = approved, so a caller cannot reach wholesale pricing,
+      // the wholesale MOQ, or a wholesale channel order without an approved
+      // account. It also covers a signed-in CUSTOMER who claims the
+      // wholesale_portal tag -- they must already hold an approved account, and
+      // review() promotes them to WHOLESALER when it grants one.
       const account = await this.wholesaleService.assertApprovedAccount(user.id);
       tierDiscountTier = account.tier;
       const totalUnits = dto.items.reduce((sum, i) => sum + i.quantity, 0);
@@ -893,14 +917,31 @@ export class OrdersService {
       };
     }
     const internal: string[] = [OrderStatus.STOCK_EXCEPTION, PAYMENT_EXCEPTION_EVENT];
+    // The customer projection reports AWAITING_STOCK, never stock_exception.
+    //
+    // stock_exception is on the internal list because the raw value plus its
+    // staff note ("Paid; stock short: TEE-BLK-M x2") is internal wording. But
+    // hiding the state itself left a paid buyer staring at a frozen
+    // order_received: the order was unfulfillable and the tracker said
+    // everything was fine. A wholesale buyer who paid 1.85M for 20 made-to-order
+    // units has no other signal, so the state is surfaced under a name that is
+    // honest and free of internal detail. The staff projection above is
+    // untouched and still reports stock_exception.
+    const customerStatus =
+      order.status === OrderStatus.STOCK_EXCEPTION ? CUSTOMER_AWAITING_STOCK : order.status;
     return {
-      status:
-        order.status === OrderStatus.STOCK_EXCEPTION ? OrderStatus.ORDER_RECEIVED : order.status,
+      status: customerStatus,
       deliveredAt: order.deliveredAt,
       // Only the status and the timestamp. `note` is staff-authored free text -
       // PATCH /orders/:id/status accepts an optional note, so a future caller
       // could put anything there, and today it already carries lines like
       // "Paid; stock short: TEE-BLK-M x2" that are not the buyer's business.
+      //
+      // A stock_exception event is dropped like any other internal status, but
+      // the current status above already says awaiting_stock. Rewriting the
+      // event to awaiting_stock as well would put the buyer's timeline out of
+      // order against itself: an awaiting_stock entry dated before the status
+      // was set reads as a state the order was never in.
       events: events
         .filter((e) => !internal.includes(e.status))
         .map((e) => ({ status: e.status, createdAt: e.createdAt })),
@@ -951,6 +992,14 @@ export class OrdersService {
           ? 'Stock allocated from production'
           : `Still short: ${stillShort.join(', ')}`,
       );
+      // Tell the buyer. refundStockException() notifies but this did not, so a
+      // successful allocation reached the customer as silence: their tracker
+      // sat on awaiting_stock with no indication anyone had acted. Only when
+      // every line is covered -- a partial allocation leaves the order in
+      // STOCK_EXCEPTION and re-notifying on each retry would be noise.
+      if (stillShort.length === 0) {
+        await this.notifyCustomer(saved, OrderStatus.ORDER_RECEIVED);
+      }
       return saved;
     });
   }
@@ -1010,12 +1059,22 @@ export class OrdersService {
       );
       return result;
     });
-    void this.notificationsService.onOrderStatusChange(
-      saved.customer?.id ?? null,
-      saved.id,
-      OrderStatus.CANCELLED,
-    );
+    await this.notifyCustomer(saved, OrderStatus.CANCELLED);
     return saved;
+  }
+
+  /**
+   * Customer notification for a status change. Never throws: a failed
+   * notification must not roll back a paid order or a stock movement.
+   */
+  private async notifyCustomer(order: Order, status: string): Promise<void> {
+    try {
+      await this.notificationsService.onOrderStatusChange(order.customer?.id ?? null, order.id, status);
+    } catch (err) {
+      this.logger.warn(
+        `Customer notification failed for order ${order.id}: ${(err as Error).message}`,
+      );
+    }
   }
 
   // --- internals ---

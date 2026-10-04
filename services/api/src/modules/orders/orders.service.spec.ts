@@ -19,7 +19,11 @@ import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
 import { Payment, PaymentMethod, PaymentRecordStatus } from './entities/payment.entity';
 import { DeliveryLeg } from '../logistics/entities/delivery-leg.entity';
 import { OrderStatusBus } from './order-status.bus';
-import { OrdersService, PaystackWebhookEvent } from './orders.service';
+import {
+  CUSTOMER_AWAITING_STOCK,
+  OrdersService,
+  PaystackWebhookEvent,
+} from './orders.service';
 import { PaystackService } from './paystack.service';
 
 const finance: AuthenticatedUser = {
@@ -640,6 +644,44 @@ describe('OrdersService — payment rules', () => {
     expect((order['items'] as Row[])[0]['shortfall']).toBe(0);
   });
 
+  it('a successful allocation tells the buyer, which it used not to do', async () => {
+    // refundStockException() notified but allocateStockException() did not, so
+    // resolving a paid buyer's stock exception reached them as silence: their
+    // tracker sat on the unfulfillable state with no sign anyone had acted.
+    permissionsService.getAccessLevel.mockResolvedValue(AccessLevel.FULL);
+    const order = h.order();
+    order['paymentStatus'] = PaymentStatus.PAID;
+    order['status'] = OrderStatus.STOCK_EXCEPTION;
+    (order['items'] as Row[])[0]['shortfall'] = 2;
+
+    await service.allocateStockException('o1', finance);
+
+    expect(notificationsService.onOrderStatusChange).toHaveBeenCalledWith(
+      'cust-1',
+      'o1',
+      OrderStatus.ORDER_RECEIVED,
+    );
+  });
+
+  it('stays quiet when the allocation only partly covers the shortfall', async () => {
+    // The order is still STOCK_EXCEPTION, so re-notifying on every retry would
+    // be noise. The buyer keeps seeing awaiting_stock until it fully clears.
+    permissionsService.getAccessLevel.mockResolvedValue(AccessLevel.FULL);
+    const order = h.order();
+    order['paymentStatus'] = PaymentStatus.PAID;
+    order['status'] = OrderStatus.STOCK_EXCEPTION;
+    (order['items'] as Row[])[0]['shortfall'] = 2;
+    // InsufficientStockException specifically: allocateLine() swallows only that
+// one and returns false, so the line stays short. A generic Error would
+// propagate and roll the whole transaction back, which is a different path.
+    inventoryService.record.mockRejectedValueOnce(new InsufficientStockException());
+
+    await service.allocateStockException('o1', finance);
+
+    expect(order['status']).toBe(OrderStatus.STOCK_EXCEPTION);
+    expect(notificationsService.onOrderStatusChange).not.toHaveBeenCalled();
+  });
+
   it('refund releases allocated units, records the refund and cancels the order', async () => {
     const order = h.order();
     order['paymentStatus'] = PaymentStatus.PAID;
@@ -688,7 +730,16 @@ describe('OrdersService — payment rules', () => {
     ).rejects.toThrow(ConflictException);
   });
 
-  it('customers see a stock exception as ORDER_RECEIVED without the internal notes', async () => {
+  /**
+   * A paid buyer must never be told an unfulfillable order is fine.
+   *
+   * This used to assert ORDER_RECEIVED, which is how a wholesale buyer who paid
+   * 1.85M for 20 made-to-order units ended up staring at a frozen
+   * "order_received" with no indication anything was wrong. The stored status
+   * stays STOCK_EXCEPTION and the staff projection is unchanged; only the
+   * customer-facing name is now awaiting_stock.
+   */
+  it('surfaces a paid stock exception as awaiting_stock, not a reassuring order_received', async () => {
     h.order()['paymentStatus'] = PaymentStatus.PAID;
     h.order()['status'] = OrderStatus.STOCK_EXCEPTION;
     h.eventRepo.find.mockResolvedValue([
@@ -696,13 +747,47 @@ describe('OrdersService — payment rules', () => {
       { status: 'stock_exception', note: 'Paid; stock short: TEE-BLK-M ×2' },
       { status: 'payment_exception', note: 'Duplicate Paystack charge …' },
     ]);
-    const forCustomer = await service.tracking('o1', customer);
-    expect(forCustomer.status).toBe(OrderStatus.ORDER_RECEIVED);
-    expect(forCustomer.events.map((e) => e.status)).toEqual(['order_received']);
 
+    const forCustomer = await service.tracking('o1', customer);
+
+    expect(forCustomer.status).toBe(CUSTOMER_AWAITING_STOCK);
+    // Never the old reassuring value, and never the raw internal one.
+    expect(forCustomer.status).not.toBe(OrderStatus.ORDER_RECEIVED);
+    expect(forCustomer.status).not.toBe(OrderStatus.STOCK_EXCEPTION);
+    // Internal wording still does not leak: notes and the internal statuses
+    // are filtered out of the timeline.
+    expect(forCustomer.events.map((e) => e.status)).toEqual(['order_received']);
+    expect(JSON.stringify(forCustomer)).not.toContain('TEE-BLK-M');
+    expect(JSON.stringify(forCustomer)).not.toContain('Duplicate Paystack');
+
+    // Staff keep the exact operational truth and every internal event.
     const forStaff = await service.tracking('o1', finance);
     expect(forStaff.status).toBe(OrderStatus.STOCK_EXCEPTION);
     expect(forStaff.events).toHaveLength(3);
+  });
+
+  it('leaves an ordinary order status untouched for the customer', async () => {
+    h.order()['status'] = OrderStatus.SHIPPED;
+    h.eventRepo.find.mockResolvedValue([]);
+
+    expect((await service.tracking('o1', customer)).status).toBe(OrderStatus.SHIPPED);
+  });
+
+  it('does not invent a backdated awaiting_stock event', async () => {
+    // Rewriting the filtered event would put awaiting_stock on the timeline
+    // dated *before* the status was ever set, so the buyer's own history would
+    // contradict itself. The current status carries the signal instead.
+    h.order()['paymentStatus'] = PaymentStatus.PAID;
+    h.order()['status'] = OrderStatus.STOCK_EXCEPTION;
+    h.eventRepo.find.mockResolvedValue([
+      { status: 'order_received', note: 'Paid in full via paystack' },
+      { status: 'stock_exception', note: 'Stock allocated from production' },
+    ]);
+
+    const forCustomer = await service.tracking('o1', customer);
+
+    expect(forCustomer.events.map((e) => e.status)).toEqual(['order_received']);
+    expect(forCustomer.events.map((e) => e.status)).not.toContain(CUSTOMER_AWAITING_STOCK);
   });
 
   describe('tracking audience is derived server-side', () => {
