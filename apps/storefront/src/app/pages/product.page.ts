@@ -6,6 +6,7 @@ import { ApiService, Product, ProductVariant } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
 import { SeentairTiltCardComponent } from '../tilt-card.component';
+import { NO_REVIEWS_COPY } from '../product-card.component';
 
 /** Product detail, Stitch PDP layout: gallery left; kicker, Anton title,
     price, spec-chip size/colour selectors, qty stepper, full-width acid CTA,
@@ -125,9 +126,9 @@ import { SeentairTiltCardComponent } from '../tilt-card.component';
           <p class="section-label">
             Reviews <span class="count">[{{ reviews().length | number: '2.0' }}]</span>
           </p>
-          @if (reviews().length === 0) {
-            <p class="muted small">No reviews yet: reviews open after delivery.</p>
-          }
+@if (reviews().length === 0) {
+              <p class="muted small">{{ noReviewsCopy }}</p>
+            }
           @for (r of reviews(); track $index) {
             <div class="review">
               <span class="stars">{{ '★'.repeat(r.rating) }}{{ '☆'.repeat(5 - r.rating) }}</span>
@@ -159,6 +160,8 @@ export class ProductPage implements OnInit {
   private readonly alerts = inject(BrandAlertService);
 
   readonly product = signal<Product | null>(null);
+  /** Template-visible handle on the shared constant; see NO_REVIEWS_COPY. */
+  readonly noReviewsCopy = NO_REVIEWS_COPY;
   readonly reviews = signal<Array<{ rating: number; comment: string | null }>>([]);
   readonly added = signal(false);
   readonly loadError = signal(false);
