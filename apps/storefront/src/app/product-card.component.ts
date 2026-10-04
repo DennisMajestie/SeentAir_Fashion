@@ -7,6 +7,15 @@ import { CartService } from './cart.service';
 import { SeentairTiltCardComponent } from './tilt-card.component';
 import { WishlistService } from './wishlist.service';
 
+/**
+ * Empty-review copy, shared with the PDP so the two cannot drift apart.
+ *
+ * Reviews open after delivery, which is a policy statement (appendix returns:
+ * a review follows a completed order), not a nicety -- so a shopper with no
+ * reviews yet is being told when they can, not just that nobody has.
+ */
+export const NO_REVIEWS_COPY = 'No reviews yet: reviews open after delivery.';
+
 /** Colour-name → swatch hex for the little dots on cards and quick-add. */
 export const SWATCHES: Record<string, string> = {
   black: '#1a1a1a',
@@ -51,7 +60,9 @@ export const SWATCHES: Record<string, string> = {
           [class.active]="wishlist.has(product().id)"
           [attr.aria-pressed]="wishlist.has(product().id)"
           [attr.aria-label]="
-            (wishlist.has(product().id) ? 'Remove ' : 'Add ') + product().name + ' to wishlist'
+            wishlist.has(product().id)
+              ? 'Remove ' + product().name + ' from wishlist'
+              : 'Add ' + product().name + ' to wishlist'
           "
           (click)="$event.preventDefault(); $event.stopPropagation(); wishlist.toggle(product())"
         >
@@ -124,6 +135,11 @@ export const SWATCHES: Record<string, string> = {
           </span>
           <span class="muted small">{{ metaLine(product()) }}</span>
         </div>
+        <!-- Single price, always. A "was" price needs a compare-at markdown,
+             and the product model has no such field (products.base_price is the
+             only price column), so inventing one would be fabricated data. The
+             real discount in this platform is the wholesale tier, which is a
+             different number shown in the wholesale portal. -->
         <p class="price">₦{{ product().basePrice | number: '1.0-2' }}</p>
         @if (rating(); as r) {
           <p
@@ -133,6 +149,10 @@ export const SWATCHES: Record<string, string> = {
             <span class="stars">{{ starString(r.avg) }}</span>
             <span class="muted small">{{ r.avg | number: '1.1-1' }} ({{ r.count }})</span>
           </p>
+        } @else {
+          <!-- 0 real reviews: say when reviews open instead of drawing five
+               grey stars that would be a fabricated score. Same copy as the PDP. -->
+          <p class="muted small no-reviews">{{ noReviewsCopy }}</p>
         }
       </a>
     </div>
@@ -142,6 +162,8 @@ export class ProductCardComponent implements OnDestroy {
   private readonly cart = inject(CartService);
   private readonly alerts = inject(BrandAlertService);
   readonly wishlist = inject(WishlistService);
+  /** Template-visible handle on the shared constant; see NO_REVIEWS_COPY. */
+  readonly noReviewsCopy = NO_REVIEWS_COPY;
   readonly product = input.required<Product>();
   readonly index = input(0);
   readonly rating = input<{ avg: number; count: number } | null>(null);
