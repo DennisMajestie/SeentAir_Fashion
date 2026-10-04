@@ -47,9 +47,28 @@ async function bootstrap(): Promise<void> {
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swaggerConfig));
 
-  const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  console.log(`Seentair API listening on http://localhost:${port}/api/v1 (Swagger at /docs)`);
+const port = process.env.PORT ?? 3000;
+    await app.listen(port);
+    console.log(`Seentair API listening on http://localhost:${port}/api/v1 (Swagger at /docs)`);
+
+    // A deployed API must emit the refresh cookie as SameSite=None; Secure,
+    // otherwise the browser withholds it on the cross-site call from the Vercel
+    // portals to /auth/refresh. The symptom is not an obvious auth failure: the
+    // session dies on every page reload, and authenticated reads then 404 with
+    // "Order <id> not found" because tracking() hides unauthenticated callers
+    // behind the same 404 it uses for a genuinely missing order. Loud beats
+    // silent -- see configuration.ts, where COOKIE_SECURE only defaults to
+    // true when it is left unset.
+    if (process.env.NODE_ENV === 'production') {
+      const secure = process.env.COOKIE_SECURE === undefined ? true : process.env.COOKIE_SECURE === 'true';
+      if (!secure) {
+        console.warn(
+          '[security] COOKIE_SECURE=false with NODE_ENV=production. The refresh cookie will be ' +
+            'SameSite=Lax and the browser will not send it cross-site, so sessions will not survive ' +
+            'a page reload on the Vercel portals. Set COOKIE_SECURE=true.',
+        );
+      }
+    }
 }
 
 void bootstrap();
