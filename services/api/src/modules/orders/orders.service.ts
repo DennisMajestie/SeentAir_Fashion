@@ -105,6 +105,40 @@ interface WebhookResult {
   alert?: StaffAlert;
 }
 
+/** Which channel an incoming order belongs to, and why.
+ *
+ *  The `source` tag is authoritative: each portal tags its own source, so
+ *  `wholesale_portal` means wholesale and `storefront` means retail regardless
+ *  of who is signed in. The caller's role is only the fallback for
+ *  programmatic/staff calls that carry no tag.
+ *
+ *  This precedence is the whole point of the function. It used to be inverted,
+ *  with the CUSTOMER role test inside `shopFromRetail`:
+ *
+ *      shopFromRetail = !user || user.role === CUSTOMER || dto.source === 'storefront';
+ *
+ *  which short-circuited on the role before the wholesale tag was consulted.
+ *  A buyer approved through the public application kept role CUSTOMER, so the
+ *  tag was ignored, the order resolved to RETAIL, and the retail-only
+ *  shippingAddress guard rejected the batch -- the wholesale portal never
+ *  sends an address, because wholesale addressing is tracked separately.
+ *  Those buyers could not commit a batch at all.
+ */
+export function resolveChannelIntent(
+  user: AuthenticatedUser | undefined,
+  source?: string,
+): { shopFromRetail: boolean; shopFromWholesale: boolean } {
+  const taggedRetail = source === 'storefront';
+  const taggedWholesale = source === 'wholesale_portal';
+  const shopFromRetail =
+    !user || taggedRetail || (!taggedWholesale && user.role === RoleName.CUSTOMER);
+  return {
+    shopFromRetail,
+    shopFromWholesale:
+      !shopFromRetail && !!user && (taggedWholesale || user.role === RoleName.WHOLESALER),
+  };
+}
+
 /** Who a tracking response is being shaped for. Derived server-side from the
  *  caller's effective access; never from anything the client sends. */
 export type TrackingAudience = 'customer' | 'staff';
@@ -295,11 +329,15 @@ export class OrdersService {
     let customerId: string | null = user?.id ?? null;
     let tierDiscountTier = null as
       import('../wholesale/entities/price-tier.entity').PriceTier | null;
-    const shopFromRetail = !user || user.role === RoleName.CUSTOMER || dto.source === 'storefront';
-    const shopFromWholesale =
-      !shopFromRetail &&
-      !!user &&
-      (user.role === RoleName.WHOLESALER || dto.source === 'wholesale_portal');
+    // Precedence matters here and was inverted: the CUSTOMER role test used to
+    // run inside `shopFromRetail`, which short-circuited the explicit
+    // `source === 'wholesale_portal'` tag before it was ever consulted. A buyer
+    // approved through the public application kept role CUSTOMER (review() set
+    // status but not role), so the tag was ignored, the order resolved to
+    // RETAIL, and the retail-only shippingAddress guard below rejected the
+    // batch with "shippingAddress is required" -- the portal never sends one,
+    // because wholesale addressing is tracked separately.
+    const { shopFromRetail, shopFromWholesale } = resolveChannelIntent(user, dto.source);
 
     if (shopFromRetail) {
       channel = OrderChannel.RETAIL;
