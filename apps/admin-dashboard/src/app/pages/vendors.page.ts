@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../api.service';
+import { BrandAlertService } from '../brand-alert.service';
 
 interface MaterialRow {
   id: string;
@@ -368,6 +369,7 @@ interface SupplierRow {
 })
 export class VendorsAdminPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly alerts = inject(BrandAlertService);
   readonly materials = signal<MaterialRow[]>([]);
   readonly summary = signal<SummaryRow[]>([]);
   readonly selected = signal<MaterialRow | null>(null);
@@ -537,8 +539,18 @@ export class VendorsAdminPage implements OnInit {
       });
   }
 
-  deleteSupplier(s: SupplierRow): void {
-    if (!confirm(`Delete supplier "${s.name}"?`)) return;
+  async deleteSupplier(s: SupplierRow): Promise<void> {
+    // A native confirm() here: every other destructive action in the dashboard
+    // goes through BrandAlertService (orders.page refund, approvals.page), so
+    // this one read as a browser dialog instead of the app's own, and it was
+    // the last raw confirm() left in any app.
+    const ok = await this.alerts.confirm({
+      title: 'Delete supplier?',
+      html: `"${s.name}" will be removed from the supplier list. This cannot be undone.`,
+      icon: 'warning',
+      confirm: 'Delete supplier',
+    });
+    if (!ok) return;
     this.api.deleteSupplier(s.id).subscribe({
       next: () => {
         this.supplierSel.set(null);
