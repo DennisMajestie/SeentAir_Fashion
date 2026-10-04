@@ -1809,6 +1809,21 @@ html {
     /* Two bands per line so labels are not truncated at this width. */
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px;
+    .lad {
+      /* These tiles are reference badges ("20+ / Flat rate"), not controls, so
+         they do not need desktop's 74px min-width and 4px/8px padding. On a
+         phone that padding plus a 10px uppercase label pushed each band tall
+       enough to cost the row a whole extra screen of scrolling. Trim to what
+         the two lines actually need. */
+      min-width: 0;
+      padding: 3px 6px;
+      gap: 0;
+      .lad-range {
+        font-size: 0.5625rem;
+        letter-spacing: 0.04em;
+      }
+    }
     .lad-price {
       font-size: var(--type-label-lg);
     }
