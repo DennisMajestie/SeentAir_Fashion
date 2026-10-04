@@ -127,6 +127,22 @@ export class WholesaleService {
     return account;
   }
 
+  /**
+   * Staff decision on an application.
+   *
+   * Approval also promotes the user to RoleName.WHOLESALER, and rejection
+   * demotes them back to CUSTOMER. The role is not cosmetic here:
+   * orders.service.ts decides the channel with
+   * `shopFromRetail = !user || user.role === CUSTOMER || dto.source === 'storefront'`,
+   * which short-circuits on the role *before* the `dto.source === 'wholesale_portal'`
+   * fallback is ever consulted. So an approved buyer left on CUSTOMER resolves
+   * to the RETAIL channel and is then rejected by the retail shippingAddress
+   * guard -- they could never commit a batch at all.
+   *
+   * Demotion on rejection is the mirror image, so a revoked account cannot keep
+   * the wholesale channel. Only demote from WHOLESALER: a staff-set role is not
+   * ours to clobber.
+   */
   async review(
     id: string,
     dto: ReviewAccountDto,
@@ -136,6 +152,13 @@ export class WholesaleService {
     account.status = dto.status;
     account.reviewedBy = reviewer.id;
     if (dto.tierId) account.tier = await this.getTier(dto.tierId);
+
+    if (dto.status === WholesaleAccountStatus.APPROVED) {
+      await this.usersService.updateRole(account.user.id, RoleName.WHOLESALER);
+    } else if (account.user.role.name === RoleName.WHOLESALER) {
+      await this.usersService.updateRole(account.user.id, RoleName.CUSTOMER);
+    }
+
     return this.accountRepo.save(account);
   }
 

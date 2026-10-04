@@ -441,8 +441,18 @@ export class CartPage implements OnInit {
     });
   }
 
-  private money(value: number): string {
-    return Math.round(value * 100).toLocaleString('en-NG', {
+  /**
+   * Naira with two decimals.
+   *
+   * Intl already rounds for us, so this must not pre-scale the value. It used
+   * to do `Math.round(value * 100)` and then format with 2 fraction digits,
+   * which printed the scaled integer: a 1,850,000 batch read as
+   * "185,000,000.00" in Merchandise subtotal and Total payable, 100x the amount
+   * the commit button showed from the same cart state. toLocaleString rounds to
+   * the requested precision on its own.
+   */
+private money(value: number): string {
+    return value.toLocaleString('en-NG', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });

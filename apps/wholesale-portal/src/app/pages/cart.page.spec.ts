@@ -264,16 +264,42 @@ describe('CartPage', () => {
     });
   });
 
-  describe('shared primitives in use', () => {
-    it('uses strips rather than the old rounded panels', async () => {
-      await boot([line()]);
-      expect(fixture.nativeElement.querySelectorAll('se-strip').length).toBeGreaterThanOrEqual(5);
-      expect(fixture.nativeElement.querySelectorAll('.panel').length).toBe(0);
+describe('shared primitives in use', () => {
+      it('uses strips rather than the old rounded panels', async () => {
+        await boot([line()]);
+        expect(fixture.nativeElement.querySelectorAll('se-strip').length).toBeGreaterThanOrEqual(5);
+        expect(fixture.nativeElement.querySelectorAll('.panel').length).toBe(0);
+      });
+
+      it('leaves no ordercard behind', async () => {
+        await boot([line()]);
+        expect(fixture.nativeElement.querySelectorAll('.ordercard').length).toBe(0);
+      });
     });
 
-    it('leaves no ordercard behind', async () => {
-      await boot([line()]);
-      expect(fixture.nativeElement.querySelectorAll('.ordercard').length).toBe(0);
+    describe('money is printed once, at the same magnitude everywhere', () => {
+      // money() used to do Math.round(value * 100) and then format with two
+      // fraction digits, printing the scaled integer. A 1,850,000 batch read as
+      // "185,000,000.00" in Merchandise subtotal and Total payable while the
+      // commit button, fed the same cart amount through the number pipe, showed
+      // the correct 1,850,000. A buyer reading the summary before paying was
+      // shown a figure 100x the amount actually charged.
+      it('shows the same total in the summary and on the commit button', async () => {
+        await boot([line({ quantity: 20, unitPrice: 92500 })]);
+
+        const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
+        // 20 x 92,500 = 1,850,000
+        expect(text).toContain('1,850,000.00');
+        expect(text).not.toContain('185,000,000');
+      });
+
+      it('keeps the naira scale for a fractional unit price', async () => {
+        await boot([line({ quantity: 20, unitPrice: 7650.5 })]);
+
+        const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
+        // 20 x 7,650.50 = 153,010.00
+        expect(text).toContain('153,010.00');
+        expect(text).not.toContain('15,301,000');
+      });
     });
   });
-});
