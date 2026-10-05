@@ -150,9 +150,21 @@ export const SWATCHES: Record<string, string> = {
             <span class="muted small">{{ r.avg | number: '1.1-1' }} ({{ r.count }})</span>
           </p>
         } @else {
-          <!-- 0 real reviews: say when reviews open instead of drawing five
-               grey stars that would be a fabricated score. Same copy as the PDP. -->
-          <p class="muted small no-reviews">{{ noReviewsCopy }}</p>
+          <!-- 0 real reviews. Five muted stars, no caption: at a glance in a
+               grid you can see which products have no rating yet, and the row
+               keeps the same height as a rated card so a 5-up grid stays even.
+
+               The glyphs are decorative and aria-hidden, and the state is
+               carried by role="img" + the shared copy as its label. Without
+               that the card would say nothing at all to a screen reader --
+               five stars are invisible as text, so "unrated" would be lost.
+
+               Deliberately --muted, never --primary-fill: the gold is the
+               established shorthand for a real score (see .stars), and
+               borrowing it here would assert a rating that does not exist. -->
+          <p class="stars-line" role="img" [attr.aria-label]="noReviewsCopy">
+            <span class="stars no-reviews-stars" aria-hidden="true">☆☆☆☆☆</span>
+          </p>
         }
       </a>
     </div>

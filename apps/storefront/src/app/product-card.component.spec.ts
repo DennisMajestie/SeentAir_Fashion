@@ -44,6 +44,10 @@ describe('ProductCardComponent', () => {
   });
 
   const mount = (p: Product, rating: { avg: number; count: number } | null = null) => {
+    // Reset first so a test can mount twice to compare two states. Without this
+    // the second configureTestingModule throws "test module has already been
+    // instantiated" -- a comparison test would have to be split for no reason.
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [ProductCardComponent],
       providers: [provideRouter([])],
@@ -102,24 +106,58 @@ describe('ProductCardComponent', () => {
       expect(text()).toContain('(12)');
     });
 
-    it('never shows a star score for a product with zero reviews', () => {
-      // The failure mode this guards: rendering five empty stars, which reads
-      // as "rated 0" or as a broken widget, for a product with no reviews at all.
+    it('shows five muted stars and no caption when there are zero reviews', () => {
       mount(product(), null);
-      expect(element.querySelector('.stars-line')).toBeNull();
-      expect(element.querySelector('.stars')).toBeNull();
-      expect(text()).not.toContain('☆');
+      const stars = element.querySelector('.stars-line .no-reviews-stars')!;
+      expect(stars.textContent?.trim()).toBe('☆☆☆☆☆');
+      // The caption is deliberately gone from the card.
+      expect(text()).not.toContain(NO_REVIEWS_COPY);
     });
 
-    it('uses the same empty-state copy as the product page', () => {
+    it('keeps the unrated stars out of the gold that means "rated"', () => {
+      // The whole point of the muted colour: --primary-fill is what .stars uses
+      // for a real score, so an unrated row must not wear it. Read the colour
+      // out before remounting -- after resetTestingModule the old node is
+      // detached and getComputedStyle would return nothing useful.
       mount(product(), null);
-      expect(text()).toContain(NO_REVIEWS_COPY);
+      const unratedColor = getComputedStyle(
+        element.querySelector('.no-reviews-stars')!,
+      ).color;
+
+      mount(product(), { avg: 5, count: 1 });
+      const ratedColor = getComputedStyle(element.querySelector('.stars')!).color;
+
+      expect(unratedColor).not.toBe(ratedColor);
+    });
+
+    it('still announces the unrated state to assistive tech', () => {
+      // Five glyphs carry no meaning as text. Without role="img" + a label, the
+      // card would tell a screen reader nothing at all and "unrated" would be
+      // silently dropped -- so the shared copy is the accessible name.
+      mount(product(), null);
+      const row = element.querySelector('.stars-line')!;
+      expect(row.getAttribute('role')).toBe('img');
+      expect(row.getAttribute('aria-label')).toBe(NO_REVIEWS_COPY);
       expect(NO_REVIEWS_COPY).toBe('No reviews yet: reviews open after delivery.');
     });
 
-    it('does not show the empty state once there are reviews', () => {
+    it('hides the decorative glyphs from assistive tech', () => {
+      // aria-hidden on the glyphs, label on the parent: read as one image rather
+      // than as five separate stars.
+      mount(product(), null);
+      const stars = element.querySelector('.no-reviews-stars')!;
+      expect(stars.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('drops the unrated treatment once there are reviews', () => {
+      // Asserts on the class, not on text(): the copy now lives in an aria-label,
+      // so a text assertion would pass for both branches and prove nothing.
+      mount(product(), null);
+      expect(element.querySelector('.no-reviews-stars')).not.toBeNull();
+
       mount(product(), { avg: 3, count: 1 });
-      expect(text()).not.toContain(NO_REVIEWS_COPY);
+      expect(element.querySelector('.no-reviews-stars')).toBeNull();
+      expect(element.querySelector('.stars-line')!.getAttribute('role')).toBeNull();
     });
   });
 
