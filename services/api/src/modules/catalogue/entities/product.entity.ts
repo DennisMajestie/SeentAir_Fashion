@@ -48,4 +48,15 @@ export class Product {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  /**
+   * How many separate paid orders contain this product. Not a column: it is
+   * derived per request by CatalogueService.salesCounts() and attached only to
+   * the public product endpoints, so the storefront can show a real "N bought"
+   * without the figure ever being stored or drifting out of date.
+   *
+   * Always present on those endpoints (0 when nothing has sold). Left optional
+   * because admin writes return the entity without it.
+   */
+  soldCount?: number;
 }

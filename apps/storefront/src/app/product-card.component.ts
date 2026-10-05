@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, inject, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Product, ProductVariant } from './api.service';
 import { BrandAlertService } from './brand-alert.service';
 import { CartService } from './cart.service';
@@ -16,7 +16,7 @@ import { WishlistService } from './wishlist.service';
  */
 export const NO_REVIEWS_COPY = 'No reviews yet: reviews open after delivery.';
 
-/** Colour-name → swatch hex for the little dots on cards and quick-add. */
+/** Colour-name → swatch hex for the little dots on cards. */
 export const SWATCHES: Record<string, string> = {
   black: '#1a1a1a',
   bone: '#e8e2d5',
@@ -32,9 +32,9 @@ export const SWATCHES: Record<string, string> = {
 };
 
 /**
- * The shop product card: thumbnail, availability badge, hover quick-add
- * (colour + size), colour dots, meta line, price and review stars. Shared
- * by the shop grid and the storefront home sections.
+ * The shop product card: thumbnail, availability badge, floating cart-add,
+ * colour dots, meta line, price and review stars. Shared by the shop grid and
+ * the storefront home sections.
  */
 @Component({
   selector: 'app-product-card',
@@ -81,48 +81,31 @@ export const SWATCHES: Record<string, string> = {
             />
           </svg>
         </button>
-        @if (!isSoldOut(product())) {
-          <button
-            class="quickadd-btn"
-            type="button"
-            (click)="$event.preventDefault(); $event.stopPropagation(); toggleQuickAdd(product())"
-          >
-            {{ quickAddId() === product().id ? 'Close' : '+ Quick add' }}
-          </button>
-        }
-      </a>
+        </a>
 
-      @if (quickAddId() === product().id) {
-        <div class="quickadd-panel">
-          @if (coloursOf(product()).length > 1) {
-            <div class="qa-row">
-              @for (c of coloursOf(product()); track c) {
-                <button
-                  class="swatch-btn"
-                  [class.active]="qaColour() === c"
-                  [title]="c"
-                  (click)="qaColour.set(c)"
-                >
-                  <span class="swatch" [style.background]="swatch(c)"></span>
-                </button>
-              }
-            </div>
-          }
-          <div class="qa-row">
-            @for (s of sizesOf(product()); track s) {
-              <button
-                class="size-chip"
-                [disabled]="!isBuyable(product(), s, qaColour())"
-                (click)="quickAdd(product(), s)"
-              >
-                {{ s }}
-              </button>
-            }
-          </div>
-        </div>
+      <!-- Floating cart-add, straddling the image/body boundary
+           (bottom:-14px puts half of it outside the image). This replaces the
+           old hover "+ Quick add" panel: size and colour selection now happens
+           on the product page, because a card cannot show a real size
+           chooser at this size without inventing a default. -->
+      @if (!isSoldOut(product())) {
+        <button
+          class="cartbtn"
+          type="button"
+          [attr.aria-label]="cartButtonLabel(product())"
+          (click)="addFromCard($event)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path
+              d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6"
+            />
+            <circle cx="9" cy="20" r="1" />
+            <circle cx="17" cy="20" r="1" />
+          </svg>
+        </button>
       }
       @if (addedId() === product().id) {
-        <p class="qa-added">Added to cart ✓</p>
+        <p class="qa-added">Added ✓</p>
       }
 
       <a class="card-body" [routerLink]="['/product', product().id]">
@@ -173,6 +156,7 @@ export const SWATCHES: Record<string, string> = {
 export class ProductCardComponent implements OnDestroy {
   private readonly cart = inject(CartService);
   private readonly alerts = inject(BrandAlertService);
+  private readonly router = inject(Router);
   readonly wishlist = inject(WishlistService);
   /** Template-visible handle on the shared constant; see NO_REVIEWS_COPY. */
   readonly noReviewsCopy = NO_REVIEWS_COPY;
@@ -180,8 +164,6 @@ export class ProductCardComponent implements OnDestroy {
   readonly index = input(0);
   readonly rating = input<{ avg: number; count: number } | null>(null);
 
-  readonly quickAddId = signal<string | null>(null);
-  readonly qaColour = signal<string | null>(null);
   readonly addedId = signal<string | null>(null);
   private addedTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -246,31 +228,38 @@ export class ProductCardComponent implements OnDestroy {
     return '★'.repeat(full) + '☆'.repeat(5 - full);
   }
 
-  toggleQuickAdd(p: Product): void {
-    if (this.quickAddId() === p.id) {
-      this.quickAddId.set(null);
+  /**
+   * Adds the first genuinely buyable variant: in stock, and OS if the product
+   * has one. Never guesses a size the customer did not pick. When the product
+   * has a real size/colour range there is nothing safe to add, so the tap opens
+   * the product page instead of doing nothing.
+   */
+  addFromCard(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const p = this.product();
+    const v = this.defaultVariant(p);
+    if (!v) {
+      void this.router.navigate(['/product', p.id]);
       return;
     }
-    this.quickAddId.set(p.id);
-    this.qaColour.set(this.coloursOf(p)[0] ?? null);
-  }
-  private variantFor(p: Product, size: string, colour: string | null): ProductVariant | null {
-    return (
-      p.variants.find((v) => v.size === size && (colour === null || v.colour === colour)) ?? null
-    );
-  }
-  isBuyable(p: Product, size: string, colour: string | null): boolean {
-    const v = this.variantFor(p, size, colour);
-    return !!v && v.availabilityStatus !== 'out_of_stock';
-  }
-  quickAdd(p: Product, size: string): void {
-    const v = this.variantFor(p, size, this.qaColour());
-    if (!v || v.availabilityStatus === 'out_of_stock') return;
     this.cart.add(p, v, 1);
-    this.quickAddId.set(null);
     this.addedId.set(p.id);
     void this.alerts.toast(`${p.name} added to basket`);
     clearTimeout(this.addedTimer);
     this.addedTimer = setTimeout(() => this.addedId.set(null), 1800);
+  }
+
+  /** The button means two different things, so it has to say which. */
+  cartButtonLabel(p: Product): string {
+    return this.defaultVariant(p)
+      ? `Add ${p.name} to cart`
+      : `Choose size and colour for ${p.name}`;
+  }
+
+  private defaultVariant(p: Product): ProductVariant | null {
+    const inStock = p.variants.filter((v) => v.availabilityStatus !== 'out_of_stock');
+    if (inStock.length === 0) return null;
+    return inStock.find((v) => v.size === 'OS') ?? (inStock.length === 1 ? inStock[0] : null);
   }
 }

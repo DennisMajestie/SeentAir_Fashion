@@ -26,6 +26,9 @@ describe('CatalogueService — price-change approval gate', () => {
     transaction: jest.fn(async (fn: (m: unknown) => Promise<unknown>) =>
       fn({ getRepository: () => emptyRepo }),
     ),
+    // Used by salesCounts() for the public "N bought" figure. Empty by default
+    // so a product with no sales resolves to 0.
+    query: jest.fn(async (): Promise<Array<{ product_id: string; buyers: string }>> => []),
   };
 
   beforeEach(async () => {
@@ -78,5 +81,77 @@ describe('CatalogueService — price-change approval gate', () => {
     await service.update('p1', { basePrice: 5000 });
     expect(approvalsService.assertApproved).not.toHaveBeenCalled();
     expect(productRepo.save).toHaveBeenCalled();
+  });
+});
+
+/**
+ * The public "N bought" figure behind the storefront's Best Sellers rail. These
+ * guard the two things that would make it a lie: counting the wrong thing
+ * (units/orders) and counting orders that were never paid for.
+ */
+describe('CatalogueService — public sold count', () => {
+  let service: CatalogueService;
+  const dataSource = { query: jest.fn() };
+  const productRepo = { findAndCount: jest.fn(), findOne: jest.fn() };
+
+  const build = async (): Promise<void> => {
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        CatalogueService,
+        { provide: getRepositoryToken(Product), useValue: productRepo },
+        { provide: getRepositoryToken(ProductVariant), useValue: {} },
+        { provide: getRepositoryToken(Collection), useValue: {} },
+        { provide: getRepositoryToken(ProductBomItem), useValue: {} },
+        { provide: getRepositoryToken(TechPack), useValue: {} },
+        { provide: ApprovalsService, useValue: {} },
+        { provide: getDataSourceToken(), useValue: dataSource },
+      ],
+    }).compile();
+    service = moduleRef.get(CatalogueService);
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await build();
+  });
+
+  it('counts distinct paid orders and excludes cancelled or returned ones', async () => {
+    dataSource.query.mockResolvedValue([{ product_id: 'p1', buyers: '7' }]);
+
+    const counts = await service.salesCounts(['p1']);
+
+    expect(counts.get('p1')).toBe(7);
+    const [sql, params] = dataSource.query.mock.calls[0];
+    // One buyer is one order, however many units that order contained.
+    expect(sql).toContain('COUNT(DISTINCT oi.order_id)');
+    // Unpaid, cancelled and returned orders must never inflate the number.
+    expect(sql).toContain("o.payment_status = 'paid'");
+    expect(params[1]).toEqual(['cancelled', 'returned']);
+  });
+
+  it('reports 0 rather than omitting the figure when nothing has sold', async () => {
+    dataSource.query.mockResolvedValue([]);
+    productRepo.findAndCount.mockResolvedValue([[{ id: 'p1' }, { id: 'p2' }], 2]);
+
+    const { data } = await service.findAll();
+
+    expect(data.map((p) => p.soldCount)).toEqual([0, 0]);
+  });
+
+  it('stamps each product with its own real count', async () => {
+    dataSource.query.mockResolvedValue([{ product_id: 'p2', buyers: '3' }]);
+    productRepo.findAndCount.mockResolvedValue([[{ id: 'p1' }, { id: 'p2' }], 2]);
+
+    const { data } = await service.findAll();
+
+    expect(data.map((p) => p.soldCount)).toEqual([0, 3]);
+  });
+
+  it('skips the query entirely for an empty page instead of sending bad SQL', async () => {
+    productRepo.findAndCount.mockResolvedValue([[], 0]);
+
+    await service.findAll();
+
+    expect(dataSource.query).not.toHaveBeenCalled();
   });
 });

@@ -31,6 +31,13 @@ export interface Product {
   collection: { id: string; name: string } | null;
   createdAt: string;
   variants: ProductVariant[];
+  /**
+   * How many separate paid orders contain this product, from the public
+   * catalogue endpoint. Counts orders rather than units, so the storefront can
+   * honestly say "N bought". Absent from older API builds, hence optional:
+   * consumers must treat missing as "no sales data", not as zero sales.
+   */
+  soldCount?: number;
 }
 
 export interface Order {

@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { Product } from './api.service';
+import { CartService } from './cart.service';
 import { NO_REVIEWS_COPY, ProductCardComponent } from './product-card.component';
 import { WishlistService } from './wishlist.service';
 
@@ -257,6 +258,72 @@ describe('ProductCardComponent', () => {
       fixture.detectChanges();
       expect(element.querySelector('.heart-btn')!.getAttribute('aria-label')).toBe(
         'Remove Harmattan Tee from wishlist',
+      );
+    });
+  });
+
+  /**
+   * The floating cart button has two honest outcomes: add the one variant that
+   * is unambiguous, or send the shopper to the product page to choose. The bug
+   * these cover is the third option -- a real size range silently doing nothing.
+   */
+  describe('floating cart button', () => {
+    let cart: { add: jasmine.Spy };
+    let router: Router;
+
+    const mountCard = (p: Product) => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [ProductCardComponent],
+        providers: [provideRouter([])],
+      });
+      cart = { add: jasmine.createSpy('add') };
+      TestBed.overrideProvider(CartService, { useValue: cart });
+      router = TestBed.inject(Router);
+      spyOn(router, 'navigate').and.resolveTo(true);
+      fixture = TestBed.createComponent(ProductCardComponent);
+      fixture.componentRef.setInput('product', p);
+      fixture.componentRef.setInput('index', 0);
+      element = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+    };
+
+    const tap = (): void => {
+      (element.querySelector('.cartbtn') as HTMLButtonElement).click();
+      fixture.detectChanges();
+    };
+
+    it('adds directly when one-size is in stock', () => {
+      mountCard(product({ variants: [variant({ size: 'OS' })] }));
+      tap();
+      expect(cart.add).toHaveBeenCalledTimes(1);
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+
+    it('sends the shopper to the product page when a size must be chosen', () => {
+      mountCard(
+        product({
+          variants: [
+            variant({ id: 'v1', size: 'S' }),
+            variant({ id: 'v2', size: 'M' }),
+            variant({ id: 'v3', size: 'L' }),
+          ],
+        }),
+      );
+      tap();
+      expect(cart.add).not.toHaveBeenCalled();
+      expect(router.navigate).toHaveBeenCalledWith(['/product', 'p1']);
+    });
+
+    it('says which of the two things the button will do', () => {
+      mountCard(product({ variants: [variant({ size: 'OS' })] }));
+      expect(element.querySelector('.cartbtn')!.getAttribute('aria-label')).toBe(
+        'Add Harmattan Tee to cart',
+      );
+
+      mountCard(product({ variants: [variant({ size: 'S' }), variant({ id: 'v2', size: 'M' })] }));
+      expect(element.querySelector('.cartbtn')!.getAttribute('aria-label')).toBe(
+        'Choose size and colour for Harmattan Tee',
       );
     });
   });

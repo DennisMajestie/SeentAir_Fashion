@@ -173,8 +173,10 @@ const REMEMBERED_EMAIL_KEY = 'seentair.rememberedEmail';
       <h1>Your account</h1>
       <button class="link" (click)="logout()">Sign out</button>
 
+      <!-- ids match the fragments the mobile shell links to: the header bell
+           goes to #notifications, the Orders tab goes to #orders. -->
       @if (notifications().length > 0) {
-        <h2>Notifications</h2>
+        <h2 id="notifications">Notifications</h2>
         @for (n of notifications(); track n.id) {
           <div class="event">
             <strong>{{ n.type.replaceAll('_', ' ') }}</strong>
@@ -184,7 +186,7 @@ const REMEMBERED_EMAIL_KEY = 'seentair.rememberedEmail';
         }
       }
 
-      <h2>Your orders</h2>
+      <h2 id="orders">Your orders</h2>
       @if (orders().length === 0) {
         <p class="muted">No orders yet. <a routerLink="/">Start shopping</a></p>
       } @else {

@@ -41,7 +41,54 @@ export class CatalogueService {
       skip: (page - 1) * limit,
       take: limit,
     });
+    await this.attachSoldCounts(data);
     return { data, total };
+  }
+
+  /**
+   * Attaches the public "N bought" figure to the products about to be returned
+   * to the storefront. See salesCounts() for what the number means.
+   */
+  private async attachSoldCounts(products: Product[]): Promise<void> {
+    if (products.length === 0) return;
+    const counts = await this.salesCounts(products.map((p) => p.id));
+    for (const p of products) p.soldCount = counts.get(p.id) ?? 0;
+  }
+
+  /**
+   * Number of DISTINCT paid orders containing each product.
+   *
+   * Deliberately counts orders, not units: the storefront wording is "N people
+   * bought this", and one customer buying three shirts is one buyer. It is also
+   * the more conservative number to publish — a per-order count cannot be walked
+   * back into basket contents or spend the way a units/revenue figure can.
+   *
+   * Scoped to paid orders, excluding cancelled and returned ones, so an unpaid
+   * or abandoned checkout can never inflate a product's popularity. Products
+   * with no qualifying sales are absent from the map; callers treat that as 0.
+   *
+   * This is the public, aggregate-only counterpart of the owner-facing
+   * analytics best-seller report, which stays behind ANALYTICS.VIEW because it
+   * also exposes revenue and per-variant SKU detail.
+   */
+  async salesCounts(productIds: string[]): Promise<Map<string, number>> {
+    if (productIds.length === 0) return new Map();
+    const rows = await this.dataSource.query(
+      `SELECT v.product_id AS product_id, COUNT(DISTINCT oi.order_id) AS buyers
+         FROM order_items oi
+         JOIN product_variants v ON v.id = oi.variant_id
+         JOIN orders o ON o.id = oi.order_id
+        WHERE v.product_id = ANY($1::uuid[])
+          AND o.payment_status = 'paid'
+          AND o.status::text <> ALL($2::text[])
+        GROUP BY v.product_id`,
+      [productIds, ['cancelled', 'returned']],
+    );
+    const counts = new Map<string, number>();
+    for (const row of rows as Array<{ product_id: string; buyers: string }>) {
+      counts.set(row.product_id, parseInt(row.buyers, 10) || 0);
+    }
+    return counts;
   }
 
   async findById(id: string): Promise<Product> {
@@ -50,6 +97,7 @@ export class CatalogueService {
       relations: { variants: true },
     });
     if (!product) throw new NotFoundException(`Product ${id} not found`);
+    product.soldCount = (await this.salesCounts([id])).get(id) ?? 0;
     return product;
   }
 
