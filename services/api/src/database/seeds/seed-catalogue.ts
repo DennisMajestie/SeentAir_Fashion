@@ -1,5 +1,9 @@
 import 'dotenv/config';
+import bcrypt from 'bcryptjs';
 import { AppDataSource } from '../data-source';
+import { RoleName, UserStatus } from '../../common/enums';
+import { Role } from '../../modules/users/entities/role.entity';
+import { User } from '../../modules/users/entities/user.entity';
 import { Collection } from '../../modules/catalogue/entities/collection.entity';
 import { Product } from '../../modules/catalogue/entities/product.entity';
 import {
@@ -11,6 +15,14 @@ import {
   InventoryMovement,
   MovementType,
 } from '../../modules/inventory/inventory-movement.entity';
+import {
+  Order,
+  OrderChannel,
+  OrderStatus,
+  PaymentStatus,
+} from '../../modules/orders/entities/order.entity';
+import { OrderItem } from '../../modules/orders/entities/order-item.entity';
+import { Review, ReviewStatus } from '../../modules/reviews/review.entity';
 
 /**
  * DEV CATALOGUE — demo products so every screen has something to show.
@@ -19,6 +31,12 @@ import {
  *
  * Opening stock is written as inventory movements (never a quantity
  * field) so derived stock stays the single source of truth.
+ *
+ * The second block below is the home-page reference line. Everything the
+ * screenshot shows (names, the ₦5,000 price point, five-star ratings, the
+ * audience/garment type) is SOURCE data; anything the screenshot leaves out
+ * (stock, a working second price for the polo, a couple of extra reference
+ * photos) is a DEV DEFAULT and is clearly marked as such in the comments.
  */
 
 interface SeedVariant {
@@ -38,6 +56,23 @@ interface SeedProduct {
   collection: string;
   image: string;
   variants: SeedVariant[];
+  /** Product identity key used instead of `name` when several products share
+   *  a display name (the reference line has four "Men 2-Piece Set"s). */
+  skuKey?: string;
+  /** Seller-applied Best Seller label (products.is_bestseller). */
+  isBestseller?: boolean;
+  /** Explicit createdAt so which three products are "New Arrivals" is
+   *  deterministic rather than whatever millisecond the insert happened. */
+  createdAt?: Date;
+  /**
+   * When set, one PUBLISHED N-star review is created, backed by one dev
+   * delivered/paid order for the product, so the five-star ratings shown in
+   * the reference render as real data instead of an invented figure. The
+   * reference's numeric counts (124, 96, ...) cannot exist honestly in this
+   * schema — reviews are per-order records and the storefront counts rows —
+   * so we reproduce the visible five stars without fabricating 124 orders.
+   */
+  reviewStars?: number;
 }
 
 const CLOTHING_SIZES = ['S', 'M', 'L', 'XL'];
@@ -56,6 +91,9 @@ function sizeRun(
     stock: stockBySize[i] ?? 0,
   }));
 }
+
+/** Dev stock per reference item — the screenshot gives no quantities. */
+const REF_STOCK = 50;
 
 const CATALOGUE: SeedProduct[] = [
   {
@@ -176,6 +214,144 @@ const CATALOGUE: SeedProduct[] = [
   },
 ];
 
+/**
+ * The home-reference line from the approved storefront design. Names, the
+ * ₦5,000 price, five-star ratings and the garment-type categories come from
+ * the reference screenshot. Everything in DEV comments below is a
+ * development default (stock, one-size variant, the white polo's price).
+ *
+ * IMAGE MAPPING: product_01..09.png are the reference photos, assumed to be
+ * in the screenshot's display order (brown 2-pc → 01, white/black 2-pc → 02,
+ * black tee → 03, brown underwear → 04, beige 2-pc → 05, black/gold 2-pc →
+ * 06, children's pink set → 07, black underwear → 08, white polo → 09). If
+ * any swap is needed, edit the `image` values here — nothing else depends
+ * on the file names.
+ *
+ * CATEGORY MODEL: the schema has no categories table; `Product.category` is a
+ * flat string and the storefront derives its pills from the values present,
+ * exactly as the reference's shop pills read (2-Piece Sets, T-Shirts, …).
+ * There is no parent/child, so "Men" itself is not a row — each product
+ * carries its full leaf. "All" stays a frontend pill (`category === null`).
+ */
+function refArrival(hoursAgo: number): Date {
+  return new Date(Date.now() - hoursAgo * 3_600_000);
+}
+
+const REFERENCE_ITEMS: SeedProduct[] = [
+  {
+    name: 'Men 2-Piece Set',
+    description: "Men's two-piece set: coordinated short-sleeve top, matching trousers.",
+    category: '2-Piece Sets',
+    basePrice: 5000, // SOURCE: ₦5,000
+    collection: 'New In',
+    image: 'assets/products/product_01.png', // ASSUMED: brown outfit
+    skuKey: 'SE-2PC-BRN-OS',
+    createdAt: refArrival(0), // New Arrival 1 (brown, 5★ · 124)
+    reviewStars: 5,
+    variants: [{ size: 'OS', colour: 'brown', sku: 'SE-2PC-BRN-OS', stock: REF_STOCK }],
+  },
+  {
+    name: 'Men 2-Piece Set',
+    description: "Men's two-piece set: coordinated polo-style top, matching trousers.",
+    category: '2-Piece Sets',
+    basePrice: 5000, // SOURCE: ₦5,000
+    collection: 'New In',
+    image: 'assets/products/product_02.png', // ASSUMED: white/black outfit
+    skuKey: 'SE-2PC-WHBL-OS',
+    createdAt: refArrival(72), // 5★ · 96
+    reviewStars: 5,
+    variants: [{ size: 'OS', colour: 'white/black', sku: 'SE-2PC-WHBL-OS', stock: REF_STOCK }],
+  },
+  {
+    name: 'Men T-Shirt',
+    description: "Men's T-shirt.",
+    category: 'T-Shirts',
+    basePrice: 5000, // SOURCE: ₦5,000
+    collection: 'New In',
+    image: 'assets/products/product_03.png', // ASSUMED: black tee
+    skuKey: 'SE-TEE-BLK-OS',
+    isBestseller: true, // Best Seller 3 (black tee)
+    createdAt: refArrival(72), // 5★ · 88
+    reviewStars: 5,
+    variants: [{ size: 'OS', colour: 'black', sku: 'SE-TEE-BLK-OS', stock: REF_STOCK }],
+  },
+  {
+    name: 'Men Underwear',
+    description: "Men's underwear with contrast waistband.",
+    category: 'Underwear',
+    basePrice: 5000, // SOURCE: ₦5,000
+    collection: 'New In',
+    image: 'assets/products/product_04.png', // ASSUMED: brown, black waistband
+    skuKey: 'SE-UNW-BRN-OS',
+    isBestseller: true, // Best Seller 4 (brown underwear)
+    createdAt: refArrival(72), // 5★ · 110
+    reviewStars: 5,
+    variants: [{ size: 'OS', colour: 'brown', sku: 'SE-UNW-BRN-OS', stock: REF_STOCK }],
+  },
+  {
+    name: 'Men 2-Piece Set',
+    description: "Men's two-piece set: coordinated short-sleeve top, matching trousers.",
+    category: '2-Piece Sets',
+    basePrice: 5000, // SOURCE: ₦5,000
+    collection: 'New In',
+    image: 'assets/products/product_05.png', // ASSUMED: beige outfit
+    skuKey: 'SE-2PC-BGE-OS',
+    isBestseller: true, // Best Seller 2 (beige outfit)
+    createdAt: refArrival(72), // no rating in the reference
+    variants: [{ size: 'OS', colour: 'beige', sku: 'SE-2PC-BGE-OS', stock: REF_STOCK }],
+  },
+  {
+    name: 'Men 2-Piece Set',
+    description: "Men's two-piece set: coordinated top with gold trim, matching trousers.",
+    category: '2-Piece Sets',
+    basePrice: 5000, // SOURCE: ₦5,000
+    collection: 'New In',
+    image: 'assets/products/product_06.png', // ASSUMED: black/gold outfit
+    skuKey: 'SE-2PC-BLG-OS',
+    createdAt: refArrival(72), // no rating in the reference
+    variants: [{ size: 'OS', colour: 'black/gold', sku: 'SE-2PC-BLG-OS', stock: REF_STOCK }],
+  },
+  {
+    name: 'Children 2-Piece Set',
+    description: "Children's two-piece set: top with matching skirt.",
+    category: 'Children 2-Piece Sets',
+    basePrice: 5000, // SOURCE: ₦5,000
+    collection: 'New In',
+    image: 'assets/products/product_07.png', // ASSUMED: pink children's set
+    skuKey: 'SE-KID2PC-PNK-OS',
+    createdAt: refArrival(1), // New Arrival 2 (pink, 5★ · 98)
+    reviewStars: 5,
+    variants: [{ size: 'OS', colour: 'pink', sku: 'SE-KID2PC-PNK-OS', stock: REF_STOCK }],
+  },
+  {
+    name: 'Men Underwear',
+    description: "Men's underwear with contrast waistband.",
+    category: 'Underwear',
+    basePrice: 5000, // SOURCE: ₦5,000
+    collection: 'New In',
+    image: 'assets/products/product_08.png', // ASSUMED: black underwear (New Arrival 3)
+    skuKey: 'SE-UNW-BLK-OS',
+    createdAt: refArrival(2), // New Arrival 3 (5★ · 76)
+    reviewStars: 5,
+    variants: [{ size: 'OS', colour: 'black', sku: 'SE-UNW-BLK-OS', stock: REF_STOCK }],
+  },
+  {
+    name: 'Men Polo',
+    description: "Men's polo shirt.",
+    category: 'Polo',
+    basePrice: 5000, // DEV DEFAULT: screenshot gives no price for Best Seller 1
+    collection: 'New In',
+    image: 'assets/products/product_09.png', // ASSUMED: white polo (Best Seller 1)
+    skuKey: 'SE-POL-WHT-OS',
+    isBestseller: true, // Best Seller 1 (white polo)
+    createdAt: refArrival(72), // no rating in the reference
+    variants: [{ size: 'OS', colour: 'white', sku: 'SE-POL-WHT-OS', stock: REF_STOCK }],
+  },
+];
+
+const REFERENCE_SOURCE = 'seed:reference-ratings';
+
+/** The seed grows four SHARED variables; the derived counting below reads them. */
 async function seedCatalogue(): Promise<void> {
   await AppDataSource.initialize();
   const collectionRepo = AppDataSource.getRepository(Collection);
@@ -186,16 +362,25 @@ async function seedCatalogue(): Promise<void> {
   let createdProducts = 0;
   let createdVariants = 0;
   let openingMovements = 0;
+  let bestSellerFlags = 0;
 
-  for (const spec of CATALOGUE) {
+  const seeded = [...CATALOGUE, ...REFERENCE_ITEMS];
+
+  for (const spec of seeded) {
     // 1. Collection (unique by name)
     let collection = await collectionRepo.findOne({ where: { name: spec.collection } });
     if (!collection) {
       collection = await collectionRepo.save(collectionRepo.create({ name: spec.collection }));
     }
 
-    // 2. Product (keyed on name — this seed owns these names)
-    let product = await productRepo.findOne({ where: { name: spec.name } });
+    // 2. Product. Keyed on SKU when several products share a display name
+    //    (the reference line does), otherwise on name as before.
+    let product = spec.skuKey
+      ? await productRepo
+          .createQueryBuilder('p')
+          .innerJoin('p.variants', 'v', 'v.sku = :sku', { sku: spec.skuKey })
+          .getOne()
+      : await productRepo.findOne({ where: { name: spec.name } });
     if (!product) {
       product = await productRepo.save(
         productRepo.create({
@@ -204,9 +389,15 @@ async function seedCatalogue(): Promise<void> {
           category: spec.category,
           basePrice: spec.basePrice,
           collection,
+          isBestseller: spec.isBestseller ?? false,
+          createdAt: spec.createdAt,
         }),
       );
       createdProducts++;
+    } else if (spec.isBestseller && !product.isBestseller) {
+      product.isBestseller = true;
+      await productRepo.save(product);
+      bestSellerFlags++;
     }
 
     // 3. Variants (keyed on SKU, which is unique)
@@ -246,6 +437,8 @@ async function seedCatalogue(): Promise<void> {
     }
   }
 
+  const ratingCounts = await ensureDevRatings(productRepo, variantRepo);
+
   const totalProducts = await productRepo.count();
   const totalVariants = await variantRepo.count();
 
@@ -253,9 +446,112 @@ async function seedCatalogue(): Promise<void> {
     `Catalogue seed complete — created ${createdProducts} products, ` +
       `${createdVariants} variants, ${openingMovements} opening-stock movements.`,
   );
+  if (bestSellerFlags > 0) console.log(`Best-seller flags newly applied: ${bestSellerFlags}.`);
+  console.log(
+    `Reference ratings: ${ratingCounts.orders} dev orders, ${ratingCounts.reviews} published reviews.`,
+  );
   console.log(`Catalogue now holds ${totalProducts} products / ${totalVariants} variants.`);
 
   await AppDataSource.destroy();
+}
+
+/**
+ * The reference shows five stars on six of the home products. Ratings in this
+ * app are not a column: they are the average of PUBLISHED Review rows, and the
+ * storefront counts those rows. To reproduce the visible five stars honestly
+ * (rather than fake 124 orders), one dev delivered/paid order per rated
+ * product powers one published 5★ review. Idempotent: orders carry
+ * source='seed:reference-ratings' and reviews are unique per (order, variant).
+ */
+async function ensureDevRatings(
+  productRepo: ReturnType<typeof AppDataSource.getRepository<Product>>,
+  variantRepo: ReturnType<typeof AppDataSource.getRepository<ProductVariant>>,
+): Promise<{ orders: number; reviews: number }> {
+  const userRepo = AppDataSource.getRepository(User);
+  const roleRepo = AppDataSource.getRepository(Role);
+  const orderRepo = AppDataSource.getRepository(Order);
+  const orderItemRepo = AppDataSource.getRepository(OrderItem);
+  const reviewRepo = AppDataSource.getRepository(Review);
+
+  const specBySku = new Map(REFERENCE_ITEMS.map((s) => [s.skuKey, s] as const));
+
+  let customer = await userRepo.findOne({ where: { email: 'customer@seentair.test' } });
+  if (!customer) {
+    const role = await roleRepo.findOne({ where: { name: RoleName.CUSTOMER } });
+    if (!role) throw new Error('CUSTOMER role missing — run `npm run seed` first');
+    customer = await userRepo.save(
+      userRepo.create({
+        name: 'Test Customer',
+        email: 'customer@seentair.test',
+        passwordHash: await bcrypt.hash(process.env.SEED_USER_PASSWORD ?? 'Password123!', 10),
+        role,
+        status: UserStatus.ACTIVE,
+      }),
+    );
+  }
+
+  let orders = 0;
+  let reviews = 0;
+
+  for (const [sku, spec] of specBySku) {
+    if (!spec.reviewStars) continue;
+
+    const variant = await variantRepo.findOne({ where: { sku } });
+    if (!variant) {
+      console.warn(`Reference rating skipped: variant ${sku} is missing.`);
+      continue;
+    }
+
+    let order = await orderRepo
+      .createQueryBuilder('o')
+      .innerJoin('o.items', 'oi')
+      .innerJoin('oi.variant', 'v')
+      .where('o.source = :marker', { marker: REFERENCE_SOURCE })
+      .andWhere('v.sku = :sku', { sku })
+      .getOne();
+
+    if (!order) {
+      order = await orderRepo.save(
+        orderRepo.create({
+          customer,
+          channel: OrderChannel.RETAIL,
+          status: OrderStatus.DELIVERED,
+          paymentStatus: PaymentStatus.PAID,
+          totalAmount: spec.basePrice,
+          source: REFERENCE_SOURCE,
+          deliveredAt: new Date(),
+        }),
+      );
+      await orderItemRepo.save(
+        orderItemRepo.create({
+          order,
+          variant,
+          quantity: 1,
+          unitPrice: spec.basePrice,
+        }),
+      );
+      orders++;
+    }
+
+    const review = await reviewRepo.findOne({
+      where: { order: { id: order.id }, variant: { id: variant.id } },
+    });
+    if (!review) {
+      await reviewRepo.save(
+        reviewRepo.create({
+          order,
+          variant,
+          customerId: customer.id,
+          rating: spec.reviewStars,
+          comment: null,
+          status: ReviewStatus.PUBLISHED,
+        }),
+      );
+      reviews++;
+    }
+  }
+
+  return { orders, reviews };
 }
 
 seedCatalogue().catch((err) => {

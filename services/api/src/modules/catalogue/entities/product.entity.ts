@@ -26,6 +26,15 @@ export class Product {
   @Column({ type: 'varchar', nullable: true })
   category: string | null;
 
+  /**
+   * Seller-applied merchandising label, surfaced as the "Bestseller" badge on
+   * the storefront card. Deliberately NOT a sales figure: see the migration.
+   * Real popularity stays on `soldCount` below, which is derived per request
+   * and never stored, so the two cannot disagree.
+   */
+  @Column({ name: 'is_bestseller', type: 'boolean', default: false })
+  isBestseller: boolean;
+
   /** Currency is configuration (Open Question #6) — amounts are currency-agnostic numbers. */
   @Column({
     name: 'base_price',

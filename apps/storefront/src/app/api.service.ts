@@ -32,6 +32,13 @@ export interface Product {
   createdAt: string;
   variants: ProductVariant[];
   /**
+   * Seller-applied "Bestseller" merchandising label (products.is_bestseller).
+   * Optional because older API builds predate the column: consumers must treat
+   * missing as "not flagged", never as "flagged". It is a label, not a claim --
+   * real popularity stays on `soldCount`.
+   */
+  isBestseller?: boolean;
+  /**
    * How many separate paid orders contain this product, from the public
    * catalogue endpoint. Counts orders rather than units, so the storefront can
    * honestly say "N bought". Absent from older API builds, hence optional:
