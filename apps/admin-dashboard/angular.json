@@ -27,8 +27,7 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.scss"],
-            "allowedCommonJsDependencies": ["sweetalert2"]
+            "styles": ["src/styles.scss"]
           },
           "configurations": {
             "production": {

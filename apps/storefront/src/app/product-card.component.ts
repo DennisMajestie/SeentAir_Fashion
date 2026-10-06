@@ -325,7 +325,9 @@ export class ProductCardComponent implements OnInit, OnDestroy {
     }
     this.cart.add(p, v, 1);
     this.addedId.set(p.id);
-    void this.alerts.toast(`${p.name} added to basket`);
+    void this.alerts.toast(`${p.name} added to cart`, {
+      action: { label: 'View cart', run: () => void this.router.navigate(['/cart']) },
+    });
     clearTimeout(this.addedTimer);
     this.addedTimer = setTimeout(() => this.addedId.set(null), 1800);
   }
