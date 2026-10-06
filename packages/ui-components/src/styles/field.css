@@ -1,0 +1,255 @@
+/* Form fields: label, control, hint, error. */
+.se-field {
+  display: grid;
+  gap: var(--se-space-1);
+  min-width: 0;
+}
+.se-field__set {
+  display: grid;
+  gap: var(--se-space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.se-field__label {
+  display: block;
+  margin: 0;
+  padding: 0;
+  color: var(--se-color-text);
+  font: var(--se-type-body-strong);
+  letter-spacing: var(--se-type-body-strong-tracking);
+  text-transform: none;
+}
+.se-field__optional {
+  margin-left: var(--se-space-1);
+  color: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+}
+.se-field__hint,
+.se-field__error {
+  margin: 0;
+  font: var(--se-type-caption);
+}
+.se-field__hint {
+  color: var(--se-color-text-muted);
+}
+.se-field__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--se-space-1);
+  color: var(--se-color-danger-text);
+}
+.se-field__error:empty {
+  display: none;
+}
+.se-field__error .se-icon {
+  width: var(--se-space-4);
+  height: var(--se-space-4);
+}
+.se-field__options {
+  display: grid;
+  gap: var(--se-space-1);
+}
+
+/* The control itself: input, select, textarea. */
+.se-input {
+  display: block;
+  width: 100%;
+  max-width: none;
+  min-height: var(--se-size-control);
+  margin: 0;
+  padding: 0 var(--se-space-3);
+  border: var(--se-border-width) solid var(--se-color-border-strong);
+  border-radius: var(--se-radius-md);
+  background: var(--se-color-surface);
+  color: var(--se-color-text);
+  font: var(--se-type-body);
+  letter-spacing: var(--se-type-body-tracking);
+  transition: border-color var(--se-motion-duration-fast) var(--se-motion-ease-standard);
+}
+.se-input::placeholder {
+  color: var(--se-color-text-subtle);
+  opacity: 1;
+}
+.se-input:hover {
+  border-color: var(--se-color-text);
+}
+textarea.se-input {
+  min-height: calc(var(--se-size-control) * 2.5);
+  padding: var(--se-space-2) var(--se-space-3);
+  resize: vertical;
+}
+/* Numbers line up: tabular figures, right-aligned. */
+.se-input[type='number'] {
+  font-variant-numeric: var(--se-font-numeric);
+  text-align: right;
+}
+/* Select: the native control, with the system's own chevron drawn in. */
+select.se-input {
+  appearance: none;
+  padding-right: var(--se-space-8);
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - var(--se-space-5)) 50%,
+    calc(100% - var(--se-space-3) - var(--se-space-half)) 50%;
+  background-size: calc(var(--se-space-1) + var(--se-space-half)) calc(var(--se-space-1) + var(--se-space-half));
+  background-repeat: no-repeat;
+}
+.se-input:disabled {
+  border-color: var(--se-color-border);
+  background-color: var(--se-color-surface-sunken);
+  color: var(--se-color-text-disabled);
+  cursor: not-allowed;
+}
+.se-input[readonly] {
+  background-color: var(--se-color-surface-sunken);
+}
+.se-input[aria-invalid='true'],
+.se-field--invalid .se-input {
+  border-color: var(--se-color-danger-border);
+  box-shadow: inset 0 0 0 var(--se-border-width) var(--se-color-danger-border);
+}
+
+/* Checkbox, radio and toggle: a native input inside its own label.
+     <label class="se-choice"><input type="checkbox" /> <span>Send receipt</span></label>
+     <label class="se-choice se-choice--toggle"><input type="checkbox" role="switch" /> ...   */
+.se-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--se-space-2);
+  min-height: var(--se-size-control-sm);
+  margin: 0;
+  color: var(--se-color-text);
+  font: var(--se-type-body);
+  letter-spacing: var(--se-type-body-tracking);
+  text-transform: none;
+  cursor: pointer;
+}
+.se-choice input {
+  appearance: none;
+  display: grid;
+  place-content: center;
+  flex: none;
+  width: var(--se-space-5);
+  height: var(--se-space-5);
+  margin: 0;
+  padding: 0;
+  border: var(--se-border-width) solid var(--se-color-border-strong);
+  border-radius: var(--se-radius-sm);
+  background: var(--se-color-surface);
+  cursor: pointer;
+  transition:
+    background-color var(--se-motion-duration-fast) var(--se-motion-ease-standard),
+    border-color var(--se-motion-duration-fast) var(--se-motion-ease-standard);
+}
+.se-choice input[type='radio'] {
+  border-radius: var(--se-radius-pill);
+}
+/* The mark: a tick for a checkbox, a dot for a radio, a bar for "some". */
+.se-choice input::before {
+  content: '';
+  width: var(--se-space-3);
+  height: var(--se-space-3);
+  background: var(--se-color-on-accent);
+  clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 22%, 86% 10%, 37% 70%);
+  transform: scale(0);
+  transition: transform var(--se-motion-duration-fast) var(--se-motion-ease-standard);
+}
+.se-choice input[type='radio']::before {
+  width: var(--se-space-2);
+  height: var(--se-space-2);
+  border-radius: var(--se-radius-pill);
+  clip-path: none;
+}
+/* Checkboxes only: an unanswered radio group also matches :indeterminate. */
+.se-choice input[type='checkbox']:indeterminate::before {
+  clip-path: polygon(8% 40%, 92% 40%, 92% 60%, 8% 60%);
+  transform: scale(1);
+}
+.se-choice input:checked,
+.se-choice input[type='checkbox']:indeterminate {
+  border-color: var(--se-color-accent);
+  background: var(--se-color-accent);
+}
+.se-choice input:checked::before {
+  transform: scale(1);
+}
+.se-choice input:disabled {
+  border-color: var(--se-color-border);
+  background: var(--se-color-surface-sunken);
+  cursor: not-allowed;
+}
+.se-choice:has(input:disabled) {
+  color: var(--se-color-text-disabled);
+  cursor: not-allowed;
+}
+
+/* Toggle: a checkbox with role="switch", drawn as a track and a thumb. */
+.se-choice--toggle input {
+  width: var(--se-space-10);
+  height: var(--se-space-6);
+  justify-content: start;
+  padding: 0 var(--se-space-half);
+  border-radius: var(--se-radius-pill);
+  background: var(--se-color-border-strong);
+}
+.se-choice--toggle input::before {
+  width: var(--se-space-4);
+  height: var(--se-space-4);
+  border-radius: var(--se-radius-pill);
+  background: var(--se-color-surface);
+  clip-path: none;
+  transform: none;
+  transition: translate var(--se-motion-duration-fast) var(--se-motion-ease-standard);
+}
+.se-choice--toggle input:checked {
+  border-color: var(--se-color-accent);
+  background: var(--se-color-accent);
+}
+.se-choice--toggle input:checked::before {
+  transform: none;
+  translate: var(--se-space-4) 0;
+  background: var(--se-color-on-accent);
+}
+
+/* Search box. */
+.se-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.se-search > .se-icon {
+  position: absolute;
+  left: var(--se-space-3);
+  color: var(--se-color-text-subtle);
+  pointer-events: none;
+}
+.se-search .se-input {
+  padding-left: var(--se-space-10);
+  padding-right: var(--se-space-10);
+}
+.se-search .se-input::-webkit-search-cancel-button {
+  appearance: none;
+}
+.se-search__clear {
+  position: absolute;
+  right: var(--se-space-1);
+  display: grid;
+  place-items: center;
+  width: var(--se-size-control-sm);
+  height: var(--se-size-control-sm);
+  padding: 0;
+  border: 0;
+  border-radius: var(--se-radius-md);
+  background: transparent;
+  color: var(--se-color-text-muted);
+  cursor: pointer;
+}
+.se-search__clear:hover {
+  background: var(--se-color-surface-hover);
+  color: var(--se-color-text);
+}

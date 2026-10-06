@@ -76,6 +76,19 @@
   --se-color-danger-text: #861c12;
   --se-color-danger-border: #931f16;
   --se-color-danger-bg: #f9dcd6;
+  /* A solid danger fill, for the destructive button only. */
+  --se-color-danger-solid: #931f16;
+  --se-color-danger-solid-hover: #7a1810;
+  --se-color-on-danger: #ffffff;
+
+  /* ---- Chart series ----
+     Five categorical colours, in the order they are assigned. Each is at least
+     3:1 against the surface, so a line or a bar reads without its legend. */
+  --se-color-chart-1: #a47d2a;
+  --se-color-chart-2: #2f6399;
+  --se-color-chart-3: #348452;
+  --se-color-chart-4: #8a4a9e;
+  --se-color-chart-5: #b0492f;
 
   /* ---- Type: one family, seven roles ----
      Named by role, not size. Each role is a `font` shorthand plus its
@@ -121,6 +134,27 @@
   /* ---- Border widths ---- */
   --se-border-width: 1px;
   --se-border-width-strong: 2px; /* focus rings, selected tab, banner rule */
+
+  /* ---- Focus: one ring, everywhere ---- */
+  --se-focus-outline: var(--se-border-width-strong) solid var(--se-color-focus);
+  --se-focus-offset: 2px;
+
+  /* ---- Control sizes ----
+     Height of buttons, inputs and other controls. On a touch screen both grow
+     to the 44px minimum target (see the pointer query below). */
+  --se-size-control: 2.5rem; /* 40px */
+  --se-size-control-sm: 2rem; /* 32px */
+  --se-size-touch: 2.75rem; /* 44px: the floor for anything tapped on a phone */
+  --se-size-icon: 1.25rem; /* 20px */
+  --se-size-sidebar: 15rem; /* 240px */
+  --se-size-sidebar-collapsed: 4rem; /* 64px */
+  --se-size-drawer: 28rem; /* 448px */
+
+  /* ---- Stacking ---- */
+  --se-z-sticky: 10; /* sticky table headers, the top bar */
+  --se-z-dropdown: 20; /* menus, popovers */
+  --se-z-overlay: 30; /* the mobile sidebar and its scrim */
+  --se-z-toast: 40;
 
   /* ---- Elevation: two levels, no more ---- */
   --se-elevation-1: 0 1px 2px rgb(23 20 17 / 0.06), 0 1px 3px rgb(23 20 17 / 0.1); /* menus, sticky bars */
@@ -168,9 +202,25 @@
   --se-color-danger-text: #f3a79b;
   --se-color-danger-border: #c04636;
   --se-color-danger-bg: #3d1712;
+  --se-color-danger-solid: #c04636;
+  --se-color-danger-solid-hover: #a93b2d;
+
+  --se-color-chart-1: #d9b45f;
+  --se-color-chart-2: #6ea6dc;
+  --se-color-chart-3: #5fb983;
+  --se-color-chart-4: #b98bd0;
+  --se-color-chart-5: #e08a6f;
 
   --se-elevation-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
   --se-elevation-2: 0 12px 32px -6px rgb(0 0 0 / 0.7), 0 2px 8px rgb(0 0 0 / 0.5);
+}
+
+/* Fingers need bigger targets than cursors: every control reaches 44px. */
+@media (pointer: coarse) {
+  :root {
+    --se-size-control: 2.75rem;
+    --se-size-control-sm: 2.75rem;
+  }
 }
 
 /* Motion is a preference: with reduced motion asked for, everything is instant. */
@@ -218,4 +268,17 @@
 .se-num {
   font-variant-numeric: var(--se-font-numeric);
   text-align: right;
+}
+
+/* Present for assistive technology, absent from the screen. */
+.se-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

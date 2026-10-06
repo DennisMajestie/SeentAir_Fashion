@@ -101,6 +101,52 @@
           }
         }
       }
+    },
+    "ui-reference": {
+      "projectType": "application",
+      "root": "",
+      "sourceRoot": "src/ui",
+      "prefix": "se",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "ui-reference/main.ts",
+            "polyfills": ["zone.js"],
+            "index": "ui-reference/index.html",
+            "tsConfig": "tsconfig.ui-reference.json",
+            "outputPath": "dist/ui-reference",
+            "styles": ["src/ui/styles/index.css", "ui-reference/reference.css"],
+            "preserveSymlinks": true
+          },
+          "configurations": {
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "buildTarget": "ui-reference:build:development",
+            "port": 4290
+          }
+        },
+        "test": {
+          "builder": "@angular/build:karma",
+          "options": {
+            "polyfills": ["zone.js", "zone.js/testing"],
+            "tsConfig": "tsconfig.ui-reference.spec.json",
+            "include": ["src/ui/**/*.spec.ts"],
+            "karmaConfig": "karma.conf.js",
+            "styles": ["src/ui/styles/index.css"],
+            "preserveSymlinks": true
+          }
+        }
+      }
     }
   }
 }

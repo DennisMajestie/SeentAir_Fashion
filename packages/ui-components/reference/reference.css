@@ -1,0 +1,107 @@
+/* Layout of the reference page itself. Tokens only, like everything else. */
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--se-color-bg);
+  color: var(--se-color-text);
+  font: var(--se-type-body);
+}
+.ref-top {
+  position: sticky;
+  top: 0;
+  z-index: var(--se-z-sticky);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--se-space-3);
+  padding: var(--se-space-2) var(--se-space-6);
+  border-bottom: var(--se-border-width) solid var(--se-color-border);
+  background: var(--se-color-surface);
+}
+.ref-top h1 {
+  margin: 0;
+  margin-right: auto;
+  font: var(--se-type-subheading);
+  text-transform: none;
+}
+.ref-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--se-space-1);
+}
+.ref-main {
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: var(--se-space-6);
+}
+.ref-section {
+  margin-bottom: var(--se-space-12);
+  scroll-margin-top: var(--se-space-16);
+}
+.ref-section > h2 {
+  margin: 0 0 var(--se-space-1);
+  padding: 0;
+  border: 0;
+  font: var(--se-type-heading);
+  letter-spacing: var(--se-type-heading-tracking);
+  text-transform: none;
+}
+.ref-lede {
+  max-width: 70ch;
+  margin: 0 0 var(--se-space-4);
+  color: var(--se-color-text-muted);
+}
+.ref-dont {
+  max-width: 70ch;
+  margin: var(--se-space-3) 0 0;
+  padding: var(--se-space-2) var(--se-space-3);
+  border-left: var(--se-border-width-strong) solid var(--se-color-border-strong);
+  color: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+}
+.ref-dont b {
+  color: var(--se-color-text);
+}
+.ref-h3 {
+  margin: var(--se-space-6) 0 var(--se-space-2);
+  color: var(--se-color-text-muted);
+  font: var(--se-type-overline);
+  letter-spacing: var(--se-type-overline-tracking);
+  text-transform: uppercase;
+}
+.ref-panel {
+  padding: var(--se-space-4);
+  border: var(--se-border-width) solid var(--se-color-border);
+  border-radius: var(--se-radius-md);
+  background: var(--se-color-surface);
+}
+.ref-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--se-space-3);
+}
+.ref-row + .ref-row {
+  margin-top: var(--se-space-3);
+}
+.ref-grid {
+  display: grid;
+  gap: var(--se-space-4);
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  align-items: start;
+}
+.ref-tag {
+  min-width: 6rem;
+  color: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+}
+@media (max-width: 40rem) {
+  .ref-main {
+    padding: var(--se-space-4);
+  }
+  .ref-top {
+    padding: var(--se-space-2) var(--se-space-4);
+  }
+}

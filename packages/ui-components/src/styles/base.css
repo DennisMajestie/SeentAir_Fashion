@@ -1,0 +1,37 @@
+/* Shared by every component: the icon box and the one focus ring. */
+.se-icon {
+  display: inline-flex;
+  flex: none;
+  width: var(--se-size-icon);
+  height: var(--se-size-icon);
+}
+.se-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The focus ring. Applied to every interactive element the system styles. */
+.se-btn:focus-visible,
+.se-input:focus-visible,
+.se-choice input:focus-visible,
+.se-search__clear:focus-visible,
+.se-focusable:focus-visible {
+  outline: var(--se-focus-outline);
+  outline-offset: var(--se-focus-offset);
+}
+
+@keyframes se-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes se-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}

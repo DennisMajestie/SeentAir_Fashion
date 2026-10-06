@@ -4,6 +4,8 @@
   "private": true,
   "description": "Shared design system for the Seentair internal apps (admin dashboard, wholesale portal, partner portal). Not for the storefront.",
   "scripts": {
-    "check": "node scripts/check-tokens.mjs"
+    "check": "node scripts/check-tokens.mjs",
+    "reference": "cd ../../apps/admin-dashboard && npx ng serve ui-reference --port 4290",
+    "test": "cd ../../apps/admin-dashboard && npx ng test ui-reference --watch=false"
   }
 }

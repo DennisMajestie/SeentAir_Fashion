@@ -52,6 +52,8 @@ for (const s of SURFACES) {
 }
 for (const fill of ['accent', 'accent-hover', 'accent-active']) pairs.push(['on-accent', fill, 4.5]);
 pairs.push(['accent-text', 'accent-subtle', 4.5], ['text', 'accent-subtle', 4.5]);
+pairs.push(['on-danger', 'danger-solid', 4.5], ['on-danger', 'danger-solid-hover', 4.5]);
+for (const n of [1, 2, 3, 4, 5]) pairs.push([`chart-${n}`, 'surface', 3], [`chart-${n}`, 'bg', 3]);
 for (const s of STATUSES) {
   pairs.push([`${s}-text`, `${s}-bg`, 4.5], [`${s}-text`, 'surface', 4.5], [`${s}-text`, 'bg', 4.5]);
   pairs.push([`${s}-border`, 'surface', 3], [`${s}-border`, `${s}-bg`, 3]);

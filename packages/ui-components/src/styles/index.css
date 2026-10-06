@@ -1,0 +1,7 @@
+/* The whole design system as one stylesheet: tokens first, then components.
+   An app lists this file ahead of its own in angular.json. */
+@import '../tokens/tokens.css';
+@import './base.css';
+@import './button.css';
+@import './field.css';
+@import './chart.css';

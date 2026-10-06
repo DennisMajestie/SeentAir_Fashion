@@ -1,0 +1,17 @@
+/* The design-system reference app. It lives in packages/ui-components and is
+   reached through two symlinks (src/ui and ui-reference), so its files resolve
+   Angular from this app's node_modules like any other source file here. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/ui-reference",
+    "types": [],
+    "preserveSymlinks": true,
+    "paths": {
+      "@seentair/ui": ["./src/ui/index.ts"]
+    }
+  },
+  "files": ["ui-reference/main.ts"],
+  "include": ["ui-reference/**/*.ts", "src/ui/**/*.ts"],
+  "exclude": ["src/ui/**/*.spec.ts"]
+}

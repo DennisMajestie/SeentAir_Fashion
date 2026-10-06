@@ -340,6 +340,10 @@
         <div class="grid" id="accent" style="margin-top: var(--se-space-3)"></div>
         <h3>Status: text, border and background for each</h3>
         <div class="grid wide" id="status"></div>
+        <h3>Destructive button fill</h3>
+        <div class="grid" id="danger-solid"></div>
+        <h3>Chart series, in the order they are assigned</h3>
+        <div class="grid" id="chart"></div>
         <h3>Contrast, measured on this page</h3>
         <p class="lede">
           Text needs 4.5:1. Control borders, the focus ring and status marks need 3:1. Ratios are
@@ -405,6 +409,15 @@
         <div class="row" id="radius"></div>
         <h3>Border widths</h3>
         <div class="row" id="borders"></div>
+      </section>
+
+      <section>
+        <h2>Sizes, focus and stacking</h2>
+        <p class="lede">
+          Control heights grow to the 44px touch minimum on a touch screen. One focus ring is used
+          on every interactive element.
+        </p>
+        <div class="card"><table id="sizes"></table></div>
       </section>
 
       <section>
@@ -487,6 +500,19 @@
 
       // Token names are written out in full on this page, never assembled from
       // parts: `npm run check` looks for each name here as plain text.
+      fill('danger-solid', [
+        ['--se-color-danger-solid', 'Danger fill'],
+        ['--se-color-danger-solid-hover', 'Hover'],
+        ['--se-color-on-danger', 'On danger'],
+      ]);
+      fill('chart', [
+        ['--se-color-chart-1', 'Series 1'],
+        ['--se-color-chart-2', 'Series 2'],
+        ['--se-color-chart-3', 'Series 3'],
+        ['--se-color-chart-4', 'Series 4'],
+        ['--se-color-chart-5', 'Series 5'],
+      ]);
+
       const STATUSES = [
         ['warning', 'Low stock', 'Three variants are below their reorder level.',
           ['--se-color-warning-text', '--se-color-warning-border', '--se-color-warning-bg']],
@@ -525,6 +551,8 @@
       }
       for (const f of ['accent', 'accent-hover', 'accent-active']) PAIRS.push(['on-accent', f, 4.5]);
       PAIRS.push(['accent-text', 'accent-subtle', 4.5], ['text', 'accent-subtle', 4.5]);
+      PAIRS.push(['on-danger', 'danger-solid', 4.5], ['on-danger', 'danger-solid-hover', 4.5]);
+      for (const n of [1, 2, 3, 4, 5]) PAIRS.push([`chart-${n}`, 'surface', 3], [`chart-${n}`, 'bg', 3]);
       for (const [s] of STATUSES) {
         PAIRS.push([`${s}-text`, `${s}-bg`, 4.5], [`${s}-text`, 'surface', 4.5], [`${s}-text`, 'bg', 4.5]);
         PAIRS.push([`${s}-border`, 'surface', 3], [`${s}-border`, `${s}-bg`, 3]);
@@ -664,6 +692,26 @@
         ].map(([e, use]) =>
           el('div', { class: 'lift', style: `box-shadow: var(${e})` }, el('b', {}, use), el('br'), code(e)),
         ),
+      );
+
+      // ---- sizes, focus, stacking ----
+      document.getElementById('sizes').append(
+        el('tr', {}, ...['Token', 'Value', 'Used for'].map((h) => el('th', {}, h))),
+        ...[
+          ['--se-size-control', 'Buttons and inputs'],
+          ['--se-size-control-sm', 'Small buttons, dense toolbars'],
+          ['--se-size-touch', 'Minimum touch target'],
+          ['--se-size-icon', 'Icons'],
+          ['--se-size-sidebar', 'Sidebar, open'],
+          ['--se-size-sidebar-collapsed', 'Sidebar, collapsed'],
+          ['--se-size-drawer', 'Side drawer'],
+          ['--se-focus-outline', 'Focus ring'],
+          ['--se-focus-offset', 'Gap between element and ring'],
+          ['--se-z-sticky', 'Sticky headers, top bar'],
+          ['--se-z-dropdown', 'Menus, popovers'],
+          ['--se-z-overlay', 'Mobile sidebar and scrim'],
+          ['--se-z-toast', 'Toasts'],
+        ].map(([t, use]) => el('tr', {}, el('td', {}, code(t)), el('td', { 'data-value': t }), el('td', {}, use))),
       );
 
       // ---- motion ----

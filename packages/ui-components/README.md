@@ -15,7 +15,9 @@ from the internal apps. Do not load these tokens or components there.
 | `src/tokens/reference.html` | One page showing every token rendered. Open it in a browser. It reads its values live from `tokens.css` and measures contrast on the page. |
 | `scripts/check-tokens.mjs` | The rules, enforced: contrast for every allowed text/surface pairing in both themes, lightness separation between status colours, and that every token appears on the reference page. |
 
-Components and patterns are added in later phases.
+| `src/styles/` | Component styles, one file per component, tokens only. `index.css` is the whole system as one stylesheet. |
+| `src/<component>/` | Angular components and directives (standalone, `se-` prefix), each with its spec. |
+| `reference/` | The component reference app. |
 
 ## Rules
 
@@ -31,28 +33,42 @@ Components and patterns are added in later phases.
 
 ## How an app consumes it
 
-Tokens are loaded by listing the stylesheet ahead of the app's own in
-`angular.json`, for both the `build` and `test` targets:
+The apps are not npm workspaces: each has its own `node_modules`. Source files
+in this package therefore cannot resolve Angular on their own, and mapping
+`@angular/*` with tsconfig `paths` does not work either (it bypasses package
+`exports`, so `@angular/core/testing` and friends fail, and the dev server ends
+up with two copies of Angular). The package is instead **symlinked into the
+app**, so its files resolve everything from that app like any other source file:
 
-```json
-"styles": ["../../packages/ui-components/src/tokens/tokens.css", "src/styles.scss"]
+```
+apps/<app>/src/ui  ->  ../../../packages/ui-components/src
 ```
 
-Angular components from this package (later phases) are imported through a path
-alias in the app's `tsconfig.json`. The apps are not npm workspaces and each
-has its own `node_modules`, so Angular itself must be mapped to the app's copy
-or the package's files cannot resolve it:
+with, in the app:
 
-```json
-"paths": {
-  "@seentair/ui": ["../../packages/ui-components/src/index.ts"],
-  "@angular/*": ["./node_modules/@angular/*"],
-  "rxjs": ["./node_modules/rxjs"],
-  "rxjs/*": ["./node_modules/rxjs/*"],
-  "tslib": ["./node_modules/tslib"]
-}
+- `tsconfig.json`: `"preserveSymlinks": true` and
+  `"paths": { "@seentair/ui": ["./src/ui/index.ts"] }`
+- `angular.json` (build and test options): `"preserveSymlinks": true`, and the
+  stylesheet listed ahead of the app's own:
+  `"styles": ["src/ui/styles/index.css", "src/styles.scss"]`
+
+Then `import { SeButtonDirective } from '@seentair/ui'`.
+
+Git stores the symlink, so a fresh clone has it. On Windows, symlinks need
+`git config core.symlinks true` and developer mode.
+
+Deployment note: each app builds from its own folder (`apps/<app>`) and the
+link points outside it. On Vercel the project must be allowed to read files
+outside its root directory, or the build will not find the package.
+
+## Reference app and tests
+
+The reference app (`reference/`) and the component specs (`src/**/*.spec.ts`)
+are built with the admin dashboard's toolchain, as a second project in its
+`angular.json`:
+
 ```
-
-Deployment note: each app builds from its own folder (`apps/<app>`), and this
-package sits outside it. On Vercel the project must be allowed to read files
-outside its root directory, or the build will not find the stylesheet.
+npm run reference   # http://localhost:4290, every component in its states
+npm test            # the component specs, headless
+npm run check       # the token rules
+```
