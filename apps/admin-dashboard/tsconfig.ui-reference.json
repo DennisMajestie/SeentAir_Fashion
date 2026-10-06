@@ -5,11 +5,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/ui-reference",
-    "types": [],
-    "preserveSymlinks": true,
-    "paths": {
-      "@seentair/ui": ["./src/ui/index.ts"]
-    }
+    "types": []
   },
   "files": ["ui-reference/main.ts"],
   "include": ["ui-reference/**/*.ts", "src/ui/**/*.ts"],

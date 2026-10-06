@@ -27,7 +27,8 @@
                 "input": "public"
               }
             ],
-            "styles": ["../../packages/ui-components/src/tokens/tokens.css", "src/styles.scss"]
+            "styles": ["../../packages/ui-components/src/tokens/tokens.css", "src/styles.scss"],
+            "preserveSymlinks": true
           },
           "configurations": {
             "production": {
@@ -97,14 +98,16 @@
                 "input": "public"
               }
             ],
-            "styles": ["../../packages/ui-components/src/tokens/tokens.css", "src/styles.scss"]
+            "styles": ["../../packages/ui-components/src/tokens/tokens.css", "src/styles.scss"],
+            "preserveSymlinks": true,
+            "exclude": ["src/ui/**"]
           }
         }
       }
     },
     "ui-reference": {
       "projectType": "application",
-      "root": "",
+      "root": "ui-reference",
       "sourceRoot": "src/ui",
       "prefix": "se",
       "architect": {

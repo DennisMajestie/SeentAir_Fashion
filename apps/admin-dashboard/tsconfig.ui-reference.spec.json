@@ -2,11 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/ui-reference-spec",
-    "types": ["jasmine"],
-    "preserveSymlinks": true,
-    "paths": {
-      "@seentair/ui": ["./src/ui/index.ts"]
-    }
+    "types": ["jasmine"]
   },
   "include": ["src/ui/**/*.spec.ts", "src/ui/**/*.d.ts"]
 }
