@@ -1,0 +1,221 @@
+/* ==========================================================================
+   Seentair internal design tokens
+   --------------------------------------------------------------------------
+   The single source of truth for the admin dashboard, the wholesale portal
+   and the partner portal. The retail storefront has its own editorial
+   treatment and must NOT load this file (design spec, section 15).
+
+   Two tiers:
+     1. Primitives -- the neutral ramp. Never used directly in a component.
+     2. Roles -- what a colour is FOR (surface, border, text, accent, status).
+        Components use roles only, which is what lets one stylesheet serve the
+        light and the dark theme.
+
+   Light is the default. Dark is opted into with <html data-theme="dark">,
+   the attribute each app's ThemeService already sets.
+
+   Every text/surface pairing below is checked by scripts/check-tokens.mjs
+   (npm run check): 4.5:1 for text, 3:1 for control borders, focus rings and
+   status marks. Change a colour and run it.
+   ========================================================================== */
+
+:root {
+  /* ---- Primitives: neutral ramp, 11 steps, warm to sit beside the gold ---- */
+  --se-neutral-0: #ffffff;
+  --se-neutral-50: #faf8f5;
+  --se-neutral-100: #f3f0eb;
+  --se-neutral-200: #e5e0d8;
+  --se-neutral-300: #cfc8bd;
+  --se-neutral-400: #a09889;
+  --se-neutral-500: #726a5e;
+  --se-neutral-600: #5c554b;
+  --se-neutral-700: #332e28;
+  --se-neutral-800: #26221d;
+  --se-neutral-900: #171411;
+
+  /* ---- Colour roles: surfaces, borders, text ---- */
+  --se-color-bg: var(--se-neutral-50); /* the page behind everything */
+  --se-color-surface: var(--se-neutral-0); /* cards, tables, panels, inputs */
+  --se-color-surface-sunken: var(--se-neutral-100); /* table headers, wells, code */
+  --se-color-surface-hover: var(--se-neutral-100); /* hovered row or list item */
+  --se-color-border: var(--se-neutral-200); /* dividers, card edges */
+  --se-color-border-strong: var(--se-neutral-500); /* input and control outlines */
+  --se-color-text: var(--se-neutral-900);
+  --se-color-text-muted: var(--se-neutral-600); /* secondary copy, table meta */
+  --se-color-text-subtle: var(--se-neutral-500); /* placeholders, hints */
+  --se-color-text-disabled: var(--se-neutral-400); /* exempt from contrast by WCAG */
+  --se-color-scrim: rgb(23 20 17 / 0.55); /* behind dialogs and drawers */
+
+  /* ---- Brand accent: the Seentair gold ---- */
+  --se-color-accent: #c9a24b; /* fills: primary button, selected, progress */
+  --se-color-accent-hover: #b78f38;
+  --se-color-accent-active: #a47d2a;
+  --se-color-accent-disabled: #eadfc4;
+  --se-color-on-accent: var(--se-neutral-900); /* text and icons on a gold fill */
+  --se-color-on-accent-disabled: var(--se-neutral-500);
+  --se-color-accent-text: #7a5c10; /* gold as TEXT: links, active tab, selected label */
+  --se-color-accent-subtle: #f7efd9; /* tinted background: selected row, active nav */
+  --se-color-focus: #7a5c10; /* the focus ring, on every interactive element */
+
+  /* ---- Status colours ----
+     Each has a text, a border and a background, so one status can be a badge,
+     a banner or an inline message. `border` is also the colour of the status
+     icon or dot. From warning to danger the borders step down in lightness as
+     well as changing hue (L* 58 / 49 / 41 / 32), so the four stay distinct in
+     greyscale and to colour-blind users. Warning is orange, not amber, to keep
+     it clear of the brand gold. */
+  --se-color-warning-text: #8a4a00;
+  --se-color-warning-border: #c97811;
+  --se-color-warning-bg: #fff1dc;
+  --se-color-success-text: #1c6337;
+  --se-color-success-border: #348452;
+  --se-color-success-bg: #e3f3e8;
+  --se-color-info-text: #1b4a78;
+  --se-color-info-border: #2f6399;
+  --se-color-info-bg: #dfeaf6;
+  --se-color-danger-text: #861c12;
+  --se-color-danger-border: #931f16;
+  --se-color-danger-bg: #f9dcd6;
+
+  /* ---- Type: one family, seven roles ----
+     Named by role, not size. Each role is a `font` shorthand plus its
+     letter-spacing; use the .se-type-* classes below or both properties. */
+  --se-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --se-font-numeric: tabular-nums; /* money, quantities, dates in columns */
+
+  --se-type-display: 700 1.75rem/2.125rem var(--se-font-sans); /* 28/34: metric values */
+  --se-type-display-tracking: -0.01em;
+  --se-type-heading: 600 1.25rem/1.75rem var(--se-font-sans); /* 20/28: page title */
+  --se-type-heading-tracking: -0.005em;
+  --se-type-subheading: 600 1rem/1.5rem var(--se-font-sans); /* 16/24: card and section titles */
+  --se-type-subheading-tracking: 0;
+  --se-type-body: 400 0.875rem/1.25rem var(--se-font-sans); /* 14/20: everything else */
+  --se-type-body-tracking: 0;
+  --se-type-body-strong: 600 0.875rem/1.25rem var(--se-font-sans); /* 14/20: emphasis, buttons */
+  --se-type-body-strong-tracking: 0;
+  --se-type-caption: 400 0.75rem/1rem var(--se-font-sans); /* 12/16: hints, timestamps */
+  --se-type-caption-tracking: 0;
+  --se-type-overline: 600 0.6875rem/1rem var(--se-font-sans); /* 11/16: labels, column heads */
+  --se-type-overline-tracking: 0.06em;
+
+  /* ---- Spacing: 4px base, fixed steps. No other values. ---- */
+  --se-space-0: 0;
+  --se-space-half: 0.125rem; /* 2px: icon-to-text nudges only */
+  --se-space-1: 0.25rem; /* 4px */
+  --se-space-2: 0.5rem; /* 8px */
+  --se-space-3: 0.75rem; /* 12px */
+  --se-space-4: 1rem; /* 16px */
+  --se-space-5: 1.25rem; /* 20px */
+  --se-space-6: 1.5rem; /* 24px */
+  --se-space-8: 2rem; /* 32px */
+  --se-space-10: 2.5rem; /* 40px */
+  --se-space-12: 3rem; /* 48px */
+  --se-space-16: 4rem; /* 64px */
+
+  /* ---- Radius ---- */
+  --se-radius-sm: 4px; /* badges, checkboxes, table cell highlights */
+  --se-radius-md: 8px; /* buttons, inputs, cards */
+  --se-radius-lg: 12px; /* dialogs, drawers, popovers */
+  --se-radius-pill: 999px; /* status pills, filter chips, avatars */
+
+  /* ---- Border widths ---- */
+  --se-border-width: 1px;
+  --se-border-width-strong: 2px; /* focus rings, selected tab, banner rule */
+
+  /* ---- Elevation: two levels, no more ---- */
+  --se-elevation-1: 0 1px 2px rgb(23 20 17 / 0.06), 0 1px 3px rgb(23 20 17 / 0.1); /* menus, sticky bars */
+  --se-elevation-2: 0 8px 24px -6px rgb(23 20 17 / 0.22), 0 2px 6px rgb(23 20 17 / 0.1); /* dialogs, drawers, toasts */
+
+  /* ---- Motion ---- */
+  --se-motion-duration-fast: 120ms; /* hover, press, focus */
+  --se-motion-duration-base: 200ms; /* menus, toasts, toggles */
+  --se-motion-duration-slow: 320ms; /* dialogs, drawers */
+  --se-motion-ease-standard: cubic-bezier(0.2, 0, 0, 1); /* moving within the screen */
+  --se-motion-ease-enter: cubic-bezier(0, 0, 0, 1); /* arriving */
+  --se-motion-ease-exit: cubic-bezier(0.3, 0, 1, 1); /* leaving */
+}
+
+:root[data-theme='dark'] {
+  --se-color-bg: var(--se-neutral-900);
+  --se-color-surface: var(--se-neutral-800);
+  --se-color-surface-sunken: var(--se-neutral-900);
+  --se-color-surface-hover: var(--se-neutral-700);
+  --se-color-border: var(--se-neutral-700);
+  --se-color-border-strong: var(--se-neutral-400);
+  --se-color-text: var(--se-neutral-50);
+  --se-color-text-muted: var(--se-neutral-300);
+  --se-color-text-subtle: var(--se-neutral-400);
+  --se-color-text-disabled: var(--se-neutral-500);
+  --se-color-scrim: rgb(0 0 0 / 0.65);
+
+  /* The gold fill is the same in both themes; gold as text needs to lighten. */
+  --se-color-accent-disabled: #4a4030;
+  --se-color-on-accent-disabled: var(--se-neutral-400);
+  --se-color-accent-text: #e6cf8d;
+  --se-color-accent-subtle: #3a3018;
+  --se-color-focus: #e6cf8d;
+
+  /* Same order of lightness as the light theme: warning lightest, danger darkest. */
+  --se-color-warning-text: #f5bf7a;
+  --se-color-warning-border: #e9a650;
+  --se-color-warning-bg: #3d2a0c;
+  --se-color-success-text: #8fd3a6;
+  --se-color-success-border: #55ab75;
+  --se-color-success-bg: #14301f;
+  --se-color-info-text: #9cc4ec;
+  --se-color-info-border: #4b86c2;
+  --se-color-info-bg: #142a40;
+  --se-color-danger-text: #f3a79b;
+  --se-color-danger-border: #c04636;
+  --se-color-danger-bg: #3d1712;
+
+  --se-elevation-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.5);
+  --se-elevation-2: 0 12px 32px -6px rgb(0 0 0 / 0.7), 0 2px 8px rgb(0 0 0 / 0.5);
+}
+
+/* Motion is a preference: with reduced motion asked for, everything is instant. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --se-motion-duration-fast: 0.01ms;
+    --se-motion-duration-base: 0.01ms;
+    --se-motion-duration-slow: 0.01ms;
+  }
+}
+
+/* ---- Type roles as classes ---- */
+.se-type-display {
+  font: var(--se-type-display);
+  letter-spacing: var(--se-type-display-tracking);
+}
+.se-type-heading {
+  font: var(--se-type-heading);
+  letter-spacing: var(--se-type-heading-tracking);
+}
+.se-type-subheading {
+  font: var(--se-type-subheading);
+  letter-spacing: var(--se-type-subheading-tracking);
+}
+.se-type-body {
+  font: var(--se-type-body);
+  letter-spacing: var(--se-type-body-tracking);
+}
+.se-type-body-strong {
+  font: var(--se-type-body-strong);
+  letter-spacing: var(--se-type-body-strong-tracking);
+}
+.se-type-caption {
+  font: var(--se-type-caption);
+  letter-spacing: var(--se-type-caption-tracking);
+}
+.se-type-overline {
+  font: var(--se-type-overline);
+  letter-spacing: var(--se-type-overline-tracking);
+  text-transform: uppercase;
+}
+
+/* Tabular figures, right-aligned: every numeric column and every money value
+   that sits above or below another one. */
+.se-num {
+  font-variant-numeric: var(--se-font-numeric);
+  text-align: right;
+}

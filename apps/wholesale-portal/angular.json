@@ -32,7 +32,7 @@
                 "output": "assets"
               }
             ],
-            "styles": ["src/styles.scss"]
+            "styles": ["../../packages/ui-components/src/tokens/tokens.css", "src/styles.scss"]
           },
           "configurations": {
             "production": {
@@ -101,7 +101,7 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.scss"]
+            "styles": ["../../packages/ui-components/src/tokens/tokens.css", "src/styles.scss"]
           }
         }
       }

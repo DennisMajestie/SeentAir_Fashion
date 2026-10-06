@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Seentair design tokens</title>
+    <!--
+      The one-page reference for tokens.css. Open this file in a browser.
+
+      Every value shown is read live from tokens.css with getComputedStyle, so
+      the page cannot show a value the stylesheet does not have. The token NAMES
+      are listed in the script at the bottom; `npm run check` fails if a token
+      exists in tokens.css and is missing here.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="tokens.css" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--se-color-bg);
+        color: var(--se-color-text);
+        font: var(--se-type-body);
+      }
+      body.grey {
+        filter: grayscale(1);
+      }
+      header.top {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--se-space-4);
+        padding: var(--se-space-3) var(--se-space-6);
+        background: var(--se-color-surface);
+        border-bottom: var(--se-border-width) solid var(--se-color-border);
+      }
+      header.top h1 {
+        margin: 0;
+        font: var(--se-type-subheading);
+      }
+      header.top .spacer {
+        flex: 1;
+      }
+      .switch {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--se-space-2);
+        min-height: 2.75rem;
+        padding: 0 var(--se-space-3);
+        border: var(--se-border-width) solid var(--se-color-border-strong);
+        border-radius: var(--se-radius-md);
+        background: var(--se-color-surface);
+        color: var(--se-color-text);
+        font: var(--se-type-body-strong);
+        cursor: pointer;
+      }
+      .switch:focus-visible,
+      button:focus-visible {
+        outline: var(--se-border-width-strong) solid var(--se-color-focus);
+        outline-offset: 2px;
+      }
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: var(--se-space-6);
+      }
+      section {
+        margin-bottom: var(--se-space-10);
+      }
+      h2 {
+        margin: 0 0 var(--se-space-1);
+        font: var(--se-type-heading);
+        letter-spacing: var(--se-type-heading-tracking);
+      }
+      h3 {
+        margin: var(--se-space-6) 0 var(--se-space-3);
+        font: var(--se-type-overline);
+        letter-spacing: var(--se-type-overline-tracking);
+        text-transform: uppercase;
+        color: var(--se-color-text-muted);
+      }
+      p.lede {
+        margin: 0 0 var(--se-space-4);
+        max-width: 70ch;
+        color: var(--se-color-text-muted);
+      }
+      code {
+        font: 400 0.75rem/1rem ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: var(--se-color-text-muted);
+        overflow-wrap: anywhere;
+      }
+      .grid {
+        display: grid;
+        gap: var(--se-space-3);
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      }
+      .grid.wide {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      }
+      .card {
+        background: var(--se-color-surface);
+        border: var(--se-border-width) solid var(--se-color-border);
+        border-radius: var(--se-radius-md);
+        overflow: hidden;
+      }
+      .card .meta {
+        display: grid;
+        gap: var(--se-space-half);
+        padding: var(--se-space-2) var(--se-space-3);
+      }
+      .card .meta b {
+        font: var(--se-type-body-strong);
+      }
+      .chip {
+        height: 56px;
+        border-bottom: var(--se-border-width) solid var(--se-color-border);
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--se-space-3);
+      }
+      .pad {
+        padding: var(--se-space-4);
+      }
+      /* accent samples */
+      .btn {
+        min-height: 2.5rem;
+        padding: 0 var(--se-space-4);
+        border: 0;
+        border-radius: var(--se-radius-md);
+        background: var(--se-color-accent);
+        color: var(--se-color-on-accent);
+        font: var(--se-type-body-strong);
+      }
+      .btn.hover {
+        background: var(--se-color-accent-hover);
+      }
+      .btn.active {
+        background: var(--se-color-accent-active);
+      }
+      .btn.disabled {
+        background: var(--se-color-accent-disabled);
+        color: var(--se-color-on-accent-disabled);
+      }
+      .link {
+        color: var(--se-color-accent-text);
+        font: var(--se-type-body-strong);
+      }
+      .selected {
+        padding: var(--se-space-2) var(--se-space-3);
+        border-radius: var(--se-radius-md);
+        background: var(--se-color-accent-subtle);
+        color: var(--se-color-accent-text);
+        font: var(--se-type-body-strong);
+      }
+      .ring {
+        padding: var(--se-space-2) var(--se-space-3);
+        border-radius: var(--se-radius-md);
+        border: var(--se-border-width) solid var(--se-color-border-strong);
+        outline: var(--se-border-width-strong) solid var(--se-color-focus);
+        outline-offset: 2px;
+      }
+      /* status samples */
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--se-space-1);
+        padding: var(--se-space-half) var(--se-space-2);
+        border: var(--se-border-width) solid var(--b);
+        border-radius: var(--se-radius-pill);
+        background: var(--g);
+        color: var(--t);
+        font: var(--se-type-caption);
+        font-weight: 600;
+      }
+      .badge::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--b);
+      }
+      .banner {
+        margin-top: var(--se-space-3);
+        padding: var(--se-space-3);
+        border-left: 4px solid var(--b);
+        border-radius: var(--se-radius-sm);
+        background: var(--g);
+        color: var(--t);
+      }
+      .inline-msg {
+        margin: var(--se-space-3) 0 0;
+        color: var(--t);
+        font: var(--se-type-caption);
+      }
+      /* tables */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: var(--se-space-2) var(--se-space-3);
+        border-bottom: var(--se-border-width) solid var(--se-color-border);
+        text-align: left;
+        vertical-align: middle;
+      }
+      th {
+        background: var(--se-color-surface-sunken);
+        font: var(--se-type-overline);
+        letter-spacing: var(--se-type-overline-tracking);
+        text-transform: uppercase;
+        color: var(--se-color-text-muted);
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      .pass {
+        color: var(--se-color-success-text);
+        font-weight: 600;
+      }
+      .fail {
+        color: var(--se-color-danger-text);
+        font-weight: 600;
+      }
+      .sample {
+        display: inline-block;
+        padding: var(--se-space-half) var(--se-space-2);
+        border-radius: var(--se-radius-sm);
+        border: var(--se-border-width) solid var(--se-color-border);
+      }
+      .type-row {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: var(--se-space-4);
+        align-items: baseline;
+        padding: var(--se-space-3) var(--se-space-4);
+        border-bottom: var(--se-border-width) solid var(--se-color-border);
+      }
+      .type-row:last-child {
+        border-bottom: 0;
+      }
+      .bar {
+        height: 16px;
+        border-radius: var(--se-radius-sm);
+        background: var(--se-color-accent);
+      }
+      .box {
+        width: 72px;
+        height: 72px;
+        background: var(--se-color-accent-subtle);
+        border: var(--se-border-width) solid var(--se-color-accent-text);
+      }
+      .lift {
+        width: 180px;
+        padding: var(--se-space-4);
+        border-radius: var(--se-radius-lg);
+        background: var(--se-color-surface);
+      }
+      .track {
+        position: relative;
+        height: 20px;
+        border-radius: var(--se-radius-pill);
+        background: var(--se-color-surface-sunken);
+      }
+      .dot {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--se-color-accent);
+        transition-property: left;
+      }
+      .track.go .dot {
+        left: calc(100% - 18px);
+      }
+      @media (max-width: 640px) {
+        main {
+          padding: var(--se-space-4);
+        }
+        .type-row {
+          grid-template-columns: 1fr;
+          gap: var(--se-space-1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <h1>Seentair design tokens</h1>
+      <span class="spacer"></span>
+      <button class="switch" id="theme" type="button" aria-pressed="false">Dark theme</button>
+      <button class="switch" id="grey" type="button" aria-pressed="false">Greyscale</button>
+    </header>
+
+    <main>
+      <p class="lede">
+        One token file for the admin dashboard, the wholesale portal and the partner portal. The
+        retail storefront does not use it. Every value on this page is read live from
+        <code>tokens.css</code>. Use the buttons above to see the dark theme, and greyscale to check
+        that the status colours still read apart without hue.
+      </p>
+
+      <section>
+        <h2>Colour</h2>
+        <p class="lede">
+          Components use the role tokens. The neutral ramp underneath is listed so the system can be
+          seen whole; it is never referenced directly.
+        </p>
+        <h3>Neutral ramp: 11 steps</h3>
+        <div class="grid" id="ramp"></div>
+        <h3>Surfaces, borders and text</h3>
+        <div class="grid" id="roles"></div>
+        <h3>Brand accent and its states</h3>
+        <div class="card pad">
+          <div class="row">
+            <button class="btn" type="button">Default</button>
+            <button class="btn hover" type="button">Hover</button>
+            <button class="btn active" type="button">Active</button>
+            <button class="btn disabled" type="button" disabled>Disabled</button>
+            <span class="link">Gold as text</span>
+            <span class="selected">Selected row</span>
+            <span class="ring">Focus ring</span>
+          </div>
+        </div>
+        <div class="grid" id="accent" style="margin-top: var(--se-space-3)"></div>
+        <h3>Status: text, border and background for each</h3>
+        <div class="grid wide" id="status"></div>
+        <h3>Contrast, measured on this page</h3>
+        <p class="lede">
+          Text needs 4.5:1. Control borders, the focus ring and status marks need 3:1. Ratios are
+          recomputed when the theme changes.
+        </p>
+        <div class="card"><table id="contrast"></table></div>
+      </section>
+
+      <section>
+        <h2>Type</h2>
+        <p class="lede">
+          One family, seven roles, named for what they do. Money and quantities in columns use
+          tabular figures so the digits line up.
+        </p>
+        <div class="card" id="type"></div>
+        <h3>Tabular figures</h3>
+        <div class="grid wide">
+          <div class="card">
+            <table>
+              <tr>
+                <th>With .se-num</th>
+              </tr>
+              <tr>
+                <td class="se-num">1,111,111.11</td>
+              </tr>
+              <tr>
+                <td class="se-num">88,408.00</td>
+              </tr>
+              <tr>
+                <td class="se-num">7,171.71</td>
+              </tr>
+            </table>
+            <div class="meta"><code>--se-font-numeric</code></div>
+          </div>
+          <div class="card">
+            <table>
+              <tr>
+                <th>Without</th>
+              </tr>
+              <tr>
+                <td style="text-align: right">1,111,111.11</td>
+              </tr>
+              <tr>
+                <td style="text-align: right">88,408.00</td>
+              </tr>
+              <tr>
+                <td style="text-align: right">7,171.71</td>
+              </tr>
+            </table>
+            <div class="meta"><code>proportional figures: the columns drift</code></div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Spacing</h2>
+        <p class="lede">A 4px base and a fixed set of steps. Nothing in between.</p>
+        <div class="card"><table id="space"></table></div>
+      </section>
+
+      <section>
+        <h2>Radius and borders</h2>
+        <div class="row" id="radius"></div>
+        <h3>Border widths</h3>
+        <div class="row" id="borders"></div>
+      </section>
+
+      <section>
+        <h2>Elevation</h2>
+        <p class="lede">Two levels. Most surfaces are flat and separated by a border.</p>
+        <div class="row" id="elevation" style="gap: var(--se-space-8); padding: var(--se-space-4)"></div>
+      </section>
+
+      <section>
+        <h2>Motion</h2>
+        <p class="lede">
+          Three durations and three easings. With "reduce motion" switched on in the operating
+          system, every duration becomes instant.
+        </p>
+        <button class="switch" id="play" type="button">Play</button>
+        <div class="card" style="margin-top: var(--se-space-3)"><table id="motion"></table></div>
+      </section>
+    </main>
+
+    <script>
+      const root = document.documentElement;
+      const val = (name) => getComputedStyle(root).getPropertyValue(name).trim();
+      const el = (tag, attrs = {}, ...kids) => {
+        const n = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs)) k === 'style' ? (n.style.cssText = v) : n.setAttribute(k, v);
+        n.append(...kids);
+        return n;
+      };
+      const code = (t) => el('code', {}, t);
+
+      // ---- colour swatches ----
+      const swatch = (name, note) => {
+        const value = el('code', { 'data-value': name });
+        return el(
+          'div',
+          { class: 'card' },
+          el('div', { class: 'chip', style: `background: var(${name})` }),
+          el('div', { class: 'meta' }, el('b', {}, note), code(name), value),
+        );
+      };
+      const fill = (id, rows) => document.getElementById(id).append(...rows.map(([n, note]) => swatch(n, note)));
+
+      fill('ramp', [
+        ['--se-neutral-0', '0'],
+        ['--se-neutral-50', '50'],
+        ['--se-neutral-100', '100'],
+        ['--se-neutral-200', '200'],
+        ['--se-neutral-300', '300'],
+        ['--se-neutral-400', '400'],
+        ['--se-neutral-500', '500'],
+        ['--se-neutral-600', '600'],
+        ['--se-neutral-700', '700'],
+        ['--se-neutral-800', '800'],
+        ['--se-neutral-900', '900'],
+      ]);
+      fill('roles', [
+        ['--se-color-bg', 'Page'],
+        ['--se-color-surface', 'Surface'],
+        ['--se-color-surface-sunken', 'Sunken'],
+        ['--se-color-surface-hover', 'Hovered row'],
+        ['--se-color-border', 'Border'],
+        ['--se-color-border-strong', 'Control border'],
+        ['--se-color-text', 'Text'],
+        ['--se-color-text-muted', 'Muted text'],
+        ['--se-color-text-subtle', 'Subtle text'],
+        ['--se-color-text-disabled', 'Disabled text'],
+        ['--se-color-scrim', 'Scrim'],
+      ]);
+      fill('accent', [
+        ['--se-color-accent', 'Accent'],
+        ['--se-color-accent-hover', 'Hover'],
+        ['--se-color-accent-active', 'Active'],
+        ['--se-color-accent-disabled', 'Disabled'],
+        ['--se-color-on-accent', 'On accent'],
+        ['--se-color-on-accent-disabled', 'On disabled'],
+        ['--se-color-accent-text', 'Accent as text'],
+        ['--se-color-accent-subtle', 'Accent tint'],
+        ['--se-color-focus', 'Focus ring'],
+      ]);
+
+      // Token names are written out in full on this page, never assembled from
+      // parts: `npm run check` looks for each name here as plain text.
+      const STATUSES = [
+        ['warning', 'Low stock', 'Three variants are below their reorder level.',
+          ['--se-color-warning-text', '--se-color-warning-border', '--se-color-warning-bg']],
+        ['success', 'Paid', 'Payment received and the order is confirmed.',
+          ['--se-color-success-text', '--se-color-success-border', '--se-color-success-bg']],
+        ['info', 'In production', 'The batch is at the sewing stage.',
+          ['--se-color-info-text', '--se-color-info-border', '--se-color-info-bg']],
+        ['danger', 'Rejected', 'The request was rejected and nothing was changed.',
+          ['--se-color-danger-text', '--se-color-danger-border', '--se-color-danger-bg']],
+      ];
+      document.getElementById('status').append(
+        ...STATUSES.map(([s, label, line, names]) => {
+          const vars = `--t: var(${names[0]}); --b: var(${names[1]}); --g: var(${names[2]})`;
+          return el(
+            'div',
+            { class: 'card pad', style: vars },
+            el('b', {}, s[0].toUpperCase() + s.slice(1)),
+            el('div', { style: 'margin-top: var(--se-space-2)' }, el('span', { class: 'badge' }, label)),
+            el('div', { class: 'banner' }, line),
+            el('p', { class: 'inline-msg' }, 'Inline message on the plain surface.'),
+            el(
+              'div',
+              { class: 'meta', style: 'padding: var(--se-space-3) 0 0' },
+              ...names.flatMap((n) => [code(n), el('code', { 'data-value': n })]),
+            ),
+          );
+        }),
+      );
+
+      // ---- contrast ----
+      const SURFACES = ['bg', 'surface', 'surface-sunken', 'surface-hover'];
+      const PAIRS = [];
+      for (const s of SURFACES) {
+        for (const t of ['text', 'text-muted', 'text-subtle', 'accent-text']) PAIRS.push([t, s, 4.5]);
+        PAIRS.push(['border-strong', s, 3], ['focus', s, 3]);
+      }
+      for (const f of ['accent', 'accent-hover', 'accent-active']) PAIRS.push(['on-accent', f, 4.5]);
+      PAIRS.push(['accent-text', 'accent-subtle', 4.5], ['text', 'accent-subtle', 4.5]);
+      for (const [s] of STATUSES) {
+        PAIRS.push([`${s}-text`, `${s}-bg`, 4.5], [`${s}-text`, 'surface', 4.5], [`${s}-text`, 'bg', 4.5]);
+        PAIRS.push([`${s}-border`, 'surface', 3], [`${s}-border`, `${s}-bg`, 3]);
+      }
+      const probe = el('span', { style: 'display:none' });
+      document.body.append(probe);
+      const rgb = (token) => {
+        probe.style.color = `var(--se-color-${token})`;
+        return getComputedStyle(probe).color.match(/[\d.]+/g).slice(0, 3).map(Number);
+      };
+      const lum = ([r, g, b]) => {
+        const lin = (c) => ((c /= 255) <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+        return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+      };
+      const ratio = (a, b) => {
+        const [hi, lo] = [lum(rgb(a)), lum(rgb(b))].sort((x, y) => y - x);
+        return (hi + 0.05) / (lo + 0.05);
+      };
+      const renderContrast = () => {
+        const table = document.getElementById('contrast');
+        table.replaceChildren(
+          el('tr', {}, ...['Foreground', 'On', 'Sample', 'Ratio', 'Needs', ''].map((h) => el('th', {}, h))),
+          ...PAIRS.map(([fg, bg, min]) => {
+            const r = ratio(fg, bg);
+            const text = min === 3 ? '' : 'Aa 1,234';
+            const sample = el(
+              'span',
+              {
+                class: 'sample',
+                style:
+                  min === 3
+                    ? `background: var(--se-color-${bg}); border: 2px solid var(--se-color-${fg}); width: 64px; height: 22px`
+                    : `background: var(--se-color-${bg}); color: var(--se-color-${fg})`,
+              },
+              text,
+            );
+            return el(
+              'tr',
+              {},
+              el('td', {}, code(fg)),
+              el('td', {}, code(bg)),
+              el('td', {}, sample),
+              el('td', { class: 'se-num' }, r.toFixed(2) + ':1'),
+              el('td', { class: 'se-num' }, min + ':1'),
+              el('td', { class: r >= min ? 'pass' : 'fail' }, r >= min ? 'Pass' : 'Fail'),
+            );
+          }),
+        );
+      };
+
+      // ---- type ----
+      const TYPE = [
+        ['display', '1,284,500', 'Metric values on cards', '--se-type-display', '--se-type-display-tracking'],
+        ['heading', 'Orders awaiting approval', 'Page title', '--se-type-heading', '--se-type-heading-tracking'],
+        ['subheading', 'Production status', 'Card and section titles', '--se-type-subheading', '--se-type-subheading-tracking'],
+        ['body', 'Batch 0412 moved from cutting to sewing this morning.', 'Default text', '--se-type-body', '--se-type-body-tracking'],
+        ['body-strong', 'Record refund', 'Emphasis and button labels', '--se-type-body-strong', '--se-type-body-strong-tracking'],
+        ['caption', 'Updated 6 Oct 2026, 14:20', 'Hints, timestamps, table meta', '--se-type-caption', '--se-type-caption-tracking'],
+        ['overline', 'Payment status', 'Field labels and column heads', '--se-type-overline', '--se-type-overline-tracking'],
+      ];
+      document.getElementById('type').append(
+        ...TYPE.map(([role, sample, use, font, tracking]) =>
+          el(
+            'div',
+            { class: 'type-row' },
+            el(
+              'div',
+              { class: 'meta', style: 'padding: 0' },
+              el('b', {}, role),
+              el('span', { style: 'color: var(--se-color-text-muted)' }, use),
+              code(font),
+              el('code', { 'data-value': font }),
+              code(tracking),
+              el('code', { 'data-value': tracking }),
+            ),
+            el('div', { class: `se-type-${role}` }, sample),
+          ),
+        ),
+      );
+      document.getElementById('type').append(
+        el(
+          'div',
+          { class: 'type-row' },
+          el('div', { class: 'meta', style: 'padding: 0' }, el('b', {}, 'family'), code('--se-font-sans')),
+          el('code', { 'data-value': '--se-font-sans' }),
+        ),
+      );
+
+      // ---- spacing ----
+      const SPACE = [
+        '--se-space-0', '--se-space-half', '--se-space-1', '--se-space-2', '--se-space-3', '--se-space-4',
+        '--se-space-5', '--se-space-6', '--se-space-8', '--se-space-10', '--se-space-12', '--se-space-16',
+      ];
+      document.getElementById('space').append(
+        el('tr', {}, ...['Token', 'Value', ''].map((h) => el('th', {}, h))),
+        ...SPACE.map((s) =>
+          el(
+            'tr',
+            {},
+            el('td', {}, code(s)),
+            el('td', { class: 'se-num', 'data-px': s }),
+            el('td', { style: 'width: 60%' }, el('div', { class: 'bar', style: `width: var(${s})` })),
+          ),
+        ),
+      );
+
+      // ---- radius, borders, elevation ----
+      document.getElementById('radius').append(
+        ...['--se-radius-sm', '--se-radius-md', '--se-radius-lg', '--se-radius-pill'].map((r) =>
+          el(
+            'div',
+            { class: 'meta' },
+            el('div', { class: 'box', style: `border-radius: var(${r})` }),
+            code(r),
+            el('code', { 'data-value': r }),
+          ),
+        ),
+      );
+      document.getElementById('borders').append(
+        ...['--se-border-width', '--se-border-width-strong'].map((b) =>
+          el(
+            'div',
+            { class: 'meta' },
+            el('div', {
+              class: 'box',
+              style: `border: var(${b}) solid var(--se-color-border-strong); background: var(--se-color-surface)`,
+            }),
+            code(b),
+            el('code', { 'data-value': b }),
+          ),
+        ),
+      );
+      document.getElementById('elevation').append(
+        ...[
+          ['--se-elevation-1', 'Menus, sticky bars'],
+          ['--se-elevation-2', 'Dialogs, drawers, toasts'],
+        ].map(([e, use]) =>
+          el('div', { class: 'lift', style: `box-shadow: var(${e})` }, el('b', {}, use), el('br'), code(e)),
+        ),
+      );
+
+      // ---- motion ----
+      const DURATIONS = ['--se-motion-duration-fast', '--se-motion-duration-base', '--se-motion-duration-slow'];
+      const EASINGS = ['--se-motion-ease-standard', '--se-motion-ease-enter', '--se-motion-ease-exit'];
+      document.getElementById('motion').append(
+        el('tr', {}, ...['Token', 'Value', ''].map((h) => el('th', {}, h))),
+        ...DURATIONS.map((d) =>
+          el(
+            'tr',
+            {},
+            el('td', {}, code(d)),
+            el('td', { 'data-value': d }),
+            el(
+              'td',
+              { style: 'width: 55%' },
+              el(
+                'div',
+                { class: 'track' },
+                el('div', {
+                  class: 'dot',
+                  style: `transition-duration: var(${d}); transition-timing-function: var(--se-motion-ease-standard)`,
+                }),
+              ),
+            ),
+          ),
+        ),
+        ...EASINGS.map((e) =>
+          el(
+            'tr',
+            {},
+            el('td', {}, code(e)),
+            el('td', { 'data-value': e }),
+            el(
+              'td',
+              {},
+              el(
+                'div',
+                { class: 'track' },
+                el('div', {
+                  class: 'dot',
+                  style: `transition-duration: 900ms; transition-timing-function: var(${e})`,
+                }),
+              ),
+            ),
+          ),
+        ),
+      );
+      document.getElementById('play').addEventListener('click', () => {
+        document.querySelectorAll('.track').forEach((t) => t.classList.toggle('go'));
+      });
+
+      // ---- live values ----
+      const refresh = () => {
+        document.querySelectorAll('[data-value]').forEach((n) => (n.textContent = val(n.dataset.value)));
+        document.querySelectorAll('[data-px]').forEach((n) => {
+          const v = val(n.dataset.px);
+          n.textContent = v.endsWith('rem') ? `${parseFloat(v) * 16}px` : v === '0' ? '0' : v;
+        });
+        renderContrast();
+      };
+      const toggle = (id, apply) => {
+        const b = document.getElementById(id);
+        b.addEventListener('click', () => {
+          const on = b.getAttribute('aria-pressed') !== 'true';
+          b.setAttribute('aria-pressed', String(on));
+          apply(on);
+          refresh();
+        });
+      };
+      toggle('theme', (on) => root.setAttribute('data-theme', on ? 'dark' : 'light'));
+      toggle('grey', (on) => document.body.classList.toggle('grey', on));
+      refresh();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "@seentair/ui-components",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared design system for the Seentair internal apps (admin dashboard, wholesale portal, partner portal). Not for the storefront.",
+  "scripts": {
+    "check": "node scripts/check-tokens.mjs"
+  }
+}
