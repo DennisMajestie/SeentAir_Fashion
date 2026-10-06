@@ -84,6 +84,15 @@ export interface ShippingAddress {
   landmark?: string;
 }
 
+/** The signed-in person, and what their role may open (module -> access level). */
+export interface Me {
+  name: string;
+  email: string;
+  role: string;
+  totpEnabled: boolean;
+  access?: Record<string, string>;
+}
+
 export interface AdminOrder {
   id: string;
   channel: string;
@@ -94,6 +103,10 @@ export interface AdminOrder {
   source?: string | null;
   deliveredAt?: string | null;
   customer: { id: string; name: string } | null;
+  /** Set on a guest checkout, where there is no customer account. */
+  guestName?: string | null;
+  guestEmail?: string | null;
+  qrStencilRef?: string | null;
   items?: Array<{
     id: string;
     quantity: number;
@@ -156,10 +169,8 @@ export class ApiService {
       .pipe(tap((res) => this.store.set(res.accessToken)));
   }
 
-  me(): Observable<{ name: string; email: string; role: string; totpEnabled: boolean }> {
-    return this.http.get<{ name: string; email: string; role: string; totpEnabled: boolean }>(
-      `${API_BASE}/auth/me`,
-    );
+  me(): Observable<Me> {
+    return this.http.get<Me>(`${API_BASE}/auth/me`);
   }
 
   setup2fa(): Observable<{ secret: string; otpauthUrl: string }> {

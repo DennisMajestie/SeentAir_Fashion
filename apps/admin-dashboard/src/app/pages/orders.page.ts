@@ -1,523 +1,278 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import {
+  Component,
+  OnDestroy,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import {
+  SE_STATUS,
+  SeBannerComponent,
+  SeButtonDirective,
+  SeCellDirective,
+  SeColumn,
+  SeConfirmService,
+  SeCurrencyService,
+  SeDatePipe,
+  SeFilter,
+  SeFilterBarComponent,
+  SeFilterValue,
+  SeMetricCardComponent,
+  SePageComponent,
+  SeRowAction,
+  SeStatusComponent,
+  SeTableComponent,
+  SeToastService,
+} from '@seentair/ui';
 import { AdminOrder, ApiService } from '../api.service';
-import { BrandAlertService } from '../brand-alert.service';
 import { downloadCsv } from '../csv.util';
+import {
+  CHANNEL_OPTIONS,
+  channelLabel,
+  customerName,
+  nextStep,
+  orderRef,
+  unitCount,
+} from './order-format';
 
-const NEXT_STATUS: Record<string, string> = {
-  order_received: 'processing',
-  processing: 'shipped',
-  shipped: 'delivered',
-};
-
-/** How often the order list re-reads itself so staff never act on a stale queue. */
+/** How often the list re-reads itself so staff never act on a stale queue. */
 const ORDERS_POLL_MS = 20_000;
+/** The API returns the newest orders first; this many are loaded. */
+const LOAD_LIMIT = 100;
 
-/** A9/A10, Omnichannel orders & fulfilment desk, with the packing-slip /
-    dispatch-dossier inspector for the selected order. One shared order
-    resource across retail, wholesale, custom and in-store (principle #1). */
+/**
+ * Orders, across every channel (retail web, wholesale, in-store, custom): one
+ * shared order resource, per architectural principle #1.
+ *
+ * The list finds an order; the order's own page (orders/:id) is where it is
+ * worked on. The one action offered here is the next fulfilment step, because
+ * moving a run of orders forward is the routine job on this screen.
+ */
 @Component({
   selector: 'app-orders',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    SeBannerComponent,
+    SeButtonDirective,
+    SeCellDirective,
+    SeDatePipe,
+    SeFilterBarComponent,
+    SeMetricCardComponent,
+    SePageComponent,
+    SeStatusComponent,
+    SeTableComponent,
+  ],
   template: `
-    <div class="ops-head">
-      <div class="ops-id">
-        <p class="eyebrow">Operations · Omnichannel orders</p>
-        <h1>Orders & shipping</h1>
-        <p class="ops-sub">
-          Centralised payment verification and dispatch routing across wholesale B2B, retail web and
-          in-store.
-        </p>
-      </div>
-      <div class="ops-actions">
-        <span class="live-chip">Live</span>
-        <button class="cta small ghost" type="button" (click)="print()">
-          Print today's deliveries
-        </button>
-        <button class="cta small ghost" type="button" (click)="exportCsv()">Export CSV</button>
-      </div>
-    </div>
+    <se-page title="Orders">
+      <button seButton sePageActions type="button" (click)="print()">Print list</button>
+      <button seButton sePageActions type="button" (click)="exportCsv()">Export CSV</button>
 
-    <div class="kpi-bar">
-      <div class="kpi">
-        <span class="kpi-label">Total orders</span>
-        <span class="kpi-value">{{ total() }}</span>
-        <span class="kpi-sub"
-          >₦{{ loadedValue() | number: '1.0-0' }} across latest {{ orders().length }}</span
+      <div class="se-metric-grid">
+        <se-metric-card label="Orders" [value]="total()" [hint]="loadedHint()" />
+        <se-metric-card label="Wholesale" [value]="countBy('wholesale')" [hint]="ofLoaded()" />
+        <se-metric-card
+          label="Retail web"
+          [value]="countBy('retail')"
+          [hint]="countBy('in_store') + ' in-store, ' + countBy('custom') + ' custom'"
+        />
+        <se-metric-card
+          label="Awaiting payment"
+          [value]="unpaidCount()"
+          hint="An unpaid order cannot move forward"
+        />
+      </div>
+
+      @if (attention().length > 0 && filterValue()['status'] !== 'stock_exception') {
+        <se-banner
+          tone="warning"
+          [title]="
+            attention().length === 1
+              ? '1 paid order is short on stock'
+              : attention().length + ' paid orders are short on stock'
+          "
+          actionLabel="Show them"
+          (action)="showStockExceptions()"
         >
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Wholesale B2B</span>
-        <span class="kpi-value">{{ countBy('wholesale') }}</span>
-        <span class="kpi-sub">of latest {{ orders().length }} loaded</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Retail e-com</span>
-        <span class="kpi-value">{{ countBy('retail') }}</span>
-        <span class="kpi-sub"
-          >{{ countBy('in_store') }} in-store · {{ countBy('custom') }} custom</span
-        >
-      </div>
-      <div class="kpi" [class.kpi-action]="unpaidCount() > 0">
-        <span class="kpi-label">Awaiting payment</span>
-        <span class="kpi-value">{{ unpaidCount() }}</span>
-        <span class="kpi-sub">full payment upfront: unpaid orders can't advance</span>
-      </div>
-    </div>
+          The money is in, but there was not enough stock when they were paid. Each one needs stock
+          allocated from a finished batch, or a refund.
+        </se-banner>
+      }
 
-    <div class="ops-toolbar">
-      <span class="search"
-        ><input
-          placeholder="Search by order ref or buyer…"
-          [(ngModel)]="query"
-          name="q"
-          aria-label="Search orders"
-      /></span>
-      <div class="seg" role="group" aria-label="Channel">
-        <button type="button" [class.on]="channel === ''" (click)="setChannel('')">
-          All channels
-        </button>
-        <button
-          type="button"
-          [class.on]="channel === 'wholesale'"
-          (click)="setChannel('wholesale')"
-        >
-          Wholesale
-        </button>
-        <button type="button" [class.on]="channel === 'retail'" (click)="setChannel('retail')">
-          Retail web
-        </button>
-        <button type="button" [class.on]="channel === 'in_store'" (click)="setChannel('in_store')">
-          In-store
-        </button>
-      </div>
-      <div class="seg" role="group" aria-label="Payment">
-        <button type="button" [class.on]="payFilter() === ''" (click)="payFilter.set('')">
-          Any payment
-        </button>
-        <button type="button" [class.on]="payFilter() === 'paid'" (click)="payFilter.set('paid')">
-          Paid
-        </button>
-        <button
-          type="button"
-          [class.on]="payFilter() === 'unpaid'"
-          (click)="payFilter.set('unpaid')"
-        >
-          Unpaid
-        </button>
-      </div>
-    </div>
-
-    <!-- Paid orders the ledger could not fully allocate, money is in, stock is not. -->
-    @if (attention().length > 0) {
-      <section class="panel" style="border-color: var(--warn);">
-        <div class="panel-head">
-          <h2>Needs attention: paid, short on stock</h2>
-          <span class="ph-sub">{{ attention().length }} order(s)</span>
-        </div>
-        <div class="table-scroll">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th>Customer</th>
-                <th>Short lines</th>
-                <th>Value</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (o of attention(); track o.id) {
-                <tr>
-                  <td>
-                    <code>#{{ o.id.slice(0, 8) }}</code
-                    ><br />
-                    <span class="mini-note">{{ o.createdAt | date: 'MMM d, HH:mm' }}</span>
-                  </td>
-                  <td>{{ o.customer?.name ?? 'walk-in' }}</td>
-                  <td class="small">
-                    @for (it of shortLines(o); track it.id) {
-                      <div>
-                        <code>{{ it.variant.sku }}</code> short {{ it.shortfall }} of
-                        {{ it.quantity }}
-                      </div>
-                    }
-                  </td>
-                  <td class="mono">₦{{ o.totalAmount | number: '1.0-0' }}</td>
-                  <td>
-                    <div class="actions flat">
-                      <button class="cta small" type="button" (click)="allocate(o)">
-                        Allocate from production
-                      </button>
-                      <button class="cta small ghost" type="button" (click)="refund(o)">
-                        Refund
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-        <p class="mini-note">
-          Allocate retries the short lines against current stock (completed batches land there).
-          Refund releases any allocated units, records the refund in the ledger and cancels the
-          order: then issue the customer's refund in Paystack.
-        </p>
-      </section>
-    }
-
-    <div class="table-scroll">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Order & channel</th>
-            <th>Customer / buyer</th>
-            <th>Items & sub-units</th>
-            <th>Value & payment</th>
-            <th>Fulfilment</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (order of visible(); track order.id) {
-            <tr class="clickable" [class.sel]="selected()?.id === order.id" (click)="select(order)">
-              <td>
-                <code>#{{ order.id.slice(0, 8) }}</code
-                ><br />
-                <span class="chip" [class.acid]="order.channel === 'wholesale'">{{
-                  order.channel.replaceAll('_', ' ')
-                }}</span>
-                @if (order.source) {
-                  <span class="mini-note"> via {{ order.source }}</span>
-                }
-              </td>
-              <td>{{ order.customer?.name ?? 'walk-in' }}</td>
-              <td class="small">
-                {{ itemCount(order) }} unit(s) · {{ (order.items ?? []).length }} line(s)<br />
-                <span class="muted">{{ itemSummary(order) }}</span>
-              </td>
-              <td class="mono">
-                ₦{{ order.totalAmount | number: '1.0-0' }}<br />
-                <span
-                  class="chip"
-                  [class.ok]="order.paymentStatus === 'paid'"
-                  [class.bad]="order.paymentStatus !== 'paid'"
-                  >{{ order.paymentStatus }}</span
-                >
-              </td>
-              <td>
-                <span class="status">{{ order.status.replaceAll('_', ' ') }}</span
-                ><br />
-                <span class="mini-note">{{ order.createdAt | date: 'MMM d, HH:mm' }}</span>
-              </td>
-              <td>
-                <div class="actions flat">
-                  @if (next(order); as n) {
-                    <button
-                      class="cta small"
-                      (click)="advance(order.id, n); $event.stopPropagation()"
-                    >
-                      → {{ n }}
-                    </button>
-                  }
-                  <button
-                    class="link"
-                    type="button"
-                    (click)="select(order); $event.stopPropagation()"
-                  >
-                    {{ selected()?.id === order.id ? 'close' : 'dossier' }}
-                  </button>
-                </div>
-              </td>
-            </tr>
-          }
-          @if (visible().length === 0) {
-            <tr>
-              <td colspan="6" class="muted small">No orders match.</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-
-    <!-- ============ A10, Dispatch dossier & pick verification ============ -->
-    @if (selected(); as o) {
-      <section class="panel" style="border-color: var(--hairline-strong);">
-        <div class="panel-head">
-          <h2>Dispatch details & item check: #{{ o.id.slice(0, 8) }}</h2>
-          <span
-            class="chip"
-            [class.ok]="o.paymentStatus === 'paid'"
-            [class.bad]="o.paymentStatus !== 'paid'"
-            >{{ o.paymentStatus }}</span
-          >
-          <span class="chip acid">{{ o.status.replaceAll('_', ' ') }}</span>
-          <span class="ph-end">
-            <button class="cta small ghost" type="button" (click)="print()">
-              Print packing slip
-            </button>
-            @if (next(o); as n) {
-              <button class="cta small" (click)="advance(o.id, n)">Complete → {{ n }}</button>
-            }
-            <button class="link" type="button" (click)="selected.set(null)">Close</button>
-          </span>
-        </div>
-
-        <div class="ops-grid">
-          <div>
-            <div class="panel-head">
-              <h2>Packing checklist</h2>
-              <span class="ph-sub">{{ itemCount(o) }} unit(s) to stage</span>
-            </div>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Description</th>
-                  <th>Qty</th>
-                  <th>Unit ₦</th>
-                  <th>Line ₦</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (it of o.items ?? []; track it.id) {
-                  <tr>
-                    <td>
-                      <code>{{ it.variant.sku }}</code>
-                    </td>
-                    <td class="small">
-                      {{ it.variant.colour || '-' }} · size {{ it.variant.size || '-' }}
-                    </td>
-                    <td class="mono">{{ it.quantity }}</td>
-                    <td class="mono">₦{{ it.unitPrice | number: '1.0-0' }}</td>
-                    <td class="mono">₦{{ it.quantity * it.unitPrice | number: '1.0-0' }}</td>
-                  </tr>
-                }
-                <tr>
-                  <td colspan="4"><strong>Order total</strong></td>
-                  <td class="mono">
-                    <strong class="naira">₦{{ o.totalAmount | number: '1.0-0' }}</strong>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div class="panel-head" style="margin-top:0.9rem;">
-              <h2>Fulfilment timeline</h2>
-              <span class="ph-sub">status events</span>
-            </div>
-            @if (timeline().length > 0) {
-              <ul class="activity">
-                @for (ev of timeline(); track $index) {
-                  <li>
-                    <time>{{ str(ev['createdAt']) | date: 'MMM d, HH:mm' }}</time>
-                    <span class="act-action"
-                      >{{ str(ev['status']).replaceAll('_', ' ') }}
-                      @if (ev['note']) {
-                       - {{ ev['note'] }}
-                      }
-                    </span>
-                  </li>
-                }
-              </ul>
-            } @else {
-              <p class="muted small">No status events yet.</p>
-            }
-          </div>
-
-          <aside>
-            <div class="panel-head"><h2>Recipient & delivery</h2></div>
-            <dl class="kv">
-              <dt>Recipient</dt>
-              <dd>{{ o.customer?.name ?? 'walk-in customer' }}</dd>
-              <dt>Channel</dt>
-              <dd>
-                {{ o.channel.replaceAll('_', ' ') }}
-                @if (o.source) {
-                  · via {{ o.source }}
-                }
-              </dd>
-              <dt>Placed</dt>
-              <dd>{{ o.createdAt | date: 'medium' }}</dd>
-              <dt>Delivered</dt>
-              <dd>{{ o.deliveredAt ? (str(o.deliveredAt) | date: 'medium') : 'not yet' }}</dd>
-              <dt>Order reference</dt>
-              <dd>
-                <code class="wrap-anywhere">{{ o.id }}</code>
-              </dd>
-              @if (o.shippingAddress) {
-                <dt>Ship to</dt>
-                <dd class="wrap-anywhere">
-                  <div>{{ o.shippingAddress.line }}</div>
-                  <div>{{ o.shippingAddress.city }}, {{ o.shippingAddress.state }}</div>
-                  @if (o.shippingAddress.landmark) {
-                    <div class="muted">Near {{ o.shippingAddress.landmark }}</div>
-                  }
-                  <div class="muted">{{ o.shippingAddress.phone }}</div>
-                </dd>
-              }
-              @if (o.deliveryNote) {
-                <dt>Waybill note</dt>
-                <dd class="wrap-anywhere">{{ o.deliveryNote }}</dd>
-              }
-            </dl>
-
-            <div class="gap-sep"></div>
-            <div class="panel-head">
-              <h2>Warehouse pack-out</h2>
-              <span class="ph-sub">pallet & QR stencil</span>
-            </div>
-            @if (str(o['oqrCode'])) {
-              <div class="rule-strip" style="margin:0 0 0.8rem;">
-                <strong>QR stencil generated</strong>
-                <code class="mono wrap-anywhere">{{ o['oqrCode'] }}</code>
-                <small class="mini-note"
-                  >print on thermal label, fix to the top carton before dispatch.</small
-                >
-              </div>
-            }
-            <form (ngSubmit)="fulfil(o)">
-              <p class="ph-sub">override the delivery destination if the customer corrected it</p>
-              <div class="form-grid">
-                <label
-                  >State
-                  <input [(ngModel)]="fulfilment.shipState" name="fstate" placeholder="Lagos" />
-                </label>
-                <label
-                  >City / LGA
-                  <input [(ngModel)]="fulfilment.shipCity" name="fcity" placeholder="Yaba" />
-                </label>
-              </div>
-              <label
-                >Street address
-                <input
-                  [(ngModel)]="fulfilment.shipLine"
-                  name="fline"
-                  placeholder="Building, street, house number"
-                />
-              </label>
-              <div class="form-grid">
-                <label
-                  >Delivery phone
-                  <input
-                    type="tel"
-                    [(ngModel)]="fulfilment.shipPhone"
-                    name="fphone"
-                    placeholder="+234 800 000 0000"
-                  />
-                </label>
-                <label
-                  >Landmark
-                  <input [(ngModel)]="fulfilment.shipLandmark" name="flandmark" />
-                </label>
-              </div>
-              <label
-                >Waybill note
-                <textarea
-                  rows="2"
-                  [(ngModel)]="fulfilment.deliveryNote"
-                  name="fnote"
-                  placeholder="Gate code, call on arrival, best window…"
-                ></textarea>
-              </label>
-              <div class="form-grid">
-                <label
-                  >Gross weight (kg)
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    [(ngModel)]="fulfilment.grossWeightKg"
-                    name="fgross"
-                /></label>
-                <label
-                  >Pallet ref
-                  <input [(ngModel)]="fulfilment.palletRef" name="fpallet" placeholder="P-A1"
-                /></label>
-              </div>
-              <label
-                >Generate QR dispatch stencil?
-                <input type="checkbox" [(ngModel)]="fulfilment.generateQrStencil" name="fqr"
-              /></label>
-              <div class="actions flat">
-                <button class="cta small" type="submit">Record pack-out</button>
-              </div>
-            </form>
-            <p class="mini-note">Book the delivery in Logistics using this order reference.</p>
-            <div class="actions flat">
-              <button class="cta small ghost" type="button" (click)="copyRef(o.id)">
-                Copy order reference
-              </button>
-              <a class="cta small ghost" href="/logistics">Open logistics</a>
-            </div>
-
-            @if (o.customer) {
-              <div class="gap-sep"></div>
-              <div class="panel-head">
-                <h2>Notify customer</h2>
-                <span class="ph-sub">in-platform</span>
-              </div>
-              <form (ngSubmit)="notify(o)">
-                <label
-                  >Message
-                  <textarea
-                    [(ngModel)]="notifyMsg"
-                    name="nmsg"
-                    rows="2"
-                    required
-                    placeholder="Your batch has cleared QC and is scheduled for dispatch…"
-                  ></textarea>
-                </label>
-                <button class="cta small" type="submit">Send update</button>
-              </form>
-            }
-          </aside>
-        </div>
-      </section>
-    }
-    @if (message()) {
-      <p class="success">{{ message() }}</p>
-    }
-    @if (error()) {
-      <p class="error">{{ error() }}</p>
-    }
+      <se-table
+        caption="Orders"
+        [columns]="columns"
+        [rows]="rows()"
+        [loading]="loading()"
+        [error]="error()"
+        (retry)="load()"
+        [pageSize]="25"
+        [actions]="actions"
+        activatable
+        (rowActivate)="open($event)"
+        [emptyHeading]="filtering() ? 'No orders match these filters' : 'No orders yet'"
+        [emptyText]="
+          filtering()
+            ? 'Remove a filter, or clear them all to see every order.'
+            : 'Orders appear here as soon as a customer checks out.'
+        "
+        [emptyActionLabel]="filtering() ? 'Clear all filters' : ''"
+        (emptyAction)="clearFilters()"
+      >
+        <se-filter-bar
+          seTableToolbar
+          searchLabel="Search orders"
+          searchPlaceholder="Order ref or customer"
+          [(query)]="query"
+          [filters]="filters"
+          [(value)]="filterValue"
+          [summary]="summary()"
+        />
+        <ng-template seCell="placed" let-row>{{ row.createdAt | seDate: 'datetime' }}</ng-template>
+        <ng-template seCell="status" let-row>
+          <se-status kind="order" [value]="row.status" />
+        </ng-template>
+        <ng-template seCell="payment" let-row>
+          <se-status kind="payment" [value]="row.paymentStatus" />
+        </ng-template>
+      </se-table>
+    </se-page>
   `,
 })
 export class OrdersPage implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
-  private readonly alerts = inject(BrandAlertService);
+  private readonly router = inject(Router);
+  private readonly confirm = inject(SeConfirmService);
+  private readonly toast = inject(SeToastService);
+  private readonly currency = inject(SeCurrencyService);
+
   readonly orders = signal<AdminOrder[]>([]);
-  /** Paid orders in STOCK_EXCEPTION, loaded on their own so none drop off the latest-100 list. */
+  /** Paid orders held on a stock exception, loaded on their own so none drop off the latest-100 list. */
   readonly attention = signal<AdminOrder[]>([]);
   readonly total = signal(0);
-  readonly error = signal<string | null>(null);
-  readonly message = signal<string | null>(null);
-  readonly selected = signal<AdminOrder | null>(null);
-  readonly timeline = signal<Array<Record<string, unknown>>>([]);
-  readonly payFilter = signal('');
-  channel = '';
-  query = '';
-  notifyMsg = '';
-  fulfilment = {
-    shipState: '',
-    shipCity: '',
-    shipLine: '',
-    shipPhone: '',
-    shipLandmark: '',
-    deliveryNote: '',
-    grossWeightKg: null as number | null,
-    palletRef: '',
-    generateQrStencil: false,
-  };
+  /** True only until the first answer arrives; a refresh keeps the rows on screen. */
+  readonly loading = signal(true);
+  readonly error = signal('');
+
+  // ---- filters: held here, mirrored in the URL so a filtered list can be shared ----
+  private readonly params = this.route.snapshot.queryParamMap;
+  readonly query = signal(this.params.get('q') ?? '');
+  readonly filterValue = signal<SeFilterValue>(
+    Object.fromEntries(
+      ['channel', 'payment', 'status']
+        .map((key) => [key, this.params.get(key) ?? ''])
+        .filter(([, value]) => value),
+    ),
+  );
+  readonly filters: SeFilter[] = [
+    { key: 'channel', label: 'Channel', options: CHANNEL_OPTIONS },
+    {
+      key: 'payment',
+      label: 'Payment',
+      options: ['paid', 'unpaid', 'refunded'].map((value) => ({
+        value,
+        label: SE_STATUS.payment[value].label,
+      })),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      options: Object.entries(SE_STATUS.order).map(([value, meaning]) => ({
+        value,
+        label: meaning.label,
+      })),
+    },
+  ];
+  readonly filtering = computed(
+    () => !!this.query().trim() || Object.keys(this.filterValue()).length > 0,
+  );
+
+  /** What the table shows: the loaded orders, narrowed by the search and filters. */
+  readonly rows = computed(() => {
+    const filter = this.filterValue();
+    const q = this.query().trim().toLowerCase().replace(/^#/, '');
+    // Stock exceptions are merged in, so filtering to them finds every one
+    // even when it is older than the latest hundred.
+    const known = new Set(this.orders().map((o) => o.id));
+    const all = [...this.orders(), ...this.attention().filter((o) => !known.has(o.id))];
+    return all.filter((o) => {
+      if (filter['channel'] && o.channel !== filter['channel']) return false;
+      if (filter['payment'] && o.paymentStatus !== filter['payment']) return false;
+      if (filter['status'] && o.status !== filter['status']) return false;
+      if (!q) return true;
+      return o.id.toLowerCase().includes(q) || customerName(o).toLowerCase().includes(q);
+    });
+  });
+  readonly summary = computed(() => {
+    const shown = this.rows().length;
+    const noun = shown === 1 ? 'order' : 'orders';
+    const loaded = this.orders().length;
+    // Be honest that the list is the newest slice when there are more.
+    return this.total() > loaded && !this.filtering()
+      ? `Latest ${loaded} of ${this.total()} orders`
+      : `${shown} ${noun}`;
+  });
+
+  readonly columns: SeColumn<AdminOrder>[] = [
+    { key: 'ref', header: 'Order', value: (o) => orderRef(o.id) },
+    { key: 'customer', header: 'Customer', sortable: true, value: (o) => customerName(o) },
+    { key: 'channel', header: 'Channel', sortable: true, value: (o) => channelLabel(o.channel) },
+    { key: 'placed', header: 'Placed', sortable: true, value: (o) => o.createdAt },
+    { key: 'status', header: 'Status', sortable: true, value: (o) => o.status },
+    { key: 'payment', header: 'Payment', value: (o) => o.paymentStatus },
+    { key: 'items', header: 'Items', numeric: true, sortable: true, value: (o) => unitCount(o) },
+    {
+      key: 'total',
+      header: 'Total',
+      numeric: true,
+      sortable: true,
+      value: (o) => Number(o.totalAmount) || 0,
+      format: (v) => this.currency.format(v as number),
+    },
+  ];
+
+  /** The next fulfilment step, whichever one applies to the row. */
+  readonly actions: SeRowAction<AdminOrder>[] = ['processing', 'shipped', 'delivered'].map(
+    (status) => ({
+      label: `Mark as ${status}`,
+      hidden: (o) => nextStep(o)?.status !== status,
+      run: (o) => void this.advance(o),
+    }),
+  );
 
   private pollTimer: ReturnType<typeof setInterval> | undefined;
+  private lastChannel = this.filterValue()['channel'] ?? '';
+
+  constructor() {
+    // Mirror the filters in the URL, and re-read from the server when the
+    // channel changes: the API returns the newest hundred FOR that channel.
+    effect(() => {
+      const filter = this.filterValue();
+      const q = this.query().trim();
+      untracked(() => {
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: {
+            q: q || null,
+            channel: filter['channel'] || null,
+            payment: filter['payment'] || null,
+            status: filter['status'] || null,
+          },
+          replaceUrl: true,
+        });
+        const channel = filter['channel'] ?? '';
+        if (channel !== this.lastChannel) {
+          this.lastChannel = channel;
+          this.load();
+        }
+      });
+    });
+  }
 
   ngOnInit(): void {
-    this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
     this.load();
     this.pollTimer = setInterval(() => this.poll(), ORDERS_POLL_MS);
   }
@@ -526,215 +281,85 @@ export class OrdersPage implements OnInit, OnDestroy {
     clearInterval(this.pollTimer);
   }
 
-  /**
-   * Keeps the list honest without a reload. Skipped when the tab is hidden,
-   * and when a dispatch dossier is open with unsaved edits, `load()` replaces
-   * the `orders` array, which would silently discard what staff are typing.
-   */
+  /** Keeps the list current without a reload. Skipped while the tab is hidden. */
   private poll(): void {
     if (typeof document !== 'undefined' && document.hidden) return;
-    if (this.selected() && this.dispatchDirty()) return;
     this.load();
-  }
-
-  /** True once a dispatch form field no longer matches the selected order. */
-  private dispatchDirty(): boolean {
-    const o = this.selected();
-    if (!o) return false;
-    const f = this.fulfilment;
-    const a = o.shippingAddress;
-    return (
-      f.shipLine !== (a?.line ?? '') ||
-      f.shipPhone !== (a?.phone ?? '') ||
-      f.shipLandmark !== (a?.landmark ?? '') ||
-      f.deliveryNote !== (o.deliveryNote ?? '') ||
-      f.palletRef !== '' ||
-      f.grossWeightKg !== null ||
-      f.generateQrStencil
-    );
   }
 
   load(): void {
-    this.api.orders(this.channel || undefined, 100).subscribe((res) => {
-      this.orders.set(res.data);
-      this.total.set(res.total);
-    });
-    this.api
-      .orders(undefined, 50, 'stock_exception')
-      .subscribe((res) => this.attention.set(res.data));
-  }
-
-  shortLines(o: AdminOrder): NonNullable<AdminOrder['items']> {
-    return (o.items ?? []).filter((it) => (it.shortfall ?? 0) > 0);
-  }
-
-  allocate(o: AdminOrder): void {
-    this.error.set(null);
-    this.api.allocateStockException(o.id).subscribe({
+    this.api.orders(this.lastChannel || undefined, LOAD_LIMIT).subscribe({
       next: (res) => {
-        this.message.set(
-          res.status === 'stock_exception'
-            ? 'Partial allocation: some lines are still short.'
-            : 'Stock allocated: order is back in fulfilment.',
-        );
-        this.load();
+        this.orders.set(res.data);
+        this.total.set(res.total);
+        this.loading.set(false);
+        this.error.set('');
       },
-      error: (err) => this.error.set(err?.error?.message ?? 'Allocation failed.'),
-    });
-  }
-
-  async refund(o: AdminOrder): Promise<void> {
-    const ok = await this.alerts.confirm({
-      title: 'Refund this order?',
-      html: `Releases allocated stock, records a ₦${Math.round(o.totalAmount).toLocaleString()} refund in the ledger and cancels #${o.id.slice(0, 8)}. Issue the refund itself in Paystack.`,
-      icon: 'warning',
-      confirm: 'Record refund',
-    });
-    if (!ok) return;
-    this.error.set(null);
-    this.api.refundStockException(o.id).subscribe({
-      next: () => {
-        this.message.set('Refund recorded: order cancelled.');
-        this.load();
+      error: (err) => {
+        this.loading.set(false);
+        // A failed refresh must not wipe a list that is already on screen.
+        if (this.orders().length === 0) {
+          this.error.set(
+            err?.error?.message ?? 'The server did not respond. Nothing has been changed.',
+          );
+        }
       },
-      error: (err) => this.error.set(err?.error?.message ?? 'Refund failed.'),
+    });
+    this.api.orders(undefined, 50, 'stock_exception').subscribe({
+      next: (res) => this.attention.set(res.data),
+      error: () => undefined,
     });
   }
 
-  setChannel(c: string): void {
-    this.channel = c;
-    this.load();
-  }
-
-  visible(): AdminOrder[] {
-    const q = this.query.trim().toLowerCase();
-    const pay = this.payFilter();
-    return this.orders().filter((o) => {
-      if (pay && o.paymentStatus !== pay) return false;
-      if (!q) return true;
-      return (
-        o.id.toLowerCase().includes(q) || (o.customer?.name ?? 'walk-in').toLowerCase().includes(q)
-      );
-    });
-  }
-
-  readonly loadedValue = computed(() =>
-    this.orders().reduce((s, o) => s + (Number(o.totalAmount) || 0), 0),
-  );
+  // ---- metrics ----
   readonly unpaidCount = computed(
-    () => this.orders().filter((o) => o.paymentStatus !== 'paid').length,
+    () =>
+      this.orders().filter((o) => o.paymentStatus === 'unpaid' && o.status !== 'cancelled').length,
   );
+  readonly loadedHint = computed(() => {
+    const value = this.orders().reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+    return `${this.currency.format(value)} across the latest ${this.orders().length}`;
+  });
+  readonly ofLoaded = computed(() => `of the latest ${this.orders().length}`);
   countBy(channel: string): number {
     return this.orders().filter((o) => o.channel === channel).length;
   }
 
-  itemCount(o: AdminOrder): number {
-    return (o.items ?? []).reduce((s, it) => s + it.quantity, 0);
-  }
-  itemSummary(o: AdminOrder): string {
-    const skus = (o.items ?? []).map((it) => `${it.variant.sku}×${it.quantity}`);
-    return skus.slice(0, 3).join(' · ') + (skus.length > 3 ? ` +${skus.length - 3}` : '');
-  }
-  str(v: unknown): string {
-    return v == null ? '' : String(v);
+  // ---- actions ----
+  open(order: AdminOrder): void {
+    void this.router.navigate(['/orders', order.id]);
   }
 
-  select(order: AdminOrder): void {
-    if (this.selected()?.id === order.id) {
-      this.selected.set(null);
-      return;
-    }
-    this.selected.set(order);
-    this.timeline.set([]);
-    this.api.orderTracking(order.id).subscribe({
-      next: (t) =>
-        this.timeline.set(
-          ((t as Record<string, unknown>)['events'] as Array<Record<string, unknown>>) ?? [],
-        ),
-      error: () => this.timeline.set([]),
+  async advance(order: AdminOrder): Promise<void> {
+    const step = nextStep(order);
+    if (!step) return;
+    const ok = await this.confirm.ask({
+      title: `${step.label.replace('Mark as', 'Mark order ' + orderRef(order.id) + ' as')}?`,
+      consequence: `${step.consequence} An order cannot be moved back to an earlier status.`,
+      confirmLabel: step.label,
     });
-  }
-
-  next(order: AdminOrder): string | null {
-    if (order.paymentStatus !== 'paid') return null;
-    return NEXT_STATUS[order.status] ?? null;
-  }
-
-  advance(id: string, status: string): void {
-    this.error.set(null);
-    this.api.advanceOrder(id, status).subscribe({
+    if (!ok) return;
+    this.api.advanceOrder(order.id, step.status).subscribe({
       next: () => {
+        this.toast.show(`Order ${orderRef(order.id)} marked as ${step.status}`);
         this.load();
-        if (this.selected()?.id === id) {
-          const s = this.selected();
-          if (s) {
-            s.status = status;
-            this.select({ ...s });
-            this.selected.set({ ...s });
-          }
-        }
       },
-      error: (err) => this.error.set(err?.error?.message ?? 'Status change failed.'),
+      error: (err) =>
+        this.toast.show(err?.error?.message ?? `Order ${orderRef(order.id)} could not be updated`, {
+          tone: 'danger',
+          action: { label: 'Try again', run: () => void this.advance(order) },
+        }),
     });
   }
 
-  copyRef(id: string): void {
-    navigator.clipboard?.writeText(id).then(
-      () => this.message.set('Order reference copied.'),
-      () => this.error.set('Could not copy: select and copy the ref manually.'),
-    );
+  showStockExceptions(): void {
+    this.query.set('');
+    this.filterValue.set({ status: 'stock_exception' });
   }
 
-  fulfil(order: AdminOrder): void {
-    const f = this.fulfilment;
-    const body: Record<string, unknown> = {
-      generateQrStencil: !!f.generateQrStencil,
-    };
-
-    // The address is all-or-nothing: a partial override would fail the DTO's
-    // nested validation, so catch it here instead of 400-ing on save.
-    const parts = [f.shipState, f.shipCity, f.shipLine, f.shipPhone].map((v) => v.trim());
-    const filled = parts.filter(Boolean).length;
-    if (filled > 0 && filled < parts.length) {
-      this.error.set(
-        'Fill in state, city, street and phone together, or clear them all to keep the customer address.',
-      );
-      this.message.set(null);
-      return;
-    }
-    if (filled === parts.length) {
-      body['shippingAddress'] = {
-        state: parts[0],
-        city: parts[1],
-        line: parts[2],
-        phone: parts[3],
-        ...(f.shipLandmark.trim() ? { landmark: f.shipLandmark.trim() } : {}),
-      };
-    }
-    if (f.deliveryNote.trim()) body['deliveryNote'] = f.deliveryNote.trim();
-    if (f.grossWeightKg != null) body['grossWeightKg'] = Number(f.grossWeightKg);
-    if (f.palletRef.trim()) body['palletRef'] = f.palletRef.trim();
-    this.api.fulfilOrder(order.id, body).subscribe({
-      next: () => {
-        this.message.set('Pack-out recorded.');
-        this.error.set(null);
-        this.fulfilment = {
-          shipState: '',
-          shipCity: '',
-          shipLine: '',
-          shipPhone: '',
-          shipLandmark: '',
-          deliveryNote: '',
-          grossWeightKg: null,
-          palletRef: '',
-          generateQrStencil: false,
-        };
-        this.api
-          .order(order.id)
-          .subscribe((fresh) => this.selected.set({ ...this.selected()!, ...fresh } as AdminOrder));
-      },
-      error: (err) => this.error.set(err?.error?.message ?? 'Pack-out failed.'),
-    });
+  clearFilters(): void {
+    this.query.set('');
+    this.filterValue.set({});
   }
 
   print(): void {
@@ -742,42 +367,18 @@ export class OrdersPage implements OnInit, OnDestroy {
   }
 
   exportCsv(): void {
-    const rows = this.visible().map((o) => ({
+    const rows = this.rows().map((o) => ({
+      Order: orderRef(o.id),
       OrderID: o.id,
-      Channel: o.channel,
+      Channel: channelLabel(o.channel),
       Status: o.status,
       Payment: o.paymentStatus,
-      Customer: o.customer?.name ?? 'walk-in',
-      Items: this.itemCount(o),
-      Value_NGN: o.totalAmount,
-      Created: o.createdAt,
+      Customer: customerName(o),
+      Items: unitCount(o),
+      Value: o.totalAmount,
+      Placed: o.createdAt,
     }));
-    downloadCsv(
-      `orders-${this.channel || 'all'}-${new Date().toISOString().slice(0, 10)}.csv`,
-      rows,
-    );
-  }
-
-  /** Manual in-platform message to the customer about this order. */
-  notify(order: AdminOrder): void {
-    const message = this.notifyMsg.trim();
-    const customerId = order.customer?.id;
-    if (!message || !customerId) return;
-    this.api
-      .sendNotification({
-        recipientId: customerId,
-        channel: 'in_platform',
-        type: 'order_update',
-        message,
-        relatedOrderId: order.id,
-      })
-      .subscribe({
-        next: () => {
-          this.notifyMsg = '';
-          this.message.set(`Update sent to ${order.customer?.name}.`);
-          this.error.set(null);
-        },
-        error: (err) => this.error.set(err?.error?.message ?? 'Notify failed.'),
-      });
+    const channel = this.filterValue()['channel'] || 'all';
+    downloadCsv(`orders-${channel}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
   }
 }

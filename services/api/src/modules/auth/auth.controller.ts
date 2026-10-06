@@ -15,6 +15,8 @@ import { Request, Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthenticatedUser } from '../../common/interfaces';
+import { AccessLevel } from '../../common/enums';
+import { PermissionsService } from '../users/permissions.service';
 import { UsersService } from '../users/users.service';
 import { AuthService, LoginResult, TokenPair } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -40,6 +42,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly permissions: PermissionsService,
     private readonly config: ConfigService,
   ) {}
 
@@ -177,6 +180,14 @@ export class AuthController {
   @ApiBearerAuth()
   async me(@CurrentUser() user: AuthenticatedUser) {
     const fresh = await this.usersService.findById(user.id);
-    return { ...user, name: fresh.name, totpEnabled: fresh.totpEnabled };
+    // What this role may open, module by module, so a frontend can leave out
+    // the parts of the app the person cannot use. It is a courtesy to the
+    // interface only: every endpoint still checks access itself.
+    const matrix = await this.permissions.getMatrixForRole(user.role);
+    const access: Record<string, string> = {};
+    for (const row of matrix) {
+      if (row.accessLevel !== AccessLevel.NONE) access[row.module] = row.accessLevel;
+    }
+    return { ...user, name: fresh.name, totpEnabled: fresh.totpEnabled, access };
   }
 }

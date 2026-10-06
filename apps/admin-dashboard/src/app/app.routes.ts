@@ -25,6 +25,11 @@ export const routes: Routes = [
     title: 'Seentair Ops: Orders',
   },
   {
+    path: 'orders/:id',
+    loadComponent: () => import('./pages/order-detail.page').then((m) => m.OrderDetailPage),
+    title: 'Seentair Ops: Order',
+  },
+  {
     path: 'returns',
     loadComponent: () => import('./pages/returns.page').then((m) => m.ReturnsPage),
     title: 'Seentair Ops: Returns',

@@ -3882,3 +3882,22 @@ body:has(.m-tabs) .ba-toast-host {
     }
   }
 }
+
+/* ============================================================
+   Design-system migration.
+   The app now sits in the shared shell (se-shell). Screens are being moved onto
+   the shared components one at a time; until a screen is converted it keeps its
+   old styles above and simply renders inside the new frame. Delete this block's
+   exceptions as the old rules above are removed.
+   ============================================================ */
+app-root > se-shell {
+  height: 100dvh;
+}
+/* The old global "main" rule capped the width for the old layout. */
+.se-shell__main {
+  max-width: none;
+}
+/* A footer total under the order's items table, flush with its Total column. */
+.order-total {
+  width: 100%;
+}

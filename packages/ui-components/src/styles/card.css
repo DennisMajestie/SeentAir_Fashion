@@ -35,6 +35,11 @@
 .se-card--flush > .se-card__body {
   padding: 0;
 }
+/* A table inside a flush card uses the card's edge as its own. */
+.se-card--flush .se-table {
+  border: 0;
+  border-radius: 0;
+}
 .se-card__footer {
   display: flex;
   justify-content: flex-end;
@@ -100,4 +105,11 @@ a.se-metric {
 }
 a.se-metric:hover {
   border-color: var(--se-color-border-strong);
+}
+
+/* A row of metric cards: as many as fit, never narrower than is readable. */
+.se-metric-grid {
+  display: grid;
+  gap: var(--se-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--se-space-16) * 3), 1fr));
 }

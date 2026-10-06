@@ -226,8 +226,11 @@
 }
 .se-dialog__title {
   margin: 0;
+  padding: 0;
+  border: 0;
   font: var(--se-type-subheading);
   letter-spacing: var(--se-type-subheading-tracking);
+  text-transform: none;
 }
 .se-dialog__consequence {
   margin: 0;
@@ -279,8 +282,11 @@
 }
 .se-drawer__title {
   margin: 0;
+  padding: 0;
+  border: 0;
   font: var(--se-type-subheading);
   letter-spacing: var(--se-type-subheading-tracking);
+  text-transform: none;
 }
 .se-drawer__body {
   flex: 1;
