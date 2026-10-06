@@ -16,9 +16,21 @@ interface ProductRow {
   name: string;
   category: string | null;
   basePrice: number;
+  /** Timed sale: percent off until saleEndsAt. salePrice is set only while it runs. */
+  salePercent: number | null;
+  saleEndsAt: string | null;
+  salePrice: number | null;
   variants: VariantRow[];
   collection: { name: string } | null;
 }
+/** A sale awaiting approval. Kept with its terms, because the API only accepts
+    an approval for exactly the discount and end time that were requested. */
+interface SaleRequest {
+  id: string;
+  percent: number;
+  endsAt: string;
+}
+const SALE_REQUESTS_KEY = 'seentair.admin.saleRequests';
 interface TierRow {
   id: string;
   name: string;
@@ -184,7 +196,14 @@ interface TierRow {
                   {{ colourways(p) }} colour(s) · {{ p.variants.length }} size option(s)
                 </td>
                 <td class="mono">{{ stockOf(p) | number }}</td>
-                <td class="mono">₦{{ p.basePrice | number: '1.0-0' }}</td>
+                <td class="mono">
+                  @if (p.salePrice !== null && p.salePrice !== undefined) {
+                    ₦{{ p.salePrice | number: '1.0-0' }}
+                    <span class="chip warn gap-end">sale −{{ p.salePercent }}%</span>
+                  } @else {
+                    ₦{{ p.basePrice | number: '1.0-0' }}
+                  }
+                </td>
               </tr>
             }
             @if (visible().length === 0) {
@@ -240,6 +259,75 @@ interface TierRow {
               </button>
             }
           </div>
+
+          <div class="gap-sep"></div>
+          <div class="panel-head">
+            <h2>Timed sale</h2>
+            <span class="ph-sub">needs management approval</span>
+          </div>
+          @if (p.salePrice !== null && p.salePrice !== undefined) {
+            <dl class="kv">
+              <dt>On sale now</dt>
+              <dd>
+                <span class="naira">₦{{ p.salePrice | number: '1.0-0' }}</span>
+                <span class="muted">
+                  (−{{ p.salePercent }}% off ₦{{ p.basePrice | number: '1.0-0' }})</span
+                >
+              </dd>
+              <dt>Ends</dt>
+              <dd>{{ p.saleEndsAt | date: 'd MMM y, HH:mm' }}</dd>
+            </dl>
+            <div class="actions">
+              <button class="cta small ghost" type="button" (click)="endSale(p)">
+                End sale now
+              </button>
+            </div>
+          } @else if (saleRequests[p.id]; as req) {
+            <dl class="kv">
+              <dt>Requested</dt>
+              <dd>
+                −{{ req.percent }}% → ₦{{ salePriceAt(p, req.percent) | number: '1.0-0' }}, until
+                {{ req.endsAt | date: 'd MMM y, HH:mm' }}
+              </dd>
+            </dl>
+            <div class="actions">
+              <button class="cta small" type="button" (click)="applySale(p)">
+                Start sale (req {{ req.id.slice(0, 8) }})
+              </button>
+              <button class="cta small ghost" type="button" (click)="discardSaleRequest(p)">
+                Discard request
+              </button>
+            </div>
+          } @else {
+            <div class="actions">
+              <input
+                type="number"
+                min="1"
+                max="90"
+                placeholder="% off"
+                [(ngModel)]="salePercentDraft[p.id]"
+                name="salepct"
+                class="num-input-sm"
+                aria-label="Sale discount, percent off"
+              />
+              <input
+                type="datetime-local"
+                [(ngModel)]="saleEndDraft[p.id]"
+                name="saleend"
+                aria-label="Sale ends"
+              />
+              <button class="cta small ghost" type="button" (click)="requestSaleApproval(p)">
+                Request approval
+              </button>
+            </div>
+            @if (salePercentDraft[p.id]; as pct) {
+              <p class="muted small">
+                Shoppers would pay ₦{{ salePriceAt(p, pct) | number: '1.0-0' }} instead of ₦{{
+                  p.basePrice | number: '1.0-0'
+                }}. Wholesale tier prices are not affected.
+              </p>
+            }
+          }
 
           <div class="gap-sep"></div>
           <div class="panel-head">
@@ -428,6 +516,12 @@ export class CatalogueAdminPage implements OnInit {
   nbom = { materialId: '', quantity: 1 };
   newPrices: Record<string, number> = {};
   approvals: Record<string, string> = {};
+  salePercentDraft: Record<string, number> = {};
+  saleEndDraft: Record<string, string> = {};
+  /** Sale requests raised from this browser, by product id. Persisted: approval
+      comes from someone else and can take hours, so the request has to survive
+      a reload for the "Start sale" step to still be there afterwards. */
+  saleRequests: Record<string, SaleRequest> = this.readSaleRequests();
   newCollection = '';
   query = '';
   np = { name: '', category: '', basePrice: 0, description: '', collectionId: '' };
@@ -456,7 +550,14 @@ export class CatalogueAdminPage implements OnInit {
   }
 
   private load(): void {
-    this.api.products().subscribe((res) => this.products.set(res.data as unknown as ProductRow[]));
+    this.api.products().subscribe((res) => {
+      const rows = res.data as unknown as ProductRow[];
+      this.products.set(rows);
+      // Keep the open inspector on fresh data, so a sale that was just started
+      // or ended shows there without closing and reopening the product.
+      const open = this.selected();
+      if (open) this.selected.set(rows.find((r) => r.id === open.id) ?? null);
+    });
     this.api.collections().subscribe((res) => this.collectionRows.set(res));
   }
 
@@ -699,6 +800,96 @@ export class CatalogueAdminPage implements OnInit {
         },
         error: (e) => this.fail(e, 'Approval request failed.'),
       });
+  }
+
+  // --- Timed sale: request approval, then start it once management has approved ---
+
+  /** Same 2dp rounding the API uses, so the preview matches what is charged. */
+  salePriceAt(p: ProductRow, percent: number): number {
+    return Math.round(p.basePrice * (100 - Number(percent))) / 100;
+  }
+
+  requestSaleApproval(p: ProductRow): void {
+    const percent = Number(this.salePercentDraft[p.id]);
+    const endLocal = this.saleEndDraft[p.id];
+    if (!percent || percent < 1 || percent > 90) {
+      this.error.set('Enter a discount between 1 and 90 percent.');
+      return;
+    }
+    if (!endLocal || new Date(endLocal).getTime() <= Date.now()) {
+      this.error.set('Choose when the sale ends: a date and time in the future.');
+      return;
+    }
+    const endsAt = new Date(endLocal).toISOString();
+    this.api
+      .createApproval('price_change', {
+        kind: 'sale',
+        productId: p.id,
+        product: p.name,
+        from: p.basePrice,
+        to: this.salePriceAt(p, percent),
+        salePercent: percent,
+        saleEndsAt: endsAt,
+      })
+      .subscribe({
+        next: (res) => {
+          this.saleRequests[p.id] = { id: res.id, percent, endsAt };
+          this.writeSaleRequests();
+          this.ok(
+            `Sale requested for ${p.name}. Management must approve it in the queue before you can start it.`,
+          );
+        },
+        error: (e) => this.fail(e, 'Sale request failed.'),
+      });
+  }
+
+  applySale(p: ProductRow): void {
+    const req = this.saleRequests[p.id];
+    if (!req) return;
+    this.api
+      .setProductSale(p.id, {
+        percent: req.percent,
+        endsAt: req.endsAt,
+        approvalRequestId: req.id,
+      })
+      .subscribe({
+        next: () => {
+          this.discardSaleRequest(p);
+          this.ok(`Sale started for ${p.name}.`);
+        },
+        error: (e) => this.fail(e, 'Not approved yet: check the Approvals queue.'),
+      });
+  }
+
+  endSale(p: ProductRow): void {
+    this.api.endProductSale(p.id).subscribe({
+      next: () => this.ok(`Sale ended for ${p.name}. It is back at its normal price.`),
+      error: (e) => this.fail(e, 'Could not end the sale.'),
+    });
+  }
+
+  discardSaleRequest(p: ProductRow): void {
+    delete this.saleRequests[p.id];
+    this.writeSaleRequests();
+  }
+
+  private readSaleRequests(): Record<string, SaleRequest> {
+    try {
+      return JSON.parse(localStorage.getItem(SALE_REQUESTS_KEY) ?? '{}') as Record<
+        string,
+        SaleRequest
+      >;
+    } catch {
+      return {};
+    }
+  }
+
+  private writeSaleRequests(): void {
+    try {
+      localStorage.setItem(SALE_REQUESTS_KEY, JSON.stringify(this.saleRequests));
+    } catch {
+      // Storage unavailable: the request still works until the page reloads.
+    }
   }
 
   applyPrice(p: ProductRow): void {

@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { Product, ProductVariant } from './api.service';
+import { offerFor } from './pricing';
 
 export interface CartItem {
   productId: string;
@@ -9,6 +10,10 @@ export interface CartItem {
   size: string | null;
   colour: string | null;
   unitPrice: number;
+  /** Set when the item went in at a sale price: the normal price, and when the
+      sale stops. settlePrices() uses them to drop back once the sale is over. */
+  listPrice?: number;
+  saleEndsAt?: string | null;
   quantity: number;
   imageUrl: string | null;
   availabilityStatus: string | null;
@@ -19,6 +24,27 @@ const CART_KEY = 'seentair.cart';
 @Injectable({ providedIn: 'root' })
 export class CartService {
   readonly items = signal<CartItem[]>(this.load());
+
+  constructor() {
+    this.settlePrices();
+  }
+
+  /**
+   * Returns any item whose sale has ended to its normal price.
+   *
+   * The server prices the order when it is placed, so a cart still showing an
+   * expired sale price would quote less than the customer is then asked to pay.
+   * Run when the cart loads and again on the cart and checkout screens.
+   */
+  settlePrices(now: number = Date.now()): void {
+    const items = this.items();
+    const settled = items.map((i) =>
+      i.saleEndsAt && i.listPrice !== undefined && now >= Date.parse(i.saleEndsAt)
+        ? { ...i, unitPrice: i.listPrice, listPrice: undefined, saleEndsAt: null }
+        : i,
+    );
+    if (settled.some((s, n) => s !== items[n])) this.persist(settled);
+  }
 
   private load(): CartItem[] {
     try {
@@ -43,6 +69,7 @@ export class CartService {
     if (existing) {
       existing.quantity += quantity;
     } else {
+      const offer = offerFor(product, variant);
       items.push({
         productId: product.id,
         productName: product.name,
@@ -50,7 +77,8 @@ export class CartService {
         sku: variant.sku,
         size: variant.size,
         colour: variant.colour,
-        unitPrice: variant.priceOverride ?? product.basePrice,
+        unitPrice: offer.price,
+        ...(offer.was !== null ? { listPrice: offer.was, saleEndsAt: offer.endsAt } : {}),
         quantity,
         imageUrl: variant.imageUrl,
         availabilityStatus: variant.availabilityStatus,

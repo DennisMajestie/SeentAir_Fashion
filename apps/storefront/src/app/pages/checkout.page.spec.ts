@@ -96,6 +96,7 @@ describe('CheckoutPage — split steps', () => {
             moqEligible: false,
             hasMadeToOrder: false,
             clear: () => {},
+            settlePrices: () => {},
           },
         },
         { provide: BrandAlertService, useValue: { toast: () => of(undefined) } },

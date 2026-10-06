@@ -527,6 +527,8 @@ export class CheckoutPage {
   receiptEmail = '';
 
   constructor() {
+    // The total shown here is what the order will cost: drop any sale that has ended.
+    this.cart.settlePrices();
     this.loadAccount();
   }
 
@@ -647,6 +649,7 @@ export class CheckoutPage {
   }
 
   private placeOrder(): void {
+    this.cart.settlePrices();
     this.placing.set(true);
     this.error.set(null);
     const items = this.cart.items().map((i) => ({ variantId: i.variantId, quantity: i.quantity }));

@@ -1,3 +1,4 @@
+import { offerFor } from './pricing';
 import { Product } from './api.service';
 
 /**
@@ -32,7 +33,8 @@ export function matchesSheetFilters(p: Product, f: SheetFilters): boolean {
   if (f.collection && p.collection?.name !== f.collection) return false;
   if (f.size && !p.variants.some((v) => v.size === f.size)) return false;
   if (f.colour && !p.variants.some((v) => v.colour === f.colour)) return false;
-  if (f.maxPrice !== null && p.basePrice > f.maxPrice) return false;
+  // The price a shopper would pay now, so a piece on sale under the band shows.
+  if (f.maxPrice !== null && offerFor(p).price > f.maxPrice) return false;
   return true;
 }
 

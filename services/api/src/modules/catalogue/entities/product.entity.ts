@@ -45,6 +45,26 @@ export class Product {
   })
   basePrice: number;
 
+  /**
+   * Timed sale: a percentage off the retail price until `saleEndsAt`. Kept
+   * beside `basePrice`, never written into it, so the normal price survives a
+   * sale untouched. Both null when the product has never been on sale; after a
+   * sale ends the values stay as a record and are simply no longer in force.
+   * Whether a sale is running is decided by sale-pricing.ts, nowhere else.
+   */
+  @Column({
+    name: 'sale_percent',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  salePercent: number | null;
+
+  @Column({ name: 'sale_ends_at', type: 'timestamptz', nullable: true })
+  saleEndsAt: Date | null;
+
   @ManyToOne(() => Collection, (collection) => collection.products, { nullable: true, eager: true })
   @JoinColumn({ name: 'collection_id' })
   collection: Collection | null;
@@ -68,4 +88,11 @@ export class Product {
    * because admin writes return the entity without it.
    */
   soldCount?: number;
+
+  /**
+   * The base price with the sale taken off, while a sale is running; null
+   * otherwise. Not a column: derived per request beside `soldCount`, so a
+   * client can show "was / now" without re-deriving whether the sale is live.
+   */
+  salePrice?: number | null;
 }

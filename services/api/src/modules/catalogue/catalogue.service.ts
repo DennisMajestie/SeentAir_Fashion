@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -13,12 +14,14 @@ import { ReplaceBomDto } from './dto/bom.dto';
 import { CreateCollectionDto } from './dto/create-collection.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
+import { SetSaleDto } from './dto/set-sale.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import { Collection } from './entities/collection.entity';
 import { ProductBomItem } from './entities/product-bom-item.entity';
 import { Product } from './entities/product.entity';
 import { ProductVariant } from './entities/product-variant.entity';
+import { retailUnitPrice } from './sale-pricing';
 
 @Injectable()
 export class CatalogueService {
@@ -42,7 +45,14 @@ export class CatalogueService {
       take: limit,
     });
     await this.attachSoldCounts(data);
+    for (const p of data) this.attachSalePrice(p);
     return { data, total };
+  }
+
+  /** Derives `salePrice` for the response: the discounted base price, or null. */
+  private attachSalePrice(product: Product): void {
+    const price = retailUnitPrice(product.basePrice, product);
+    product.salePrice = price === product.basePrice ? null : price;
   }
 
   /**
@@ -98,6 +108,7 @@ export class CatalogueService {
     });
     if (!product) throw new NotFoundException(`Product ${id} not found`);
     product.soldCount = (await this.salesCounts([id])).get(id) ?? 0;
+    this.attachSalePrice(product);
     return product;
   }
 
@@ -156,6 +167,57 @@ export class CatalogueService {
       product.collection = await this.getCollection(dto.collectionId);
     }
 
+    await this.productRepo.save(product);
+    return this.findById(id);
+  }
+
+  /**
+   * Put a product on a timed sale.
+   *
+   * A sale is a price change, so it sits behind the same server-side gate as
+   * editing the base price (architectural principle #3) -- and a tighter one:
+   * the approved request must be for THIS product at THIS discount until THIS
+   * end time. Approval of one sale cannot be spent on a deeper or longer one,
+   * or on a different product.
+   */
+  async setSale(id: string, dto: SetSaleDto): Promise<Product> {
+    const product = await this.findById(id);
+    const endsAt = new Date(dto.endsAt);
+    if (endsAt.getTime() <= Date.now()) {
+      throw new BadRequestException('A sale must end in the future');
+    }
+
+    const request = await this.approvalsService.findApproved(
+      dto.approvalRequestId,
+      ApprovalActionType.PRICE_CHANGE,
+    );
+    const approved = (request.payload ?? {}) as Record<string, unknown>;
+    const approvedEnd = new Date(String(approved['saleEndsAt'] ?? '')).getTime();
+    if (
+      approved['kind'] !== 'sale' ||
+      approved['productId'] !== id ||
+      Number(approved['salePercent']) !== dto.percent ||
+      approvedEnd !== endsAt.getTime()
+    ) {
+      throw new ForbiddenException(
+        'The approved request does not cover this sale (product, discount and end time must match)',
+      );
+    }
+
+    product.salePercent = dto.percent;
+    product.saleEndsAt = endsAt;
+    await this.productRepo.save(product);
+    return this.findById(id);
+  }
+
+  /**
+   * End a sale early. Not approval-gated: it returns the product to its
+   * already-approved base price, it does not set a new one.
+   */
+  async endSale(id: string): Promise<Product> {
+    const product = await this.findById(id);
+    product.salePercent = null;
+    product.saleEndsAt = null;
     await this.productRepo.save(product);
     return this.findById(id);
   }

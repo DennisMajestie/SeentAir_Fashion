@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { Product } from './api.service';
 import { CartService } from './cart.service';
-import { NO_REVIEWS_COPY, ProductCardComponent, SURGE_SECONDS, formatSurge } from './product-card.component';
+import { NO_REVIEWS_COPY, ProductCardComponent } from './product-card.component';
 import { WishlistService } from './wishlist.service';
 
 /**
@@ -217,10 +217,10 @@ describe('ProductCardComponent', () => {
       expect(text()).toContain('18,500');
     });
 
-    it('renders no strikethrough anywhere, because there is no compare-at field', () => {
-      // products.base_price is the only price column in the schema, so there is
-      // no real markdown to show. Rendering a "was" price here would be an
-      // invented discount -- the bug this whole exercise was traced from.
+    it('renders no strikethrough anywhere when the product is not on sale', () => {
+      // A "was" price is only ever shown for a real timed sale (salePercent +
+      // saleEndsAt on the product). Rendering one without a sale behind it
+      // would be an invented discount -- the bug this card was once traced to.
       mount(product());
       expect(element.querySelector('s')).toBeNull();
       expect(element.querySelector('del')).toBeNull();
@@ -430,33 +430,79 @@ describe('ProductCardComponent', () => {
     });
   });
 
-  describe('sale surge clock', () => {
-    it('renders the decorative countdown under the price', () => {
-      mount(product());
-      const surge = element.querySelector<HTMLElement>('.surge')!;
-      expect(surge).not.toBeNull();
-      expect(surge.querySelector('.surge-label')!.textContent).toBe('SALE SURGE');
-      expect(surge.querySelector('.surge-clock')!.textContent).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+  describe('timed sale', () => {
+    const HOUR = 3_600_000;
+    /** 20% off for another three hours, as the API would send it. */
+    const onSale = (over: Partial<Product> = {}): Product =>
+      product({
+        basePrice: 5000,
+        salePercent: 20,
+        salePrice: 4000,
+        saleEndsAt: new Date(Date.now() + 3 * HOUR).toISOString(),
+        ...over,
+      });
+    const text = (sel: string): string =>
+      (element.querySelector(sel)?.textContent ?? '').replace(/\s+/g, ' ').trim();
+
+    it('shows the sale price, with the normal price struck through beside the clock', () => {
+      mount(onSale());
+      expect(text('.price')).toBe('₦4,000');
+      expect(element.querySelector('.price')!.classList).toContain('price--sale');
+      expect(text('.sale-line s.sale-was')).toBe('₦5,000');
     });
 
-    it('is announced as decorative, never a real deadline', () => {
-      mount(product());
-      expect(element.querySelector('.surge')!.getAttribute('aria-hidden')).toBe('true');
+    it('counts down to the real end of the sale', () => {
+      mount(onSale());
+      // Three hours out: a ticking hh:mm:ss just under 03:00:00.
+      expect(text('.sale-clock')).toMatch(/^02:59:\d{2}$/);
     });
 
-    it('formats every frame as a zero-padded hh:mm:ss', () => {
-      expect(formatSurge(SURGE_SECONDS)).toBe('09:59:59');
-      expect(formatSurge(0)).toBe('00:00:00');
-      expect(formatSurge(3661)).toBe('01:01:01');
+    it('shows days and hours when the sale ends more than a day away', () => {
+      mount(onSale({ saleEndsAt: new Date(Date.now() + 50 * HOUR).toISOString() }));
+      expect(text('.sale-clock')).toMatch(/^2d 0[12]h$/);
     });
 
-    it('sits under the price and above the name', () => {
-      mount(product());
-      const price = element.querySelector<HTMLElement>('.price')!.getBoundingClientRect();
-      const surge = element.querySelector<HTMLElement>('.surge')!.getBoundingClientRect();
-      const name = element.querySelector<HTMLElement>('.product-name')!.getBoundingClientRect();
-      expect(price.top).toBeLessThan(surge.top);
-      expect(surge.top).toBeLessThan(name.top);
+    it('badges the card with the discount', () => {
+      mount(onSale());
+      expect(text('.badge')).toBe('−20%');
+    });
+
+    it('states the sale once in words for a screen reader and hides the ticking clock', () => {
+      mount(onSale());
+      expect(text('.sale-line .sr-only')).toContain('On sale: was ₦5,000, 20% off, until');
+      expect(element.querySelector('.sale-ends')!.getAttribute('aria-hidden')).toBe('true');
+      expect(element.querySelector('.sale-was')!.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('shows nothing of a sale on a product that is not on sale', () => {
+      mount(product({ basePrice: 5000 }));
+      expect(text('.price')).toBe('₦5,000');
+      expect(element.querySelector('.sale-was')).toBeNull();
+      expect(element.querySelector('app-sale-countdown')).toBeNull();
+    });
+
+    it('ignores a sale whose end time has passed, even if the payload still carries it', () => {
+      // A page left open past the end, or a cached response.
+      mount(onSale({ saleEndsAt: new Date(Date.now() - HOUR).toISOString() }));
+      expect(text('.price')).toBe('₦5,000');
+      expect(element.querySelector('.sale-was')).toBeNull();
+    });
+
+    it('ignores a discount the server did not mark as live', () => {
+      // salePrice is the server's "running now" flag: without it there is no sale.
+      mount(onSale({ salePrice: null }));
+      expect(text('.price')).toBe('₦5,000');
+      expect(element.querySelector('.sale-was')).toBeNull();
+    });
+
+    it('keeps the sale line the same height with or without a sale, so rows stay level', () => {
+      mount(onSale());
+      const withSale = element.querySelector<HTMLElement>('.sale-line')!.offsetHeight;
+      const info = element.querySelector<HTMLElement>('.product-info')!.offsetHeight;
+      fixture.destroy();
+      mount(product({ basePrice: 5000 }));
+      expect(element.querySelector<HTMLElement>('.sale-line')!.offsetHeight).toBe(withSale);
+      expect(element.querySelector<HTMLElement>('.product-info')!.offsetHeight).toBe(info);
     });
   });
 

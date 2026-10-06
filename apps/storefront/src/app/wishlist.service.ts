@@ -1,3 +1,4 @@
+import { offerFor } from './pricing';
 import { Injectable, signal } from '@angular/core';
 import { Product } from './api.service';
 
@@ -46,7 +47,7 @@ export class WishlistService {
         productId: product.id,
         productName: product.name,
         imageUrl: product.variants[0]?.imageUrl ?? null,
-        price: product.basePrice,
+        price: offerFor(product).price,
       },
     ]);
   }

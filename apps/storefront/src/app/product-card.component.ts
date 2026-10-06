@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, NgZone, OnDestroy, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnDestroy, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Product, ProductVariant } from './api.service';
 import { BrandAlertService } from './brand-alert.service';
 import { CartService } from './cart.service';
+import { Offer, offerFor } from './pricing';
+import { SaleCountdownComponent } from './sale-countdown.component';
 import { SeentairTiltCardComponent } from './tilt-card.component';
 import { WishlistService } from './wishlist.service';
 
@@ -15,21 +17,6 @@ import { WishlistService } from './wishlist.service';
  * reviews yet is being told when they can, not just that nobody has.
  */
 export const NO_REVIEWS_COPY = 'No reviews yet: reviews open after delivery.';
-
-/** Length of the decorative "sale surge" clock, hh:mm:ss, ticking down once per
-    second. Client-approved cosmetics only: the product model has no sale-end or
-    compare-at column, so the clock never claims a real deadline -- it starts
-    from the same fixed value every time the card renders and loops there. */
-export const SURGE_SECONDS = 9 * 3600 + 59 * 60 + 59;
-
-/** One countdown frame, zero-padded, e.g. 3599 → "00:59:59". */
-export function formatSurge(total: number): string {
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  const pad = (n: number): string => n.toString().padStart(2, '0');
-  return `${pad(h)}:${pad(m)}:${pad(s)}`;
-}
 
 /** Colour-name → swatch hex for the little dots on cards. */
 export const SWATCHES: Record<string, string> = {
@@ -48,9 +35,9 @@ export const SWATCHES: Record<string, string> = {
 
 /**
  * The shop product card: thumbnail, availability badge, floating cart-add,
- * name, price, a decorative "sale surge" countdown and the rating row (stars,
- * then a real "(N)" from paid orders). Shared by the shop grid and the
- * storefront home sections.
+ * price, the sale line (old price and a countdown, only while a real sale is
+ * running), name and the rating row (stars, then a real "(N)" from paid
+ * orders). Shared by the shop grid and the storefront home sections.
  *
  * The card deliberately shows no colour swatches or size summary: the meta row
  * they used to hang in added a full row of content that made the three-up
@@ -59,7 +46,7 @@ export const SWATCHES: Record<string, string> = {
  */
 @Component({
   selector: 'app-product-card',
-  imports: [CommonModule, RouterLink, SeentairTiltCardComponent],
+  imports: [CommonModule, RouterLink, SeentairTiltCardComponent, SaleCountdownComponent],
   template: `
     <div class="card product-card" [class.soldout]="isSoldOut(product())">
       <a class="thumb" [routerLink]="['/product', product().id]">
@@ -155,23 +142,35 @@ export const SWATCHES: Record<string, string> = {
 
         <!-- First in the info block so the price reads above the name. -->
         <div class="price-row">
-          <!-- Single price, always. A "was" price needs a compare-at markdown,
-               and the product model has no such field (products.base_price is the
-               only price column), so inventing one would be fabricated data. The
-               real discount in this platform is the wholesale tier, which is a
-               different number shown in the wholesale portal. -->
-          <p class="price">₦{{ product().basePrice | number: '1.0-2' }}</p>
+          <!-- The price a shopper pays now: the sale price while a timed sale
+               is running, the normal price otherwise. The old price is never
+               shown here -- it goes on the sale line below, and only when there
+               is a real sale behind it. -->
+          <p class="price" [class.price--sale]="offer().was !== null">
+            ₦{{ offer().price | number: '1.0-2' }}
+          </p>
         </div>
 
-        <!-- Decorative "sale surge" clock, client-approved cosmetics. There is
-             no sale-end column in the product model, so this ticks a constant
-             value (SURGE_SECONDS) and restarts on every render -- it never
-             asserts a real deadline. aria-hidden: a ticking clock is noise to
-             a screen reader, and it adds nothing to the card's meaning. -->
-        <p class="surge" aria-hidden="true">
-          <span class="surge-dot" aria-hidden="true"></span>
-          <span class="surge-label">SALE SURGE</span>
-          <span class="surge-clock">{{ surge() }}</span>
+        <!-- The sale line: the normal price struck through and the time left,
+             both from the product's real sale (salePercent / saleEndsAt). The
+             line is one fixed-height slot present on every card, empty when
+             there is no sale, so a card on sale and its neighbours keep their
+             names and ratings on the same baselines. When the countdown reaches
+             zero the card goes back to the normal price by itself. -->
+        <p class="sale-line">
+          @if (offer(); as o) {
+            @if (o.was !== null && o.endsAt) {
+              <span class="sr-only">
+                On sale: was ₦{{ o.was | number: '1.0-2' }}, {{ o.percent }}% off, until
+                {{ o.endsAt | date: 'd MMM, HH:mm' }}.
+              </span>
+              <s class="sale-was" aria-hidden="true">₦{{ o.was | number: '1.0-2' }}</s>
+              <span class="sale-ends" aria-hidden="true">
+                <span class="sale-dot"></span>
+                <app-sale-countdown [endsAt]="o.endsAt" (ended)="saleEnded()" />
+              </span>
+            }
+          }
         </p>
 
         <!-- title keeps the untruncated name reachable when the clamp cuts it. -->
@@ -217,11 +216,10 @@ export const SWATCHES: Record<string, string> = {
     </div>
   `,
 })
-export class ProductCardComponent implements OnInit, OnDestroy {
+export class ProductCardComponent implements OnDestroy {
   private readonly cart = inject(CartService);
   private readonly alerts = inject(BrandAlertService);
   private readonly router = inject(Router);
-  private readonly zone = inject(NgZone);
   readonly wishlist = inject(WishlistService);
   readonly product = input.required<Product>();
   readonly index = input(0);
@@ -230,9 +228,8 @@ export class ProductCardComponent implements OnInit, OnDestroy {
   readonly addedId = signal<string | null>(null);
   private addedTimer: ReturnType<typeof setTimeout> | undefined;
 
-  /** The ticking frame of the decorative surge clock. */
-  readonly surge = signal(formatSurge(SURGE_SECONDS));
-  private surgeTimer: ReturnType<typeof setInterval> | undefined;
+  /** Bumped when a running sale reaches its end, so the card re-prices itself. */
+  private readonly saleOver = signal(0);
 
   private readonly fallbacks = [
     'shop-1.jpg',
@@ -242,28 +239,18 @@ export class ProductCardComponent implements OnInit, OnDestroy {
     'shop-6.jpg',
   ];
 
-  ngOnInit(): void {
-    // Decorative countdown (see SURGE_SECONDS): ticks one second at a time and
-    // loops when it reaches zero, so the clock can never stall at 00:00:00. The
-    // loop is why it cannot be read as a deadline date -- there is none.
-    //
-    // The interval itself is scheduled OUTSIDE the Angular zone: a recurring
-    // macrotask inside the zone would keep NgZone permanently unstable, which
-    // starves `fixture.whenStable()` (every async spec that mounts a card hangs
-    // until Jasmine's 5s timeout). Each tick then re-enters the zone for the
-    // signal write, so the update still runs through normal change detection.
-    let s = SURGE_SECONDS;
-    this.zone.runOutsideAngular(() => {
-      this.surgeTimer = setInterval(() => {
-        s = s > 0 ? s - 1 : SURGE_SECONDS;
-        this.zone.run(() => this.surge.set(formatSurge(s)));
-      }, 1000);
-    });
+  /** Price now, and the normal price and end time while a sale is running. */
+  offer(): Offer {
+    this.saleOver();
+    return offerFor(this.product());
+  }
+
+  saleEnded(): void {
+    this.saleOver.update((n) => n + 1);
   }
 
   ngOnDestroy(): void {
     clearTimeout(this.addedTimer);
-    clearInterval(this.surgeTimer);
   }
 
   fallback(index: number): string {
@@ -290,13 +277,16 @@ export class ProductCardComponent implements OnInit, OnDestroy {
   /**
    * One badge, by priority. Sold out first -- a dead product is never sold as
    * anything else. Made to order second, because the made-to-order wait is a
-   * real commitment to surface. Bestseller is a seller-applied merchandising
+   * real commitment to surface. A running sale third: it is the one badge that
+   * is about money. Bestseller is a seller-applied merchandising
    * label (the products.is_bestseller column), so it outranks the time-window
    * "New" default and has nothing to do with the derived soldCount.
    */
   badge(p: Product): string | null {
     if (this.isSoldOut(p)) return 'Sold out';
     if (p.variants.some((v) => v.availabilityStatus === 'made_to_order')) return 'Made to order';
+    const percent = this.offer().percent;
+    if (percent !== null) return `−${percent}%`;
     if (p.isBestseller) return 'Bestseller';
     const ageDays = (Date.now() - new Date(p.createdAt).getTime()) / 86_400_000;
     return ageDays <= 30 ? 'New' : null;

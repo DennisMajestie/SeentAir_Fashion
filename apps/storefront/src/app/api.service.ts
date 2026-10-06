@@ -45,6 +45,15 @@ export interface Product {
    * consumers must treat missing as "no sales data", not as zero sales.
    */
   soldCount?: number;
+  /**
+   * Timed sale: `salePercent` off until `saleEndsAt` (ISO). `salePrice` is the
+   * discounted base price and is set only while the sale is live, so it doubles
+   * as the "is this on sale right now" flag. All absent on older API builds and
+   * null on a product that is not on sale. Read them through pricing.ts.
+   */
+  salePercent?: number | null;
+  saleEndsAt?: string | null;
+  salePrice?: number | null;
 }
 
 export interface Order {

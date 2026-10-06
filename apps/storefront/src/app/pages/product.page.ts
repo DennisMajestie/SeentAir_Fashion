@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Offer, offerFor } from '../pricing';
+import { SaleCountdownComponent } from '../sale-countdown.component';
 import { ApiService, Product, ProductVariant } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
@@ -13,7 +15,13 @@ import { NO_REVIEWS_COPY } from '../product-card.component';
     reviews as a bordered log. */
 @Component({
   selector: 'app-product',
-  imports: [CommonModule, FormsModule, RouterLink, SeentairTiltCardComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    SeentairTiltCardComponent,
+    SaleCountdownComponent,
+  ],
   template: `
     @if (product(); as p) {
       <article class="product-detail">
@@ -48,7 +56,24 @@ import { NO_REVIEWS_COPY } from '../product-card.component';
               >
             </p>
           }
-          <p class="price lg">₦{{ currentPrice() | number: '1.0-2' }}</p>
+          <p class="price lg" [class.price--sale]="offer().was !== null">
+            ₦{{ currentPrice() | number: '1.0-2' }}
+            @if (offer(); as o) {
+              @if (o.was !== null) {
+                <s class="price-was">₦{{ o.was | number: '1.0-2' }}</s>
+                <span class="price-off">−{{ o.percent }}%</span>
+              }
+            }
+          </p>
+          @if (offer().endsAt; as end) {
+            <p class="sale-note">
+              <span class="sale-dot" aria-hidden="true"></span>
+              <span class="sr-only">Sale ends {{ end | date: 'd MMM, HH:mm' }}.</span>
+              <span aria-hidden="true">
+                Sale ends in <app-sale-countdown [endsAt]="end" (ended)="saleEnded()" />
+              </span>
+            </p>
+          }
           <p class="muted">{{ p.description }}</p>
 
           @if (sizes().length > 0) {
@@ -156,6 +181,8 @@ import { NO_REVIEWS_COPY } from '../product-card.component';
 export class ProductPage implements OnInit {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly saleOver = signal(0);
   private readonly cart = inject(CartService);
   private readonly alerts = inject(BrandAlertService);
 
@@ -205,9 +232,21 @@ export class ProductPage implements OnInit {
   }
 
   currentPrice(): number {
+    return this.offer().price;
+  }
+
+  /** Price for the selected size/colour now, with the normal price and end
+      time while a timed sale is running. */
+  offer(): Offer {
+    this.saleOver();
     const p = this.product();
-    if (!p) return 0;
-    return this.selected()?.priceOverride ?? p.basePrice;
+    if (!p) return { price: 0, was: null, percent: null, endsAt: null };
+    return offerFor(p, this.selected());
+  }
+
+  /** The countdown reached zero: re-price from the normal price. */
+  saleEnded(): void {
+    this.saleOver.update((n) => n + 1);
   }
 
   avgRating(): number {
@@ -245,6 +284,8 @@ export class ProductPage implements OnInit {
     if (!p || !v) return;
     this.cart.add(p, v, Math.max(1, this.quantity));
     this.added.set(true);
-    void this.alerts.toast(`Added to basket: ${p.name}`);
+    void this.alerts.toast(`${p.name} added to cart`, {
+      action: { label: 'View cart', run: () => void this.router.navigate(['/cart']) },
+    });
   }
 }

@@ -86,6 +86,18 @@ export class ApprovalsService {
    * at the API layer, not just hidden in the UI.
    */
   async assertApproved(approvalRequestId: string, actionType: ApprovalActionType): Promise<void> {
+    await this.findApproved(approvalRequestId, actionType);
+  }
+
+  /**
+   * The same gate, returning the approved request. For actions that must also
+   * check WHAT was approved: a caller compares its own parameters against the
+   * request's payload, so an approval for one thing cannot be spent on another.
+   */
+  async findApproved(
+    approvalRequestId: string,
+    actionType: ApprovalActionType,
+  ): Promise<ApprovalRequest> {
     const request = await this.approvalRepo.findOne({ where: { id: approvalRequestId } });
     if (!request || request.actionType !== actionType) {
       throw new ForbiddenException(`No approval request of type '${actionType}' found`);
@@ -95,5 +107,6 @@ export class ApprovalsService {
         `Action '${actionType}' requires an approved request (current status: ${request.status})`,
       );
     }
+    return request;
   }
 }

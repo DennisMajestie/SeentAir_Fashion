@@ -168,5 +168,10 @@ import { environment } from '../../environments/environment';
 })
 export class CartPage {
   readonly cart = inject(CartService);
+
+  constructor() {
+    // A sale that ended since the item went in must not still be quoted here.
+    this.cart.settlePrices();
+  }
   readonly environment = environment;
 }

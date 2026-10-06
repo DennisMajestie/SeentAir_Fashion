@@ -7,6 +7,7 @@ import { ApiService, Product } from './api.service';
 import { CartService } from './cart.service';
 import { WishlistService } from './wishlist.service';
 import { environment } from '../environments/environment';
+import { offerFor } from './pricing';
 
 /**
  * Phase 1 mobile navigation shell. Reference: seentair-mobile-v2.html
@@ -160,7 +161,7 @@ import { environment } from '../environments/environment';
                   <span class="m-results__info">
                     <span class="m-results__name">{{ r.name }}</span>
                     <span class="m-results__meta">
-                      {{ r.category || 'Seentair' }} · ₦{{ r.basePrice | number: '1.0-0' }}
+                      {{ r.category || 'Seentair' }} · ₦{{ priceOf(r) | number: '1.0-0' }}
                     </span>
                   </span>
                 </a>
@@ -318,6 +319,11 @@ export class MobileHeaderComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     document.removeEventListener('keydown', this.onKey);
+  }
+
+  /** What the result costs right now, sale included. */
+  priceOf(p: Product): number {
+    return offerFor(p).price;
   }
 
   onSearch(value: string): void {

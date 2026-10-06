@@ -14,6 +14,7 @@ import { ACCESS_RANK, AccessLevel, ModuleName, RoleName } from '../../common/enu
 import { AuthenticatedUser } from '../../common/interfaces';
 import { CatalogueService } from '../catalogue/catalogue.service';
 import { AvailabilityStatus } from '../catalogue/entities/product-variant.entity';
+import { retailUnitPrice } from '../catalogue/sale-pricing';
 import { InventoryItemType, MovementType } from '../inventory/inventory-movement.entity';
 import {
   InsufficientStockException,
@@ -394,10 +395,15 @@ export class OrdersService {
         }
       }
       const retailPrice = variant.priceOverride ?? variant.product.basePrice;
+      // A timed sale is a retail promotion: it is priced here, at order
+      // creation, from the same rule the storefront displays, and the result is
+      // stored on the line -- so a sale that ends while an order awaits payment
+      // does not change what that order costs. Wholesale buyers keep their tier
+      // price on the normal retail price; the two discounts never stack.
       const unitPrice =
         channel === OrderChannel.WHOLESALE
           ? this.wholesaleService.applyTierPrice(retailPrice, tierDiscountTier)
-          : retailPrice;
+          : retailUnitPrice(retailPrice, variant.product);
       const item = new OrderItem();
       item.variant = variant;
       item.quantity = itemDto.quantity;

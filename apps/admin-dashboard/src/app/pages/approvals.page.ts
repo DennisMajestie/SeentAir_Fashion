@@ -92,6 +92,13 @@ import { BrandAlertService } from '../brand-alert.service';
                 >{{ pc.deltaPct }}% {{ pc.to >= pc.from ? 'increase' : 'decrease' }}</span
               >
             </div>
+            @if (pc.saleEndsAt) {
+              <div class="kpi">
+                <span class="kpi-label">Timed sale ends</span
+                ><span class="kpi-value">{{ pc.saleEndsAt | date: 'd MMM, HH:mm' }}</span
+                ><span class="kpi-sub">normal price returns automatically</span>
+              </div>
+            }
           </div>
         } @else {
           <dl class="kv">
@@ -213,14 +220,22 @@ export class ApprovalsPage implements OnInit {
   }
 
   /** Decoded price-change payload for the before/after impact tiles. */
-  priceChange(a: Approval): { product: string; from: number; to: number; deltaPct: string } | null {
+  priceChange(a: Approval): {
+    product: string;
+    from: number;
+    to: number;
+    deltaPct: string;
+    /** Set when the request is a timed sale rather than a permanent change. */
+    saleEndsAt: string | null;
+  } | null {
     if (a.actionType !== 'price_change') return null;
     const p = a.payload as Record<string, unknown> | null;
     const from = Number(p?.['from']);
     const to = Number(p?.['to']);
     if (!p || Number.isNaN(from) || Number.isNaN(to)) return null;
     const deltaPct = from > 0 ? (Math.round(((to - from) / from) * 1000) / 10).toFixed(1) : '-';
-    return { product: String(p['product'] ?? ''), from, to, deltaPct };
+    const saleEndsAt = p['kind'] === 'sale' ? String(p['saleEndsAt'] ?? '') || null : null;
+    return { product: String(p['product'] ?? ''), from, to, deltaPct, saleEndsAt };
   }
 
   payloadEntries(a: Approval): Array<[string, string]> {

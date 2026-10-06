@@ -16,6 +16,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
 import { FilterSheetComponent } from '../filter-sheet.component';
+import { offerFor } from '../pricing';
 import { SWATCHES, ProductCardComponent } from '../product-card.component';
 import {
   EMPTY_FILTERS,
@@ -327,8 +328,10 @@ export class ShopPage implements OnInit {
     if (key === 'newest') {
       return [...rows].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }
-    if (key === 'price-asc') return [...rows].sort((a, b) => a.basePrice - b.basePrice);
-    if (key === 'price-desc') return [...rows].sort((a, b) => b.basePrice - a.basePrice);
+    // Sorted by what a shopper pays now, so a sale price takes its real place.
+    const pay = (p: Product): number => offerFor(p).price;
+    if (key === 'price-asc') return [...rows].sort((a, b) => pay(a) - pay(b));
+    if (key === 'price-desc') return [...rows].sort((a, b) => pay(b) - pay(a));
     if (key === 'best-selling') {
       // Same real metric as the Best Sellers rail: paid orders, not review volume.
       return [...rows].sort(

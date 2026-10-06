@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -19,6 +20,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import { ReplaceBomDto } from './dto/bom.dto';
+import { SetSaleDto } from './dto/set-sale.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
 @ApiTags('Products & Catalogue')
@@ -64,6 +66,22 @@ export class CatalogueController {
   @RequireAccess(ModuleName.CATALOGUE, AccessLevel.FULL)
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateProductDto) {
     return this.catalogueService.update(id, dto);
+  }
+
+  /** Start a timed sale. Needs an approved PRICE_CHANGE request for exactly this sale. */
+  @Put('products/:id/sale')
+  @ApiBearerAuth()
+  @RequireAccess(ModuleName.CATALOGUE, AccessLevel.FULL)
+  setSale(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetSaleDto) {
+    return this.catalogueService.setSale(id, dto);
+  }
+
+  /** End a sale early; the product returns to its normal price. */
+  @Delete('products/:id/sale')
+  @ApiBearerAuth()
+  @RequireAccess(ModuleName.CATALOGUE, AccessLevel.FULL)
+  endSale(@Param('id', ParseUUIDPipe) id: string) {
+    return this.catalogueService.endSale(id);
   }
 
   @Post('products/:id/variants')

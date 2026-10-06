@@ -2443,38 +2443,74 @@ app-product-card {
   line-height: 1.1;
   min-width: 0;
 }
-/* Decorative "sale surge" countdown under the price. A fixed one-line slot --
-   small size, locked line-height, no wrapping -- so every card carries the same
-   extra row and the clock can never make one card taller than its neighbour.
-   tabular-nums keeps the digit widths constant, so ticking changes the content
-   without ever changing the card's geometry. */
-.product-card .surge {
+/* The sale line under the price: the normal price struck through and the time
+   left on a real sale. A fixed one-line slot on EVERY card -- small size,
+   locked line-height, no wrapping -- and simply empty when the product is not
+   on sale, so a sale card and its neighbours keep their names and ratings on
+   the same baselines. tabular-nums keeps the digit widths constant, so the
+   ticking clock never changes the card's geometry. */
+.product-card .sale-line {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.4rem;
+  min-height: 0.62rem;
   margin: 0.25rem 0 0;
   flex-wrap: nowrap;
   white-space: nowrap;
-  /* Above the stretched info link, exactly like the price row, so the clock is
-     never an invisible sink for taps intended for the link. */
-  position: relative;
-  z-index: 1;
-  color: var(--warn);
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  overflow: hidden;
+  font-size: 0.62rem;
+  font-weight: 600;
   line-height: 1;
-  .surge-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: currentColor;
-    flex: 0 0 auto;
-  }
-  .surge-clock {
-    font-variant-numeric: tabular-nums;
-  }
+}
+.sale-was {
+  color: var(--muted);
+  text-decoration-thickness: 1px;
+}
+.sale-ends {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--warn);
+  font-weight: 700;
+}
+.sale-dot {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--warn);
+}
+.sale-clock {
+  font-variant-numeric: tabular-nums;
+}
+/* Product page: the old price and the saving beside the sale price, and the
+   end of the sale on its own line beneath. */
+.price .price-was {
+  margin-left: 0.5rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.55em;
+  font-weight: 500;
+  color: var(--muted);
+}
+.price .price-off {
+  margin-left: 0.4rem;
+  padding: 0.15em 0.5em;
+  border-radius: var(--radius-pill);
+  background: var(--primary-fill);
+  color: var(--on-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.42em;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.sale-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.2rem 0 0.6rem;
+  color: var(--warn);
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 .stars-line {
   display: flex;

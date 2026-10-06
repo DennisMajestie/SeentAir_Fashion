@@ -358,6 +358,16 @@ export class ApiService {
   updateProduct(id: string, body: Record<string, unknown>): Observable<unknown> {
     return this.http.patch(`${API_BASE}/products/${id}`, body);
   }
+  /** Start a timed sale; the API checks the approval covers exactly these terms. */
+  setProductSale(
+    id: string,
+    body: { percent: number; endsAt: string; approvalRequestId: string },
+  ): Observable<unknown> {
+    return this.http.put(`${API_BASE}/products/${id}/sale`, body);
+  }
+  endProductSale(id: string): Observable<unknown> {
+    return this.http.delete(`${API_BASE}/products/${id}/sale`);
+  }
   productVariants(productId: string): Observable<Array<Record<string, unknown>>> {
     return this.http.get<Array<Record<string, unknown>>>(
       `${API_BASE}/products/${productId}/variants`,
