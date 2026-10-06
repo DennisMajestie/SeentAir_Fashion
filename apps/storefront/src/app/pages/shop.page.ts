@@ -1,5 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnInit,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
@@ -63,7 +73,7 @@ function collectionKey(name: string): string {
     <input
       class="search-bar"
       type="search"
-      placeholder="[ SEARCH PRODUCTS / SKU / FABRIC ]"
+      placeholder="Search for clothes, underwear, kids wear…"
       [ngModel]="query()"
       (ngModelChange)="query.set($event)"
       aria-label="Search products"
@@ -76,16 +86,24 @@ function collectionKey(name: string): string {
       <button
         class="pill pill--circle pill--all"
         [class.active]="category() === null"
-        (click)="category.set(null)"
+        (click)="selectCategory(null)"
+        [attr.aria-pressed]="category() === null"
       >
-        <span class="pill__img" aria-hidden="true">▦</span>
+        <span class="pill__img" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <rect x="4" y="4" width="7" height="7" rx="1.5" />
+            <rect x="13" y="4" width="7" height="7" rx="1.5" />
+            <rect x="4" y="13" width="7" height="7" rx="1.5" />
+            <rect x="13" y="13" width="7" height="7" rx="1.5" />
+          </svg>
+        </span>
         <span class="pill__label">All</span>
       </button>
       @for (cat of categories(); track cat.name) {
         <button
           class="pill pill--circle"
           [class.active]="category() === cat.name"
-          (click)="category.set(cat.name)"
+          (click)="selectCategory(cat.name)"
           [attr.aria-pressed]="category() === cat.name"
         >
           <span
@@ -109,7 +127,9 @@ function collectionKey(name: string): string {
           <option value="price-desc">Price: high → low</option>
           <option value="best-selling">Best selling</option>
         </select>
-        <span class="tbtn__chev" aria-hidden="true">⌄</span>
+        <svg class="tbtn__chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
       </label>
 
       <button
@@ -120,11 +140,18 @@ function collectionKey(name: string): string {
         aria-haspopup="dialog"
         (click)="openSheet()"
       >
-        <span aria-hidden="true">⚟</span>
+        <!-- Funnel, drawn rather than typed: the old glyph had no face in most
+             system fonts and fell back to a box or an arrow. -->
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M4 5h16l-6.2 7.4V18l-3.6 1.8v-7.4z" />
+        </svg>
         <span>Filter</span>
         @if (activeFilters() > 0) {
           <span class="filters-badge">{{ activeFilters() }}</span>
         }
+        <svg class="tbtn__chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
       </button>
 
       <div class="viewtoggle" role="group" aria-label="Result layout">
@@ -136,7 +163,12 @@ function collectionKey(name: string): string {
           (click)="view.set('grid')"
           aria-label="Two column grid"
         >
-          <span aria-hidden="true">▦</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="4" y="4" width="7" height="7" rx="1.5" />
+            <rect x="13" y="4" width="7" height="7" rx="1.5" />
+            <rect x="4" y="13" width="7" height="7" rx="1.5" />
+            <rect x="13" y="13" width="7" height="7" rx="1.5" />
+          </svg>
         </button>
         <button
           type="button"
@@ -146,7 +178,9 @@ function collectionKey(name: string): string {
           (click)="view.set('list')"
           aria-label="List view"
         >
-          <span aria-hidden="true">☰</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M5 7h14M5 12h14M5 17h14" />
+          </svg>
         </button>
       </div>
     </div>
@@ -195,6 +229,7 @@ export class ShopPage implements OnInit {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly filtersBtn = viewChild<ElementRef<HTMLButtonElement>>('filtersBtn');
   readonly all = signal<Product[]>([]);
   readonly loading = signal(true);
@@ -337,6 +372,16 @@ export class ShopPage implements OnInit {
     this.sheetOpen.set(true);
   }
 
+  /**
+   * Picks a category from the rail and records it in the URL. The header title
+   * on this screen is read from that query param, so without this the bar kept
+   * naming the category the shopper arrived on, not the one they are viewing.
+   */
+  selectCategory(name: string | null): void {
+    this.category.set(name);
+    this.syncUrl();
+  }
+
   /** Dismiss discards pending changes: the applied set is never touched here. */
   closeSheet(): void {
     this.sheetOpen.set(false);
@@ -366,6 +411,7 @@ export class ShopPage implements OnInit {
         colour: f.colour ?? null,
         collection: f.collection ?? null,
         maxPrice: f.maxPrice ?? null,
+        category: this.category(),
       },
       queryParamsHandling: 'merge',
       replaceUrl: true,
@@ -387,8 +433,13 @@ export class ShopPage implements OnInit {
       collection: q.get('collection') ?? null,
       maxPrice: price === null || price === undefined ? null : Number(price),
     });
-    const fromQuery = q.get('category');
-    if (fromQuery) this.category.set(fromQuery);
+    // Followed, not read once: the list header takes its title from the same
+    // query param, and a link to /shop while already here (menu, footer) reuses
+    // this component, so a one-off snapshot would leave the grid on the old
+    // category under a header that says "Shop".
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => this.category.set(params.get('category')));
     this.api.products().subscribe({
       next: (res) => {
         this.all.set(res.data);

@@ -721,12 +721,24 @@ describe('ProductCardComponent', () => {
       }
     });
 
-    it('keeps the cart button on the same line as its price', () => {
+    it('floats the cart button across the image/body boundary, bottom-right of the photo', () => {
+      // The approved placement, and the one that regressed to an inline button
+      // beside the price: the tile straddles the bottom edge of the photo, at
+      // its right-hand corner.
       for (const c of mountGrid()) {
-        const price = c.querySelector<HTMLElement>('.price')!.getBoundingClientRect();
+        const thumb = c.querySelector<HTMLElement>('.thumb')!.getBoundingClientRect();
         const btn = c.querySelector<HTMLElement>('.cartbtn')!.getBoundingClientRect();
-        const overlap = Math.min(price.bottom, btn.bottom) - Math.max(price.top, btn.top);
-        expect(overlap).toBeGreaterThan(0);
+        // Centred on the boundary: half over the photo, half over the body.
+        expect(Math.abs((btn.top + btn.bottom) / 2 - thumb.bottom)).toBeLessThanOrEqual(1);
+        // In the right-hand corner, and not hanging outside the photo.
+        expect(btn.right).toBeLessThanOrEqual(thumb.right + 0.5);
+        expect(btn.left).toBeGreaterThan((thumb.left + thumb.right) / 2);
+      }
+    });
+
+    it('keeps the cart button out of the price row', () => {
+      for (const c of mountGrid()) {
+        expect(c.querySelector('.price-row .cartbtn')).toBeNull();
       }
     });
 

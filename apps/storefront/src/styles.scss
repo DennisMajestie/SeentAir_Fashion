@@ -285,6 +285,91 @@ main {
   display: grid;
   place-items: center;
 }
+/* The magnifier is a real <button>, so it needs the UA chrome removed to read
+   as the same bare glyph as the bell and cart links beside it. */
+.m-iconbtn--btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* ---------- product list header ---------- */
+/* Reference screen 2: a white bar with a back arrow, the category name centred
+   in sentence case, and search + cart on the right in ink rather than gold. */
+.m-header--light {
+  padding-bottom: 8px;
+  background: var(--m-card);
+  color: var(--m-fg);
+  border-bottom: 1px solid var(--m-line);
+  .m-top {
+    position: relative;
+    margin-bottom: 0;
+  }
+  .m-iconbtn .m-ic {
+    stroke: var(--m-fg);
+  }
+  .m-iconbtn:focus-visible,
+  .m-back:focus-visible {
+    outline-color: var(--m-fg);
+  }
+  /* White field on a white bar would vanish, so the revealed search takes the
+     sheet tint and a hairline instead. */
+  .m-search {
+    margin-top: 8px;
+    background: var(--m-bg);
+    border: 1px solid var(--m-line);
+  }
+}
+.m-back {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-left: -10px;
+  color: inherit;
+  text-decoration: none;
+  .m-ic {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--m-gold);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+}
+/* Centred on the bar, not between its neighbours: one icon on the left and two
+   on the right would otherwise pull the title off-centre. The global h1 rule
+   upper-cases and sets Oswald; the reference title is plain sentence case. */
+.m-plp__title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 200px);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* With a white header there is no dark bar for the sheet to round against, so
+   the product list drops the dark backing strip and the 20px corners. */
+body:has(.m-header--light) {
+  background: var(--canvas);
+}
+body:has(.m-header--light) main {
+  border-radius: 0;
+}
 
 .m-search {
   position: relative;
@@ -948,34 +1033,45 @@ body:has(.m-tabs) {
   background-position: center;
 }
 
-/* The "All" pill is a gold rounded square in the reference. */
+/* The "All" pill is a gold rounded square with a white grid in the reference. */
 .pill--all .pill__img {
   border-radius: 12px;
   background: var(--m-gold);
   display: grid;
   place-items: center;
-  color: #141210;
-  font-size: 18px;
+  color: #fff;
+  svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
 }
 
 .pill__label {
   font-size: 9.5px;
   font-weight: 600;
   color: var(--muted);
-  max-width: 58px;
+  /* 58px of text plus the chip padding. Same box whether or not the label is
+     the active chip, so selecting a category never shifts the rail. */
+  max-width: 74px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Reference: the active category is marked on its label -- a filled gold chip --
+   and the photo carries no ring. Ink on gold, the same pairing as the view
+   toggle and the cart tile; white on this gold is only 2.6:1 at 9.5px. */
 .pill--circle.active .pill__label {
-  color: var(--m-gold);
+  background: var(--m-gold);
+  color: var(--m-fg);
   font-weight: 700;
-}
-
-.pill--circle.active .pill__img {
-  outline: 2px solid var(--m-gold);
-  outline-offset: 2px;
 }
 .search-bar {
   width: 100%;
@@ -990,11 +1086,9 @@ body:has(.m-tabs) {
   padding: 0.7rem 1.1rem;
   letter-spacing: 0.04em;
   border-radius: var(--radius-field);
+  /* Natural-language placeholder, matching the header search field. */
   &::placeholder {
     color: var(--muted);
-    text-transform: uppercase;
-    font-size: 0.72rem;
-    letter-spacing: 0.14em;
   }
   &:focus {
     outline: 2px solid var(--primary);
@@ -1833,14 +1927,31 @@ body:has(.m-tabs) {
   justify-content: center;
   gap: 6px;
   min-height: 44px;
+  /* Sort is a <label> and Filter a <button>, so everything the global label
+     rule and the UA button style would set differently is pinned here: the two
+     must read as one pair of bordered pills in sentence case. */
+  margin: 0;
   padding: 0 10px;
   background: #fff;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-2);
   border-radius: 10px;
+  font-family: 'Inter', sans-serif;
   font-size: 11.5px;
   font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ink);
   cursor: pointer;
+  svg {
+    flex: none;
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
 }
 
 /* The native select stays the real control — it is only made invisible, so
@@ -1854,15 +1965,16 @@ body:has(.m-tabs) {
   cursor: pointer;
 }
 
-.tbtn__chev {
+.tbtn svg.tbtn__chev {
+  width: 13px;
+  height: 13px;
   color: var(--muted);
-  font-size: 0.9rem;
 }
 
 .viewtoggle {
   display: flex;
   flex-shrink: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-2);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -1872,11 +1984,20 @@ body:has(.m-tabs) {
   min-height: 44px;
   display: grid;
   place-items: center;
+  padding: 0;
   background: #fff;
   border: 0;
   color: var(--ink);
-  font-size: 14px;
   cursor: pointer;
+  svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
 }
 
 .vt-btn.on {
@@ -2126,9 +2247,9 @@ app-product-card {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
-    /* No reserved lane: the cart button now sits in the price row as a flex
-       sibling, so there is nothing to leave space for and every pixel here is
-       width the name and the rating row can actually use. */
+    /* No reserved lane: the cart tile floats over the top-right corner of this
+       block (see .cartbtn), clear of the left-aligned price, so every pixel
+       here is width the name and the rating row can actually use. */
     padding: 0.32rem 0.4rem 0.35rem;
   }
   /* The stretched link. Sits under the cart button and over the inert text, so
@@ -2235,13 +2356,16 @@ app-product-card {
     border-color: currentColor;
   }
 }
-/* Cart-add, now a flex sibling of the price rather than a tile floating across
-   the image/body boundary. The gold tile and the 44px hit area are both kept
-   exactly as they were -- only the positioning changed, from a height-tracking
-   offset to ordinary layout flow. */
+/* Cart-add: the approved gold tile floating at the bottom-right corner of the
+   photo, straddling the image/body boundary. It is anchored to the TOP edge of
+   .product-info, which is that boundary by construction, so its position cannot
+   track the card's height or the name length the way the old bottom:-14px
+   offset from the card did -- and, sitting inside the card, it is not clipped
+   by the card's overflow. The 44px hit area is centred on the boundary. */
 .cartbtn {
-  position: relative;
-  flex: 0 0 auto;
+  position: absolute;
+  top: -22px;
+  right: 1px;
   width: 44px;
   height: 44px;
   display: grid;
@@ -2254,8 +2378,8 @@ app-product-card {
   &::before {
     content: '';
     grid-area: 1 / 1;
-    width: 21px;
-    height: 20px;
+    width: 30px;
+    height: 30px;
     border-radius: 9px;
     background: var(--m-gold);
     color: #141210;
@@ -2302,21 +2426,15 @@ app-product-card {
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
 }
-/* Price and cart button on one row. First in the info block, so it sits at the
-   top of every card in the grid -- the reference's "price ......... [cart]"
-   line reads above the name, which is what makes the price the first thing a
-   shopper sees on a card. The two stay clustered on the left: spreading them
-   across the full width left a 120-230px void in the row, so the price looked
-   surrounded by empty card. */
+/* The price line. First in the info block, so it sits at the top of every card
+   in the grid and is the first thing a shopper reads. The cart tile is no
+   longer in this row: it floats over the photo's bottom-right corner, and the
+   right padding keeps a long price from running underneath it. */
 .product-card .price-row {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.75rem;
-  padding-bottom: 0.1rem;
-  /* Above the stretched info link so the button stays clickable. */
-  position: relative;
-  z-index: 2;
+  padding: 0.15rem 34px 0.1rem 0;
 }
 .product-card .price-row .price {
   /* Tight against the rest of the price row: no margins at all, so the only

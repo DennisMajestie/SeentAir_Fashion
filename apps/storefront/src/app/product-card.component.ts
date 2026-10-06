@@ -110,27 +110,50 @@ export const SWATCHES: Record<string, string> = {
         </svg>
       </button>
 
-      <!-- Info block. Fixed-content areas only, top to bottom: the price/cart
-           row, then a 2-line clamped name, then the rating row pinned to the
+      <!-- Info block. Fixed-content areas only, top to bottom: the price row,
+           then a 2-line clamped name, then the rating row pinned to the
            bottom of the card. That combination is what keeps every card in a
            row the same height and the price/text row on the same baseline,
            whatever the name length. -->
       <div class="product-info">
         <!-- One link covering the whole info area. Stretched over the content
-             rather than wrapping it, so the cart button can be a real sibling of
-             the price in a flex row instead of a <button> nested inside an <a>:
-             nested interactive content is invalid HTML and its click handling is
-             unreliable on mobile Safari, and it is exactly why the cart button
-             used to have to float free of the layout. -->
+             rather than wrapping it, so the cart button can be a real sibling
+             instead of a <button> nested inside an <a>: nested interactive
+             content is invalid HTML and its click handling is unreliable on
+             mobile Safari. -->
         <a
           class="product-info__link"
           [routerLink]="['/product', product().id]"
           [attr.aria-label]="product().name"
         ></a>
 
-        <!-- Price and cart share one row, so the button cannot be pushed around
-             by a long name and cannot land on top of the price. First in the
-             info block so it reads above the name. -->
+        <!-- Cart-add: the gold tile floating over the bottom-right corner of the
+             photo, across the image/body boundary, as approved. It lives here in
+             the info block rather than inside the photo link for two reasons: a
+             <button> nested in an <a> is invalid HTML (and unreliable on mobile
+             Safari), and the top edge of this block IS the image/body boundary,
+             so anchoring to it puts the tile in the same spot on every card
+             whatever the name length. Size and colour selection still happens
+             on the product page, because a card cannot show a real size chooser
+             here without inventing a default. -->
+        @if (!isSoldOut(product())) {
+          <button
+            class="cartbtn"
+            type="button"
+            [attr.aria-label]="cartButtonLabel(product())"
+            (click)="addFromCard($event)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6"
+              />
+              <circle cx="9" cy="20" r="1" />
+              <circle cx="17" cy="20" r="1" />
+            </svg>
+          </button>
+        }
+
+        <!-- First in the info block so the price reads above the name. -->
         <div class="price-row">
           <!-- Single price, always. A "was" price needs a compare-at markdown,
                and the product model has no such field (products.base_price is the
@@ -138,31 +161,6 @@ export const SWATCHES: Record<string, string> = {
                real discount in this platform is the wholesale tier, which is a
                different number shown in the wholesale portal. -->
           <p class="price">₦{{ product().basePrice | number: '1.0-2' }}</p>
-
-          <!-- Cart-add. Previously a 30px gold tile floating across the
-               image/body boundary at bottom:-14px, which tracked the card's
-               height, so its position varied with the product name -- and was
-               clipped away entirely by the card's own overflow:hidden. In the
-               row it is positioned by the layout instead of by an offset. Size
-               and colour selection still happens on the product page, because a
-               card cannot show a real size chooser here without inventing a
-               default. -->
-          @if (!isSoldOut(product())) {
-            <button
-              class="cartbtn"
-              type="button"
-              [attr.aria-label]="cartButtonLabel(product())"
-              (click)="addFromCard($event)"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path
-                  d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6"
-                />
-                <circle cx="9" cy="20" r="1" />
-                <circle cx="17" cy="20" r="1" />
-              </svg>
-            </button>
-          }
         </div>
 
         <!-- Decorative "sale surge" clock, client-approved cosmetics. There is

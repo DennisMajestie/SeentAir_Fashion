@@ -106,12 +106,11 @@ export class App {
   readonly environment = environment;
 
   /**
-   * Store promises. The reference labels the last tile "24/7 Support", but that
-   * is a staffing claim and nothing backs it: environment.supportWhatsapp and
-   * environment.supportHours are both empty, so there is no real channel behind
-   * the promise. "Customer Care" states the same benefit without asserting hours
-   * we cannot substantiate. Restore the reference wording only once genuine
-   * support hours exist in configuration.
+   * Store promises, worded as in the approved reference. The last tile reads
+   * "24/7 Support" by confirmed client decision. Note that nothing in
+   * configuration backs the hours yet: environment.supportWhatsapp and
+   * environment.supportHours are both empty, so a real support channel still
+   * has to be set up behind this label.
    *
    * Icons come from Lucide (@lucide/angular), the Angular port of the same icon
    * set lucide-react provides: Truck, ShieldCheck, ShoppingBag and Headphones.
@@ -120,6 +119,6 @@ export class App {
     { label: 'Fast Delivery', icon: 'delivery' },
     { label: 'Quality Products', icon: 'quality' },
     { label: 'Easy Returns', icon: 'returns' },
-    { label: 'Customer Care', icon: 'support' },
+    { label: '24/7 Support', icon: 'support' },
   ];
 }

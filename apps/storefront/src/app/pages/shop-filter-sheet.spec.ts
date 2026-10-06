@@ -71,6 +71,8 @@ describe('ShopPage — filter bottom sheet', () => {
             snapshot: {
               queryParamMap: { get: () => null, has: () => false, getAll: () => [], keys: [] },
             },
+            // The page follows the category param as a stream, not only the snapshot.
+            queryParamMap: of({ get: () => null, has: () => false, getAll: () => [], keys: [] }),
           },
         },
       ],

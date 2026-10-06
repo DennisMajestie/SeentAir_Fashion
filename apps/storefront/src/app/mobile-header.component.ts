@@ -23,10 +23,13 @@ import { environment } from '../environments/environment';
     <header class="m-header" [class.m-header--light]="isPlp()">
       <div class="m-top">
         @if (isPlp()) {
-          <!-- Reference screen 2: light header, back chevron, category title. -->
-          <a class="m-back" routerLink="/shop" aria-label="Back to shop">
+          <!-- Reference screen 2: light header, back arrow, category title.
+               Back leads home: this screen IS /shop, so the old link to /shop
+               went nowhere. -->
+          <a class="m-back" routerLink="/" aria-label="Back to home">
             <svg class="m-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M15 18l-6-6 6-6" />
+              <path d="M19 12H5" />
+              <path d="m11 6-6 6 6 6" />
             </svg>
           </a>
           <h1 class="m-plp__title">{{ plpTitle() }}</h1>
