@@ -8,7 +8,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import {
   SE_STATUS,
   SeBannerComponent,
@@ -20,7 +20,6 @@ import {
   SeDatePipe,
   SeFilter,
   SeFilterBarComponent,
-  SeFilterValue,
   SeMetricCardComponent,
   SePageComponent,
   SeRowAction,
@@ -30,6 +29,7 @@ import {
 } from '@seentair/ui';
 import { AdminOrder, ApiService } from '../api.service';
 import { downloadCsv } from '../csv.util';
+import { urlFilters } from '../url-filters';
 import {
   CHANNEL_OPTIONS,
   channelLabel,
@@ -143,7 +143,6 @@ const LOAD_LIMIT = 100;
 })
 export class OrdersPage implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
-  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly confirm = inject(SeConfirmService);
   private readonly toast = inject(SeToastService);
@@ -158,15 +157,9 @@ export class OrdersPage implements OnInit, OnDestroy {
   readonly error = signal('');
 
   // ---- filters: held here, mirrored in the URL so a filtered list can be shared ----
-  private readonly params = this.route.snapshot.queryParamMap;
-  readonly query = signal(this.params.get('q') ?? '');
-  readonly filterValue = signal<SeFilterValue>(
-    Object.fromEntries(
-      ['channel', 'payment', 'status']
-        .map((key) => [key, this.params.get(key) ?? ''])
-        .filter(([, value]) => value),
-    ),
-  );
+  private readonly urlState = urlFilters(['channel', 'payment', 'status']);
+  readonly query = this.urlState.query;
+  readonly filterValue = this.urlState.value;
   readonly filters: SeFilter[] = [
     { key: 'channel', label: 'Channel', options: CHANNEL_OPTIONS },
     {
@@ -247,23 +240,11 @@ export class OrdersPage implements OnInit, OnDestroy {
   private lastChannel = this.filterValue()['channel'] ?? '';
 
   constructor() {
-    // Mirror the filters in the URL, and re-read from the server when the
-    // channel changes: the API returns the newest hundred FOR that channel.
+    // The API returns the newest hundred FOR a channel, so changing the channel
+    // filter re-reads from the server rather than narrowing what is loaded.
     effect(() => {
-      const filter = this.filterValue();
-      const q = this.query().trim();
+      const channel = this.filterValue()['channel'] ?? '';
       untracked(() => {
-        void this.router.navigate([], {
-          relativeTo: this.route,
-          queryParams: {
-            q: q || null,
-            channel: filter['channel'] || null,
-            payment: filter['payment'] || null,
-            status: filter['status'] || null,
-          },
-          replaceUrl: true,
-        });
-        const channel = filter['channel'] ?? '';
         if (channel !== this.lastChannel) {
           this.lastChannel = channel;
           this.load();

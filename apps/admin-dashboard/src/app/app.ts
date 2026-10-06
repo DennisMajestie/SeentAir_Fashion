@@ -12,6 +12,7 @@ import {
 } from '@seentair/ui';
 import { AppSearchComponent } from './app-search.component';
 import { AppOpsbarComponent } from './app-opsbar.component';
+import { AccessService } from './access.service';
 import { ApiService, Me } from './api.service';
 import { navFor } from './nav';
 import { ThemeService } from './theme.service';
@@ -311,7 +312,9 @@ export class App implements OnInit, OnDestroy {
   readonly scrolled = signal(false);
   private readonly confirm = inject(SeConfirmService);
   private readonly toast = inject(SeToastService);
-  readonly me = signal<Me | null>(null);
+  private readonly accessService = inject(AccessService);
+  /** The signed-in person; shared with every screen through AccessService. */
+  readonly me = this.accessService.me;
   readonly collapsed = signal(false);
   /** Requests waiting for this person's decision; the Approvals badge. */
   private readonly pendingApprovals = signal(0);
