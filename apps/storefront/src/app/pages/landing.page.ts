@@ -5,16 +5,33 @@ import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
 import { ProductCardComponent } from '../product-card.component';
-import { WishlistService } from '../wishlist.service';
 
 /** Curated order for the home category rail; anything unlisted sorts last. */
-const CATEGORY_ORDER = ['tops', 'bottoms', 'outerwear', 'accessories', 'tailoring'];
+const CATEGORY_ORDER = [
+  'tops',
+  'bottoms',
+  'outerwear',
+  'accessories',
+  'tailoring',
+  '2-Piece Sets',
+  'T-Shirts',
+  'Trousers',
+  'Underwear',
+  'Polo',
+  'Children 2-Piece Sets',
+];
 const CATEGORY_LABELS: Record<string, string> = {
   tops: 'Tops',
   bottoms: 'Bottoms',
   outerwear: 'Outerwear',
   accessories: 'Accessories',
   tailoring: 'Tailoring',
+  '2-Piece Sets': '2-Piece Sets',
+  'T-Shirts': 'T-Shirts',
+  Trousers: 'Trousers',
+  Underwear: 'Underwear',
+  Polo: 'Polo',
+  'Children 2-Piece Sets': 'Children 2-Piece Sets',
 };
 
 /**
@@ -41,16 +58,16 @@ interface RailCategory {
 
 /**
  * Phase 2 home body, following the approved reference: a circular category rail,
- * a three-up New Arrivals row, and a four-up image-only rail. The dark header,
+ * a three-up New Arrivals row, and a three-up Best Sellers row. The dark header,
  * service row and bottom tab bar live in the shell (`MobileHeaderComponent` /
  * `MobileBottomNavComponent`), not here.
  *
  * Every tile is a projection of real catalogue data:
  *  - New Arrivals ranks on `createdAt`, which the API always sends.
- *  - The four-up rail ranks on real review counts. It is deliberately NOT called
- *    "Best Sellers": the storefront API exposes no sales or units-sold metric, so
- *    any best-seller ordering would be invented. Rename it once the backend
- *    publishes a real ranking signal.
+ *  - Best Sellers shows the products the seller flagged `is_bestseller` -- the
+ *    same merchandising label as the card badge. It is a label, not a computed
+ *    sales figure; the storefront never shows a sales number except the real
+ *    `soldCount` the backend derives from paid orders.
  *  - The category rail is built from the category values actually present in the
  *    catalogue, so it cannot advertise an audience (Men/Women/Children) that the
  *    flat `Product.category` string cannot prove.
@@ -110,40 +127,9 @@ interface RailCategory {
         </div>
 
         @if (bestSellers().length > 0) {
-          <div class="m-row2">
+          <div class="m-row3">
             @for (p of bestSellers(); track p.id; let i = $index) {
-              <div class="m-tile">
-                <a class="m-tile__link" [routerLink]="['/product', p.id]" [attr.aria-label]="p.name">
-                  <span
-                    class="m-tile__img"
-                    [style.background-image]="'url(' + imageFor(p, i) + ')'"
-                  ></span>
-                </a>
-                <button
-                  type="button"
-                  class="m-tile__fav"
-                  [class.on]="isWished(p)"
-                  (click)="toggleWish(p)"
-                  [attr.aria-pressed]="isWished(p)"
-                  [attr.aria-label]="wishLabel(p)"
-                >
-                  <span aria-hidden="true">{{ isWished(p) ? '♥' : '♡' }}</span>
-                </button>
-                <div class="m-tile__meta">
-                  <p class="m-tile__name">{{ p.name }}</p>
-                  @if (soldOf(p) > 0) {
-                    <p class="m-tile__sold">{{ soldOf(p) }} bought</p>
-                  }
-                  @if (ratingOf(p.id); as r) {
-                    <p class="m-tile__rate">
-                      <span class="m-tile__stars" [attr.aria-label]="r.avg + ' out of 5 stars'"
-                        >{{ starGlyph(r.avg) }}</span
-                      >
-                      <span class="m-tile__rate-num">({{ r.count }})</span>
-                    </p>
-                  }
-                </div>
-              </div>
+              <app-product-card [product]="p" [index]="i" [rating]="ratingOf(p.id)" />
             }
           </div>
         } @else {
@@ -151,7 +137,7 @@ interface RailCategory {
             {{
               loading()
                 ? 'Loading best sellers…'
-                : 'Nothing has sold yet — check back after the first drop.'
+                : 'Nothing flagged yet — check back after the first drop.'
             }}
           </p>
         }
@@ -161,7 +147,6 @@ interface RailCategory {
 })
 export class LandingPage implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly wishlist = inject(WishlistService);
 
   /** Full catalogue, straight from the API. Every rail below is a projection. */
   readonly all = signal<Product[]>([]);
@@ -174,40 +159,35 @@ export class LandingPage implements OnInit {
   );
 
   /**
-   * Ranked by real paid orders, highest first, two across so the "N bought"
-   * count and the star rating both stay legible at 375px instead of being
-   * squeezed into a four-up tile.
+   * The Best Sellers rail: products the seller flagged `isBestseller`,
+   * three across to match New Arrivals.
    *
-   * Products with no sales are excluded rather than padded in, so the rail can
-   * never imply popularity it cannot evidence. Ties fall back to review count,
-   * then to name for a stable order across reloads.
+   * Membership is the merchandising flag (products.is_bestseller), not a
+   * computed sales figure -- the same label as the badge on the card. Within
+   * the rail the order still prefers real paid orders, then real review count,
+   * then name, so genuinely popular products lead and the sort stays stable
+   * across reloads. The card prints "(N)" only when a product has actual
+   * sales, so the rail can never show a number it cannot evidence.
    */
   readonly bestSellers = computed(() => {
     const reviews = (p: Product): number => this.ratings().get(p.id)?.count ?? 0;
     return [...this.all()]
-      .filter((p) => this.soldOf(p) > 0)
+      .filter((p) => p.isBestseller)
       .sort(
         (a, b) =>
           this.soldOf(b) - this.soldOf(a) ||
           reviews(b) - reviews(a) ||
           a.name.localeCompare(b.name),
       )
-      .slice(0, 4);
+      .slice(0, 3);
   });
 
-  /**
-   * Orders that bought this product. Treated as unknown-but-zero when the field
-   * is missing so an older API build degrades to an empty rail rather than
-   * inventing numbers.
+  /** Orders that bought this product. Treated as unknown-but-zero when the field
+   * is missing so an older API build degrades gracefully rather than inventing
+   * numbers.
    */
   soldOf(product: Product): number {
     return product.soldCount ?? 0;
-  }
-
-  /** Filled stars for a fractional average, so 4.3 renders as four solid plus one outline. */
-  starGlyph(avg: number): string {
-    const full = Math.round(avg);
-    return '★'.repeat(Math.max(0, Math.min(5, full))) + '☆'.repeat(5 - Math.max(0, Math.min(5, full)));
   }
 
   /** Category values actually present in the catalogue, with a real image each. */
@@ -257,20 +237,6 @@ export class LandingPage implements OnInit {
 
   ratingOf(productId: string): Rating | null {
     return this.ratings().get(productId) ?? null;
-  }
-
-  isWished(product: Product): boolean {
-    return this.wishlist.has(product.id);
-  }
-
-  toggleWish(product: Product): void {
-    this.wishlist.toggle(product);
-  }
-
-  wishLabel(product: Product): string {
-    return this.isWished(product)
-      ? `Remove ${product.name} from wishlist`
-      : `Add ${product.name} to wishlist`;
   }
 
   /** Average + review count per product, from the public reviews endpoint. */

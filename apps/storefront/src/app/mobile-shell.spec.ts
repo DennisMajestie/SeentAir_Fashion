@@ -3,6 +3,7 @@ import { Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { ApiService, Product } from './api.service';
 import { CartService } from './cart.service';
+import { App } from './app';
 import { MobileBottomNavComponent } from './mobile-bottom-nav.component';
 import { MobileHeaderComponent } from './mobile-header.component';
 
@@ -47,10 +48,23 @@ describe('Phase 1 mobile shell', () => {
     });
 
     it('renders the service copy, with no unverifiable support-hours claim', () => {
-      // The reference says "24/7 Support". That is a staffing promise with
-      // nothing behind it (supportWhatsapp and supportHours are both empty), so
-      // the tile keeps the benefit but drops the hours.
-      const labels = [...element.querySelectorAll('.m-svc__label')].map((n) => n.textContent?.trim());
+      // The store promises render at the top of <main> (one shared row above
+      // every routed page), so the assertion mounts the app shell rather than
+      // the header alone.
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [App],
+        providers: [
+          provideRouter([]),
+          { provide: ApiService, useValue: { products: () => of({ data: [], total: 0 }) } },
+          { provide: CartService, useValue: { count: 0 } },
+        ],
+      });
+      const app = TestBed.createComponent(App);
+      app.detectChanges();
+      const labels = [
+        ...(app.nativeElement as HTMLElement).querySelectorAll('.m-svc__label'),
+      ].map((n) => n.textContent?.trim());
       expect(labels).toEqual(['Fast Delivery', 'Quality Products', 'Easy Returns', 'Customer Care']);
     });
 
@@ -121,6 +135,38 @@ describe('Phase 1 mobile shell', () => {
         n.textContent?.trim(),
       );
       expect(badges).toEqual(['2']);
+    });
+
+    it('draws the bell and cart at the larger header size', () => {
+      // Bell and cart are the two primary destinations in the header, so they
+      // carry the oversized glyph; the magnifier and the PLP back chevron stay
+      // at the smaller size. A plain `width: 26px` somewhere else would not
+      // size these two, so assert on the class that selects them.
+      const iconOf = (match: string) => {
+        const link = [...element.querySelectorAll('.m-icons a')].find((a) =>
+          (a as HTMLAnchorElement).getAttribute('href')?.includes(match),
+        );
+        return link!.querySelector('svg.m-ic')!;
+      };
+
+      for (const icon of [iconOf('notifications'), iconOf('/cart')]) {
+        expect(icon.classList).toContain('m-ic--lg');
+        // 26px, matching the bottom-nav glyph above it.
+        expect(icon.getBoundingClientRect().width).toBe(26);
+        expect(icon.getBoundingClientRect().height).toBe(26);
+      }
+
+      // A bigger glyph must not cost the tap target: the 44px floor still holds.
+      for (const link of [...element.querySelectorAll('.m-icons a')]) {
+        expect(link.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
+        expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+      }
+
+      // And the secondary icon, when this route renders one, stays the old size.
+      const small = [...element.querySelectorAll('.m-icons .m-ic:not(.m-ic--lg)')];
+      for (const icon of small) {
+        expect(icon.getBoundingClientRect().width).toBe(21);
+      }
     });
 
     it('keeps the drawer out of the tab order while closed', () => {

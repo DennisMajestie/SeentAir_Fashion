@@ -1,16 +1,54 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterOutlet } from '@angular/router';
+import { LucideTruck, LucideShieldCheck, LucideShoppingBag, LucideHeadphones } from '@lucide/angular';
 import { environment } from '../environments/environment';
 import { MobileHeaderComponent } from './mobile-header.component';
 import { MobileBottomNavComponent } from './mobile-bottom-nav.component';
 
+type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
+
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, RouterOutlet, RouterLink, MobileHeaderComponent, MobileBottomNavComponent],
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    RouterLink,
+    MobileHeaderComponent,
+    MobileBottomNavComponent,
+    LucideTruck,
+    LucideShieldCheck,
+    LucideShoppingBag,
+    LucideHeadphones,
+  ],
   template: `
     <app-mobile-header />
     <main>
+      <!-- Store promises. Lives in <main> so the row scrolls with the page
+           instead of riding over the sticky dark header. -->
+      <div class="m-services" aria-label="Store promises">
+        @for (s of services; track s.label) {
+          <div class="m-svc">
+            <span class="m-svc__ic" aria-hidden="true">
+              @switch (s.icon) {
+                @case ('delivery') {
+                  <svg lucideTruck />
+                }
+                @case ('quality') {
+                  <svg lucideShieldCheck />
+                }
+                @case ('returns') {
+                  <svg lucideShoppingBag />
+                }
+                @case ('support') {
+                  <svg lucideHeadphones />
+                }
+              }
+            </span>
+            <span class="m-svc__label">{{ s.label }}</span>
+          </div>
+        }
+      </div>
       <router-outlet />
     </main>
     <app-mobile-tabs />
@@ -66,4 +104,22 @@ import { MobileBottomNavComponent } from './mobile-bottom-nav.component';
 export class App {
   /** Exposed for the footer links to the other apps. */
   readonly environment = environment;
+
+  /**
+   * Store promises. The reference labels the last tile "24/7 Support", but that
+   * is a staffing claim and nothing backs it: environment.supportWhatsapp and
+   * environment.supportHours are both empty, so there is no real channel behind
+   * the promise. "Customer Care" states the same benefit without asserting hours
+   * we cannot substantiate. Restore the reference wording only once genuine
+   * support hours exist in configuration.
+   *
+   * Icons come from Lucide (@lucide/angular), the Angular port of the same icon
+   * set lucide-react provides: Truck, ShieldCheck, ShoppingBag and Headphones.
+   */
+  readonly services: ReadonlyArray<{ label: string; icon: ServiceIcon }> = [
+    { label: 'Fast Delivery', icon: 'delivery' },
+    { label: 'Quality Products', icon: 'quality' },
+    { label: 'Easy Returns', icon: 'returns' },
+    { label: 'Customer Care', icon: 'support' },
+  ];
 }

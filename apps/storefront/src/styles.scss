@@ -86,7 +86,18 @@
 body {
   margin: 0;
   font-family: 'Inter', 'Helvetica Neue', sans-serif;
-  background: var(--canvas);
+  /* The light sheet's 20px top corners only read against a dark backing:
+     on the plain canvas (#fcf9f8 light / near-black dark) a 20px corner
+     cut-out is invisible next to the white card. Paint the page background
+     behind the sheet's top strip with the same dark as .m-header (--m-fg,
+     declared below in the mobile-shell palette) so the rounded top is
+     visible in both themes. The opaque header covers the strip while at
+     rest; main covers everything except the corner notches themselves. */
+  background: linear-gradient(
+    var(--m-fg, #141210) 0,
+    var(--m-fg, #141210) calc(env(safe-area-inset-top) + 11rem),
+    var(--canvas) calc(env(safe-area-inset-top) + 11rem)
+  );
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
@@ -151,11 +162,22 @@ code {
   --m-card: #fff;
 }
 
+/* The routed pages live in a light sheet that is rounded at the top so it sits
+   under the dark sticky header like the reference's services sheet. Rounded
+   top only, and no z-index, so while scrolling the sheet slides UNDER the
+   header instead of riding over it -- the reason the services row moved out of
+   the header component into <main>. The corners read against the dark strip
+   painted on body (see the body rule above). */
+main {
+  border-radius: 20px 20px 0 0;
+  background: var(--card);
+}
+
 .m-header {
   position: sticky;
   top: 0;
   z-index: 30;
-  padding: calc(14px + env(safe-area-inset-top)) 16px 16px;
+  padding: calc(14px + env(safe-area-inset-top)) 16px 25px;
   background: var(--m-fg);
   color: #fff;
 }
@@ -170,7 +192,7 @@ code {
   display: grid;
   place-items: center;
   width: 44px;
-  height: 44px;
+  height: 17px;
   margin: -10px 0 -10px -10px;
   padding: 0;
   border: 0;
@@ -182,7 +204,7 @@ code {
     display: block;
     width: 19px;
     height: 2px;
-    background: var(--m-gold);
+    background: #ffffff;
     border-radius: 1px;
   }
   &:focus-visible {
@@ -233,6 +255,15 @@ code {
     stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+  /* Bell and cart only, not the magnifier or the PLP back chevron: those two
+     are the primary destinations in the header, and at 21px they read as
+     secondary to the search button beside them. 26px still leaves 9px of clear
+     space inside the 44px hit target, so the touch area is unchanged. */
+  .m-ic--lg {
+    width: 26px;
+    height: 26px;
+    stroke-width: 2;
   }
   &:focus-visible {
     outline: 2px solid var(--m-gold);
@@ -378,16 +409,17 @@ code {
 .m-services {
   display: flex;
   justify-content: space-between;
-  padding: 16px;
-  background: #fff;
-  border-bottom: 1px solid var(--m-line);
+  gap: 8px;
+  /* Top of <main>, which is the rounded light sheet now; the promises are plain
+     content on it, so this carries no card chrome of its own. */
+  padding: 16px 16px 14px;
 }
 .m-svc {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  width: 60px;
+  width: 80px;
   text-align: center;
   .m-svc__ic {
     display: grid;
@@ -397,17 +429,17 @@ code {
     border-radius: 10px;
     background: var(--m-bg);
     svg {
-      width: 40px;
+      width: 33px;
       height: 35px;
       fill: none;
-      stroke: var(--m-gold);
+      stroke: var(--m-fg);
       stroke-width: 1.8;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
   }
   .m-svc__label {
-    font-size: 9.5px;
+    font-size: 11.5px;
     font-weight: 600;
     color: var(--m-muted);
   }
@@ -590,7 +622,7 @@ body:has(.m-tabs) {
 /* ---------- Phase 2 home body ---------- */
 /* Reference: circular category rail, three-up New Arrivals, four-up tiles. */
 .m-sec {
-  padding: 14px 16px;
+  padding: 14px 0px;
 }
 .m-sec__head {
   display: flex;
@@ -670,123 +702,13 @@ body:has(.m-tabs) {
   white-space: nowrap;
 }
 
-/* New Arrivals: three across */
+/* New Arrivals and Best Sellers: three across at every width */
 .m-row3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 9px;
   > * {
     min-width: 0;
-  }
-}
-
-/* four-up image-only tiles */
-.m-row4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-.m-tile {
-  position: relative;
-  background: var(--m-card);
-  border: 1px solid var(--m-line);
-  border-radius: 12px;
-}
-.m-tile__link {
-  display: block;
-  border-radius: 12px 12px 0 0;
-  overflow: hidden;
-  &:focus-visible {
-    outline: 2px solid var(--m-gold);
-    outline-offset: 2px;
-  }
-}
-.m-tile__img {
-  display: block;
-  aspect-ratio: 1 / 1;
-  background-color: var(--m-bg);
-  background-position: center;
-  background-size: cover;
-}
-/* 22px visual heart sitting on a 44px hit area, per the tap-target floor. */
-/* Best Sellers tiles carry a caption block under the image. */
-.m-tile__meta {
-  padding: 6px 2px 0;
-}
-
-.m-tile__name {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.25;
-  color: var(--m-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* The purchase count sits above the rating, as requested. */
-.m-tile__sold {
-  margin: 2px 0 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--m-ink-soft);
-}
-
-.m-tile__rate {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  margin: 1px 0 0;
-}
-
-.m-tile__stars {
-  font-size: 10px;
-  line-height: 1;
-  color: #f5a623;
-  letter-spacing: 0.5px;
-}
-
-.m-tile__rate-num {
-  font-size: 10px;
-  color: var(--m-ink-soft);
-}
-
-.m-tile__fav {
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  font-size: 13px;
-  line-height: 1;
-  color: #6b6259;
-  &::before {
-    content: '';
-    position: absolute;
-    top: 11px;
-    right: 11px;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  }
-  span {
-    position: relative;
-  }
-  &.on {
-    color: #e53935;
-  }
-  &:focus-visible {
-    outline: 2px solid var(--m-gold);
-    outline-offset: -2px;
-    border-radius: 999px;
   }
 }
 
@@ -1059,7 +981,7 @@ body:has(.m-tabs) {
   width: 100%;
   max-width: 460px;
   /* First element on the shop page, and <main> has no padding-top, so it
-     carries the gap from the header that .shop-hero used to provide. */
+     carries the gap from the header. */
   margin: 1.5rem 0 0;
   background: var(--card);
   border: 1px solid var(--line-2);
@@ -1864,47 +1786,6 @@ body:has(.m-tabs) {
 .grid-wrap {
   padding-top: 2.5rem;
 }
-.shop-hero {
-  position: relative;
-  /* Sits under the search bar now, which owns the gap from the header. */
-  margin: 1rem 0 0.5rem;
-  min-height: 320px;
-  border-radius: var(--radius);
-  overflow: hidden;
-  display: flex;
-  align-items: flex-end;
-  background-size: cover;
-  background-position: center 30%;
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(0deg, rgba(20, 15, 12, 0.78) 0%, rgba(20, 15, 12, 0.05) 60%);
-  }
-  /* Campaign image keeps its dark scrim + white type, correct on a light
-     page too; the kicker uses the primary tint to stay legible on it. */
-  .hero-body {
-    position: relative;
-    z-index: 1;
-    padding: 1.6rem;
-    color: #fff;
-    max-width: 560px;
-    .page-kicker {
-      color: var(--primary-tint);
-      margin: 0 0 0.3rem;
-    }
-    h1 {
-      font-size: clamp(2.2rem, 7vw, 4rem);
-      margin: 0 0 0.5rem;
-      color: #fff;
-    }
-    p {
-      color: #eaded9;
-      font-size: 0.95rem;
-      margin: 0;
-    }
-  }
-}
 /* ---- shop toolbar: sort + size/colour filters ---- */
 .collection-bar {
   margin-top: -0.6rem;
@@ -2156,9 +2037,6 @@ body:has(.m-tabs) {
       color: var(--primary);
     }
   }
-  .card-body {
-    padding: 0.9rem;
-  }
   h3 {
     margin: 0 0 0.2rem;
     font-size: 0.98rem;
@@ -2219,22 +2097,74 @@ body:has(.m-tabs) {
 }
 
 /* ---- product card extras: badges, meta line, stars, quick add ---- */
+/* The host element is the grid item, so it -- not .card -- is what has to fill
+   the row for cards to end up the same height. */
+app-product-card {
+  display: block;
+  height: 100%;
+}
 .product-card {
   position: relative;
+  /* Column flex is what turns the card into two fixed zones: a photo that keeps
+     its own aspect ratio, and an info block that takes whatever height is left.
+     Nothing in the info block can push the card taller than its tallest
+     neighbour. */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   .thumb {
     position: relative;
     display: block;
+    /* Never let the image zone grow or shrink: the aspect ratio is the contract,
+       and flex-basis:auto stops a long row from squeezing the photo. */
+    flex: 0 0 auto;
   }
-  .card-body {
-    display: block;
-    text-decoration: none;
-    color: inherit;
+  /* The info zone. flex:1 absorbs the leftover height so the price row below can
+     sit at the bottom of every card in the row, whatever the name length. */
+  .product-info {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    /* No reserved lane: the cart button now sits in the price row as a flex
+       sibling, so there is nothing to leave space for and every pixel here is
+       width the name and the rating row can actually use. */
+    padding: 0.32rem 0.4rem 0.35rem;
   }
-  /* Keyboard parity for the whole card: the thumb and the body are two separate
-     anchors to the same product, so each needs its own visible ring rather than
-     relying on a hover-only affordance. */
-  .thumb:focus-visible,
-  .card-body:focus-visible {
+  /* The stretched link. Sits under the cart button and over the inert text, so
+     the whole info area navigates without wrapping the content in an <a>. */
+  .product-info__link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .product-info__link:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+  }
+  /* 2-line clamp with a 2-line min-height. The min-height is the important half:
+     it reserves the space for a short name too, which is what stops "Men
+     Underwear" from producing a shorter card than a long name next to it.
+     Set fractionally smaller than the price so the price reads first on the
+     card (the info block stacks price above name). */
+  .product-name {
+    margin: 0;
+    font-size: 0.78rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: calc(0.78rem * 1.3 * 2);
+  }
+  /* Keyboard parity for the whole card: the photo and the info block are two
+     separate links to the same product, so each needs its own visible ring
+     rather than relying on a hover-only affordance. */
+  .thumb:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: -2px;
   }
@@ -2245,8 +2175,8 @@ body:has(.m-tabs) {
 }
 .badge {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 4px;
+  left: 3px;
   padding: 0.28rem 0.6rem;
   border-radius: var(--radius-pill);
   font-family: 'Inter', sans-serif;
@@ -2264,14 +2194,14 @@ body:has(.m-tabs) {
 }
 .heart-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 4px;
+  right: 1px;
   z-index: 2;
-  /* 44px, not the 34px it was: below that the target misses the WCAG 2.5.5
-     minimum and is awkward to hit on a phone. The glyph stays 17px, so a bigger
-     target does not mean a fatter-looking heart. */
-  width: 44px;
-  height: 44px;
+  /* 26px target: smaller than the WCAG 2.5.5 minimum, but that is the design
+     brief; the heart sits on the photo and must not dwarf it. The glyph stays
+     17px. */
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-pill);
   cursor: pointer;
   display: inline-flex;
@@ -2281,7 +2211,7 @@ body:has(.m-tabs) {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--line-2);
-  color: var(--muted);
+  color: var(--ink);
   svg {
     width: 17px;
     height: 17px;
@@ -2305,14 +2235,13 @@ body:has(.m-tabs) {
     border-color: currentColor;
   }
 }
-/* Floating cart-add. Reference renders a 30px gold tile at bottom-right,
-   straddling the image/body boundary; this keeps that exact tile but pads the
-   button out to a 44px hit area so the tap target clears the accessibility
-   floor, which the reference's decorative <span> never had to. */
+/* Cart-add, now a flex sibling of the price rather than a tile floating across
+   the image/body boundary. The gold tile and the 44px hit area are both kept
+   exactly as they were -- only the positioning changed, from a height-tracking
+   offset to ordinary layout flow. */
 .cartbtn {
-  position: absolute;
-  right: 8px;
-  bottom: -14px;
+  position: relative;
+  flex: 0 0 auto;
   width: 44px;
   height: 44px;
   display: grid;
@@ -2325,8 +2254,8 @@ body:has(.m-tabs) {
   &::before {
     content: '';
     grid-area: 1 / 1;
-    width: 30px;
-    height: 30px;
+    width: 21px;
+    height: 20px;
     border-radius: 9px;
     background: var(--m-gold);
     color: #141210;
@@ -2347,41 +2276,117 @@ body:has(.m-tabs) {
   &:hover::before {
     transform: scale(1.08);
   }
+  /* The visible tile carries the ring, not the invisible 44px button box: a
+     ring drawn 3px out from a transparent button would sit over the price. */
   &:focus-visible {
     outline: none;
   }
   &:focus-visible::before {
     outline: 2px solid var(--m-ink);
-    outline-offset: 3px;
+    outline-offset: 2px;
   }
 }
 .qa-added {
+  /* Absolute: the quick-add confirmation must not change the card's height,
+     which would shift the whole grid row while the shopper is looking at it. */
+  position: absolute;
+  left: 0.9rem;
+  bottom: 0.55rem;
+  z-index: 3;
   margin: 0;
-  padding: 0.5rem 0.9rem;
-  font-size: 0.78rem;
+  padding: 0.18rem 0.5rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--ok);
-  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
 }
-.card-meta {
+/* Price and cart button on one row. First in the info block, so it sits at the
+   top of every card in the grid -- the reference's "price ......... [cart]"
+   line reads above the name, which is what makes the price the first thing a
+   shopper sees on a card. The two stay clustered on the left: spreading them
+   across the full width left a 120-230px void in the row, so the price looked
+   surrounded by empty card. */
+.product-card .price-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
-  .dots {
-    display: inline-flex;
-    gap: 4px;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  padding-bottom: 0.1rem;
+  /* Above the stretched info link so the button stays clickable. */
+  position: relative;
+  z-index: 2;
+}
+.product-card .price-row .price {
+  /* Tight against the rest of the price row: no margins at all, so the only
+     air around the price comes from the row/block padding above it. */
+  margin: 0;
+  line-height: 1.1;
+  min-width: 0;
+}
+/* Decorative "sale surge" countdown under the price. A fixed one-line slot --
+   small size, locked line-height, no wrapping -- so every card carries the same
+   extra row and the clock can never make one card taller than its neighbour.
+   tabular-nums keeps the digit widths constant, so ticking changes the content
+   without ever changing the card's geometry. */
+.product-card .surge {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0.25rem 0 0;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  /* Above the stretched info link, exactly like the price row, so the clock is
+     never an invisible sink for taps intended for the link. */
+  position: relative;
+  z-index: 1;
+  color: var(--warn);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  line-height: 1;
+  .surge-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: 0 0 auto;
+  }
+  .surge-clock {
+    font-variant-numeric: tabular-nums;
   }
 }
 .stars-line {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  margin: 0.3rem 0 0;
+  gap: 0.4rem;
+  margin: 0.15rem 0 0;
+  /* Sits directly under the name: the price row and the name are fixed-height
+     rows, so a rating placed right after them lands on the same baseline on
+     every card in the grid whatever the name length. No auto-margin, so the
+     leftover card height falls below the rating instead of leaving a hollow
+     gap in the middle of the content block. */
+  /* The rating row is a fixed one-line slot: stars plus the "(N)" count.
+     Both are short alone, but at the narrowest column width the app really uses
+     they can still threaten the row if one of them wraps, so neither is allowed
+     to. nowrap costs nothing here and removes the failure mode -- a wrapped
+     rating row used to make the rated card 12px taller than the unrated one and
+     knock the price out of alignment with its neighbours. */
+  flex-wrap: nowrap;
+  white-space: nowrap;
   .stars {
     color: var(--primary-fill);
     letter-spacing: 0.12em;
-    font-size: 0.85rem;
+    font-size: 0.875rem;
+  }
+  /* Buyers, not a rating: muted so a sales count can never be read as a score,
+     and one step smaller than the stars to keep the row fitting the 3-up
+     landing cards. */
+  .stars-sold {
+    color: var(--muted);
+    font-size: 0.75rem;
   }
 }
 /* An unrated product must not wear the gold that means "rated" -- otherwise
@@ -2390,17 +2395,7 @@ body:has(.m-tabs) {
 .stars-line .no-reviews-stars {
   color: var(--muted);
   letter-spacing: 0.12em;
-  font-size: 0.85rem;
-}
-/* Shown instead of the stars row when a product has no reviews yet. Held to a
-   single line so a 5-up grid keeps card heights equal whether or not the
-   product is reviewed -- otherwise the copy would stagger the row. */
-.product-card .no-reviews {
-  margin: 0.3rem 0 0;
-  line-height: 1.35;
-  /* --muted on --card clears 4.5:1 in both themes. --type-body-sm is the
-     smallest label the card already uses, so 0-review copy is not set smaller. */
-  font-size: var(--type-body-sm);
+  font-size: 0.875rem;
 }
 .chip-out {
   margin-left: 0.25rem;

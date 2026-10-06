@@ -18,13 +18,31 @@ type SortKey = 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'best-sellin
 
 /** Curated category order for the shop pills, tailoring (custom-only) is
     deliberately last. Unknown categories fall through after these. */
-const CATEGORY_ORDER = ['tops', 'bottoms', 'outerwear', 'accessories', 'tailoring'];
+const CATEGORY_ORDER = [
+  'tops',
+  'bottoms',
+  'outerwear',
+  'accessories',
+  'tailoring',
+  '2-Piece Sets',
+  'T-Shirts',
+  'Trousers',
+  'Underwear',
+  'Polo',
+  'Children 2-Piece Sets',
+];
 const CATEGORY_LABELS: Record<string, string> = {
   tops: 'Tops',
   bottoms: 'Bottoms',
   outerwear: 'Outerwear',
   accessories: 'Accessories',
   tailoring: 'Tailoring',
+  '2-Piece Sets': '2-Piece Sets',
+  'T-Shirts': 'T-Shirts',
+  Trousers: 'Trousers',
+  Underwear: 'Underwear',
+  Polo: 'Polo',
+  'Children 2-Piece Sets': 'Children 2-Piece Sets',
 };
 
 const COLLECTION_ORDER = ['drop04harmattan', 'studioessentials', 'ateliercommission'];
@@ -35,9 +53,9 @@ function collectionKey(name: string): string {
   return name.toLowerCase().replace(/[\s'’—–-]+/g, '');
 }
 
-/** Product discovery: hero, search, circular sub-category rail, sort/filter
-    toolbar with a grid/list toggle, size/colour filters, availability badges,
-    real review stars and quick-add. */
+/** Product discovery: search, circular sub-category rail, sort/filter toolbar
+    with a grid/list toggle, size/colour filters, availability badges, real
+    review stars and quick-add. */
 @Component({
   selector: 'app-shop',
   imports: [CommonModule, FormsModule, ProductCardComponent, FilterSheetComponent],
@@ -50,17 +68,6 @@ function collectionKey(name: string): string {
       (ngModelChange)="query.set($event)"
       aria-label="Search products"
     />
-
-    <div class="shop-hero" style="background-image:url('assets/shop-0.jpg')">
-      <div class="hero-body">
-        <p class="page-kicker">Collection 04 / Aba</p>
-        <h1>Harmattan Drop</h1>
-        <p>
-          Heavyweight French terry, raw-edge seams, and dust-resistant tailoring engineered for dry
-          season winds.
-        </p>
-      </div>
-    </div>
 
     <!-- Reference PLP: circular sub-category rail above the sort/filter toolbar.
          Every pill is a real catalogue category with a real product photo, so no

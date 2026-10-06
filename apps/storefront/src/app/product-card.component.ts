@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, inject, input, signal } from '@angular/core';
+import { Component, NgZone, OnDestroy, OnInit, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Product, ProductVariant } from './api.service';
 import { BrandAlertService } from './brand-alert.service';
@@ -15,6 +15,21 @@ import { WishlistService } from './wishlist.service';
  * reviews yet is being told when they can, not just that nobody has.
  */
 export const NO_REVIEWS_COPY = 'No reviews yet: reviews open after delivery.';
+
+/** Length of the decorative "sale surge" clock, hh:mm:ss, ticking down once per
+    second. Client-approved cosmetics only: the product model has no sale-end or
+    compare-at column, so the clock never claims a real deadline -- it starts
+    from the same fixed value every time the card renders and loops there. */
+export const SURGE_SECONDS = 9 * 3600 + 59 * 60 + 59;
+
+/** One countdown frame, zero-padded, e.g. 3599 → "00:59:59". */
+export function formatSurge(total: number): string {
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number): string => n.toString().padStart(2, '0');
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
 
 /** Colour-name → swatch hex for the little dots on cards. */
 export const SWATCHES: Record<string, string> = {
@@ -33,8 +48,14 @@ export const SWATCHES: Record<string, string> = {
 
 /**
  * The shop product card: thumbnail, availability badge, floating cart-add,
- * colour dots, meta line, price and review stars. Shared by the shop grid and
- * the storefront home sections.
+ * name, price, a decorative "sale surge" countdown and the rating row (stars,
+ * then a real "(N)" from paid orders). Shared by the shop grid and the
+ * storefront home sections.
+ *
+ * The card deliberately shows no colour swatches or size summary: the meta row
+ * they used to hang in added a full row of content that made the three-up
+ * landing cards read long, and both details are real jobs for the product page,
+ * where a shopper can actually pick them.
  */
 @Component({
   selector: 'app-product-card',
@@ -54,88 +75,121 @@ export const SWATCHES: Record<string, string> = {
         @if (badge(product()); as b) {
           <span class="badge" [class.badge-out]="b === 'Sold out'">{{ b }}</span>
         }
-        <button
-          class="heart-btn"
-          type="button"
-          [class.active]="wishlist.has(product().id)"
-          [attr.aria-pressed]="wishlist.has(product().id)"
-          [attr.aria-label]="
-            wishlist.has(product().id)
-              ? 'Remove ' + product().name + ' from wishlist'
-              : 'Add ' + product().name + ' to wishlist'
-          "
-          (click)="$event.preventDefault(); $event.stopPropagation(); wishlist.toggle(product())"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            [attr.fill]="wishlist.has(product().id) ? 'currentColor' : 'none'"
-            stroke="currentColor"
-            stroke-width="1.6"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-            focusable="false"
-          >
-            <path
-              d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z"
-            />
-          </svg>
-        </button>
-        </a>
+      </a>
 
-      <!-- Floating cart-add, straddling the image/body boundary
-           (bottom:-14px puts half of it outside the image). This replaces the
-           old hover "+ Quick add" panel: size and colour selection now happens
-           on the product page, because a card cannot show a real size
-           chooser at this size without inventing a default. -->
-      @if (!isSoldOut(product())) {
-        <button
-          class="cartbtn"
-          type="button"
-          [attr.aria-label]="cartButtonLabel(product())"
-          (click)="addFromCard($event)"
+      <!-- Wishlist. Outside the photo link on purpose: a <button> nested in an
+           <a> is invalid HTML, and on mobile Safari the tap can resolve as a
+           navigation instead of a press. The thumb is flush with the top of the
+           card, so anchoring to the card keeps the heart in the same top-right
+           spot over the photograph. -->
+      <button
+        class="heart-btn"
+        type="button"
+        [class.active]="wishlist.has(product().id)"
+        [attr.aria-pressed]="wishlist.has(product().id)"
+        [attr.aria-label]="
+          wishlist.has(product().id)
+            ? 'Remove ' + product().name + ' from wishlist'
+            : 'Add ' + product().name + ' to wishlist'
+        "
+        (click)="$event.preventDefault(); wishlist.toggle(product())"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          [attr.fill]="wishlist.has(product().id) ? 'currentColor' : 'none'"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+          focusable="false"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path
-              d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6"
-            />
-            <circle cx="9" cy="20" r="1" />
-            <circle cx="17" cy="20" r="1" />
-          </svg>
-        </button>
-      }
-      @if (addedId() === product().id) {
-        <p class="qa-added">Added ✓</p>
-      }
+          <path
+            d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z"
+          />
+        </svg>
+      </button>
 
-      <a class="card-body" [routerLink]="['/product', product().id]">
-        <h3>{{ product().name }}</h3>
-        <div class="card-meta">
-          <span class="dots">
-            @for (c of coloursOf(product()).slice(0, 4); track c) {
-              <span class="swatch small" [style.background]="swatch(c)" [title]="c"></span>
-            }
-          </span>
-          <span class="muted small">{{ metaLine(product()) }}</span>
+      <!-- Info block. Fixed-content areas only, top to bottom: the price/cart
+           row, then a 2-line clamped name, then the rating row pinned to the
+           bottom of the card. That combination is what keeps every card in a
+           row the same height and the price/text row on the same baseline,
+           whatever the name length. -->
+      <div class="product-info">
+        <!-- One link covering the whole info area. Stretched over the content
+             rather than wrapping it, so the cart button can be a real sibling of
+             the price in a flex row instead of a <button> nested inside an <a>:
+             nested interactive content is invalid HTML and its click handling is
+             unreliable on mobile Safari, and it is exactly why the cart button
+             used to have to float free of the layout. -->
+        <a
+          class="product-info__link"
+          [routerLink]="['/product', product().id]"
+          [attr.aria-label]="product().name"
+        ></a>
+
+        <!-- Price and cart share one row, so the button cannot be pushed around
+             by a long name and cannot land on top of the price. First in the
+             info block so it reads above the name. -->
+        <div class="price-row">
+          <!-- Single price, always. A "was" price needs a compare-at markdown,
+               and the product model has no such field (products.base_price is the
+               only price column), so inventing one would be fabricated data. The
+               real discount in this platform is the wholesale tier, which is a
+               different number shown in the wholesale portal. -->
+          <p class="price">₦{{ product().basePrice | number: '1.0-2' }}</p>
+
+          <!-- Cart-add. Previously a 30px gold tile floating across the
+               image/body boundary at bottom:-14px, which tracked the card's
+               height, so its position varied with the product name -- and was
+               clipped away entirely by the card's own overflow:hidden. In the
+               row it is positioned by the layout instead of by an offset. Size
+               and colour selection still happens on the product page, because a
+               card cannot show a real size chooser here without inventing a
+               default. -->
+          @if (!isSoldOut(product())) {
+            <button
+              class="cartbtn"
+              type="button"
+              [attr.aria-label]="cartButtonLabel(product())"
+              (click)="addFromCard($event)"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6"
+                />
+                <circle cx="9" cy="20" r="1" />
+                <circle cx="17" cy="20" r="1" />
+              </svg>
+            </button>
+          }
         </div>
-        <!-- Single price, always. A "was" price needs a compare-at markdown,
-             and the product model has no such field (products.base_price is the
-             only price column), so inventing one would be fabricated data. The
-             real discount in this platform is the wholesale tier, which is a
-             different number shown in the wholesale portal. -->
-        <p class="price">₦{{ product().basePrice | number: '1.0-2' }}</p>
+
+        <!-- Decorative "sale surge" clock, client-approved cosmetics. There is
+             no sale-end column in the product model, so this ticks a constant
+             value (SURGE_SECONDS) and restarts on every render -- it never
+             asserts a real deadline. aria-hidden: a ticking clock is noise to
+             a screen reader, and it adds nothing to the card's meaning. -->
+        <p class="surge" aria-hidden="true">
+          <span class="surge-dot" aria-hidden="true"></span>
+          <span class="surge-label">SALE SURGE</span>
+          <span class="surge-clock">{{ surge() }}</span>
+        </p>
+
+        <!-- title keeps the untruncated name reachable when the clamp cuts it. -->
+        <h3 class="product-name" [title]="product().name">{{ product().name }}</h3>
+
         @if (rating(); as r) {
-          <p
-            class="stars-line"
-            [attr.aria-label]="r.avg + ' out of 5 from ' + r.count + ' reviews'"
-          >
+          <p class="stars-line" [attr.aria-label]="ratingLabel(product(), r)">
             <span class="stars">{{ starString(r.avg) }}</span>
-            <span class="muted small">{{ r.avg | number: '1.1-1' }} ({{ r.count }})</span>
+            @if (soldOf(product()) > 0) {
+              <span class="stars-sold">({{ soldOf(product()) }})</span>
+            }
           </p>
         } @else {
           <!-- 0 real reviews. Five muted stars, no caption: at a glance in a
                grid you can see which products have no rating yet, and the row
-               keeps the same height as a rated card so a 5-up grid stays even.
+               keeps the same height as a rated card so a grid stays even.
 
                The glyphs are decorative and aria-hidden, and the state is
                carried by role="img" + the shared copy as its label. Without
@@ -144,28 +198,43 @@ export const SWATCHES: Record<string, string> = {
 
                Deliberately --muted, never --primary-fill: the gold is the
                established shorthand for a real score (see .stars), and
-               borrowing it here would assert a rating that does not exist. -->
-          <p class="stars-line" role="img" [attr.aria-label]="noReviewsCopy">
+               borrowing it here would assert a rating that does not exist.
+
+               The "N bought" count can still appear after an unrated row: it
+               is real paid orders, and it does not pretend to be a score. -->
+          <p class="stars-line" role="img" [attr.aria-label]="ratingLabel(product(), null)">
             <span class="stars no-reviews-stars" aria-hidden="true">☆☆☆☆☆</span>
+            @if (soldOf(product()) > 0) {
+              <span class="stars-sold">({{ soldOf(product()) }})</span>
+            }
           </p>
         }
-      </a>
+      </div>
+
+      <!-- Confirming a quick-add. Absolute so appearing and disappearing cannot
+           change the card's height mid-scroll. -->
+      @if (addedId() === product().id) {
+        <p class="qa-added">Added ✓</p>
+      }
     </div>
   `,
 })
-export class ProductCardComponent implements OnDestroy {
+export class ProductCardComponent implements OnInit, OnDestroy {
   private readonly cart = inject(CartService);
   private readonly alerts = inject(BrandAlertService);
   private readonly router = inject(Router);
+  private readonly zone = inject(NgZone);
   readonly wishlist = inject(WishlistService);
-  /** Template-visible handle on the shared constant; see NO_REVIEWS_COPY. */
-  readonly noReviewsCopy = NO_REVIEWS_COPY;
   readonly product = input.required<Product>();
   readonly index = input(0);
   readonly rating = input<{ avg: number; count: number } | null>(null);
 
   readonly addedId = signal<string | null>(null);
   private addedTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** The ticking frame of the decorative surge clock. */
+  readonly surge = signal(formatSurge(SURGE_SECONDS));
+  private surgeTimer: ReturnType<typeof setInterval> | undefined;
 
   private readonly fallbacks = [
     'shop-1.jpg',
@@ -175,56 +244,69 @@ export class ProductCardComponent implements OnDestroy {
     'shop-6.jpg',
   ];
 
+  ngOnInit(): void {
+    // Decorative countdown (see SURGE_SECONDS): ticks one second at a time and
+    // loops when it reaches zero, so the clock can never stall at 00:00:00. The
+    // loop is why it cannot be read as a deadline date -- there is none.
+    //
+    // The interval itself is scheduled OUTSIDE the Angular zone: a recurring
+    // macrotask inside the zone would keep NgZone permanently unstable, which
+    // starves `fixture.whenStable()` (every async spec that mounts a card hangs
+    // until Jasmine's 5s timeout). Each tick then re-enters the zone for the
+    // signal write, so the update still runs through normal change detection.
+    let s = SURGE_SECONDS;
+    this.zone.runOutsideAngular(() => {
+      this.surgeTimer = setInterval(() => {
+        s = s > 0 ? s - 1 : SURGE_SECONDS;
+        this.zone.run(() => this.surge.set(formatSurge(s)));
+      }, 1000);
+    });
+  }
+
   ngOnDestroy(): void {
     clearTimeout(this.addedTimer);
+    clearInterval(this.surgeTimer);
   }
 
   fallback(index: number): string {
     return this.fallbacks[index % this.fallbacks.length];
   }
-  swatch(colour: string): string {
-    return SWATCHES[colour.toLowerCase()] ?? '#8a8378';
+  /** Real paid orders behind this product; absent means unknown-but-zero. */
+  soldOf(p: Product): number {
+    return p.soldCount ?? 0;
   }
-  coloursOf(p: Product): string[] {
-    return [...new Set(p.variants.map((v) => v.colour).filter((c): c is string => !!c))];
-  }
-  sizesOf(p: Product): string[] {
-    const order = ['S', 'M', 'L', 'XL', 'XXL', 'OS', 'Bespoke'];
-    return [...new Set(p.variants.map((v) => v.size).filter((s): s is string => !!s))].sort(
-      (a, b) => {
-        const ia = order.indexOf(a),
-          ib = order.indexOf(b);
-        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
-      },
-    );
-  }
-  metaLine(p: Product): string {
-    const sizes = this.sizesOf(p);
-    const colours = this.coloursOf(p);
-    const sizePart =
-      sizes.length === 0
-        ? ''
-        : sizes.length === 1 && (sizes[0] === 'OS' || sizes[0] === 'Bespoke')
-          ? sizes[0] === 'OS'
-            ? 'One size'
-            : 'Made to measure'
-          : `${sizes[0]}-${sizes[sizes.length - 1]}`;
-    const colourPart = colours.length > 1 ? `${colours.length} colours` : '';
-    return [sizePart, colourPart].filter(Boolean).join(' · ');
+  /**
+   * Accessible name for the rating row. The visible glyphs and the "(N)" count
+   * carry no meaning as text on their own, so everything is spelled out
+   * here -- and the unrated copy stays shared with the PDP (NO_REVIEWS_COPY).
+   */
+  ratingLabel(p: Product, r: { avg: number; count: number } | null): string {
+    const buyers = this.soldOf(p) > 0 ? `${this.soldOf(p)} bought. ` : '';
+    return buyers + (r ? `${r.avg} out of 5 from ${r.count} reviews.` : NO_REVIEWS_COPY);
   }
   isSoldOut(p: Product): boolean {
     return (
       p.variants.length > 0 && p.variants.every((v) => v.availabilityStatus === 'out_of_stock')
     );
   }
+  /**
+   * One badge, by priority. Sold out first -- a dead product is never sold as
+   * anything else. Made to order second, because the made-to-order wait is a
+   * real commitment to surface. Bestseller is a seller-applied merchandising
+   * label (the products.is_bestseller column), so it outranks the time-window
+   * "New" default and has nothing to do with the derived soldCount.
+   */
   badge(p: Product): string | null {
     if (this.isSoldOut(p)) return 'Sold out';
     if (p.variants.some((v) => v.availabilityStatus === 'made_to_order')) return 'Made to order';
+    if (p.isBestseller) return 'Bestseller';
     const ageDays = (Date.now() - new Date(p.createdAt).getTime()) / 86_400_000;
     return ageDays <= 30 ? 'New' : null;
   }
   starString(avg: number): string {
-    const full = Math.round(avg);
+    // Clamped because a stray average must never overflow the five-glyph row:
+    // a negative or >5 figure would otherwise crash String.repeat.
+    const full = Math.max(0, Math.min(5, Math.round(avg)));
     return '★'.repeat(full) + '☆'.repeat(5 - full);
   }
 

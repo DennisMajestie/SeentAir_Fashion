@@ -82,18 +82,20 @@ describe('LandingPage', () => {
 
   it('ranks Best Sellers by real orders sold, highest first', async () => {
     products = [
-      product({ id: 'a', name: 'A Tee', soldCount: 3 }),
-      product({ id: 'b', name: 'B Tee', soldCount: 12 }),
-      product({ id: 'c', name: 'C Tee', soldCount: 7 }),
+      product({ id: 'a', name: 'A Tee', soldCount: 3, isBestseller: true }),
+      product({ id: 'b', name: 'B Tee', soldCount: 12, isBestseller: true }),
+      product({ id: 'c', name: 'C Tee', soldCount: 7, isBestseller: true }),
     ];
     await mount();
     expect(fixture.componentInstance.bestSellers().map((p) => p.id)).toEqual(['b', 'c', 'a']);
   });
 
-  it('excludes products with no sales rather than implying popularity', async () => {
+  it('shows only products the seller flagged, never an unflagged one', async () => {
     products = [
-      product({ id: 'sold', soldCount: 4 }),
-      product({ id: 'unsold', soldCount: 0 }),
+      product({ id: 'sold', soldCount: 4, isBestseller: true }),
+      // Unflagged even though it outsells the flagged one: membership is the
+      // merchandising label, not a sales cut-off.
+      product({ id: 'unflagged', soldCount: 30 }),
     ];
     await mount();
     expect(fixture.componentInstance.bestSellers().map((p) => p.id)).toEqual(['sold']);
@@ -101,18 +103,18 @@ describe('LandingPage', () => {
 
   it('treats a missing soldCount as unknown-but-zero, not as a sale', async () => {
     products = [
-      product({ id: 'sold', soldCount: 4 }),
-      product({ id: 'legacy' }),
+      product({ id: 'sold', soldCount: 4, isBestseller: true }),
+      product({ id: 'legacy', isBestseller: true }),
     ];
     await mount();
-    expect(fixture.componentInstance.bestSellers().map((p) => p.id)).toEqual(['sold']);
+    expect(fixture.componentInstance.bestSellers().map((p) => p.id)).toEqual(['sold', 'legacy']);
     expect(fixture.componentInstance.soldOf(fixture.componentInstance.all()[1])).toBe(0);
   });
 
   it('breaks sales ties on reviews, then name, so the order is stable', async () => {
     products = [
-      product({ id: 'z', name: 'Zebra Tee', soldCount: 5 }),
-      product({ id: 'a', name: 'Alpha Tee', soldCount: 5 }),
+      product({ id: 'z', name: 'Zebra Tee', soldCount: 5, isBestseller: true }),
+      product({ id: 'a', name: 'Alpha Tee', soldCount: 5, isBestseller: true }),
     ];
     reviews = { z: [{ rating: 5, comment: null }, { rating: 4, comment: null }] };
     await mount();
@@ -120,8 +122,8 @@ describe('LandingPage', () => {
     expect(fixture.componentInstance.bestSellers().map((p) => p.id)).toEqual(['z', 'a']);
   });
 
-  it('shows the purchase count above the star rating', async () => {
-    products = [product({ id: 'sold', name: 'Sold Tee', soldCount: 42 })];
+  it('shows the stars first, then the real purchase count beside them', async () => {
+    products = [product({ id: 'sold', name: 'Sold Tee', soldCount: 42, isBestseller: true })];
     reviews = {
       sold: [
         { rating: 5, comment: null },
@@ -131,37 +133,30 @@ describe('LandingPage', () => {
       ],
     };
     await mount();
-    const tile = element.querySelector('.m-tile')!;
-    expect(tile.querySelector('.m-tile__sold')?.textContent?.trim()).toBe('42 bought');
-    // The user asked for the count to sit in front of the rating, so it must
-    // come first in reading order as well as visually.
-    const html = tile.innerHTML;
-    expect(html.indexOf('m-tile__sold')).toBeLessThan(html.indexOf('m-tile__rate'));
+    const card = element.querySelector('.m-row3 app-product-card')!;
+    const line = card.querySelector('.stars-line')!;
     // 4.0 average renders as four filled stars plus one outline.
-    expect(tile.querySelector('.m-tile__stars')?.textContent?.trim()).toBe('★★★★☆');
-    expect(tile.querySelector('.m-tile__rate-num')?.textContent?.trim()).toBe('(4)');
+    expect(line.querySelector('.stars')?.textContent?.trim()).toBe('★★★★☆');
+    expect(line.querySelector('.stars-sold')?.textContent?.trim()).toBe('(42)');
+    // The user asked for the count to sit right after the stars: it must come
+    // after them in reading order as well as visually.
+    const spans = [...line.querySelectorAll('span')].map((s) => s.textContent?.trim());
+    expect(spans).toEqual(['★★★★☆', '(42)']);
   });
 
-  it('omits the rating when a product has no reviews rather than showing stars', async () => {
-    products = [product({ id: 'sold', soldCount: 5 })];
+  it('shows muted unrated stars and the real count, never a made-up score', async () => {
+    products = [product({ id: 'sold', soldCount: 5, isBestseller: true })];
     await mount();
-    const tile = element.querySelector('.m-tile')!;
-    expect(tile.querySelector('.m-tile__sold')?.textContent?.trim()).toBe('5 bought');
-    expect(tile.querySelector('.m-tile__rate')).toBeNull();
-  });
-
-  it('clamps star glyphs so a bad rating cannot overflow the row', async () => {
-    await mount();
-    const c = fixture.componentInstance;
-    expect(c.starGlyph(4.3)).toBe('★★★★☆');
-    expect(c.starGlyph(5)).toBe('★★★★★');
-    expect(c.starGlyph(0)).toBe('☆☆☆☆☆');
-    expect(c.starGlyph(9)).toBe('★★★★★');
-    expect(c.starGlyph(-1)).toBe('☆☆☆☆☆');
+    const line = element.querySelector('.stars-line')!;
+    // No reviews, so five muted stars and no invented average or review count.
+    expect(line.querySelector('.no-reviews-stars')?.textContent?.trim()).toBe('☆☆☆☆☆');
+    expect(line.querySelector('.stars-sold')?.textContent?.trim()).toBe('(5)');
+    // The only number in the row is the real paid order count in its parentheses.
+    expect(line.textContent).toContain('(5)');
   });
 
   it('labels the third rail Best Sellers', async () => {
-    products = [product({ id: 'sold', soldCount: 4 })];
+    products = [product({ id: 'sold', soldCount: 4, isBestseller: true })];
     await mount();
     const headings = [...element.querySelectorAll('.m-sec__head h2')].map((n) =>
       n.textContent?.trim(),
@@ -199,8 +194,9 @@ describe('LandingPage', () => {
   it('shows an honest empty state instead of placeholder tiles', async () => {
     await mount();
     const empties = [...element.querySelectorAll('.m-empty')].map((n) => n.textContent?.trim());
-    // Nothing had sold, so Best Sellers must say so rather than invent a rail.
-    expect(empties).toContain('Nothing has sold yet — check back after the first drop.');
-    expect(element.querySelectorAll('.m-tile').length).toBe(0);
+    // Nothing was flagged for the rail, so Best Sellers must say so rather than
+    // invent a rail out of products the seller never chose.
+    expect(empties).toContain('Nothing flagged yet — check back after the first drop.');
+    expect(fixture.componentInstance.bestSellers().length).toBe(0);
   });
 });

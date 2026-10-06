@@ -8,8 +8,6 @@ import { CartService } from './cart.service';
 import { WishlistService } from './wishlist.service';
 import { environment } from '../environments/environment';
 
-type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
-
 /**
  * Phase 1 mobile navigation shell. Reference: seentair-mobile-v2.html
  * header.dark + .services, reproduced at 375px.
@@ -87,7 +85,12 @@ type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
               fragment="notifications"
               [attr.aria-label]="notificationsLabel()"
             >
-              <svg class="m-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <svg
+                class="m-ic m-ic--lg"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                focusable="false"
+              >
                 <path d="M12 3a5 5 0 0 0-5 5v3l-2 4h14l-2-4V8a5 5 0 0 0-5-5z" />
                 <path d="M9 19a3 3 0 0 0 6 0" />
               </svg>
@@ -99,7 +102,12 @@ type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
           }
 
           <a class="m-iconbtn" routerLink="/cart" [attr.aria-label]="cartLabel()">
-            <svg class="m-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <svg
+              class="m-ic m-ic--lg"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+            >
               <path
                 d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6"
               />
@@ -162,44 +170,6 @@ type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
         </div>
       }
     </header>
-
-    <div class="m-services" aria-label="Store promises">
-      @for (s of services; track s.label) {
-        <div class="m-svc">
-          <span class="m-svc__ic" aria-hidden="true">
-            @switch (s.icon) {
-              @case ('delivery') {
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path d="M3 7h11v9H3z" />
-                  <path d="M14 10h4l3 3v3h-7z" />
-                  <circle cx="7" cy="18" r="1.6" />
-                  <circle cx="17.5" cy="18" r="1.6" />
-                </svg>
-              }
-              @case ('quality') {
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path d="m5 13 4 4L19 7" />
-                </svg>
-              }
-              @case ('returns') {
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path d="M4 9h13a4 4 0 0 1 0 8h-3" />
-                  <path d="m8 5-4 4 4 4" />
-                </svg>
-              }
-              @case ('support') {
-                <svg viewBox="0 0 24 24" focusable="false">
-                  <path d="M5 13v-1a7 7 0 0 1 14 0v1" />
-                  <path d="M5 13a2 2 0 0 1 2-2h1v6H7a2 2 0 0 1-2-2z" />
-                  <path d="M19 13a2 2 0 0 0-2-2h-1v6h1a2 2 0 0 0 2-2z" />
-                </svg>
-              }
-            }
-          </span>
-          <span class="m-svc__label">{{ s.label }}</span>
-        </div>
-      }
-    </div>
 
     @if (menuOpen()) {
       <button
@@ -326,21 +296,6 @@ export class MobileHeaderComponent implements OnDestroy {
   readonly cartLabel = computed(() =>
     this.cart.count === 1 ? 'Cart, 1 item' : 'Cart, ' + this.cart.count + ' items',
   );
-
-  /**
-   * Store promises. The reference labels the last tile "24/7 Support", but that
-   * is a staffing claim and nothing backs it: environment.supportWhatsapp and
-   * environment.supportHours are both empty, so there is no real channel behind
-   * the promise. "Customer Care" states the same benefit without asserting hours
-   * we cannot substantiate. Restore the reference wording only once genuine
-   * support hours exist in configuration.
-   */
-  readonly services: ReadonlyArray<{ label: string; icon: ServiceIcon }> = [
-    { label: 'Fast Delivery', icon: 'delivery' },
-    { label: 'Quality Products', icon: 'quality' },
-    { label: 'Easy Returns', icon: 'returns' },
-    { label: 'Customer Care', icon: 'support' },
-  ];
 
   readonly links = [
     { label: 'Shop', path: '/shop', href: '', external: false },
