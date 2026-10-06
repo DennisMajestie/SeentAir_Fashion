@@ -1,0 +1,47 @@
+/* Status badge: a word in a pill, with a dot. Colour is never the only signal. */
+.se-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--se-space-1);
+  padding: var(--se-space-half) var(--se-space-2);
+  border: var(--se-border-width) solid var(--se-badge-border);
+  border-radius: var(--se-radius-pill);
+  background: var(--se-badge-bg);
+  color: var(--se-badge-text);
+  font: var(--se-type-caption);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.se-badge::before {
+  content: '';
+  flex: none;
+  width: var(--se-space-2);
+  height: var(--se-space-2);
+  border-radius: var(--se-radius-pill);
+  background: var(--se-badge-border);
+}
+.se-badge--neutral {
+  --se-badge-text: var(--se-color-text-muted);
+  --se-badge-border: var(--se-color-border-strong);
+  --se-badge-bg: var(--se-color-surface-sunken);
+}
+.se-badge--info {
+  --se-badge-text: var(--se-color-info-text);
+  --se-badge-border: var(--se-color-info-border);
+  --se-badge-bg: var(--se-color-info-bg);
+}
+.se-badge--success {
+  --se-badge-text: var(--se-color-success-text);
+  --se-badge-border: var(--se-color-success-border);
+  --se-badge-bg: var(--se-color-success-bg);
+}
+.se-badge--warning {
+  --se-badge-text: var(--se-color-warning-text);
+  --se-badge-border: var(--se-color-warning-border);
+  --se-badge-bg: var(--se-color-warning-bg);
+}
+.se-badge--danger {
+  --se-badge-text: var(--se-color-danger-text);
+  --se-badge-border: var(--se-color-danger-border);
+  --se-badge-bg: var(--se-color-danger-bg);
+}

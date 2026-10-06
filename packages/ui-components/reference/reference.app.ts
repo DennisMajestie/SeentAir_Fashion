@@ -1,7 +1,10 @@
-import { Component, signal } from '@angular/core';
-import { SeButtonDirective } from '@seentair/ui';
+import { Component, inject, signal } from '@angular/core';
+import { SeButtonDirective, SeCurrencyService } from '@seentair/ui';
 import { ButtonsSection } from './sections/buttons.section';
+import { DisplaySection } from './sections/display.section';
+import { FeedbackSection } from './sections/feedback.section';
 import { FieldsSection } from './sections/fields.section';
+import { TableSection } from './sections/table.section';
 
 /**
  * The component reference: every component in the system, rendered in its
@@ -9,7 +12,14 @@ import { FieldsSection } from './sections/fields.section';
  */
 @Component({
   selector: 'se-reference',
-  imports: [SeButtonDirective, ButtonsSection, FieldsSection],
+  imports: [
+    SeButtonDirective,
+    ButtonsSection,
+    DisplaySection,
+    FeedbackSection,
+    FieldsSection,
+    TableSection,
+  ],
   template: `
     <header class="ref-top">
       <h1>Seentair components</h1>
@@ -31,6 +41,18 @@ import { FieldsSection } from './sections/fields.section';
         <h2>Form fields</h2>
         <ref-fields />
       </section>
+      <section class="ref-section" id="table">
+        <h2>Data table</h2>
+        <ref-table />
+      </section>
+      <section class="ref-section" id="display">
+        <h2>Badges, cards and money</h2>
+        <ref-display />
+      </section>
+      <section class="ref-section" id="feedback">
+        <h2>Feedback</h2>
+        <ref-feedback />
+      </section>
     </main>
   `,
 })
@@ -39,7 +61,20 @@ export class ReferenceApp {
   readonly sections = [
     { id: 'buttons', title: 'Buttons' },
     { id: 'fields', title: 'Form fields' },
+    { id: 'table', title: 'Data table' },
+    { id: 'display', title: 'Badges and cards' },
+    { id: 'feedback', title: 'Feedback' },
   ];
+
+  constructor() {
+    // The reference has no API behind it, so it sets the currency the way an
+    // app's start-up would after fetching /config/public.
+    inject(SeCurrencyService).config.set({
+      currencyCode: 'NGN',
+      currencySymbol: '₦',
+      locale: 'en-NG',
+    });
+  }
 
   toggleTheme(): void {
     this.dark.update((d) => !d);

@@ -1,0 +1,103 @@
+/* Cards. */
+.se-card,
+.se-metric {
+  display: block;
+  border: var(--se-border-width) solid var(--se-color-border);
+  border-radius: var(--se-radius-md);
+  background: var(--se-color-surface);
+  color: var(--se-color-text);
+}
+.se-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--se-space-3);
+  min-height: calc(var(--se-size-control) + var(--se-space-4));
+  padding: var(--se-space-2) var(--se-space-4);
+  border-bottom: var(--se-border-width) solid var(--se-color-border);
+}
+.se-card__title {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font: var(--se-type-subheading);
+  letter-spacing: var(--se-type-subheading-tracking);
+  text-transform: none;
+}
+.se-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--se-space-2);
+}
+.se-card__body {
+  padding: var(--se-space-4);
+}
+.se-card--flush > .se-card__body {
+  padding: 0;
+}
+.se-card__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--se-space-2);
+  padding: var(--se-space-3) var(--se-space-4);
+  border-top: var(--se-border-width) solid var(--se-color-border);
+}
+.se-card__footer:empty {
+  display: none;
+}
+
+/* Metric card: label, value, change, optional trend. */
+.se-metric {
+  display: grid;
+  gap: var(--se-space-1);
+  padding: var(--se-space-4);
+}
+.se-metric__label {
+  margin: 0;
+  color: var(--se-color-text-muted);
+  font: var(--se-type-overline);
+  letter-spacing: var(--se-type-overline-tracking);
+  text-transform: uppercase;
+}
+.se-metric__value {
+  margin: 0;
+  font: var(--se-type-display);
+  letter-spacing: var(--se-type-display-tracking);
+  font-variant-numeric: var(--se-font-numeric);
+  overflow-wrap: anywhere;
+}
+.se-metric__change {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--se-space-1);
+  margin: 0;
+  color: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+  font-variant-numeric: var(--se-font-numeric);
+}
+.se-metric__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--se-space-half);
+  font-weight: 600;
+}
+.se-metric__delta .se-icon {
+  width: var(--se-space-3);
+  height: var(--se-space-3);
+}
+.se-metric__delta--good {
+  color: var(--se-color-success-text);
+}
+.se-metric__delta--bad {
+  color: var(--se-color-danger-text);
+}
+.se-metric .se-sparkline {
+  margin-top: var(--se-space-2);
+}
+a.se-metric {
+  text-decoration: none;
+  transition: border-color var(--se-motion-duration-fast) var(--se-motion-ease-standard);
+}
+a.se-metric:hover {
+  border-color: var(--se-color-border-strong);
+}

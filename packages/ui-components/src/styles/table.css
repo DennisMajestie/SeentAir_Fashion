@@ -1,0 +1,192 @@
+/* The data table. */
+.se-table {
+  display: block;
+  border: var(--se-border-width) solid var(--se-color-border);
+  border-radius: var(--se-radius-md);
+  background: var(--se-color-surface);
+  /* Row rhythm, switched by the density toggle. */
+  --se-table-pad-y: var(--se-space-3);
+}
+.se-table--compact {
+  --se-table-pad-y: var(--se-space-1);
+}
+
+.se-table__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--se-space-3);
+  min-height: calc(var(--se-size-control) + var(--se-space-4));
+  padding: var(--se-space-2) var(--se-space-3);
+  border-bottom: var(--se-border-width) solid var(--se-color-border);
+}
+.se-table__toolbar-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--se-space-2);
+  min-width: 0;
+}
+.se-table__selected {
+  color: var(--se-color-text);
+  font: var(--se-type-body-strong);
+}
+
+.se-table__scroll {
+  overflow: auto;
+}
+.se-table__table {
+  width: 100%;
+  margin: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--se-color-text);
+  font: var(--se-type-body);
+  letter-spacing: var(--se-type-body-tracking);
+}
+.se-table__table th,
+.se-table__table td {
+  padding: var(--se-table-pad-y) var(--se-space-3);
+  border: 0;
+  border-bottom: var(--se-border-width) solid var(--se-color-border);
+  background: transparent;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+/* Numbers: right-aligned, so units, tens and thousands stack. */
+.se-table__table th.se-num,
+.se-table__table td.se-num {
+  text-align: right;
+}
+.se-table__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.se-table__table thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--se-z-sticky);
+  padding-top: var(--se-space-2);
+  padding-bottom: var(--se-space-2);
+  background: var(--se-color-surface-sunken);
+  color: var(--se-color-text-muted);
+  font: var(--se-type-overline);
+  letter-spacing: var(--se-type-overline-tracking);
+  text-transform: uppercase;
+}
+
+/* The sortable header is a real button that looks like the header text. */
+.se-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--se-space-1);
+  min-height: var(--se-size-control-sm);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--se-radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.se-table__sort:hover,
+th[aria-sort='ascending'] .se-table__sort,
+th[aria-sort='descending'] .se-table__sort {
+  color: var(--se-color-text);
+}
+.se-table__sort .se-icon {
+  width: var(--se-space-4);
+  height: var(--se-space-4);
+}
+th[aria-sort='none'] .se-table__sort .se-icon {
+  color: var(--se-color-text-disabled);
+}
+th.se-num .se-table__sort {
+  flex-direction: row-reverse;
+}
+
+.se-table__table tbody tr:hover td {
+  background: var(--se-color-surface-hover);
+}
+.se-table__row--selected td,
+.se-table__table tbody tr.se-table__row--selected:hover td {
+  background: var(--se-color-accent-subtle);
+}
+.se-table__row--link {
+  cursor: pointer;
+}
+/* The first cell of an activatable row: a button that reads as the cell text. */
+.se-table__rowlink {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--se-radius-sm);
+  background: transparent;
+  color: var(--se-color-accent-text);
+  font: var(--se-type-body-strong);
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  cursor: pointer;
+}
+.se-table__rowlink:hover {
+  text-decoration: underline;
+}
+
+.se-table__check {
+  width: var(--se-space-10);
+}
+.se-table__check .se-choice {
+  min-height: 0;
+}
+.se-table__actions {
+  width: 0;
+  text-align: right;
+}
+td.se-table__actions {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+td.se-table__actions .se-btn + .se-btn {
+  margin-left: var(--se-space-1);
+}
+.se-table__action--danger {
+  color: var(--se-color-danger-text);
+}
+
+/* Loading, empty and error share the body's space. */
+.se-table__skeleton td {
+  padding-top: calc(var(--se-table-pad-y) + var(--se-space-1));
+  padding-bottom: calc(var(--se-table-pad-y) + var(--se-space-1));
+}
+.se-table__table tbody tr.se-table__skeleton:hover td {
+  background: transparent;
+}
+td.se-table__state {
+  padding: var(--se-space-6) var(--se-space-4);
+  white-space: normal;
+}
+.se-table__table tbody tr:hover td.se-table__state {
+  background: transparent;
+}
+
+.se-table__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--se-space-3);
+  padding: var(--se-space-2) var(--se-space-3);
+  border-top: var(--se-border-width) solid var(--se-color-border);
+  color: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+  font-variant-numeric: var(--se-font-numeric);
+}
+.se-table__pager {
+  display: flex;
+  align-items: center;
+  gap: var(--se-space-2);
+}
