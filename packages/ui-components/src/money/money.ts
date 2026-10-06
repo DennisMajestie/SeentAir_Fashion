@@ -1,4 +1,12 @@
-import { Injectable, Pipe, PipeTransform, inject, signal } from '@angular/core';
+import {
+  EnvironmentProviders,
+  Injectable,
+  Pipe,
+  PipeTransform,
+  inject,
+  provideAppInitializer,
+  signal,
+} from '@angular/core';
 
 /** How money is written. Comes from the API's configuration, never from code. */
 export interface SeCurrencyConfig {
@@ -26,7 +34,11 @@ export class SeCurrencyService {
   /** Fetches the configuration. Resolves either way; never blocks start-up on failure. */
   async load(url: string): Promise<void> {
     try {
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        // Start-up waits for this, so it must give up quickly when the API is slow.
+        signal: AbortSignal.timeout(4000),
+      });
       if (!res.ok) return;
       const body = (await res.json()) as Partial<SeCurrencyConfig>;
       if (typeof body.currencySymbol === 'string' && typeof body.currencyCode === 'string') {
@@ -74,4 +86,14 @@ export class SeMoneyPipe implements PipeTransform {
   transform(amount: number | null | undefined, decimals = 0): string {
     return this.currency.format(amount, decimals);
   }
+}
+
+/**
+ * Loads the currency configuration before the app first renders. Add it to the
+ * app's providers with the API's public configuration URL:
+ *
+ *     provideSeCurrency(`${API_BASE}/config/public`)
+ */
+export function provideSeCurrency(url: string): EnvironmentProviders {
+  return provideAppInitializer(() => inject(SeCurrencyService).load(url));
 }

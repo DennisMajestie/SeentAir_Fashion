@@ -29,6 +29,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { CustomOrdersModule } from './modules/custom-orders/custom-orders.module';
 import { PartnersModule } from './modules/partners/partners.module';
 import { TechPacksModule } from './modules/tech-packs/tech-packs.module';
+import { PublicConfigModule } from './modules/public-config/public-config.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { TechPacksModule } from './modules/tech-packs/tech-packs.module';
     CustomOrdersModule,
     PartnersModule,
     TechPacksModule,
+    PublicConfigModule,
   ],
   providers: [
     // Order matters: rate-limit, then authenticate, then authorize, then audit.

@@ -115,7 +115,7 @@
           "builder": "@angular/build:application",
           "options": {
             "browser": "ui-reference/main.ts",
-            "polyfills": ["zone.js"],
+            "polyfills": [],
             "index": "ui-reference/index.html",
             "tsConfig": "tsconfig.ui-reference.json",
             "outputPath": "dist/ui-reference",
