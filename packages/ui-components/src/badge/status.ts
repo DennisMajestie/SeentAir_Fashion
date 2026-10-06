@@ -2,13 +2,7 @@ import { SeBadgeTone } from './badge.component';
 
 /** The domain vocabularies a status can come from. */
 export type SeStatusKind =
-  | 'order'
-  | 'payment'
-  | 'approval'
-  | 'stock'
-  | 'production'
-  | 'return'
-  | 'account';
+  'order' | 'payment' | 'approval' | 'stock' | 'production' | 'return' | 'account';
 
 export interface SeStatusMeaning {
   label: string;
@@ -84,7 +78,10 @@ export const SE_STATUS: Record<SeStatusKind, Record<string, SeStatusMeaning>> = 
  * Looks a state up. An unknown value is shown as readable neutral text rather
  * than hidden, so a state the API adds later is visible until it is mapped.
  */
-export function statusMeaning(kind: SeStatusKind, value: string | null | undefined): SeStatusMeaning {
+export function statusMeaning(
+  kind: SeStatusKind,
+  value: string | null | undefined,
+): SeStatusMeaning {
   const key = (value ?? '').toLowerCase();
   const known = SE_STATUS[kind][key];
   if (known) return known;

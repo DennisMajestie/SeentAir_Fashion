@@ -9,7 +9,9 @@ describe('se-banner', () => {
   @Component({
     imports: [SeBannerComponent],
     template: `
-      <se-banner [tone]="tone" title="Heads up" actionLabel="Retry" (action)="acted = true">Body</se-banner>
+      <se-banner [tone]="tone" title="Heads up" actionLabel="Retry" (action)="acted = true"
+        >Body</se-banner
+      >
     `,
   })
   class Host {
@@ -32,7 +34,9 @@ describe('se-banner', () => {
   it('offers its action', () => {
     const fixture = TestBed.createComponent(Host);
     fixture.detectChanges();
-    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('se-banner button')!.click();
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('se-banner button')!
+      .click();
     expect(fixture.componentInstance.acted).toBeTrue();
   });
 });
@@ -77,7 +81,8 @@ describe('SeToastService', () => {
 
 describe('SeConfirmService', () => {
   let confirm: SeConfirmService;
-  const dialog = (): HTMLDialogElement => document.querySelector<HTMLDialogElement>('dialog.se-dialog')!;
+  const dialog = (): HTMLDialogElement =>
+    document.querySelector<HTMLDialogElement>('dialog.se-dialog')!;
   beforeEach(() => (confirm = TestBed.inject(SeConfirmService)));
   afterEach(() => document.querySelectorAll('dialog.se-dialog').forEach((n) => n.remove()));
 
@@ -93,7 +98,9 @@ describe('SeConfirmService', () => {
     const result = ask();
     const d = dialog();
     expect(d.open).toBeTrue();
-    expect(d.querySelector('.se-dialog__title')!.textContent).toBe('Delete supplier Aba Textile Mills?');
+    expect(d.querySelector('.se-dialog__title')!.textContent).toBe(
+      'Delete supplier Aba Textile Mills?',
+    );
     expect(d.querySelector('.se-dialog__consequence')!.textContent).toContain('cannot be undone');
     expect(d.getAttribute('aria-describedby')).toBe(d.querySelector('.se-dialog__consequence')!.id);
     const confirmButton = [...d.querySelectorAll('button')].at(-1)!;
@@ -141,7 +148,9 @@ describe('se-drawer', () => {
     fixture.componentInstance.open.set(true);
     fixture.detectChanges();
     expect(d.open).toBeTrue();
-    expect(document.getElementById(d.getAttribute('aria-labelledby')!)!.textContent).toBe('Add supplier');
+    expect(document.getElementById(d.getAttribute('aria-labelledby')!)!.textContent).toBe(
+      'Add supplier',
+    );
 
     d.querySelector<HTMLButtonElement>('[aria-label="Close"]')!.click();
     fixture.detectChanges();

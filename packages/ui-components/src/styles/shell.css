@@ -1,0 +1,434 @@
+/* The app shell: sidebar, sticky top bar, page. It fills its container, so the
+   app decides how tall it is (normally the viewport). */
+.se-shell {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  background: var(--se-color-bg);
+  color: var(--se-color-text);
+  font: var(--se-type-body);
+  letter-spacing: var(--se-type-body-tracking);
+}
+.se-shell *,
+.se-shell *::before,
+.se-shell *::after {
+  box-sizing: border-box;
+}
+
+/* ---- Skip link: the first stop for the keyboard, invisible until then ---- */
+.se-shell__skip {
+  position: absolute;
+  top: var(--se-space-2);
+  left: var(--se-space-2);
+  z-index: var(--se-z-toast);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--se-size-control);
+  margin: 0;
+  padding: 0 var(--se-space-4);
+  border: var(--se-border-width) solid var(--se-color-border-strong);
+  border-radius: var(--se-radius-md);
+  background: var(--se-color-surface);
+  box-shadow: var(--se-elevation-2);
+  color: var(--se-color-text);
+  font: var(--se-type-body-strong);
+  letter-spacing: var(--se-type-body-strong-tracking);
+  text-decoration: none;
+  text-transform: none;
+  opacity: 0;
+  pointer-events: none;
+}
+.se-shell__skip:focus {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---- Sidebar ---- */
+.se-shell__sidebar {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: var(--se-size-sidebar);
+  height: 100%;
+  border-right: var(--se-border-width) solid var(--se-color-border);
+  background: var(--se-color-surface);
+  transition: width var(--se-motion-duration-base) var(--se-motion-ease-standard);
+}
+.se-shell__brand {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--se-space-3);
+  min-height: var(--se-space-16);
+  padding: 0 var(--se-space-4);
+  border-bottom: var(--se-border-width) solid var(--se-color-border);
+  overflow: hidden;
+}
+.se-shell__brand-mark,
+.se-shell__avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--se-space-8);
+  height: var(--se-space-8);
+  font: var(--se-type-body-strong);
+  letter-spacing: var(--se-type-body-strong-tracking);
+}
+.se-shell__brand-mark {
+  border-radius: var(--se-radius-md);
+  background: var(--se-color-accent);
+  color: var(--se-color-on-accent);
+}
+.se-shell__brand-name {
+  overflow: hidden;
+  font: var(--se-type-subheading);
+  letter-spacing: var(--se-type-subheading-tracking);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.se-shell__nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--se-space-4);
+  min-height: 0;
+  padding: var(--se-space-3);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.se-shell__group-title {
+  margin: 0 0 var(--se-space-1);
+  padding: 0 var(--se-space-3);
+  border: 0;
+  background: none;
+  color: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+  letter-spacing: var(--se-type-caption-tracking);
+  text-transform: none;
+  white-space: nowrap;
+}
+.se-shell__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--se-space-half);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.se-shell__item {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.se-shell__link,
+.se-shell__collapse {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--se-space-3);
+  width: 100%;
+  min-height: var(--se-size-control);
+  margin: 0;
+  padding: 0 var(--se-space-3);
+  border: 0;
+  border-radius: var(--se-radius-md);
+  background: transparent;
+  color: var(--se-color-text-muted);
+  font: var(--se-type-body-strong);
+  letter-spacing: var(--se-type-body-strong-tracking);
+  text-align: left;
+  text-decoration: none;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--se-motion-duration-fast) var(--se-motion-ease-standard),
+    color var(--se-motion-duration-fast) var(--se-motion-ease-standard);
+}
+.se-shell__link:hover,
+.se-shell__collapse:hover {
+  background: var(--se-color-surface-hover);
+  color: var(--se-color-text);
+}
+.se-shell__link--active,
+.se-shell__link--active:hover {
+  background: var(--se-color-accent-subtle);
+  color: var(--se-color-accent-text);
+}
+/* The sidebar scrolls, so a ring outside the element would be clipped. */
+.se-shell__link:focus-visible,
+.se-shell__collapse:focus-visible {
+  outline-offset: calc(-1 * var(--se-border-width-strong));
+}
+.se-shell__link-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.se-shell__badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--se-space-5);
+  height: var(--se-space-5);
+  padding: 0 var(--se-space-1);
+  border-radius: var(--se-radius-pill);
+  background: var(--se-color-accent);
+  color: var(--se-color-on-accent);
+  font: var(--se-type-caption);
+  font-variant-numeric: var(--se-font-numeric);
+  letter-spacing: var(--se-type-caption-tracking);
+}
+.se-shell__collapse {
+  flex: none;
+  width: auto;
+  margin: var(--se-space-3);
+}
+
+/* ---- Body: top bar and page ---- */
+.se-shell__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+}
+.se-shell__topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--se-z-sticky);
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--se-space-3);
+  min-height: var(--se-space-16);
+  padding: 0 var(--se-space-6);
+  border-bottom: var(--se-border-width) solid var(--se-color-border);
+  background: var(--se-color-surface);
+}
+.se-shell__search {
+  flex: 1;
+  min-width: 0;
+}
+.se-shell__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--se-space-2);
+}
+.se-shell__actions:empty {
+  display: none;
+}
+.se-shell__menu-button {
+  display: none;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--se-size-control);
+  height: var(--se-size-control);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--se-radius-md);
+  background: transparent;
+  color: var(--se-color-text);
+  cursor: pointer;
+}
+.se-shell__menu-button:hover,
+.se-shell__user-button:hover {
+  background: var(--se-color-surface-hover);
+}
+.se-shell__main {
+  flex: 1;
+  min-width: 0;
+  padding: var(--se-space-6);
+}
+.se-shell__main:focus {
+  outline: 0; /* focused by the skip link only; the page itself is not a control */
+}
+
+/* ---- User menu ---- */
+.se-shell__user {
+  position: relative;
+  flex: none;
+}
+.se-shell__user-button {
+  display: flex;
+  align-items: center;
+  gap: var(--se-space-2);
+  min-height: var(--se-size-control);
+  margin: 0;
+  padding: var(--se-space-1) var(--se-space-2);
+  border: 0;
+  border-radius: var(--se-radius-md);
+  background: transparent;
+  color: var(--se-color-text);
+  font: var(--se-type-body-strong);
+  letter-spacing: var(--se-type-body-strong-tracking);
+  text-align: left;
+  text-transform: none;
+  cursor: pointer;
+  transition: background-color var(--se-motion-duration-fast) var(--se-motion-ease-standard);
+}
+.se-shell__avatar {
+  border-radius: var(--se-radius-pill);
+  background: var(--se-color-accent-subtle);
+  color: var(--se-color-accent-text);
+}
+.se-shell__user-text {
+  display: flex;
+  flex-direction: column;
+}
+.se-shell__user-name {
+  white-space: nowrap;
+}
+.se-shell__user-role {
+  color: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+  letter-spacing: var(--se-type-caption-tracking);
+}
+.se-shell__menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: var(--se-z-dropdown);
+  display: flex;
+  flex-direction: column;
+  gap: var(--se-space-half);
+  min-width: var(--se-size-sidebar);
+  margin: var(--se-space-1) 0 0;
+  padding: var(--se-space-1);
+  border: var(--se-border-width) solid var(--se-color-border);
+  border-radius: var(--se-radius-lg);
+  background: var(--se-color-surface);
+  box-shadow: var(--se-elevation-2);
+}
+.se-shell__menu[hidden] {
+  display: none;
+}
+.se-shell__menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--se-space-2);
+  width: 100%;
+  min-height: var(--se-size-control);
+  margin: 0;
+  padding: 0 var(--se-space-3);
+  border: 0;
+  border-radius: var(--se-radius-md);
+  background: transparent;
+  color: var(--se-color-text);
+  font: var(--se-type-body);
+  letter-spacing: var(--se-type-body-tracking);
+  text-align: left;
+  text-decoration: none;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.se-shell__menu-item:hover,
+.se-shell__menu-item:focus-visible {
+  background: var(--se-color-surface-hover);
+}
+.se-shell__menu-item:focus-visible {
+  outline-offset: calc(-1 * var(--se-border-width-strong));
+}
+
+.se-shell__scrim {
+  display: none;
+}
+
+/* ---- Desktop and tablet landscape: the sidebar can collapse to icons ---- */
+@media (min-width: 64rem) {
+  .se-shell--collapsed .se-shell__sidebar {
+    width: var(--se-size-sidebar-collapsed);
+  }
+  .se-shell--collapsed .se-shell__brand {
+    justify-content: center;
+    padding: 0;
+  }
+  .se-shell--collapsed .se-shell__link,
+  .se-shell--collapsed .se-shell__collapse {
+    justify-content: center;
+    padding: 0;
+  }
+  /* Out of sight, still the link's accessible name. */
+  .se-shell--collapsed .se-shell__brand-name,
+  .se-shell--collapsed .se-shell__group-title,
+  .se-shell--collapsed .se-shell__link-label {
+    position: absolute;
+    width: var(--se-border-width);
+    height: var(--se-border-width);
+    overflow: hidden;
+    clip-path: inset(100%);
+    white-space: nowrap;
+  }
+  .se-shell--collapsed .se-shell__group + .se-shell__group {
+    padding-top: var(--se-space-4);
+    border-top: var(--se-border-width) solid var(--se-color-border);
+  }
+  .se-shell--collapsed .se-shell__badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+}
+
+/* ---- Below 64rem: the sidebar is a drawer over the page ---- */
+@media not all and (min-width: 64rem) {
+  .se-shell__sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--se-z-overlay);
+    max-width: 100%;
+    box-shadow: var(--se-elevation-2);
+    visibility: hidden;
+    transform: translateX(-100%);
+    /* Closing: stay visible until the slide has finished. */
+    transition:
+      transform var(--se-motion-duration-slow) var(--se-motion-ease-exit),
+      visibility 0s linear var(--se-motion-duration-slow);
+  }
+  .se-shell--drawer-open .se-shell__sidebar {
+    visibility: visible;
+    transform: none;
+    /* Opening: visible at once, or focus could not move into it. */
+    transition:
+      transform var(--se-motion-duration-slow) var(--se-motion-ease-enter),
+      visibility 0s;
+  }
+  .se-shell--drawer-open .se-shell__scrim {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--se-z-overlay);
+    display: block;
+    background: var(--se-color-scrim);
+  }
+  .se-shell__collapse {
+    display: none;
+  }
+  .se-shell__menu-button {
+    display: inline-flex;
+  }
+  .se-shell__topbar {
+    padding: 0 var(--se-space-4);
+  }
+  .se-shell__main {
+    padding: var(--se-space-4);
+  }
+  .se-shell__user-text,
+  .se-shell__user-button > .se-icon {
+    display: none;
+  }
+}

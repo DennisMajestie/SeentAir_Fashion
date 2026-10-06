@@ -47,8 +47,8 @@ import {
       </div>
     </div>
     <p class="ref-dont">
-      <b>Not for:</b> counts (use a number), or a sentence. Do not pick a tone by hand for a
-      domain state: use se-status so the mapping stays in one place.
+      <b>Not for:</b> counts (use a number), or a sentence. Do not pick a tone by hand for a domain
+      state: use se-status so the mapping stays in one place.
     </p>
 
     <h3 class="ref-h3">Metric card</h3>
@@ -80,15 +80,17 @@ import {
     </div>
     <p class="ref-dont">
       <b>Not for:</b> more than one number, or a value with no comparison and no context. Where a
-      fall is the good news (returns, costs, low stock), set goodDirection="down" so it is not
-      shown in red.
+      fall is the good news (returns, costs, low stock), set goodDirection="down" so it is not shown
+      in red.
     </p>
 
     <h3 class="ref-h3">Content card</h3>
     <div class="ref-grid">
       <se-card title="Production status">
         <button seButton size="sm" seCardActions>View all</button>
-        <p class="se-type-body">Batch 0412 is at sewing. Two batches are waiting for quality check.</p>
+        <p class="se-type-body">
+          Batch 0412 is at sewing. Two batches are waiting for quality check.
+        </p>
         <ng-container seCardFooter>
           <button seButton>Cancel</button>
           <button seButton variant="primary">Start batch</button>
@@ -99,8 +101,8 @@ import {
       </se-card>
     </div>
     <p class="ref-dont">
-      <b>Not for:</b> wrapping every block on a page. A card groups related content that could
-      stand alone; nested cards and cards around a single field are noise.
+      <b>Not for:</b> wrapping every block on a page. A card groups related content that could stand
+      alone; nested cards and cards around a single field are noise.
     </p>
 
     <h3 class="ref-h3">Money</h3>

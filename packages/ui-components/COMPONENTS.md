@@ -310,7 +310,55 @@ Inputs: `shape` (`text | title | block | table | metric | form | detail`), `rows
 
 ## Navigation
 
-_Documented with the shell, breadcrumbs and tabs components._
+### App shell
+
+One per app, at the root: a collapsible sidebar, a sticky top bar and the page.
+
+```html
+<se-shell appName="Seentair admin" [nav]="nav" [user]="user()" [(collapsed)]="collapsed" (signOut)="signOut()">
+  <se-search seShellSearch label="Search everything" [(value)]="query" />
+  <button seButton variant="ghost" iconOnly seShellActions aria-label="Notifications"><se-icon name="bell" /></button>
+  <a seShellMenu routerLink="/settings">Settings</a>
+  <router-outlet />
+</se-shell>
+```
+
+| Input | Type | |
+|---|---|---|
+| `appName` | `string` (required) | |
+| `nav` | `SeNavGroup[]` (required) | `{ title?, items: SeNavItem[] }`; an item is `{ label, icon, link, badge?, exact? }` |
+| `user` | `{ name, role? } \| null` | No user menu when null |
+| `collapsed` | `boolean`, two-way | Sidebar shows icons only (desktop) |
+
+Output: `signOut`. Slots: default (page, inside `<main id="se-main">`), `[seShellSearch]`, `[seShellActions]`, and `seShellMenu` on a native `<button>` or `<a>` for extra user-menu items (import `SeShellMenuItemDirective`).
+
+**Behaviour:** the active link carries `aria-current="page"`. Below 64rem the sidebar is an off-canvas drawer opened from a menu button; it is `inert` while closed, and Escape, the scrim or choosing a link closes it. The user menu opens with Enter, Space or ArrowDown, moves with the arrow keys and closes with Escape. A "Skip to content" link is the first focusable element.
+
+**When not to use:** not inside a page (one shell per app), not on sign-in or other screens shown before there is a session, and not in the storefront.
+
+### Breadcrumbs
+
+```html
+<se-breadcrumbs [items]="[{ label: 'Orders', link: '/orders' }, { label: 'SO-1042' }]" />
+```
+
+Input: `items: { label, link? }[]`. The last item is always plain text with `aria-current="page"`.
+
+**When not to use:** not on a top-level page reached straight from the sidebar, not for steps in a process, not for filters applied to a list.
+
+### Tabs
+
+```html
+<se-tabs #t label="Order sections" [tabs]="tabs" [(active)]="tab" />
+<div seTabPanel="items" [for]="t">...</div>
+<div seTabPanel="payments" [for]="t">...</div>
+```
+
+`se-tabs` inputs: `tabs: { id, label, count? }[]` (required), `label` (required accessible name), two-way `active` (defaults to the first tab). `[seTabPanel]` takes the tab id and `[for]` the tabs instance; it sets the panel role, ids and visibility.
+
+**Behaviour:** ARIA tabs with a roving tab stop: ArrowLeft/ArrowRight move and activate, Home/End jump.
+
+**When not to use:** not for moving between pages (that is navigation), not for steps that must be done in order, not for more than about six views, and not for content people need to compare side by side.
 
 ---
 
@@ -326,7 +374,37 @@ Inputs: `values` (required), `label` (required: what the trend is, in words).
 
 **When not to use:** not where the reader needs values. It shows direction only and always sits beside the number it belongs to.
 
-_Line and bar charts are documented with those components._
+### Line chart
+
+```html
+<se-line-chart title="Sales, last 30 days" [labels]="days" [series]="[{ name: 'Sales', values: sales }]"
+  [formatValue]="money" area />
+```
+
+| Input | Type | |
+|---|---|---|
+| `title` | `string` (required) | Accessible name and table caption |
+| `labels` | `string[]` (required) | The x-axis categories |
+| `series` | `{ name, values: (number \| null)[] }[]` (required) | `null` leaves a gap. At most five series are drawn |
+| `formatValue` | `(n) => string` | Defaults to a plain number. Pass the app's money formatter |
+| `area` | `boolean` | Fill under a single series; the axis then starts at zero |
+| `height` | `'sm' \| 'md'` | 160px or 240px |
+| `loading` | `boolean` | Skeleton of the same height |
+
+### Bar chart
+
+```html
+<se-bar-chart title="Monthly profit" [labels]="months" [values]="profit" [formatValue]="money" />
+```
+
+Inputs: `title` (required), `labels` (required), `values: number[]` (required), `formatValue`, `height`, `loading`. One series. Negative values hang below a visible zero line.
+
+**Both charts:** horizontal gridlines only, the same axis type and "nice" ticks (`niceTicks` in `src/chart/scale.ts`), series colours from `--se-color-chart-1..5` in order, a legend when there is more than one series. Hovering shows a guide and a tooltip; the plot is focusable and ArrowLeft/ArrowRight/Home/End move through the points. The SVG is hidden from assistive technology and a visually hidden data table carries the real values. With nothing to draw they show "No data for this period" at the same height.
+
+**When not to use**
+- Line: not for more than five series, unordered categories (use bars), or two measures on different scales (use two charts, never two axes).
+- Bar: not for parts of a whole, more than one series, or more than about 24 bars.
+- Neither is for looking up exact figures: that is a table.
 
 ---
 

@@ -65,7 +65,7 @@ export class SeCurrencyService {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     }).format(Math.abs(amount));
-    // The minus goes before the symbol: -₦1,200, not ₦-1,200.
+    // The minus goes before the symbol, not between the symbol and the digits.
     return `${amount < 0 ? '−' : ''}${config?.currencySymbol ?? ''}${digits}`;
   }
 }

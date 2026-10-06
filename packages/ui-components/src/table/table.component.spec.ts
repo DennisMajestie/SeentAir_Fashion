@@ -71,7 +71,12 @@ class Host {
     { key: 'status', header: 'Status' },
   ];
   readonly actions: SeRowAction<Row>[] = [
-    { label: 'Remove', danger: true, run: (r) => (this.removed = r.id), disabled: (r) => r.id === 'a' },
+    {
+      label: 'Remove',
+      danger: true,
+      run: (r) => (this.removed = r.id),
+      disabled: (r) => r.id === 'a',
+    },
   ];
 }
 
@@ -83,7 +88,9 @@ describe('se-table', () => {
   const render = (): void => {
     fixture.detectChanges();
   };
-  const bodyRows = (): HTMLTableRowElement[] => [...el.querySelectorAll<HTMLTableRowElement>('tbody tr')];
+  const bodyRows = (): HTMLTableRowElement[] => [
+    ...el.querySelectorAll<HTMLTableRowElement>('tbody tr'),
+  ];
   const names = (): string[] =>
     bodyRows().map((r) => r.querySelector('.se-table__rowlink')!.textContent!.trim());
   const sortButton = (label: string): HTMLButtonElement =>
@@ -159,7 +166,8 @@ describe('se-table', () => {
     const boxes = (): HTMLInputElement[] => [
       ...el.querySelectorAll<HTMLInputElement>('tbody input[type=checkbox]'),
     ];
-    const all = (): HTMLInputElement => el.querySelector<HTMLInputElement>('thead input[type=checkbox]')!;
+    const all = (): HTMLInputElement =>
+      el.querySelector<HTMLInputElement>('thead input[type=checkbox]')!;
 
     it('selects a row and names the checkbox after it', () => {
       expect(boxes()[1].closest('label')!.textContent).toContain('Select Cargo');

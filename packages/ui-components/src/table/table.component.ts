@@ -93,7 +93,13 @@ export class SeCellDirective {
 @Component({
   selector: 'se-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, SeButtonDirective, SeBannerComponent, SeEmptyStateComponent, SeIconComponent],
+  imports: [
+    NgTemplateOutlet,
+    SeButtonDirective,
+    SeBannerComponent,
+    SeEmptyStateComponent,
+    SeIconComponent,
+  ],
   host: { class: 'se-table', '[class.se-table--compact]': "density() === 'compact'" },
   template: `
     <div class="se-table__toolbar">
@@ -240,13 +246,21 @@ export class SeCellDirective {
                       >
                         <ng-container
                           [ngTemplateOutlet]="cellFor(col) || plain"
-                          [ngTemplateOutletContext]="{ $implicit: row, value: valueOf(col, row), col: col }"
+                          [ngTemplateOutletContext]="{
+                            $implicit: row,
+                            value: valueOf(col, row),
+                            col: col,
+                          }"
                         />
                       </button>
                     } @else {
                       <ng-container
                         [ngTemplateOutlet]="cellFor(col) || plain"
-                        [ngTemplateOutletContext]="{ $implicit: row, value: valueOf(col, row), col: col }"
+                        [ngTemplateOutletContext]="{
+                          $implicit: row,
+                          value: valueOf(col, row),
+                          col: col,
+                        }"
                       />
                     }
                   </td>
@@ -368,7 +382,8 @@ export class SeTableComponent<T> {
     if (this.serverSide() || !sort) return rows;
     const col = this.columns().find((c) => c.key === sort.key);
     if (!col) return rows;
-    const compare = col.compare ?? ((a: T, b: T) => compareValues(this.valueOf(col, a), this.valueOf(col, b)));
+    const compare =
+      col.compare ?? ((a: T, b: T) => compareValues(this.valueOf(col, a), this.valueOf(col, b)));
     const sign = sort.direction === 'asc' ? 1 : -1;
     return [...rows].sort((a, b) => sign * compare(a, b));
   });

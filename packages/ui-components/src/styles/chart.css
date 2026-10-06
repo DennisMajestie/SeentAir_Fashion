@@ -23,3 +23,182 @@
   fill: currentColor;
   opacity: 0.12;
 }
+
+/* ---- Line and bar charts ----
+   One frame for both: the same grid, axis text, legend, tooltip and states.
+   A series is coloured by its class, and its marks, legend swatch and tooltip
+   swatch all take that colour through currentColor. */
+.se-chart {
+  display: block;
+  min-width: 0;
+}
+.se-chart__series--1 {
+  color: var(--se-color-chart-1);
+}
+.se-chart__series--2 {
+  color: var(--se-color-chart-2);
+}
+.se-chart__series--3 {
+  color: var(--se-color-chart-3);
+}
+.se-chart__series--4 {
+  color: var(--se-color-chart-4);
+}
+.se-chart__series--5 {
+  color: var(--se-color-chart-5);
+}
+
+/* The body keeps one height (set by the component) whether the chart is
+   loading, empty or drawn, so the page around it never jumps. */
+.se-chart__body {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+.se-chart__plot {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  border-radius: var(--se-radius-sm);
+  touch-action: pan-y;
+}
+/* Out of flow, so a drawing at the old width can never stop its container
+   shrinking: the chart then measures the new width and redraws. */
+.se-chart__plot svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+}
+.se-chart__skeleton {
+  flex: 1;
+  border-radius: var(--se-radius-md);
+  background: var(--se-color-surface-sunken);
+  animation: se-pulse calc(var(--se-motion-duration-slow) * 4) var(--se-motion-ease-standard)
+    infinite;
+}
+.se-chart__empty {
+  margin: auto;
+  padding: var(--se-space-4);
+  color: var(--se-color-text-muted);
+  font: var(--se-type-body);
+  letter-spacing: var(--se-type-body-tracking);
+  text-align: center;
+  text-transform: none;
+}
+
+/* Grid and axes stay quiet: the data is the loudest thing in the chart. */
+.se-chart__grid {
+  stroke: var(--se-color-border);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.se-chart__grid--zero {
+  stroke: var(--se-color-border-strong);
+}
+.se-chart__tick {
+  fill: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+  font-variant-numeric: var(--se-font-numeric);
+  letter-spacing: var(--se-type-caption-tracking);
+  text-transform: none;
+}
+.se-chart__guide {
+  stroke: var(--se-color-border-strong);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+  pointer-events: none;
+}
+.se-chart__band {
+  fill: var(--se-color-surface-hover);
+  pointer-events: none;
+}
+
+.se-line-chart__line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.se-line-chart__area {
+  fill: currentColor;
+  opacity: 0.12;
+}
+/* The ring in the surface colour keeps a dot legible where two lines cross. */
+.se-line-chart__dot {
+  fill: currentColor;
+  stroke: var(--se-color-surface);
+  stroke-width: 2;
+  pointer-events: none;
+}
+.se-bar-chart__bar {
+  fill: currentColor;
+}
+
+.se-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--se-space-1) var(--se-space-4);
+  margin: 0 0 var(--se-space-2);
+  padding: 0;
+  list-style: none;
+}
+.se-chart__key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--se-space-2);
+  margin: 0;
+  padding: 0;
+  color: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+  letter-spacing: var(--se-type-caption-tracking);
+  text-transform: none;
+}
+.se-chart__swatch {
+  flex: none;
+  width: var(--se-space-2);
+  height: var(--se-space-2);
+  border-radius: var(--se-radius-pill);
+  background: currentColor;
+}
+
+/* The tooltip hangs to the right of the active position, or to the left of it
+   in the right-hand half of the chart, so it never leaves the chart. */
+.se-chart__tooltip {
+  position: absolute;
+  top: var(--se-space-1);
+  z-index: var(--se-z-dropdown);
+  display: grid;
+  gap: var(--se-space-half);
+  max-width: 50%;
+  padding: var(--se-space-2) var(--se-space-3);
+  border: var(--se-border-width) solid var(--se-color-border);
+  border-radius: var(--se-radius-md);
+  background: var(--se-color-surface);
+  box-shadow: var(--se-elevation-1);
+  color: var(--se-color-text);
+  font: var(--se-type-caption);
+  letter-spacing: var(--se-type-caption-tracking);
+  text-transform: none;
+  pointer-events: none;
+  transform: translateX(var(--se-space-2));
+}
+.se-chart__tooltip--flip {
+  transform: translateX(calc(-100% - var(--se-space-2)));
+}
+.se-chart__tooltip-label {
+  color: var(--se-color-text-muted);
+}
+.se-chart__tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: var(--se-space-2);
+  white-space: nowrap;
+}
+.se-chart__tooltip-value {
+  margin-left: auto;
+  padding-left: var(--se-space-2);
+  font: var(--se-type-body-strong);
+  font-variant-numeric: var(--se-font-numeric);
+}

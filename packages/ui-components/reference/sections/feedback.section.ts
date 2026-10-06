@@ -25,9 +25,15 @@ import {
   template: `
     <h3 class="ref-h3">Inline banner</h3>
     <div class="ref-grid">
-      <se-banner tone="info" title="Prices exclude delivery">Delivery is quoted at dispatch.</se-banner>
+      <se-banner tone="info" title="Prices exclude delivery"
+        >Delivery is quoted at dispatch.</se-banner
+      >
       <se-banner tone="success" dismissible>Batch 0412 passed quality check.</se-banner>
-      <se-banner tone="warning" title="3 variants are below their reorder level" actionLabel="Review stock">
+      <se-banner
+        tone="warning"
+        title="3 variants are below their reorder level"
+        actionLabel="Review stock"
+      >
         They will run out in about four days at the current rate.
       </se-banner>
       <se-banner tone="danger" title="Orders could not be loaded" actionLabel="Try again">
@@ -36,8 +42,8 @@ import {
     </div>
     <p class="ref-dont">
       <b>Not for:</b> confirming something the person just did (use a toast), or an error on one
-      field (put it under the field). A banner is for a condition of the page that stays true
-      until something changes.
+      field (put it under the field). A banner is for a condition of the page that stays true until
+      something changes.
     </p>
 
     <h3 class="ref-h3">Toast, confirmation dialog and side drawer</h3>
@@ -50,7 +56,10 @@ import {
         >
           Toast with action
         </button>
-        <button seButton (click)="toast.show('The refund could not be recorded', { tone: 'danger' })">
+        <button
+          seButton
+          (click)="toast.show('The refund could not be recorded', { tone: 'danger' })"
+        >
           Failure toast
         </button>
         <button seButton (click)="approve()">Approval dialog</button>
@@ -61,20 +70,26 @@ import {
     </div>
     <se-drawer title="Add supplier" [(open)]="drawer">
       <se-field label="Supplier name"><input seInput /></se-field>
-      <se-field label="Phone" hint="Include the country code"><input seInput type="tel" /></se-field>
+      <se-field label="Phone" hint="Include the country code"
+        ><input seInput type="tel"
+      /></se-field>
       <se-field label="Notes" optional><textarea seInput rows="3"></textarea></se-field>
       <ng-container seDrawerFooter>
         <button seButton (click)="drawer.set(false)">Cancel</button>
-        <button seButton variant="primary" (click)="drawer.set(false); toast.show('Supplier saved')">
+        <button
+          seButton
+          variant="primary"
+          (click)="drawer.set(false); toast.show('Supplier saved')"
+        >
           Save supplier
         </button>
       </ng-container>
     </se-drawer>
     <p class="ref-dont">
-      <b>Not for:</b> a toast must never carry something that has to be read or acted on, because
-      it disappears. The dialog is only for destructive and approval actions, and always states
-      the consequence: never a bare "Are you sure?". The drawer is for short forms (up to about
-      six fields); a longer form gets its own page.
+      <b>Not for:</b> a toast must never carry something that has to be read or acted on, because it
+      disappears. The dialog is only for destructive and approval actions, and always states the
+      consequence: never a bare "Are you sure?". The drawer is for short forms (up to about six
+      fields); a longer form gets its own page.
     </p>
 
     <h3 class="ref-h3">Empty state</h3>
@@ -88,26 +103,37 @@ import {
         />
       </div>
       <div class="ref-panel">
-        <se-empty-state heading="Nothing is awaiting approval" text="New requests appear here as they are raised." />
+        <se-empty-state
+          heading="Nothing is awaiting approval"
+          text="New requests appear here as they are raised."
+        />
       </div>
     </div>
     <p class="ref-dont">
-      <b>Not for:</b> a failed load (that is an error, with a retry) or data still loading (that
-      is a skeleton). Empty means the request worked and there is genuinely nothing.
+      <b>Not for:</b> a failed load (that is an error, with a retry) or data still loading (that is
+      a skeleton). Empty means the request worked and there is genuinely nothing.
     </p>
 
     <h3 class="ref-h3">Skeletons, one per layout</h3>
     <div class="ref-grid">
-      <div class="ref-panel"><span class="ref-tag">table</span><se-skeleton shape="table" [rows]="4" [columns]="4" /></div>
+      <div class="ref-panel">
+        <span class="ref-tag">table</span><se-skeleton shape="table" [rows]="4" [columns]="4" />
+      </div>
       <div class="ref-panel"><span class="ref-tag">metric</span><se-skeleton shape="metric" /></div>
-      <div class="ref-panel"><span class="ref-tag">form</span><se-skeleton shape="form" [rows]="2" /></div>
-      <div class="ref-panel"><span class="ref-tag">detail</span><se-skeleton shape="detail" [rows]="3" /></div>
-      <div class="ref-panel"><span class="ref-tag">text</span><se-skeleton shape="text" [rows]="3" /></div>
+      <div class="ref-panel">
+        <span class="ref-tag">form</span><se-skeleton shape="form" [rows]="2" />
+      </div>
+      <div class="ref-panel">
+        <span class="ref-tag">detail</span><se-skeleton shape="detail" [rows]="3" />
+      </div>
+      <div class="ref-panel">
+        <span class="ref-tag">text</span><se-skeleton shape="text" [rows]="3" />
+      </div>
       <div class="ref-panel"><span class="ref-tag">block</span><se-skeleton shape="block" /></div>
     </div>
     <p class="ref-dont">
-      <b>Not for:</b> an action in progress (use the button's loading state). Never a spinner in
-      the middle of an empty page.
+      <b>Not for:</b> an action in progress (use the button's loading state). Never a spinner in the
+      middle of an empty page.
     </p>
   `,
 })

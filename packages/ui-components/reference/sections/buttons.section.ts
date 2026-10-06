@@ -34,8 +34,8 @@ import { SeButtonDirective, SeIconComponent } from '@seentair/ui';
     </div>
     <p class="ref-dont">
       <b>Not for:</b> navigation inside a sentence (use a plain link), or more than one primary
-      action in the same view. Danger is only for an action that destroys or rejects something.
-      An icon-only button must carry an aria-label.
+      action in the same view. Danger is only for an action that destroys or rejects something. An
+      icon-only button must carry an aria-label.
     </p>
   `,
 })

@@ -1,9 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
 import { SeButtonDirective, SeCurrencyService } from '@seentair/ui';
 import { ButtonsSection } from './sections/buttons.section';
+import { ChartsSection } from './sections/charts.section';
 import { DisplaySection } from './sections/display.section';
 import { FeedbackSection } from './sections/feedback.section';
 import { FieldsSection } from './sections/fields.section';
+import { NavigationSection } from './sections/navigation.section';
 import { TableSection } from './sections/table.section';
 
 /**
@@ -15,9 +17,11 @@ import { TableSection } from './sections/table.section';
   imports: [
     SeButtonDirective,
     ButtonsSection,
+    ChartsSection,
     DisplaySection,
     FeedbackSection,
     FieldsSection,
+    NavigationSection,
     TableSection,
   ],
   template: `
@@ -53,6 +57,14 @@ import { TableSection } from './sections/table.section';
         <h2>Feedback</h2>
         <ref-feedback />
       </section>
+      <section class="ref-section" id="navigation">
+        <h2>Navigation</h2>
+        <ref-navigation />
+      </section>
+      <section class="ref-section" id="charts">
+        <h2>Charts</h2>
+        <ref-charts />
+      </section>
     </main>
   `,
 })
@@ -64,6 +76,8 @@ export class ReferenceApp {
     { id: 'table', title: 'Data table' },
     { id: 'display', title: 'Badges and cards' },
     { id: 'feedback', title: 'Feedback' },
+    { id: 'navigation', title: 'Navigation' },
+    { id: 'charts', title: 'Charts' },
   ];
 
   constructor() {

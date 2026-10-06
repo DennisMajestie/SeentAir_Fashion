@@ -50,12 +50,17 @@ for (const s of SURFACES) {
   for (const t of ['text', 'text-muted', 'text-subtle', 'accent-text']) pairs.push([t, s, 4.5]);
   pairs.push(['border-strong', s, 3], ['focus', s, 3]);
 }
-for (const fill of ['accent', 'accent-hover', 'accent-active']) pairs.push(['on-accent', fill, 4.5]);
+for (const fill of ['accent', 'accent-hover', 'accent-active'])
+  pairs.push(['on-accent', fill, 4.5]);
 pairs.push(['accent-text', 'accent-subtle', 4.5], ['text', 'accent-subtle', 4.5]);
 pairs.push(['on-danger', 'danger-solid', 4.5], ['on-danger', 'danger-solid-hover', 4.5]);
 for (const n of [1, 2, 3, 4, 5]) pairs.push([`chart-${n}`, 'surface', 3], [`chart-${n}`, 'bg', 3]);
 for (const s of STATUSES) {
-  pairs.push([`${s}-text`, `${s}-bg`, 4.5], [`${s}-text`, 'surface', 4.5], [`${s}-text`, 'bg', 4.5]);
+  pairs.push(
+    [`${s}-text`, `${s}-bg`, 4.5],
+    [`${s}-text`, 'surface', 4.5],
+    [`${s}-text`, 'bg', 4.5],
+  );
   pairs.push([`${s}-border`, 'surface', 3], [`${s}-border`, `${s}-bg`, 3]);
 }
 
@@ -64,7 +69,10 @@ const fail = (msg) => {
   failures++;
   console.error('  FAIL ' + msg);
 };
-for (const [themeName, theme] of [['light', light], ['dark', dark]]) {
+for (const [themeName, theme] of [
+  ['light', light],
+  ['dark', dark],
+]) {
   const c = (n) => resolve(theme, `--se-color-${n}`);
   let worst = Infinity;
   for (const [fg, bg, min] of pairs) {
@@ -75,7 +83,9 @@ for (const [themeName, theme] of [['light', light], ['dark', dark]]) {
   const steps = STATUSES.map((s) => lightness(c(`${s}-border`)));
   for (let i = 1; i < steps.length; i++) {
     if (steps[i - 1] - steps[i] < 6) {
-      fail(`${themeName}: ${STATUSES[i - 1]} and ${STATUSES[i]} marks are only ${(steps[i - 1] - steps[i]).toFixed(1)} L* apart (need 6)`);
+      fail(
+        `${themeName}: ${STATUSES[i - 1]} and ${STATUSES[i]} marks are only ${(steps[i - 1] - steps[i]).toFixed(1)} L* apart (need 6)`,
+      );
     }
   }
   console.log(

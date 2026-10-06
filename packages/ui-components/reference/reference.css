@@ -28,8 +28,9 @@ body {
 }
 .ref-nav {
   display: flex;
-  flex-wrap: wrap;
   gap: var(--se-space-1);
+  max-width: 100%;
+  overflow-x: auto;
 }
 .ref-main {
   max-width: 76rem;

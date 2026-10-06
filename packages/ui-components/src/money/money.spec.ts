@@ -46,9 +46,12 @@ describe('money', () => {
     const original = window.fetch;
     try {
       window.fetch = (async () =>
-        new Response(JSON.stringify({ currencyCode: 'NGN', currencySymbol: '₦', locale: 'en-NG' }), {
-          status: 200,
-        })) as typeof fetch;
+        new Response(
+          JSON.stringify({ currencyCode: 'NGN', currencySymbol: '₦', locale: 'en-NG' }),
+          {
+            status: 200,
+          },
+        )) as typeof fetch;
       await currency.load('/config/public');
       expect(currency.config()?.currencySymbol).toBe('₦');
 

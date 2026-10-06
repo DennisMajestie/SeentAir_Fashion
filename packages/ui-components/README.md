@@ -18,6 +18,7 @@ from the internal apps. Do not load these tokens or components there.
 | `src/styles/` | Component styles, one file per component, tokens only. `index.css` is the whole system as one stylesheet. |
 | `src/<component>/` | Angular components and directives (standalone, `se-` prefix), each with its spec. |
 | `reference/` | The component reference app. |
+| `COMPONENTS.md` | Every component: inputs, states and when not to use it. |
 
 ## Rules
 

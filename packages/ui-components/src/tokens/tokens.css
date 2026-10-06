@@ -157,8 +157,10 @@
   --se-z-toast: 40;
 
   /* ---- Elevation: two levels, no more ---- */
-  --se-elevation-1: 0 1px 2px rgb(23 20 17 / 0.06), 0 1px 3px rgb(23 20 17 / 0.1); /* menus, sticky bars */
-  --se-elevation-2: 0 8px 24px -6px rgb(23 20 17 / 0.22), 0 2px 6px rgb(23 20 17 / 0.1); /* dialogs, drawers, toasts */
+  --se-elevation-1:
+    0 1px 2px rgb(23 20 17 / 0.06), 0 1px 3px rgb(23 20 17 / 0.1); /* menus, sticky bars */
+  --se-elevation-2:
+    0 8px 24px -6px rgb(23 20 17 / 0.22), 0 2px 6px rgb(23 20 17 / 0.1); /* dialogs, drawers, toasts */
 
   /* ---- Motion ---- */
   --se-motion-duration-fast: 120ms; /* hover, press, focus */

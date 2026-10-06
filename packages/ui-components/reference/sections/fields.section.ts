@@ -18,7 +18,12 @@ import { SeFieldComponent, SeInputDirective, SeSearchComponent } from '@seentair
       </div>
       <div class="ref-panel">
         <se-field label="Discount" [error]="discountError()" hint="Between 1 and 90 percent">
-          <input seInput type="number" [ngModel]="discount()" (ngModelChange)="discount.set($event)" />
+          <input
+            seInput
+            type="number"
+            [ngModel]="discount()"
+            (ngModelChange)="discount.set($event)"
+          />
         </se-field>
       </div>
       <div class="ref-panel">
@@ -49,13 +54,19 @@ import { SeFieldComponent, SeInputDirective, SeSearchComponent } from '@seentair
         <se-field label="Notify the customer by" group>
           <label class="se-choice"><input type="checkbox" checked /> <span>Email</span></label>
           <label class="se-choice"><input type="checkbox" /> <span>SMS</span></label>
-          <label class="se-choice"><input type="checkbox" disabled /> <span>WhatsApp (not set up)</span></label>
+          <label class="se-choice"
+            ><input type="checkbox" disabled /> <span>WhatsApp (not set up)</span></label
+          >
         </se-field>
       </div>
       <div class="ref-panel">
         <se-field label="Refund to" group [error]="'Choose where the refund goes.'">
-          <label class="se-choice"><input type="radio" name="refund" /> <span>Original payment method</span></label>
-          <label class="se-choice"><input type="radio" name="refund" /> <span>Bank transfer</span></label>
+          <label class="se-choice"
+            ><input type="radio" name="refund" /> <span>Original payment method</span></label
+          >
+          <label class="se-choice"
+            ><input type="radio" name="refund" /> <span>Bank transfer</span></label
+          >
         </se-field>
       </div>
       <div class="ref-panel">
@@ -67,14 +78,18 @@ import { SeFieldComponent, SeInputDirective, SeSearchComponent } from '@seentair
         </label>
       </div>
       <div class="ref-panel">
-        <se-search label="Search orders" placeholder="Order ref, customer or SKU" [(value)]="query" />
+        <se-search
+          label="Search orders"
+          placeholder="Order ref, customer or SKU"
+          [(value)]="query"
+        />
         <p class="se-type-caption">Searching for: {{ query() || 'nothing yet' }}</p>
       </div>
     </div>
     <p class="ref-dont">
-      <b>Not for:</b> a placeholder standing in for a label, or a field with no hint when the
-      format is not obvious. Use a toggle only for a setting that applies immediately; inside a
-      form that is saved, use a checkbox.
+      <b>Not for:</b> a placeholder standing in for a label, or a field with no hint when the format
+      is not obvious. Use a toggle only for a setting that applies immediately; inside a form that
+      is saved, use a checkbox.
     </p>
   `,
 })

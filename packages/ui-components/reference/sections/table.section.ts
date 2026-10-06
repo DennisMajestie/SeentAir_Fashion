@@ -23,8 +23,23 @@ interface OrderRow {
   payment: string;
 }
 
-const CUSTOMERS = ['Adaeze O.', 'Chinedu A.', 'Ngozi E.', 'Tunde B.', 'Amaka I.', 'Emeka U.', 'Halima S.'];
-const STATUSES = ['order_received', 'processing', 'shipped', 'delivered', 'awaiting_payment', 'stock_exception'];
+const CUSTOMERS = [
+  'Adaeze O.',
+  'Chinedu A.',
+  'Ngozi E.',
+  'Tunde B.',
+  'Amaka I.',
+  'Emeka U.',
+  'Halima S.',
+];
+const STATUSES = [
+  'order_received',
+  'processing',
+  'shipped',
+  'delivered',
+  'awaiting_payment',
+  'stock_exception',
+];
 const ORDERS: OrderRow[] = Array.from({ length: 37 }, (_, i) => {
   const status = STATUSES[i % STATUSES.length];
   return {
@@ -51,8 +66,8 @@ const ORDERS: OrderRow[] = Array.from({ length: 37 }, (_, i) => {
   template: `
     <p class="ref-lede">
       The one table for every list screen. Sortable columns, right-aligned figures, selection, row
-      actions, paging, a density toggle, and its own loading, empty and error states. Sort a
-      column, select rows, open one, change the density.
+      actions, paging, a density toggle, and its own loading, empty and error states. Sort a column,
+      select rows, open one, change the density.
     </p>
     <div class="ref-row">
       <span class="ref-tag">state</span>
@@ -92,7 +107,12 @@ const ORDERS: OrderRow[] = Array.from({ length: 37 }, (_, i) => {
         placeholder="Order ref or customer"
         [(value)]="query"
       />
-      <button seButton size="sm" seTableBulk (click)="toast.show(selected().length + ' orders marked as shipped')">
+      <button
+        seButton
+        size="sm"
+        seTableBulk
+        (click)="toast.show(selected().length + ' orders marked as shipped')"
+      >
         Mark as shipped
       </button>
       <ng-template seCell="status" let-row>
@@ -122,7 +142,9 @@ export class TableSection {
     if (this.state() === 'empty') return [];
     const q = this.query().trim().toLowerCase();
     return q
-      ? ORDERS.filter((o) => o.ref.toLowerCase().includes(q) || o.customer.toLowerCase().includes(q))
+      ? ORDERS.filter(
+          (o) => o.ref.toLowerCase().includes(q) || o.customer.toLowerCase().includes(q),
+        )
       : ORDERS;
   });
 
@@ -142,7 +164,11 @@ export class TableSection {
     },
   ];
   readonly actions: SeRowAction<OrderRow>[] = [
-    { label: 'Print invoice', icon: 'download', run: (o) => this.toast.show(`Invoice for ${o.ref} sent to print`) },
+    {
+      label: 'Print invoice',
+      icon: 'download',
+      run: (o) => this.toast.show(`Invoice for ${o.ref} sent to print`),
+    },
     {
       label: 'Refund',
       icon: 'trash',
