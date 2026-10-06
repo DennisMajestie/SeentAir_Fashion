@@ -149,6 +149,8 @@
   --se-size-sidebar: 15rem; /* 240px */
   --se-size-sidebar-collapsed: 4rem; /* 64px */
   --se-size-drawer: 28rem; /* 448px */
+  --se-size-aside: 20rem; /* 320px: the side column of a detail page */
+  --se-size-content-narrow: 45rem; /* 720px: the widest a form or settings page runs */
 
   /* ---- Stacking ---- */
   --se-z-sticky: 10; /* sticky table headers, the top bar */

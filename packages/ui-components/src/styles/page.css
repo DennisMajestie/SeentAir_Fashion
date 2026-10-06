@@ -1,0 +1,252 @@
+/* The page template: breadcrumb, title and actions, tabs, filters, content. */
+.se-page {
+  display: grid;
+  gap: var(--se-space-4);
+  padding: var(--se-space-6);
+  min-width: 0;
+}
+.se-page__header {
+  display: grid;
+  gap: var(--se-space-2);
+}
+.se-page__titlebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--se-space-3);
+}
+.se-page__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--se-space-3);
+  min-width: 0;
+}
+.se-page__title {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--se-color-text);
+  font: var(--se-type-heading);
+  letter-spacing: var(--se-type-heading-tracking);
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+/* Actions sit top right. The primary action is the last one, at the edge. */
+.se-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--se-space-2);
+}
+.se-page__description,
+.se-page__meta > * {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--se-color-text-muted);
+  font: var(--se-type-body);
+}
+.se-page__meta:empty,
+.se-page__tabs:empty,
+.se-page__filters:empty,
+.se-page__actions:empty {
+  display: none;
+}
+.se-page__body {
+  display: grid;
+  gap: var(--se-space-4);
+  min-width: 0;
+}
+.se-page--narrow .se-page__body {
+  max-width: var(--se-size-content-narrow);
+}
+@media (max-width: 40rem) {
+  .se-page {
+    padding: var(--se-space-4);
+  }
+  /* On a phone the actions take the full width under the title. */
+  .se-page__actions {
+    width: 100%;
+  }
+  .se-page__actions > .se-btn {
+    flex: 1;
+  }
+}
+
+/* Detail page body: the content, with the facts and history beside it. */
+.se-detail {
+  display: grid;
+  gap: var(--se-space-4);
+  align-items: start;
+  min-width: 0;
+}
+.se-detail__main,
+.se-detail__aside {
+  display: grid;
+  gap: var(--se-space-4);
+  min-width: 0;
+}
+@media (min-width: 64rem) {
+  .se-detail {
+    grid-template-columns: minmax(0, 1fr) var(--se-size-aside);
+  }
+}
+
+/* Key/value list. */
+.se-kv {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+.se-kv__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--se-space-4);
+  padding: var(--se-space-2) 0;
+  border-bottom: var(--se-border-width) solid var(--se-color-border);
+}
+.se-kv__item:last-child {
+  border-bottom: 0;
+}
+.se-kv__label {
+  flex: none;
+  margin: 0;
+  color: var(--se-color-text-muted);
+  font: var(--se-type-body);
+}
+.se-kv__value {
+  min-width: 0;
+  margin: 0;
+  color: var(--se-color-text);
+  font: var(--se-type-body-strong);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* Activity history: newest first, a dot per entry on a line. */
+.se-activity__list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.se-activity__entry {
+  position: relative;
+  display: grid;
+  gap: var(--se-space-half);
+  padding: 0 0 var(--se-space-4) var(--se-space-6);
+  --se-activity-mark: var(--se-color-border-strong);
+}
+.se-activity__entry::before {
+  content: '';
+  position: absolute;
+  top: var(--se-space-1);
+  left: var(--se-space-1);
+  width: var(--se-space-2);
+  height: var(--se-space-2);
+  border-radius: var(--se-radius-pill);
+  background: var(--se-activity-mark);
+}
+.se-activity__entry::after {
+  content: '';
+  position: absolute;
+  top: var(--se-space-4);
+  bottom: 0;
+  left: calc(var(--se-space-2) - var(--se-border-width) / 2);
+  width: var(--se-border-width);
+  background: var(--se-color-border);
+}
+.se-activity__entry:last-child {
+  padding-bottom: 0;
+}
+.se-activity__entry:last-child::after {
+  display: none;
+}
+.se-activity__entry--success {
+  --se-activity-mark: var(--se-color-success-border);
+}
+.se-activity__entry--warning {
+  --se-activity-mark: var(--se-color-warning-border);
+}
+.se-activity__entry--danger {
+  --se-activity-mark: var(--se-color-danger-border);
+}
+.se-activity__entry--info {
+  --se-activity-mark: var(--se-color-info-border);
+}
+.se-activity__text {
+  margin: 0;
+  color: var(--se-color-text);
+  font: var(--se-type-body);
+}
+.se-activity__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--se-space-2);
+  margin: 0;
+  color: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+  font-variant-numeric: var(--se-font-numeric);
+}
+.se-activity__empty {
+  margin: 0;
+  color: var(--se-color-text-muted);
+  font: var(--se-type-body);
+}
+
+/* Forms: one column of fields, pairs side by side where they belong together,
+   and the actions at the end. */
+.se-form {
+  display: grid;
+  gap: var(--se-space-4);
+  min-width: 0;
+}
+.se-form__section {
+  display: grid;
+  gap: var(--se-space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.se-form__section-title {
+  margin: 0;
+  padding: 0;
+  color: var(--se-color-text);
+  font: var(--se-type-subheading);
+  letter-spacing: var(--se-type-subheading-tracking);
+  text-transform: none;
+}
+.se-form__row {
+  display: grid;
+  gap: var(--se-space-4);
+}
+@media (min-width: 40rem) {
+  .se-form__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* Cancel then Save, at the end, on the right. On a full-page form the bar
+   sticks to the bottom so Save is always reachable. */
+.se-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--se-space-2);
+}
+.se-form__actions--sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--se-z-sticky);
+  padding: var(--se-space-3) 0;
+  border-top: var(--se-border-width) solid var(--se-color-border);
+  background: var(--se-color-bg);
+}
+@media (max-width: 40rem) {
+  /* On a phone: full width, the primary action on top. */
+  .se-form__actions {
+    flex-direction: column-reverse;
+  }
+}

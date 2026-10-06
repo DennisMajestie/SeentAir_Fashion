@@ -6,6 +6,7 @@ import { DisplaySection } from './sections/display.section';
 import { FeedbackSection } from './sections/feedback.section';
 import { FieldsSection } from './sections/fields.section';
 import { NavigationSection } from './sections/navigation.section';
+import { PatternsSection } from './sections/patterns.section';
 import { TableSection } from './sections/table.section';
 
 /**
@@ -22,6 +23,7 @@ import { TableSection } from './sections/table.section';
     FeedbackSection,
     FieldsSection,
     NavigationSection,
+    PatternsSection,
     TableSection,
   ],
   template: `
@@ -65,6 +67,10 @@ import { TableSection } from './sections/table.section';
         <h2>Charts</h2>
         <ref-charts />
       </section>
+      <section class="ref-section" id="patterns">
+        <h2>Patterns</h2>
+        <ref-patterns />
+      </section>
     </main>
   `,
 })
@@ -78,6 +84,7 @@ export class ReferenceApp {
     { id: 'feedback', title: 'Feedback' },
     { id: 'navigation', title: 'Navigation' },
     { id: 'charts', title: 'Charts' },
+    { id: 'patterns', title: 'Patterns' },
   ];
 
   constructor() {

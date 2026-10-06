@@ -21,6 +21,7 @@
   border-bottom: var(--se-border-width) solid var(--se-color-border);
 }
 .se-table__toolbar-main {
+  flex: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

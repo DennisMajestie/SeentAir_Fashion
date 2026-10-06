@@ -19,6 +19,7 @@ from the internal apps. Do not load these tokens or components there.
 | `src/<component>/` | Angular components and directives (standalone, `se-` prefix), each with its spec. |
 | `reference/` | The component reference app. |
 | `COMPONENTS.md` | Every component: inputs, states and when not to use it. |
+| `PATTERNS.md` | How screens are put together: page template, filtering, create and edit, confirmations, detail pages, loading, errors. |
 
 ## Rules
 

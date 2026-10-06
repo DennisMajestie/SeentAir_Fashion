@@ -17,6 +17,7 @@ grow to 44px on a touch screen.
 - [Cards](#cards)
 - [Money](#money)
 - [Feedback](#feedback): banner, toast, confirmation dialog, side drawer, empty state, skeleton
+- [Page and layout](#page-and-layout): page template, filter bar, detail pieces, forms
 - [Navigation](#navigation): app shell, breadcrumbs, tabs
 - [Charts](#charts): sparkline, line chart, bar chart
 - [Icons](#icons)
@@ -267,6 +268,8 @@ const ok = await confirm.ask({
 
 `SeConfirmService.ask({ title, consequence, confirmLabel, cancelLabel?, danger? })` resolves `true` only on confirm. `consequence` is required. With `danger`, the button is red and focus starts on Cancel. A sheet from the bottom on a phone.
 
+`SeConfirmService.askWithReason({ ...the same, reasonLabel, reasonHint?, reasonRequired? })` adds one labelled reason field and resolves the reason typed, or `null` when cancelled. The reason is required unless `reasonRequired` is `false`; confirming without one shows an announced error and keeps the dialog open.
+
 **When not to use:** only for destructive and approval actions. Not for routine saves, and never a bare "Are you sure?".
 
 ### Side drawer
@@ -305,6 +308,68 @@ Inputs: `heading` (required), `text`, `actionLabel`. Output: `action`. No illust
 Inputs: `shape` (`text | title | block | table | metric | form | detail`), `rows`, `columns`. Decorative: put `aria-busy="true"` on the region that is loading.
 
 **When not to use:** not for an action in progress (use the button's `loading`). Never a spinner on a full page.
+
+---
+
+## Page and layout
+
+How these fit together is in [PATTERNS.md](PATTERNS.md).
+
+### Page template
+
+```html
+<se-page title="Order SE-48210" [breadcrumbs]="[{ label: 'Orders', link: '/orders' }, { label: 'SE-48210' }]">
+  <se-status sePageStatus kind="order" [value]="order.status" />
+  <p sePageMeta>Placed by Adaeze O. on {{ order.createdAt | seDate: 'datetime' }}</p>
+  <button seButton sePageActions>Print invoice</button>
+  <se-tabs sePageTabs ... />
+  ...content...
+</se-page>
+```
+
+Inputs: `title` (required; the page's one `<h1>`), `breadcrumbs`, `description`, `width` (`'full' | 'narrow'`). Slots: `[sePageStatus]`, `[sePageActions]`, `[sePageMeta]`, `[sePageTabs]`, `[sePageFilters]`, default. To project several actions from inside an `@if`, wrap them in `<ng-container sePageActions>`.
+
+**When not to use:** every screen uses it. Do not build a second page header.
+
+### Filter bar
+
+```html
+<se-filter-bar seTableToolbar searchLabel="Search suppliers" [(query)]="query"
+  [filters]="filters" [(value)]="filterValue" summary="8 suppliers" />
+```
+
+Inputs: `searchLabel` (empty hides the search), `searchPlaceholder`, `filters: SeFilter[]` (`{ key, label, options: { value, label }[], anyLabel? }`), `summary`. Two-way: `query`, `value` (`Record<string, string>`). Applied filters appear as removable chips with "Clear all". The bar only holds the choices: the screen applies them and mirrors them in the URL.
+
+**When not to use:** not for more than three filters in the bar (the rest go behind "More filters"), and not as a form.
+
+### Detail pieces
+
+```html
+<div class="se-detail">
+  <div class="se-detail__main">...</div>
+  <aside class="se-detail__aside">
+    <se-card title="Details">
+      <dl seKv>
+        <div seKvItem label="Customer">Adaeze O.</div>
+        <div seKvItem label="Total" numeric>{{ order.total | seMoney }}</div>
+      </dl>
+    </se-card>
+    <se-card title="Activity"><se-activity [entries]="history()" /></se-card>
+  </aside>
+</div>
+```
+
+`seKvItem` inputs: `label` (required), `numeric`. `se-activity` inputs: `entries: { at, text, actor?, tone? }[]` (newest first, as given), `emptyText`.
+
+**When not to use:** a key/value list is for facts about one record, not for tabular data. Activity is for what happened to this record, not for notifications.
+
+### Forms
+
+Layout classes, no component: `.se-form` (one column), `.se-form__row` (a pair of fields side by side), `.se-form__section` with `.se-form__section-title`, `.se-form__actions` (Cancel then primary, right-aligned; add `--sticky` on a full-page form).
+
+### Dates
+
+`{{ value | seDate }}` gives "6 Oct 2026"; `{{ value | seDate: 'datetime' }}` gives "6 Oct 2026, 14:20". In TypeScript use `formatDate(value, style, locale)`.
 
 ---
 

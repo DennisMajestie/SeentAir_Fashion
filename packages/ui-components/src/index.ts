@@ -22,3 +22,7 @@ export * from './chart/bar-chart.component';
 export * from './shell/shell.component';
 export * from './breadcrumbs/breadcrumbs.component';
 export * from './tabs/tabs.component';
+export * from './format/format';
+export * from './page/page.component';
+export * from './filter/filter-bar.component';
+export * from './detail/detail.component';

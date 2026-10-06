@@ -120,6 +120,56 @@ describe('SeConfirmService', () => {
     expect(await escaped).toBeFalse();
   });
 
+  describe('with a reason', () => {
+    const askReason = (required?: boolean) =>
+      confirm.askWithReason({
+        title: 'Reject this price change?',
+        consequence: 'The request is closed. Your reason is written to the audit log.',
+        confirmLabel: 'Reject request',
+        reasonLabel: 'Reason for rejection',
+        reasonRequired: required,
+        danger: true,
+      });
+    const confirmButton = (): HTMLButtonElement => [...dialog().querySelectorAll('button')].at(-1)!;
+
+    it('labels the reason field and starts the cursor in it', async () => {
+      const result = askReason();
+      const textarea = dialog().querySelector('textarea')!;
+      expect(dialog().querySelector(`label[for="${textarea.id}"]`)!.textContent).toBe(
+        'Reason for rejection',
+      );
+      expect(document.activeElement).toBe(textarea);
+      dialog().close();
+      expect(await result).toBeNull();
+    });
+
+    it('refuses to continue without a reason, says why, and stays open', async () => {
+      const result = askReason();
+      confirmButton().click();
+      const d = dialog();
+      expect(d.open).toBeTrue();
+      const error = d.querySelector('.se-field__error')!;
+      expect(error.textContent).toBe('Enter the reason for rejection to continue.');
+      expect(error.getAttribute('aria-live')).toBe('polite');
+      expect(d.querySelector('textarea')!.getAttribute('aria-invalid')).toBe('true');
+      d.close();
+      await result;
+    });
+
+    it('resolves the reason that was typed', async () => {
+      const result = askReason();
+      dialog().querySelector('textarea')!.value = '  Margin too thin at that price.  ';
+      confirmButton().click();
+      expect(await result).toBe('Margin too thin at that price.');
+    });
+
+    it('accepts an empty reason when one is not required', async () => {
+      const result = askReason(false);
+      confirmButton().click();
+      expect(await result).toBe('');
+    });
+  });
+
   it('starts a destructive dialog on Cancel, with a danger button', async () => {
     const result = ask(true);
     const d = dialog();

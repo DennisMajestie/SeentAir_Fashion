@@ -234,6 +234,9 @@
   color: var(--se-color-text-muted);
   overflow-wrap: anywhere;
 }
+.se-dialog__reason {
+  margin-top: var(--se-space-2);
+}
 .se-dialog__actions,
 .se-drawer__footer {
   display: flex;

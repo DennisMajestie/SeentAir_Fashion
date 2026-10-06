@@ -106,3 +106,10 @@ body {
     padding: var(--se-space-2) var(--se-space-4);
   }
 }
+/* A whole example screen, framed so it reads as a page within the page. */
+.ref-screen {
+  border: var(--se-border-width) solid var(--se-color-border);
+  border-radius: var(--se-radius-md);
+  background: var(--se-color-bg);
+  overflow: hidden;
+}
