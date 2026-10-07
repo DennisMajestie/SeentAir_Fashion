@@ -39,12 +39,14 @@ describe('ApprovalsPage', () => {
     api = jasmine.createSpyObj<ApiService>('ApiService', [
       'pendingApprovals',
       'approvalsHistory',
+      'decideApproval',
       'decideApprovalWithJustification',
     ]);
     api.pendingApprovals.and.returnValue(pending as never);
     api.approvalsHistory.and.returnValue(
       of({ data: [approval({ id: 'h1', status: 'rejected' })], total: 1 }),
     );
+    api.decideApproval.and.returnValue(of({}));
     api.decideApprovalWithJustification.and.returnValue(of({}));
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: ApiService, useValue: api }],
@@ -94,6 +96,14 @@ describe('ApprovalsPage', () => {
     expect(ask.calls.mostRecent().args[0].title).toBe('Approve price change AB12CD34?');
     expect(ask.calls.mostRecent().args[0].consequence).toContain('audit log');
     expect(ask.calls.mostRecent().args[0].consequence).toContain('cannot be withdrawn');
+    expect(api.decideApprovalWithJustification).not.toHaveBeenCalled();
+  });
+
+  it('approves without a justification, so the server never sees an empty reason', async () => {
+    mount(of([approval()]));
+    spyOn(TestBed.inject(SeConfirmService), 'ask').and.resolveTo(true);
+    await fixture.componentInstance.approve(approval());
+    expect(api.decideApproval).toHaveBeenCalledWith(approval().id, 'approved');
     expect(api.decideApprovalWithJustification).not.toHaveBeenCalled();
   });
 

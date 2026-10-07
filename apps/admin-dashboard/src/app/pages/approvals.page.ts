@@ -308,7 +308,13 @@ export class ApprovalsPage implements OnInit {
 
   private decide(a: Approval, decision: 'approved' | 'rejected', justification: string): void {
     const label = `${approvalTypeLabel(a.actionType)} ${approvalRef(a.id)}`;
-    this.api.decideApprovalWithJustification(a.id, decision, justification).subscribe({
+    // An approval carries no reason, so it is posted without the field entirely
+    // rather than as an empty string, which the server reads as "a reason was
+    // given but is blank".
+    const call$ = justification
+      ? this.api.decideApprovalWithJustification(a.id, decision, justification)
+      : this.api.decideApproval(a.id, decision);
+    call$.subscribe({
       next: () => {
         this.toast.show(`${label} ${decision}`);
         this.load();
