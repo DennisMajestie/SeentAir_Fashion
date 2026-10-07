@@ -22,6 +22,8 @@
 .se-search__clear:focus-visible,
 .se-toast__action:focus-visible,
 a.se-metric:focus-visible,
+.se-metric-link:focus-visible,
+.se-popover__item:focus-visible,
 .se-focusable:focus-visible {
   outline: var(--se-focus-outline);
   outline-offset: var(--se-focus-offset);

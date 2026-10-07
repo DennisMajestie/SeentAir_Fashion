@@ -52,12 +52,17 @@ export const SE_STATUS: Record<SeStatusKind, Record<string, SeStatusMeaning>> = 
     out_of_stock: s('Out of stock', 'danger'),
     made_to_order: s('Made to order', 'info'),
   },
+  // Production stages are configuration (PRODUCTION_STAGES on the API), so a
+  // factory can rename them. These are the defaults; a renamed stage shows as
+  // neutral text in the factory's own words.
   production: {
+    production_planned: s('Planned', 'neutral'),
     planned: s('Planned', 'neutral'),
     cutting: s('Cutting', 'info'),
     sewing: s('Sewing', 'info'),
     finishing: s('Finishing', 'info'),
     qc: s('Quality check', 'warning'),
+    quality_control: s('Quality check', 'warning'),
     completed: s('Completed', 'success'),
   },
   return: {
@@ -82,7 +87,11 @@ export function statusMeaning(
   kind: SeStatusKind,
   value: string | null | undefined,
 ): SeStatusMeaning {
-  const key = (value ?? '').toLowerCase();
+  // "Quality Control", "quality-control" and "quality_control" are one state.
+  const key = (value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
   const known = SE_STATUS[kind][key];
   if (known) return known;
   const words = key.replace(/[_-]+/g, ' ').trim();

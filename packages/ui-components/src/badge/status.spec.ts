@@ -39,6 +39,19 @@ describe('status mapping', () => {
     expect(statusMeaning('approval', 'REJECTED')).toEqual({ label: 'Rejected', tone: 'danger' });
   });
 
+  it('reads a configured stage name however it is written', () => {
+    expect(statusMeaning('production', 'Quality Control')).toEqual({
+      label: 'Quality check',
+      tone: 'warning',
+    });
+    expect(statusMeaning('production', 'Production Planned').label).toBe('Planned');
+    // A stage the factory renamed is shown in its own words.
+    expect(statusMeaning('production', 'Embroidery')).toEqual({
+      label: 'Embroidery',
+      tone: 'neutral',
+    });
+  });
+
   it('shows an unmapped state as readable neutral text rather than hiding it', () => {
     expect(statusMeaning('order', 'on_hold_for_review')).toEqual({
       label: 'On hold for review',

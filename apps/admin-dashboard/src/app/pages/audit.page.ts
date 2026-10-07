@@ -22,11 +22,18 @@ import { ApiService, AuditEntry } from '../api.service';
       </div>
       <div class="ops-actions">
         <span class="live-chip">Automatic</span>
-        <button class="cta small ghost" type="button" (click)="verifyIntegrity()" [disabled]="verifying()">
+        <button
+          class="cta small ghost"
+          type="button"
+          (click)="verifyIntegrity()"
+          [disabled]="verifying()"
+        >
           {{ verifying() ? 'Verifying...' : 'Verify data integrity' }}
         </button>
         @if (verifyError()) {
-          <span class="chip bad" role="status">Integrity check failed to run &mdash; unverified</span>
+          <span class="chip bad" role="status"
+            >Integrity check failed to run &mdash; unverified</span
+          >
         }
         @if (verifyResult(); as v) {
           <span class="chip" [class.ok]="v.broken === 0" [class.bad]="v.broken > 0">

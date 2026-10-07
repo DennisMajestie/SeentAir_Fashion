@@ -253,9 +253,7 @@ export class WholesaleAdminPage implements OnInit {
 
   /** "Aba, Abia" from whatever the applicant supplied; empty when neither. */
   place(row: { city: string | null; state: string | null }): string {
-    return [row.city, row.state]
-      .filter((v): v is string => !!v && v.length > 0)
-      .join(', ');
+    return [row.city, row.state].filter((v): v is string => !!v && v.length > 0).join(', ');
   }
 
   /** Buyer type is stored as a machine value; staff read a label. */

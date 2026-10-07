@@ -1,9 +1,22 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { Router } from '@angular/router';
+import {
+  SeBannerComponent,
+  SeButtonDirective,
+  SeColumn,
+  SeCurrencyService,
+  SeFilter,
+  SeFilterBarComponent,
+  SeMetricCardComponent,
+  SeMoneyPipe,
+  SePageComponent,
+  SeTableComponent,
+  SeToastService,
+} from '@seentair/ui';
 import { ApiService } from '../api.service';
 import { downloadCsv } from '../csv.util';
+import { urlFilters } from '../url-filters';
+import { LOAD_FAILED, errorText, movementLabel, signed, units } from './stock-format';
 
 interface SummaryRow {
   itemType: string;
@@ -11,460 +24,215 @@ interface SummaryRow {
   currentQuantity: number;
   byMovementType: Record<string, number>;
 }
-interface MovementRow {
-  id: string;
-  movementType: string;
-  quantityDelta: number;
-  timestamp: string;
-  referenceId: string | null;
-  actorId?: string | null;
-}
-interface VariantInfo {
-  sku: string;
-  product: string;
-  price: number;
-  size: string | null;
-  colour: string | null;
+interface LedgerCheck {
+  total: number;
+  valid: number;
+  broken: number;
+  headHash: string | null;
 }
 
-/** A8, Inventory valuation & stock depository with the immutable movement
-    ledger. Stock is NEVER edited directly: every figure derives from
-    InventoryMovement rows; removals stay approval-gated. */
+/**
+ * Inventory: every finished item and raw material with its current stock.
+ *
+ * Stock is never edited. Each figure is derived from the movement ledger, so
+ * this list only finds an item; its own page (inventory/:itemType/:itemId)
+ * shows the history and is where a movement is recorded.
+ */
 @Component({
   selector: 'app-inventory-admin',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    SeBannerComponent,
+    SeButtonDirective,
+    SeFilterBarComponent,
+    SeMetricCardComponent,
+    SeMoneyPipe,
+    SePageComponent,
+    SeTableComponent,
+  ],
   template: `
-    <div class="ops-head">
-      <div class="ops-id">
-        <p class="eyebrow">Operations · Inventory</p>
-        <h1>Inventory & stock levels</h1>
-        <p class="ops-sub">
-          Live stock levels with a full history of every change in and out. Stock is never edited
-          directly.
-        </p>
-      </div>
-      <div class="ops-actions">
-        <span class="live-chip">Live</span>
-        <button class="cta small ghost" type="button" (click)="exportCsv()">Export CSV</button>
-        <button class="cta small ghost" type="button" (click)="verifyLedger()">
-          Verify ledger
-        </button>
-        @if (ledgerVerify(); as lv) {
-          <span class="chip" [class.ok]="lv.broken === 0" [class.bad]="lv.broken > 0">
-            ledger {{ lv.broken === 0 ? 'sealed' : lv.broken + ' broken' }} · {{ lv.valid }}/{{
-              lv.total
-            }}
-          </span>
-        }
-      </div>
-    </div>
+    <se-page title="Inventory">
+      <button seButton sePageActions type="button" (click)="exportCsv()">Export CSV</button>
+      <button seButton sePageActions type="button" [loading]="checking()" (click)="verifyLedger()">
+        Check ledger
+      </button>
 
-    @if (ledgerVerify(); as lv) {
-      <div class="rule-strip" [style.borderColor]="lv.broken > 0 ? 'var(--danger)' : ''">
-        <strong>Ledger hash-chain</strong>- every movement is SHA-256 bound to the previous one.
-        @if (lv.broken === 0) {
-          All {{ lv.total }} entries verify; stock history has not been tampered with.
-        } @else {
-          {{ lv.broken }} of {{ lv.total }} entries fail verification.
-        }
-        @if (lv.headHash) {
-          <code class="mono">{{ lv.headHash }}</code>
-        }
+      <div class="se-metric-grid">
+        <se-metric-card label="Finished units" [value]="finishedUnits()" hint="In stock now" />
+        <se-metric-card
+          label="Finished stock value"
+          [value]="finishedValue() | seMoney"
+          hint="At current selling prices"
+        />
+        <se-metric-card label="Raw materials" [value]="materialCount()" hint="Tracked materials" />
+        <se-metric-card label="In production" [value]="wipUnits()" hint="Units not yet completed" />
+        <se-metric-card
+          label="Returns awaiting"
+          [value]="returnsAwaiting()"
+          hint="Requested, not yet decided"
+        />
       </div>
-    }
 
-    <p class="rule-strip">
-      EVERY CHANGE IS RECORDED // stock moves only through logged entries, removing stock needs
-      approval.
-    </p>
-
-    <div class="kpi-bar">
-      <div class="kpi">
-        <span class="kpi-label">Finished goods</span>
-        <span class="kpi-value">{{ finishedUnits() | number }} <small>units</small></span>
-        <span class="kpi-sub"
-          >est. ₦{{ finishedValue() | number: '1.0-0' }} at current retail prices</span
+      @if (ledgerCheck(); as check) {
+        <se-banner
+          [tone]="check.broken === 0 ? 'success' : 'danger'"
+          [title]="
+            check.broken === 0
+              ? 'The stock ledger is intact'
+              : check.broken + ' of ' + check.total + ' ledger entries do not match their record'
+          "
+          dismissible
+          (dismiss)="ledgerCheck.set(null)"
         >
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Raw materials</span>
-        <span class="kpi-value">{{ materialSkus() }}</span>
-        <span class="kpi-sub">materials tracked</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Work in progress</span>
-        <span class="kpi-value">{{ wipUnits() | number }} <small>units</small></span>
-        <span class="kpi-sub">in active production stages</span>
-      </div>
-      <div class="kpi" [class.kpi-action]="returnsAwaiting() > 0">
-        <span class="kpi-label">Customer returns</span>
-        <span class="kpi-value">{{ returnsAwaiting() }}</span>
-        <span class="kpi-sub">waiting to be checked</span>
-      </div>
-    </div>
-
-    <div class="ops-toolbar">
-      <span class="search"
-        ><input
-          placeholder="Search SKU or material…"
-          [(ngModel)]="query"
-          name="q"
-          aria-label="Search inventory"
-          (ngModelChange)="queryChanged()"
-      /></span>
-      <div class="seg" role="group" aria-label="Item type">
-        <button type="button" [class.on]="view() === 'all'" (click)="setView('all')">
-          All items <span class="seg-n">{{ summary().length }}</span>
-        </button>
-        <button type="button" [class.on]="view() === 'variant'" (click)="setView('variant')">
-          Finished goods <span class="seg-n">{{ countType('variant') }}</span>
-        </button>
-        <button type="button" [class.on]="view() === 'material'" (click)="setView('material')">
-          Raw materials <span class="seg-n">{{ countType('material') }}</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="side-split">
-      <div class="list-col">
-        <div class="table-scroll">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Type</th>
-                <th>Current</th>
-                <th>In / out by movement</th>
-                <th>Est. value</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (s of paged(); track s.itemType + s.itemId) {
-                <tr class="clickable" [class.sel]="isSelected(s)" (click)="select(s)">
-                  <td>
-                    <strong>{{ labelFor(s.itemType, s.itemId) }}</strong>
-                  </td>
-                  <td>
-                    <span class="chip" [class.acid]="s.itemType === 'variant'">{{
-                      s.itemType === 'variant' ? 'finished' : 'material'
-                    }}</span>
-                  </td>
-                  <td class="mono">{{ s.currentQuantity | number }}</td>
-                  <td class="small muted mono">
-                    @for (kv of entries(s.byMovementType); track kv[0]) {
-                      <span class="chip gap-end" [class.warn]="kv[1] < 0"
-                        >{{ kv[0] }} {{ kv[1] > 0 ? '+' : '' }}{{ kv[1] }}</span
-                      >
-                    }
-                  </td>
-                  <td class="mono">
-                    @if (valueOf(s) !== null) {
-                      ₦{{ valueOf(s) | number: '1.0-0' }}
-                    } @else {
-                      <span class="muted">-</span>
-                    }
-                  </td>
-                </tr>
-              }
-              @if (visible().length === 0) {
-                <tr>
-                  <td colspan="5" class="muted small">No stock rows match.</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-
-        @if (visible().length > 0) {
-          <div class="pager">
-            <span class="pager-info"
-              >{{ visible().length }} item{{ visible().length === 1 ? '' : 's' }} · page
-              {{ page() }} of {{ pageCount() }}</span
-            >
-            <div class="pager-nav">
-              <button
-                type="button"
-                class="pager-btn"
-                [disabled]="page() === 1"
-                (click)="page.set(page() - 1)"
-              >
-                ‹ Prev
-              </button>
-              @for (p of pageNumbers(); track p) {
-                <button
-                  type="button"
-                  class="pager-btn"
-                  [class.on]="p === page()"
-                  (click)="page.set(p)"
-                >
-                  {{ p }}
-                </button>
-              }
-              <button
-                type="button"
-                class="pager-btn"
-                [disabled]="page() >= pageCount()"
-                (click)="page.set(page() + 1)"
-              >
-                Next ›
-              </button>
-            </div>
-          </div>
-        }
-      </div>
-
-      <aside class="inspector">
-        @if (selected(); as s) {
-          <div class="insp-head">
-            <h2>{{ labelFor(s.itemType, s.itemId) }}</h2>
-            <span class="chip" [class.acid]="s.itemType === 'variant'">{{
-              s.itemType === 'variant' ? 'finished goods' : 'raw material'
-            }}</span>
-          </div>
-          @if (variantInfo(s); as vi) {
-            <p class="ops-sub" style="margin:0 0 0.5rem;">
-              {{ vi.product }} · {{ vi.colour || '-' }} · size {{ vi.size || '-' }}
-            </p>
+          {{ check.valid }} of {{ check.total }} movements checked out.
+          @if (check.headHash) {
+            Latest entry fingerprint: {{ check.headHash.slice(0, 16) }}.
           }
-          <div class="kpi-bar" style="margin-bottom:0.8rem;">
-            <div class="kpi">
-              <span class="kpi-label">Current stock</span>
-              <span class="kpi-value">{{ currentQty() ?? s.currentQuantity | number }}</span>
-              <span class="kpi-sub">from {{ ledgerTotal() }} total movements</span>
-            </div>
-            @if (valueOf(s) !== null) {
-              <div class="kpi">
-                <span class="kpi-label">Calculated value</span>
-                <span class="kpi-value">₦{{ valueOf(s) | number: '1.0-0' }}</span>
-                <span class="kpi-sub">qty × current retail price</span>
-              </div>
-            }
-          </div>
+        </se-banner>
+      }
 
-          <div class="panel-head">
-            <h2>Stock movement history</h2>
-            <span class="ph-sub">latest first</span>
-          </div>
-          <table class="table">
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Type</th>
-                <th>Δ</th>
-                <th>Reference</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (m of movementRows(); track m.id) {
-                <tr>
-                  <td class="mono small">{{ m.timestamp | date: 'MMM d, HH:mm' }}</td>
-                  <td>
-                    <span
-                      class="chip"
-                      [class.acid]="m.quantityDelta > 0"
-                      [class.warn]="m.quantityDelta < 0"
-                      >{{ m.movementType }}</span
-                    >
-                  </td>
-                  <td
-                    class="mono delta"
-                    [class.plus]="m.quantityDelta > 0"
-                    [class.minus]="m.quantityDelta < 0"
-                  >
-                    {{ m.quantityDelta > 0 ? '+' : '' }}{{ m.quantityDelta }}
-                  </td>
-                  <td class="mono small muted">{{ m.referenceId?.slice(0, 12) || '-' }}</td>
-                </tr>
-              }
-              @if (movementRows().length === 0) {
-                <tr>
-                  <td colspan="4" class="muted small">No movements yet.</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-
-          <div class="gap-sep"></div>
-          <div class="panel-head">
-            <h2>Stock check digest</h2>
-            <span class="ph-sub">book vs actual</span>
-            <span class="ph-end"
-              ><button class="cta small ghost" type="button" (click)="stockCheck()">
-                Run stock check
-              </button></span
-            >
-          </div>
-          @if (digest(); as d) {
-            <div class="kpi-bar" style="margin-bottom:0.8rem;">
-              <div class="kpi">
-                <span class="kpi-label">Book quantity</span
-                ><span class="kpi-value">{{ d.expectedQuantity | number }}</span
-                ><span class="kpi-sub">sum of all movements</span>
-              </div>
-              <div class="kpi">
-                <span class="kpi-label">Recorded current</span
-                ><span class="kpi-value">{{ d.currentQuantity | number }}</span
-                ><span class="kpi-sub">ledger running balance</span>
-              </div>
-              <div class="kpi" [class.kpi-action]="d.runningBalance !== d.currentQuantity">
-                <span class="kpi-label">Variance</span
-                ><span
-                  class="kpi-value"
-                  [class.delta.plus]="d.runningBalance === d.currentQuantity"
-                  [class.delta.minus]="d.runningBalance !== d.currentQuantity"
-                  >{{ d.runningBalance - d.currentQuantity }}</span
-                ><span class="kpi-sub">investigate if non-zero</span>
-              </div>
-            </div>
-          }
-
-          @if (s.itemType === 'material') {
-            <div class="gap-sep"></div>
-            <div class="panel-head">
-              <h2>Storage map</h2>
-              <span class="ph-sub">warehouse book</span>
-            </div>
-            @if (materialMeta(s.itemId); as mm) {
-              <dl class="kv">
-                <dt>Category</dt>
-                <dd>{{ mm.category || '-' }}</dd>
-                <dt>Bay / rack location</dt>
-                <dd class="mono">{{ mm.storageLocation || '-' }}</dd>
-              </dl>
-            } @else {
-              <p class="muted small">No location recorded for this material.</p>
-            }
-          }
-
-          <div class="gap-sep"></div>
-          <div class="panel-head">
-            <h2>Request stock adjustment</h2>
-            <span class="ph-sub">needs approval</span>
-          </div>
-          <p class="muted small">
-            Add stock = correction in. Remove stock = taking it out, removal needs approval.
-          </p>
-          <form (ngSubmit)="adjust()">
-            <label
-              >Change (±) <input type="number" [(ngModel)]="adj.delta" name="adelta" required
-            /></label>
-            <label
-              >Reference note
-              <input [(ngModel)]="adj.reference" name="aref" placeholder="stocktake correction…"
-            /></label>
-            <div class="actions">
-              @if (adj.delta < 0 && !adj.approvalRequestId) {
-                <button class="cta small ghost" type="button" (click)="requestDisposalApproval()">
-                  Request removal approval
-                </button>
-              } @else {
-                @if (adj.approvalRequestId) {
-                  <span class="chip acid">req {{ adj.approvalRequestId.slice(0, 8) }}</span>
-                }
-                <button class="cta small" type="submit">Record movement</button>
-              }
-            </div>
-          </form>
-        } @else {
-          <p class="muted small">
-            Select a stock row to see its movement history and make changes.
-          </p>
-        }
-      </aside>
-    </div>
-
-    @if (message()) {
-      <p class="success">{{ message() }}</p>
-    }
-    @if (error()) {
-      <p class="error">{{ error() }}</p>
-    }
+      <se-table
+        caption="Inventory"
+        [columns]="columns"
+        [rows]="rows()"
+        [rowId]="rowId"
+        [loading]="loading()"
+        [error]="error()"
+        (retry)="load()"
+        [pageSize]="25"
+        activatable
+        (rowActivate)="open($event)"
+        [emptyHeading]="filtering() ? 'No items match these filters' : 'No stock recorded yet'"
+        [emptyText]="
+          filtering()
+            ? 'Remove a filter, or clear the search to see every item.'
+            : 'Items appear here once a purchase or a finished batch is recorded.'
+        "
+      >
+        <se-filter-bar
+          seTableToolbar
+          searchLabel="Search inventory"
+          searchPlaceholder="SKU or material"
+          [(query)]="query"
+          [filters]="filters"
+          [(value)]="filterValue"
+          [summary]="units(rows().length, 'item')"
+        />
+      </se-table>
+    </se-page>
   `,
 })
 export class InventoryAdminPage implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly toast = inject(SeToastService);
+  private readonly currency = inject(SeCurrencyService);
+  readonly units = units;
+
   readonly summary = signal<SummaryRow[]>([]);
-  readonly selected = signal<SummaryRow | null>(null);
-  readonly movementRows = signal<MovementRow[]>([]);
-  readonly currentQty = signal<number | null>(null);
-  readonly ledgerTotal = signal(0);
-  readonly message = signal<string | null>(null);
-  readonly error = signal<string | null>(null);
-  readonly view = signal<'all' | 'variant' | 'material'>('all');
-  readonly page = signal(1);
-  readonly pageSize = signal(12);
+  /** True only until the first answer arrives; a refresh keeps the rows on screen. */
+  readonly loading = signal(true);
+  readonly error = signal('');
   readonly wipUnits = signal(0);
   readonly returnsAwaiting = signal(0);
-  readonly ledgerVerify = signal<{
-    total: number;
-    valid: number;
-    broken: number;
-    headHash: string | null;
-  } | null>(null);
-  readonly digest = signal<{
-    currentQuantity: number;
-    expectedQuantity: number;
-    runningBalance: number;
-    materialCount: number;
-  } | null>(null);
-  query = '';
-  adj = { delta: 0, reference: '', approvalRequestId: '' };
+  readonly ledgerCheck = signal<LedgerCheck | null>(null);
+  readonly checking = signal(false);
   private readonly labels = signal<Map<string, string>>(new Map());
-  private readonly variants = signal<Map<string, VariantInfo>>(new Map());
-  private readonly materialLocations = signal<
-    Map<string, { category: string | null; storageLocation: string | null }>
-  >(new Map());
+  private readonly prices = signal<Map<string, number>>(new Map());
+
+  private readonly urlState = urlFilters(['type']);
+  readonly query = this.urlState.query;
+  readonly filterValue = this.urlState.value;
+  readonly filters: SeFilter[] = [
+    {
+      key: 'type',
+      label: 'Type',
+      options: [
+        { value: 'variant', label: 'Finished goods' },
+        { value: 'material', label: 'Raw materials' },
+      ],
+    },
+  ];
+  readonly filtering = computed(() => !!this.query().trim() || !!this.filterValue()['type']);
+
+  readonly rows = computed(() => {
+    const type = this.filterValue()['type'];
+    const q = this.query().trim().toLowerCase();
+    return this.summary().filter(
+      (s) => (!type || s.itemType === type) && (!q || this.labelFor(s).toLowerCase().includes(q)),
+    );
+  });
+  readonly rowId = (s: SummaryRow): string => `${s.itemType}:${s.itemId}`;
+
+  readonly columns: SeColumn<SummaryRow>[] = [
+    { key: 'item', header: 'Item', sortable: true, value: (s) => this.labelFor(s) },
+    {
+      key: 'type',
+      header: 'Type',
+      sortable: true,
+      value: (s) => (s.itemType === 'variant' ? 'Finished goods' : 'Raw material'),
+    },
+    {
+      key: 'current',
+      header: 'In stock',
+      numeric: true,
+      sortable: true,
+      value: (s) => s.currentQuantity,
+    },
+    {
+      key: 'movements',
+      header: 'In and out by movement',
+      value: (s) =>
+        Object.entries(s.byMovementType)
+          .map(([type, qty]) => `${movementLabel(type)} ${signed(qty)}`)
+          .join(', '),
+    },
+    {
+      key: 'value',
+      header: 'Estimated value',
+      numeric: true,
+      sortable: true,
+      value: (s) => this.valueOf(s) ?? -1,
+      // Materials carry no stored unit price, so they have no value here.
+      format: (v) => ((v as number) < 0 ? '' : this.currency.format(v as number)),
+    },
+  ];
+
+  readonly finishedUnits = computed(() =>
+    this.summary()
+      .filter((s) => s.itemType === 'variant')
+      .reduce((sum, s) => sum + s.currentQuantity, 0),
+  );
+  readonly finishedValue = computed(() =>
+    this.summary().reduce((sum, s) => sum + (this.valueOf(s) ?? 0), 0),
+  );
+  readonly materialCount = computed(
+    () => this.summary().filter((s) => s.itemType === 'material').length,
+  );
 
   ngOnInit(): void {
-    this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
+    this.load();
     this.api.products().subscribe((res) => {
       const labels = new Map(this.labels());
-      const variants = new Map(this.variants());
+      const prices = new Map<string, number>();
       for (const p of res.data as unknown as Array<{
-        name: string;
         basePrice: number;
-        variants: Array<{
-          id: string;
-          sku: string;
-          size: string | null;
-          colour: string | null;
-          priceOverride: number | null;
-        }>;
+        variants: Array<{ id: string; sku: string; priceOverride: number | null }>;
       }>) {
         for (const v of p.variants ?? []) {
           labels.set(`variant:${v.id}`, v.sku);
-          variants.set(v.id, {
-            sku: v.sku,
-            product: p.name,
-            size: v.size,
-            colour: v.colour,
-            price: v.priceOverride ?? p.basePrice,
-          });
+          prices.set(v.id, Number(v.priceOverride ?? p.basePrice) || 0);
         }
       }
       this.labels.set(labels);
-      this.variants.set(variants);
+      this.prices.set(prices);
     });
     this.api.materials().subscribe((mats) => {
       const labels = new Map(this.labels());
-      const meta = new Map(this.materialLocations());
-      for (const m of mats as unknown as Array<{
-        id: string;
-        name: string;
-        category: string | null;
-        storageLocation: string | null;
-      }>) {
+      for (const m of mats as unknown as Array<{ id: string; name: string }>) {
         labels.set(`material:${m.id}`, m.name);
-        meta.set(m.id, {
-          category: m.category ?? null,
-          storageLocation: m.storageLocation ?? null,
-        });
       }
       this.labels.set(labels);
-      this.materialLocations.set(meta);
     });
-    this.api.inventorySummary().subscribe((s) => this.summary.set(s));
     this.api.batches().subscribe((res) => {
       const last = res.stages[res.stages.length - 1];
       this.wipUnits.set(
@@ -478,175 +246,59 @@ export class InventoryAdminPage implements OnInit {
       );
   }
 
-  labelFor(type: string, id: string): string {
-    return this.labels().get(`${type}:${id}`) ?? id.slice(0, 8);
-  }
-  entries(record: Record<string, number>): Array<[string, number]> {
-    return Object.entries(record);
-  }
-  countType(t: string): number {
-    return this.summary().filter((s) => s.itemType === t).length;
-  }
-
-  visible(): SummaryRow[] {
-    const q = this.query.trim().toLowerCase();
-    return this.summary().filter((s) => {
-      if (this.view() !== 'all' && s.itemType !== this.view()) return false;
-      return !q || this.labelFor(s.itemType, s.itemId).toLowerCase().includes(q);
+  load(): void {
+    this.api.inventorySummary().subscribe({
+      next: (s) => {
+        this.summary.set(s);
+        this.loading.set(false);
+        this.error.set('');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        // A failed refresh must not wipe a list that is already on screen.
+        if (this.summary().length === 0) this.error.set(errorText(err, LOAD_FAILED));
+      },
     });
   }
 
-  setView(v: 'all' | 'variant' | 'material'): void {
-    this.view.set(v);
-    this.page.set(1);
+  labelFor(s: SummaryRow): string {
+    return this.labels().get(`${s.itemType}:${s.itemId}`) ?? s.itemId.slice(0, 8);
   }
-  queryChanged(): void {
-    this.page.set(1);
-  }
-
-  paged(): SummaryRow[] {
-    const v = this.visible();
-    const total = Math.max(1, Math.ceil(v.length / this.pageSize()));
-    if (this.page() > total) this.page.set(total);
-    const start = (this.page() - 1) * this.pageSize();
-    return v.slice(start, start + this.pageSize());
-  }
-  pageCount(): number {
-    return Math.max(1, Math.ceil(this.visible().length / this.pageSize()));
-  }
-  pageNumbers(): number[] {
-    const total = this.pageCount();
-    const first = Math.max(1, Math.min(this.page() - 2, total - 4));
-    const last = Math.min(total, first + 4);
-    return Array.from({ length: last - first + 1 }, (_, i) => first + i);
-  }
-
-  readonly finishedUnits = computed(() =>
-    this.summary()
-      .filter((s) => s.itemType === 'variant')
-      .reduce((sum, s) => sum + s.currentQuantity, 0),
-  );
-  readonly materialSkus = computed(
-    () => this.summary().filter((s) => s.itemType === 'material').length,
-  );
-  readonly finishedValue = computed(() => {
-    const variants = this.variants();
-    return this.summary()
-      .filter((s) => s.itemType === 'variant')
-      .reduce((sum, s) => sum + s.currentQuantity * (variants.get(s.itemId)?.price ?? 0), 0);
-  });
-
   valueOf(s: SummaryRow): number | null {
-    if (s.itemType !== 'variant') return null; // materials carry no stored unit price
-    const v = this.variants().get(s.itemId);
-    return v ? s.currentQuantity * v.price : null;
-  }
-  variantInfo(s: SummaryRow): VariantInfo | null {
-    return s.itemType === 'variant' ? (this.variants().get(s.itemId) ?? null) : null;
+    const price = s.itemType === 'variant' ? this.prices().get(s.itemId) : undefined;
+    return price === undefined ? null : s.currentQuantity * price;
   }
 
-  isSelected(s: SummaryRow): boolean {
-    const sel = this.selected();
-    return !!sel && sel.itemType === s.itemType && sel.itemId === s.itemId;
-  }
-
-  select(s: SummaryRow): void {
-    if (this.isSelected(s)) {
-      this.selected.set(null);
-      this.movementRows.set([]);
-      this.currentQty.set(null);
-      return;
-    }
-    this.selected.set(s);
-    this.adj = { delta: 0, reference: '', approvalRequestId: '' };
-    this.loadMovements();
-  }
-
-  loadMovements(): void {
-    const sel = this.selected();
-    if (!sel) return;
-    this.api.movements(sel.itemId, sel.itemType as 'variant' | 'material').subscribe((res) => {
-      this.movementRows.set(res.data as unknown as MovementRow[]);
-      this.currentQty.set(res.currentQuantity);
-      this.ledgerTotal.set(res.total);
-    });
+  open(s: SummaryRow): void {
+    void this.router.navigate(['/inventory', s.itemType, s.itemId]);
   }
 
   exportCsv(): void {
-    const rows = this.visible().map((s) => ({
-      Item: this.labelFor(s.itemType, s.itemId),
+    const rows = this.rows().map((s) => ({
+      Item: this.labelFor(s),
       Type: s.itemType === 'variant' ? 'finished' : 'material',
       CurrentUnits: s.currentQuantity,
-      Value_NGN: this.valueOf(s) ?? '',
+      Value: this.valueOf(s) ?? '',
     }));
-    downloadCsv(`inventory-${this.view()}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    const view = this.filterValue()['type'] || 'all';
+    downloadCsv(`inventory-${view}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
   }
 
-  requestDisposalApproval(): void {
-    const sel = this.selected();
-    if (!sel) return;
-    this.api
-      .createApproval('stock_disposal', {
-        item: this.labelFor(sel.itemType, sel.itemId),
-        delta: this.adj.delta,
-        note: this.adj.reference,
-      })
-      .subscribe({
-        next: (r) => {
-          this.adj.approvalRequestId = r.id;
-          this.message.set('Removal approval requested: Management decides in the queue.');
-          this.error.set(null);
-        },
-        error: (e) => this.error.set(e?.error?.message ?? 'Request failed.'),
-      });
-  }
-
-  adjust(): void {
-    const sel = this.selected();
-    if (!sel) return;
-    this.api
-      .recordMovement(sel.itemId, sel.itemType as 'variant' | 'material', {
-        movementType: 'adjustment',
-        quantityDelta: Number(this.adj.delta),
-        referenceId: this.adj.reference || undefined,
-        approvalRequestId: this.adj.approvalRequestId || undefined,
-      })
-      .subscribe({
-        next: () => {
-          this.adj = { delta: 0, reference: '', approvalRequestId: '' };
-          this.message.set('Movement recorded.');
-          this.error.set(null);
-          this.loadMovements();
-          this.api.inventorySummary().subscribe((s) => this.summary.set(s));
-        },
-        error: (e) =>
-          this.error.set(e?.error?.message ?? 'Refused: removals need an approved request.'),
-      });
-  }
-
+  /** Re-checks every ledger entry against its recorded fingerprint. Reads only. */
   verifyLedger(): void {
+    this.checking.set(true);
     this.api.inventoryLedgerVerify().subscribe({
       next: (res) => {
-        this.ledgerVerify.set(res);
-        this.error.set(null);
+        this.ledgerCheck.set(res);
+        this.checking.set(false);
       },
-      error: (e) => this.error.set(e?.error?.message ?? 'Ledger verification failed.'),
-    });
-  }
-
-  stockCheck(): void {
-    const sel = this.selected();
-    if (!sel) return;
-    this.api.stockCheckDigest(sel.itemType as 'variant' | 'material', sel.itemId).subscribe({
-      next: (res) => {
-        this.digest.set(res);
-        this.error.set(null);
+      error: () => {
+        this.checking.set(false);
+        this.toast.show('The ledger could not be checked', {
+          tone: 'danger',
+          action: { label: 'Try again', run: () => this.verifyLedger() },
+        });
       },
-      error: (e) => this.error.set(e?.error?.message ?? 'Stock check failed.'),
     });
-  }
-
-  materialMeta(id: string): { category: string | null; storageLocation: string | null } | null {
-    return this.materialLocations().get(id) ?? null;
   }
 }

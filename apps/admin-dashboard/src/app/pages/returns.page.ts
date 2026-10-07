@@ -56,7 +56,7 @@ import { ApiService, ReturnRequest } from '../api.service';
 
     <p class="rule-strip">
       RETURN WINDOWS // request within 12h of receipt · complete within 24h · custom orders excluded
-     - enforced by the API.
+      - enforced by the API.
     </p>
 
     <div class="ops-toolbar">

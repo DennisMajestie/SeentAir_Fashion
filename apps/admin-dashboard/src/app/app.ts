@@ -3,11 +3,13 @@ import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular
 import { FormsModule } from '@angular/forms';
 import { RouterOutlet } from '@angular/router';
 import {
+  SeBannerComponent,
   SeButtonDirective,
   SeConfirmService,
   SeIconComponent,
   SeShellComponent,
   SeShellMenuItemDirective,
+  SeSkeletonComponent,
   SeToastService,
 } from '@seentair/ui';
 import { AppSearchComponent } from './app-search.component';
@@ -26,10 +28,12 @@ import { environment } from '../environments/environment';
     RouterOutlet,
     AppSearchComponent,
     AppOpsbarComponent,
+    SeBannerComponent,
     SeButtonDirective,
     SeIconComponent,
     SeShellComponent,
     SeShellMenuItemDirective,
+    SeSkeletonComponent,
   ],
   template: `
     @if (!api.isLoggedIn) {
@@ -153,7 +157,7 @@ import { environment } from '../environments/environment';
 
                 <button class="cta signin" type="submit" [disabled]="loading()">
                   {{
-                    loading() ? 'Working\u2026' : resetSent() ? 'Set new password' : 'Send reset token \u2192'
+                    loading() ? 'Working…' : resetSent() ? 'Set new password' : 'Send reset token →'
                   }}
                 </button>
                 <button class="link" type="button" (click)="backToSignin()">Back to sign in</button>
@@ -222,11 +226,11 @@ import { environment } from '../environments/environment';
                 >
                   @if (loading()) {
                     <span class="spinner" aria-hidden="true"></span>
-                    Signing in\u2026
+                    Signing in…
                   } @else if (success()) {
-                    \u2713 Signed in
+                    ✓ Signed in
                   } @else {
-                    Sign in \u2192
+                    Sign in →
                   }
                 </button>
                 @if (formError()) {
@@ -281,7 +285,9 @@ import { environment } from '../environments/environment';
           iconOnly
           seShellActions
           type="button"
-          [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+          [attr.aria-label]="
+            theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+          "
           (click)="theme.toggle()"
         >
           <se-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" />
@@ -297,7 +303,22 @@ import { environment } from '../environments/environment';
         <a seShellMenu [href]="environment.partnerUrl" target="_blank" rel="noopener noreferrer">
           Open the partner portal
         </a>
-        <router-outlet />
+        <!-- Screens are held back until the profile has loaded, so every one
+             of them can rely on knowing what this role may see and do. -->
+        @if (me()) {
+          <router-outlet />
+        } @else if (profileFailed()) {
+          <se-banner
+            tone="danger"
+            title="Your profile could not be loaded"
+            actionLabel="Try again"
+            (action)="loadMe()"
+          >
+            The server did not respond, so the app cannot tell what you have access to yet.
+          </se-banner>
+        } @else {
+          <se-skeleton shape="detail" [rows]="4" aria-busy="true" />
+        }
       </se-shell>
     }
   `,
@@ -316,6 +337,8 @@ export class App implements OnInit, OnDestroy {
   /** The signed-in person; shared with every screen through AccessService. */
   readonly me = this.accessService.me;
   readonly collapsed = signal(false);
+  /** The profile request failed: screens stay held back and a retry is offered. */
+  readonly profileFailed = signal(false);
   /** Requests waiting for this person's decision; the Approvals badge. */
   private readonly pendingApprovals = signal(0);
   /** The sidebar for this role: only what the role can open. */
@@ -431,14 +454,18 @@ export class App implements OnInit, OnDestroy {
   }
 
   /** Real name/role for the sidebar account footer, from the auth session. */
-  private loadMe(): void {
+  loadMe(): void {
     this.me.set(null);
+    this.profileFailed.set(false);
     this.api.me().subscribe({
       next: (profile) => {
         this.me.set(profile);
         this.loadApprovalCount(profile);
       },
-      error: () => this.me.set(null),
+      error: () => {
+        this.me.set(null);
+        this.profileFailed.set(true);
+      },
     });
   }
 
@@ -451,7 +478,6 @@ export class App implements OnInit, OnDestroy {
       error: () => this.pendingApprovals.set(0),
     });
   }
-
 
   forgot(): void {
     this.resetMode.set(true);

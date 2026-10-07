@@ -128,7 +128,7 @@ const NEXT: Record<string, string | null> = {
               <p class="small">
                 Quotation on file:
                 <span class="naira">₦{{ num(q['amount']) | number: '1.0-2' }}</span>
-               - issued {{ q['createdAt'] }}
+                - issued {{ q['createdAt'] }}
                 @if (q['note']) {
                   · {{ q['note'] }}
                 }

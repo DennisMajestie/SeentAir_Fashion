@@ -1,14 +1,14 @@
 import { Routes } from '@angular/router';
-import { DashboardPage } from './pages/dashboard.page';
+import { HomePage } from './pages/home.page';
 
 /**
- * Only the dashboard is eager, it is the landing route, so every operator
+ * Only Home is eager, it is the landing route, so every operator
  * pays for it. The other 21 pages are loaded on navigation, which is what keeps
  * the initial bundle inside its budget: eagerly importing all of them shipped
  * ~750 kB up front for a handful of screens any single operator ever opens.
  */
 export const routes: Routes = [
-  { path: '', component: DashboardPage, title: 'Seentair Ops: Dashboard' },
+  { path: '', component: HomePage, title: 'Seentair Ops: Home' },
   {
     path: 'approvals',
     loadComponent: () => import('./pages/approvals.page').then((m) => m.ApprovalsPage),
@@ -18,6 +18,12 @@ export const routes: Routes = [
     path: 'production',
     loadComponent: () => import('./pages/production.page').then((m) => m.ProductionPage),
     title: 'Seentair Ops: Production',
+  },
+  {
+    path: 'production/:id',
+    loadComponent: () =>
+      import('./pages/production-detail.page').then((m) => m.ProductionDetailPage),
+    title: 'Seentair Ops: Batch',
   },
   {
     path: 'orders',
@@ -40,9 +46,19 @@ export const routes: Routes = [
     title: 'Seentair Ops: Catalogue',
   },
   {
+    path: 'catalogue/:id',
+    loadComponent: () => import('./pages/catalogue-detail.page').then((m) => m.CatalogueDetailPage),
+    title: 'Seentair Ops: Product',
+  },
+  {
     path: 'inventory',
     loadComponent: () => import('./pages/inventory.page').then((m) => m.InventoryAdminPage),
     title: 'Seentair Ops: Inventory',
+  },
+  {
+    path: 'inventory/:itemType/:itemId',
+    loadComponent: () => import('./pages/inventory-detail.page').then((m) => m.InventoryDetailPage),
+    title: 'Seentair Ops: Stock item',
   },
   {
     path: 'reviews',
@@ -58,6 +74,11 @@ export const routes: Routes = [
     path: 'materials',
     loadComponent: () => import('./pages/materials.page').then((m) => m.MaterialsAdminPage),
     title: 'Seentair Ops: Materials',
+  },
+  {
+    path: 'materials/:id',
+    loadComponent: () => import('./pages/material-detail.page').then((m) => m.MaterialDetailPage),
+    title: 'Seentair Ops: Material',
   },
   {
     path: 'wholesale',
@@ -92,6 +113,11 @@ export const routes: Routes = [
   {
     path: 'tech-pack',
     loadComponent: () => import('./pages/tech-pack.page').then((m) => m.TechPackPage),
+    title: 'Seentair Ops: Tech pack',
+  },
+  {
+    path: 'tech-pack/:id',
+    loadComponent: () => import('./pages/tech-pack-detail.page').then((m) => m.TechPackDetailPage),
     title: 'Seentair Ops: Tech pack',
   },
   {

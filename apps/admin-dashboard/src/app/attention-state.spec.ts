@@ -2,6 +2,7 @@ import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { provideHttpClient, type HttpRequest } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
+import { AccessService } from './access.service';
 import { AppOpsbarComponent } from './app-opsbar.component';
 import { AuditPage } from './pages/audit.page';
 
@@ -13,6 +14,13 @@ import { AuditPage } from './pages/audit.page';
 function configure(): void {
   TestBed.configureTestingModule({
     providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+  }); // The bell only asks about queues the role can see: these cases are the owner's.
+  TestBed.inject(AccessService).me.set({
+    name: 'Test Owner',
+    email: 'owner@seentair.test',
+    role: 'business_owner_admin',
+    totpEnabled: false,
+    access: { approvals_audit: 'full', analytics: 'full', returns: 'full' },
   });
 }
 
@@ -58,7 +66,9 @@ describe('opsbar attention bell', () => {
 
   /** The popover only exists in the DOM once the bell is clicked. */
   function openBell(): void {
-    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.ops-btn')!.click();
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('.ops__trigger')!
+      .click();
     fixture.detectChanges();
   }
 
@@ -126,6 +136,55 @@ describe('opsbar attention bell', () => {
     // Zero rows on a healthy read is the only state that may say all-clear.
     expect(fixture.componentInstance.attentionRows().length).toBe(0);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('All clear');
+  });
+});
+
+describe('opsbar, cut to the role', () => {
+  let fixture: ComponentFixture<AppOpsbarComponent>;
+  let http: HttpTestingController;
+
+  const mount = (access: Record<string, string>): void => {
+    configure();
+    TestBed.inject(AccessService).me.set({
+      name: 'Test Inventory',
+      email: 'inventory@seentair.test',
+      role: 'inventory',
+      totpEnabled: false,
+      access,
+    });
+    fixture = TestBed.createComponent(AppOpsbarComponent);
+    http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+  };
+  afterEach(() => {
+    fixture.destroy();
+    http.verify();
+  });
+
+  it('asks only about the queues the role can see', () => {
+    mount({ analytics: 'view', inventory: 'full', returns: 'view' });
+    // No approvals request at all: http.verify() in afterEach fails on any stray one.
+    http.expectOne(URLS.lowStock).flush(emptyLowStock());
+    http.expectOne(URLS.returns).flush({ data: [], total: 0 });
+    http.expectNone(URLS.approvals);
+    expect(fixture.componentInstance.degraded()).toBeFalse();
+  });
+
+  it('offers only the quick actions the role may take, and no menu when there are none', () => {
+    mount({ analytics: 'view', inventory: 'full', raw_materials: 'full' });
+    http.expectOne(URLS.lowStock).flush(emptyLowStock());
+    expect(fixture.componentInstance.quickActions().map((a) => a.label)).toEqual([
+      'Record a material purchase',
+    ]);
+    fixture.destroy();
+
+    TestBed.resetTestingModule();
+    mount({ analytics: 'view' });
+    http.expectOne(URLS.lowStock).flush(emptyLowStock());
+    expect(fixture.componentInstance.quickActions().length).toBe(0);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[aria-label="Quick actions"]'),
+    ).toBeNull();
   });
 });
 

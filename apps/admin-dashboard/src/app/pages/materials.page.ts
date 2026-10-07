@@ -1,502 +1,338 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { Router } from '@angular/router';
+import {
+  SeBannerComponent,
+  SeButtonDirective,
+  SeCellDirective,
+  SeColumn,
+  SeConfirmService,
+  SeDrawerComponent,
+  SeFieldComponent,
+  SeFilter,
+  SeFilterBarComponent,
+  SeInputDirective,
+  SeMetricCardComponent,
+  SeMoneyPipe,
+  SePageComponent,
+  SeStatusComponent,
+  SeTableComponent,
+  SeToastService,
+} from '@seentair/ui';
+import { AccessService } from '../access.service';
 import { ApiService } from '../api.service';
 import { downloadCsv } from '../csv.util';
+import { urlFilters } from '../url-filters';
+import {
+  LOAD_FAILED,
+  MATERIAL_CATEGORIES,
+  MaterialRow,
+  categoryLabel,
+  errorText,
+  stockState,
+  units,
+} from './stock-format';
 
-interface MaterialRow {
-  id: string;
-  name: string;
-  unit: string;
-  currentQuantity: number;
-  reorderThreshold: number;
-  lowStock: boolean;
-  category: string | null;
-  storageLocation: string | null;
-}
-interface ValuationRow {
-  id: string;
-  name: string;
-  category: string | null;
-  storageLocation: string | null;
-  lastUnitCost: number | null;
-  currentValue: number;
-  currentQuantity: number;
-}
-interface MovementRow {
-  id: string;
-  movementType: string;
-  quantityDelta: number;
-  timestamp: string;
-  referenceId: string | null;
-}
-
-const MATERIAL_CATEGORIES = [
-  { value: '', label: 'no category' },
-  { value: 'fabrics', label: 'Fabrics' },
-  { value: 'trims_hardware', label: 'Trims & hardware' },
-  { value: 'thread', label: 'Thread' },
-  { value: 'packaging', label: 'Packaging' },
-  { value: 'printing', label: 'Printing' },
-  { value: 'labels', label: 'Labels' },
-  { value: 'other', label: 'Other' },
-];
-
-/** A5, Raw materials inventory & thresholds. Approved Stitch layout: critical
-    reorder banner, warehouse stock depository table with health meters, and a
-    per-material inspector with its live purchase/usage ledger (inventory
-    movements) plus the approval-gated purchase flow. */
+/**
+ * Raw materials and their minimum stock levels. The list finds a material;
+ * its own page (materials/:id) holds the purchase and usage history and is
+ * where a purchase (approval-gated) or usage is recorded.
+ */
 @Component({
   selector: 'app-materials-admin',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    FormsModule,
+    SeBannerComponent,
+    SeButtonDirective,
+    SeCellDirective,
+    SeDrawerComponent,
+    SeFieldComponent,
+    SeFilterBarComponent,
+    SeInputDirective,
+    SeMetricCardComponent,
+    SeMoneyPipe,
+    SePageComponent,
+    SeStatusComponent,
+    SeTableComponent,
+  ],
   template: `
-    <div class="ops-head">
-      <div class="ops-id">
-        <p class="eyebrow">Operations · Raw materials</p>
-        <h1>Materials & raw stock</h1>
-        <p class="ops-sub">
-          {{ materials().length }} materials tracked: amounts update automatically as stock moves.
-        </p>
-      </div>
-      <div class="ops-actions">
-        <button class="cta small ghost" type="button" (click)="exportCsv()">Export CSV</button>
-        <button class="cta small" type="button" (click)="showAdd.set(!showAdd())">
-          {{ showAdd() ? 'Close' : '+ Add material' }}
+    <se-page title="Materials">
+      <button seButton sePageActions type="button" (click)="exportCsv()">Export CSV</button>
+      @if (canWrite()) {
+        <button seButton variant="primary" sePageActions type="button" (click)="openAdd()">
+          Add material
         </button>
-      </div>
-    </div>
+      }
 
-    @if (lowStock().length > 0) {
-      <div class="att-item crit" style="margin-bottom:0.9rem;">
-        <span class="att-tag"
-          >Critical reorder level reached <span>{{ lowStock().length }} item(s) alert</span></span
+      <div class="se-metric-grid">
+        <se-metric-card label="Materials" [value]="materials().length" hint="Tracked materials" />
+        <se-metric-card
+          label="Below minimum"
+          [value]="lowStock().length"
+          hint="At or under the minimum stock level"
+        />
+        <se-metric-card
+          label="Stock value"
+          [value]="valuationTotal() | seMoney"
+          hint="At the last unit cost paid"
+        />
+      </div>
+
+      @if (lowStock().length > 0) {
+        <se-banner
+          tone="warning"
+          [title]="
+            lowStock().length === 1
+              ? '1 material is below its minimum'
+              : lowStock().length + ' materials are below their minimum'
+          "
+          [actionLabel]="canWrite() ? 'Request reorder approval' : ''"
+          (action)="draftPo()"
         >
-        <p class="att-body">{{ lowStockNames() }}</p>
-        <span class="att-act">
-          <button class="link" type="button" (click)="draftPo()">
-            Create a purchase order (needs approval)
-          </button>
-        </span>
-      </div>
-    }
+          {{ lowStockNames() }}
+        </se-banner>
+      }
 
-    @if (showAdd()) {
-      <section class="panel">
-        <div class="panel-head"><h2>Add material</h2></div>
-        <form class="form-grid" (ngSubmit)="create()">
-          <label
-            >Name <input [(ngModel)]="nm.name" name="mname" required placeholder="Cotton fabric"
-          /></label>
-          <label
-            >Unit <input [(ngModel)]="nm.unit" name="munit" required placeholder="yards"
-          /></label>
-          <label
-            >Category
-            <select [(ngModel)]="nm.category" name="mcat">
-              @for (c of MATERIAL_CATEGORIES; track c.value) {
-                <option [value]="c.value">{{ c.label }}</option>
-              }
-            </select></label
-          >
-          <label
-            >Storage location
-            <input [(ngModel)]="nm.storageLocation" name="mloc" placeholder="C3-R1"
-          /></label>
-          <label
-            >Reorder threshold
-            <input type="number" min="0" [(ngModel)]="nm.reorderThreshold" name="mthr"
-          /></label>
-          <div class="wide"><button class="cta small" type="submit">Create</button></div>
-        </form>
-      </section>
-    }
+      <se-table
+        caption="Materials"
+        [columns]="columns"
+        [rows]="rows()"
+        [loading]="loading()"
+        [error]="error()"
+        (retry)="load()"
+        [pageSize]="25"
+        activatable
+        (rowActivate)="open($event)"
+        [emptyHeading]="filtering() ? 'No materials match these filters' : 'No materials yet'"
+        [emptyText]="
+          filtering()
+            ? 'Remove a filter, or clear the search to see every material.'
+            : 'Add the first material to start recording purchases and usage.'
+        "
+      >
+        <se-filter-bar
+          seTableToolbar
+          searchLabel="Search materials"
+          [(query)]="query"
+          [filters]="filters"
+          [(value)]="filterValue"
+          [summary]="units(rows().length, 'material')"
+        />
+        <ng-template seCell="status" let-row>
+          <se-status kind="stock" [value]="state(row)" />
+        </ng-template>
+      </se-table>
 
-    <div class="ops-toolbar">
-      <span class="search"
-        ><input
-          placeholder="Search raw materials, yarn lots, trims…"
-          [(ngModel)]="query"
-          name="q"
-          aria-label="Search materials"
-      /></span>
-      <div class="seg" role="group" aria-label="Stock filter">
-        <button type="button" [class.on]="view() === 'all'" (click)="view.set('all')">
-          All materials <span class="seg-n">{{ materials().length }}</span>
-        </button>
-        <button type="button" [class.on]="view() === 'low'" (click)="view.set('low')">
-          Critical <span class="seg-n">{{ lowStock().length }}</span>
-        </button>
-        <button type="button" [class.on]="view() === 'ok'" (click)="view.set('ok')">
-          Healthy <span class="seg-n">{{ materials().length - lowStock().length }}</span>
-        </button>
-      </div>
-      <div class="seg" role="group" aria-label="Category">
-        <button type="button" [class.on]="categoryFilter() === ''" (click)="categoryFilter.set('')">
-          All
-        </button>
-        @for (c of MATERIAL_CATEGORIES; track c.value) {
-          @if (c.value && countCategory(c.value) > 0) {
-            <button
-              type="button"
-              [class.on]="categoryFilter() === c.value"
-              (click)="categoryFilter.set(c.value)"
-            >
-              {{ c.label }} <span class="seg-n">{{ countCategory(c.value) }}</span>
-            </button>
-          }
-        }
-      </div>
-    </div>
-
-    <div class="side-split">
-      <div class="table-scroll">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Material</th>
-              <th>Available</th>
-              <th>Min. stock level</th>
-              <th>Stock health</th>
-              <th>Unit</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (m of visible(); track m.id) {
-              <tr class="clickable" [class.sel]="selected()?.id === m.id" (click)="inspect(m.id)">
-                <td>
-                  <strong>{{ m.name }}</strong>
-                </td>
-                <td class="mono" [class.error]="m.lowStock">
-                  {{ m.currentQuantity | number }} {{ m.unit }}
-                </td>
-                <td class="mono">{{ m.reorderThreshold | number }}</td>
-                <td style="min-width:110px;">
-                  <span class="meter" [class.danger]="m.lowStock" [class.ok]="!m.lowStock"
-                    ><i [style.width]="health(m)"></i
-                  ></span>
-                </td>
-                <td class="mono">{{ m.unit }}</td>
-                <td>
-                  <span class="chip" [class.bad]="m.lowStock" [class.ok]="!m.lowStock">{{
-                    m.lowStock ? 'CRITICAL' : 'HEALTHY'
-                  }}</span>
-                </td>
-              </tr>
-            }
-            @if (visible().length === 0) {
-              <tr>
-                <td colspan="6" class="muted small">No materials match.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-
-      <aside class="inspector">
-        @if (selected(); as d) {
-          <div class="insp-head">
-            <h2>{{ d.name }}</h2>
-            <span class="chip" [class.bad]="d.lowStock" [class.ok]="!d.lowStock">{{
-              d.lowStock ? 'CRITICAL LOW' : 'HEALTHY'
-            }}</span>
-          </div>
-          <div class="kpi-bar" style="margin-bottom:0.8rem;">
-            <div class="kpi">
-              <span class="kpi-label">Current stock</span>
-              <span class="kpi-value"
-                >{{ d.currentQuantity | number }} <small>{{ d.unit }}</small></span
-              >
-              <span class="kpi-sub">reorder at {{ d.reorderThreshold | number }}</span>
-            </div>
-            @if (valuationOf(d.id); as v) {
-              <div class="kpi">
-                <span class="kpi-label">Last unit cost</span>
-                <span class="kpi-value">{{
-                  v.lastUnitCost !== null ? '₦' + (v.lastUnitCost | number: '1.0-2') : '-'
-                }}</span>
-                <span class="kpi-sub">latest purchase price</span>
-              </div>
-              <div class="kpi">
-                <span class="kpi-label">Stock value</span>
-                <span class="kpi-value">₦{{ v.currentValue | number: '1.0-0' }}</span>
-                <span class="kpi-sub">qty × last unit cost</span>
-              </div>
-            }
-          </div>
-          @if (d.category || d.storageLocation) {
-            <dl class="kv" style="margin:0 0 0.8rem;">
-              @if (d.category) {
-                <dt>Category</dt>
-                <dd>{{ d.category.replace('_', ' ') }}</dd>
-              }
-              @if (d.storageLocation) {
-                <dt>Bay / rack</dt>
-                <dd class="mono">{{ d.storageLocation }}</dd>
-              }
-            </dl>
-          }
-
-          <div class="panel-head">
-            <h2>Purchase history</h2>
-            <span class="ph-sub">latest first</span>
-          </div>
-          @if (ledger().length > 0) {
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Type</th>
-                  <th>Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (mv of ledger(); track mv.id) {
-                  <tr>
-                    <td class="mono small">{{ mv.timestamp | date: 'MMM d, y' }}</td>
-                    <td>
-                      <span
-                        class="chip"
-                        [class.acid]="mv.quantityDelta > 0"
-                        [class.warn]="mv.quantityDelta < 0"
-                        >{{ mv.movementType }}</span
-                      >
-                    </td>
-                    <td
-                      class="mono delta"
-                      [class.plus]="mv.quantityDelta > 0"
-                      [class.minus]="mv.quantityDelta < 0"
-                    >
-                      {{ mv.quantityDelta > 0 ? '+' : '' }}{{ mv.quantityDelta | number }}
-                    </td>
-                  </tr>
+      @if (canWrite()) {
+        <se-drawer title="Add material" [(open)]="adding">
+          <form class="se-form" (ngSubmit)="create()">
+            <se-field label="Name" hint="For example: cotton fabric" [error]="nameError()">
+              <input seInput name="name" [(ngModel)]="nm.name" />
+            </se-field>
+            <se-field label="Unit" hint="How it is counted, such as yards" [error]="unitError()">
+              <input seInput name="unit" [(ngModel)]="nm.unit" />
+            </se-field>
+            <se-field label="Category" optional>
+              <select seInput name="category" [(ngModel)]="nm.category">
+                <option value="">No category</option>
+                @for (c of categories; track c.value) {
+                  <option [value]="c.value">{{ c.label }}</option>
                 }
-              </tbody>
-            </table>
-          } @else {
-            <p class="muted small">No movements recorded yet for this material.</p>
-          }
-
-          <div class="gap-sep"></div>
-          <div class="panel-head">
-            <h2>Record purchase / inward batch</h2>
-            <span class="ph-sub">approval-gated</span>
-          </div>
-          <form class="form-grid" (ngSubmit)="purchase()">
-            <label
-              >Quantity
-              <input type="number" min="1" [(ngModel)]="pu.quantity" name="puqty" required
-            /></label>
-            <label
-              >Cost ₦ <input type="number" min="0" [(ngModel)]="pu.cost" name="pucost" required
-            /></label>
-            <label
-              >Supplier
-              <input
-                [(ngModel)]="pu.supplierName"
-                name="pusupplier"
-                placeholder="e.g. Chinchin Textile"
-            /></label>
-            <label
-              >Lead time (days)
-              <input type="number" min="0" [(ngModel)]="pu.leadTimeDays" name="pulead"
-            /></label>
-            <label class="wide"
-              >Note (free text) <input [(ngModel)]="pu.note" name="punote"
-            /></label>
-            <div class="wide actions flat">
-              @if (!pu.approvalRequestId) {
-                <button class="cta small ghost" type="button" (click)="requestPurchaseApproval()">
-                  Request approval
-                </button>
-              } @else {
-                <span class="chip acid">req {{ pu.approvalRequestId.slice(0, 8) }}</span>
-                <button class="cta small" type="submit">Record purchase</button>
-              }
-            </div>
+              </select>
+            </se-field>
+            <se-field label="Storage location" hint="For example: C3-R1" optional>
+              <input seInput name="location" [(ngModel)]="nm.storageLocation" />
+            </se-field>
+            <se-field
+              label="Minimum stock level"
+              hint="The material is flagged when stock falls to this level"
+              [error]="createError()"
+            >
+              <input seInput type="number" min="0" name="min" [(ngModel)]="nm.reorderThreshold" />
+            </se-field>
           </form>
-
-          <div class="panel-head"><h2>Record usage</h2></div>
-          <form class="form-grid" (ngSubmit)="usage()">
-            <label
-              >Quantity used
-              <input type="number" min="1" [(ngModel)]="us.quantityUsed" name="usqty" required
-            /></label>
-            <label class="wide"
-              >Production batch id (optional) <input [(ngModel)]="us.batchId" name="usbatch"
-            /></label>
-            <div class="wide">
-              <button class="cta small ghost" type="submit">Record usage</button>
-            </div>
-          </form>
-        } @else {
-          <p class="muted small">
-            Select a material to see its stock history and record a purchase or a use.
-          </p>
-        }
-      </aside>
-    </div>
-
-    <div class="stat-strip">
-      <div class="stat-cell">
-        <span class="sc-label">SKUs tracked</span>
-        <p class="sc-value">{{ materials().length }}</p>
-        <span class="sc-sub">materials on file</span>
-      </div>
-      <div class="stat-cell">
-        <span class="sc-label">Stockout risk</span>
-        <p class="sc-value" [class.error]="lowStock().length > 0">{{ lowStock().length }} SKUs</p>
-        <span class="sc-sub">at or below reorder threshold</span>
-      </div>
-      <div class="stat-cell">
-        <span class="sc-label">Healthy reserve</span>
-        <p class="sc-value">{{ materials().length - lowStock().length }} SKUs</p>
-        <span class="sc-sub">above threshold</span>
-      </div>
-      <div class="stat-cell">
-        <span class="sc-label">Stock valuation</span>
-        <p class="sc-value">₦{{ valuationTotal() | number: '1.0-0' }}</p>
-        <span class="sc-sub">at latest purchase prices</span>
-      </div>
-    </div>
-
-    @if (message()) {
-      <p class="success">{{ message() }}</p>
-    }
-    @if (error()) {
-      <p class="error">{{ error() }}</p>
-    }
+          <ng-container seDrawerFooter>
+            <button seButton type="button" (click)="adding.set(false)">Cancel</button>
+            <button
+              seButton
+              variant="primary"
+              type="button"
+              [loading]="saving()"
+              (click)="create()"
+            >
+              Add material
+            </button>
+          </ng-container>
+        </se-drawer>
+      }
+    </se-page>
   `,
 })
 export class MaterialsAdminPage implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly confirm = inject(SeConfirmService);
+  private readonly toast = inject(SeToastService);
+  private readonly access = inject(AccessService);
+  readonly units = units;
+  readonly categories = MATERIAL_CATEGORIES;
+  readonly canWrite = computed(() => this.access.can('raw_materials', 'full'));
+
   readonly materials = signal<MaterialRow[]>([]);
-  readonly message = signal<string | null>(null);
-  readonly error = signal<string | null>(null);
-  readonly showAdd = signal(false);
-  readonly view = signal<'all' | 'low' | 'ok'>('all');
-  readonly categoryFilter = signal('');
-  readonly valuations = signal<ValuationRow[]>([]);
   /** Server-authoritative reorder list (GET /materials/low-stock). */
   readonly lowStock = signal<MaterialRow[]>([]);
+  readonly valuationTotal = signal(0);
+  readonly loading = signal(true);
+  readonly error = signal('');
   readonly lowStockNames = computed(() =>
     this.lowStock()
-      .map((m) => `${m.name} (${m.currentQuantity} ${m.unit} left · min ${m.reorderThreshold})`)
-      .join(' · '),
+      .map(
+        (m) => `${m.name}: ${units(m.currentQuantity, m.unit)} left, minimum ${m.reorderThreshold}`,
+      )
+      .join('. '),
   );
-  /** Inspector: fresh read of one material + its movement ledger. */
-  readonly selected = signal<MaterialRow | null>(null);
-  readonly ledger = signal<MovementRow[]>([]);
-  query = '';
 
+  private readonly urlState = urlFilters(['stock', 'category']);
+  readonly query = this.urlState.query;
+  readonly filterValue = this.urlState.value;
+  readonly filters: SeFilter[] = [
+    {
+      key: 'stock',
+      label: 'Stock',
+      options: [
+        { value: 'low', label: 'Below minimum' },
+        { value: 'ok', label: 'Above minimum' },
+      ],
+    },
+    { key: 'category', label: 'Category', options: MATERIAL_CATEGORIES },
+  ];
+  readonly filtering = computed(
+    () => !!this.query().trim() || Object.keys(this.filterValue()).length > 0,
+  );
+  readonly rows = computed(() => {
+    const f = this.filterValue();
+    const q = this.query().trim().toLowerCase();
+    return this.materials().filter((m) => {
+      if (f['stock'] === 'low' && !m.lowStock) return false;
+      if (f['stock'] === 'ok' && m.lowStock) return false;
+      if (f['category'] && m.category !== f['category']) return false;
+      return !q || m.name.toLowerCase().includes(q);
+    });
+  });
+
+  readonly columns: SeColumn<MaterialRow>[] = [
+    { key: 'name', header: 'Material', sortable: true, value: (m) => m.name },
+    {
+      key: 'category',
+      header: 'Category',
+      sortable: true,
+      value: (m) => categoryLabel(m.category),
+    },
+    {
+      key: 'available',
+      header: 'Available',
+      numeric: true,
+      sortable: true,
+      value: (m) => m.currentQuantity,
+    },
+    { key: 'minimum', header: 'Minimum', numeric: true, value: (m) => m.reorderThreshold },
+    { key: 'unit', header: 'Unit', value: (m) => m.unit },
+    { key: 'status', header: 'Status', value: (m) => this.state(m) },
+  ];
+
+  readonly adding = signal(false);
+  readonly saving = signal(false);
+  readonly nameError = signal('');
+  readonly unitError = signal('');
+  readonly createError = signal('');
   nm = { name: '', unit: '', category: '', storageLocation: '', reorderThreshold: 0 };
-  pu = { quantity: 0, cost: 0, note: '', supplierName: '', leadTimeDays: 0, approvalRequestId: '' };
-  us = { quantityUsed: 0, batchId: '' };
-
-  readonly MATERIAL_CATEGORIES = MATERIAL_CATEGORIES;
 
   ngOnInit(): void {
-    this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
     this.load();
   }
-  private load(): void {
-    this.api.materials().subscribe((res) => this.materials.set(res as unknown as MaterialRow[]));
-    this.api
-      .lowStockMaterials()
-      .subscribe((res) => this.lowStock.set(res as unknown as MaterialRow[]));
-    this.api
-      .materialsValuation()
-      .subscribe((res) => this.valuations.set(res as unknown as ValuationRow[]));
-  }
 
-  countCategory(category: string): number {
-    return this.valuations().filter((v) => v.category === category).length;
-  }
-
-  valuationOf(id: string): ValuationRow | null {
-    return this.valuations().find((v) => v.id === id) ?? null;
-  }
-
-  readonly valuationTotal = computed(() =>
-    this.valuations().reduce((sum, v) => sum + (v.currentValue || 0), 0),
-  );
-
-  visible(): MaterialRow[] {
-    const q = this.query.trim().toLowerCase();
-    return this.materials().filter((m) => {
-      if (this.view() === 'low' && !m.lowStock) return false;
-      if (this.view() === 'ok' && m.lowStock) return false;
-      if (this.categoryFilter() && m.category !== this.categoryFilter()) return false;
-      return !q || m.name.toLowerCase().includes(q);
+  load(): void {
+    this.api.materials().subscribe({
+      next: (res) => {
+        this.materials.set(res as unknown as MaterialRow[]);
+        this.loading.set(false);
+        this.error.set('');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        if (this.materials().length === 0) this.error.set(errorText(err, LOAD_FAILED));
+      },
+    });
+    this.api.lowStockMaterials().subscribe({
+      next: (res) => this.lowStock.set(res as unknown as MaterialRow[]),
+      error: () => undefined,
+    });
+    this.api.materialsValuation().subscribe({
+      next: (res) =>
+        this.valuationTotal.set(res.reduce((sum, v) => sum + (Number(v.currentValue) || 0), 0)),
+      error: () => undefined,
     });
   }
 
+  state(m: MaterialRow): string {
+    return stockState(m.currentQuantity, m.lowStock);
+  }
+
+  open(m: MaterialRow): void {
+    void this.router.navigate(['/materials', m.id]);
+  }
+
   exportCsv(): void {
-    const rows = this.visible().map((m) => ({
+    const rows = this.rows().map((m) => ({
       Material: m.name,
       Unit: m.unit,
       Current: m.currentQuantity,
       ReorderThreshold: m.reorderThreshold,
       Status: m.lowStock ? 'Critical' : 'Healthy',
     }));
-    downloadCsv(`materials-${this.view()}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    const view = this.filterValue()['stock'] || 'all';
+    downloadCsv(`materials-${view}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
   }
 
-  health(m: MaterialRow): string {
-    if (m.reorderThreshold <= 0) return m.currentQuantity > 0 ? '100%' : '0%';
-    // Health = stock vs 2× threshold, clamped, a full bar means comfortably above reorder level.
-    return `${Math.max(3, Math.min(100, Math.round((m.currentQuantity / (m.reorderThreshold * 2)) * 100)))}%`;
-  }
-
-  /** Re-read one material + its live ledger so the card shows current state. */
-  inspect(id: string): void {
-    if (this.selected()?.id === id) {
-      this.selected.set(null);
-      this.ledger.set([]);
-      return;
-    }
-    this.api.material(id).subscribe({
-      next: (m) => this.selected.set(m as unknown as MaterialRow),
-      error: (e) => this.fail(e, 'Could not load that material.'),
-    });
-    this.api.movements(id, 'material').subscribe({
-      next: (res) => this.ledger.set((res.data as unknown as MovementRow[]).slice(0, 8)),
-      error: () => this.ledger.set([]),
-    });
-  }
-
-  /** Banner CTA: raises one purchasing approval covering the critical list. */
-  draftPo(): void {
+  /** Raises one purchasing approval covering every material below its minimum. */
+  async draftPo(): Promise<void> {
     const items = this.lowStock().map((m) => ({
       material: m.name,
       currentQuantity: m.currentQuantity,
       reorderThreshold: m.reorderThreshold,
     }));
     if (items.length === 0) return;
+    const ok = await this.confirm.ask({
+      title: `Request approval to reorder ${units(items.length, 'material')}?`,
+      consequence:
+        'One purchasing request covering every material below its minimum goes to the approvals queue. Nothing is bought and no stock changes until management approves it. The request is audited.',
+      confirmLabel: 'Request approval',
+    });
+    if (!ok) return;
     this.api
       .createApproval('purchasing', { draft: 'reorder critical materials', items })
       .subscribe({
-        next: () =>
-          this.ok(
-            'Purchase-order draft raised as a purchasing approval, Management decides in the queue.',
-          ),
-        error: (e) => this.fail(e, 'Could not raise the PO draft.'),
+        next: () => this.toast.show('Reorder approval requested'),
+        error: () =>
+          this.toast.show('The reorder approval could not be requested', {
+            tone: 'danger',
+            action: { label: 'Try again', run: () => void this.draftPo() },
+          }),
       });
   }
 
-  private ok(msg: string): void {
-    this.message.set(msg);
-    this.error.set(null);
-    this.load();
-  }
-  private fail(err: { error?: { message?: string } }, fb: string): void {
-    this.error.set(err?.error?.message ?? fb);
-    this.message.set(null);
+  openAdd(): void {
+    this.nameError.set('');
+    this.unitError.set('');
+    this.createError.set('');
+    this.adding.set(true);
   }
 
   create(): void {
+    this.nameError.set(this.nm.name.trim() ? '' : 'Enter the material name.');
+    this.unitError.set(this.nm.unit.trim() ? '' : 'Enter the unit it is counted in.');
+    if (this.nameError() || this.unitError()) return;
+    this.saving.set(true);
     this.api
       .createMaterial({
         name: this.nm.name,
@@ -507,88 +343,16 @@ export class MaterialsAdminPage implements OnInit {
       })
       .subscribe({
         next: () => {
-          this.showAdd.set(false);
-          this.ok('Material created.');
+          this.saving.set(false);
+          this.adding.set(false);
+          this.nm = { name: '', unit: '', category: '', storageLocation: '', reorderThreshold: 0 };
+          this.toast.show('Material added');
+          this.load();
         },
-        error: (e) => this.fail(e, 'Create failed.'),
-      });
-  }
-
-  requestPurchaseApproval(): void {
-    const sel = this.selected();
-    if (!sel || !this.pu.quantity) {
-      this.error.set('Pick a material and quantity first.');
-      return;
-    }
-    this.api
-      .createApproval('purchasing', {
-        material: sel.name,
-        quantity: this.pu.quantity,
-        cost: this.pu.cost,
-      })
-      .subscribe({
-        next: (res) => {
-          this.pu.approvalRequestId = res.id;
-          this.ok('Purchase approval requested: Management must approve before recording.');
+        error: (err) => {
+          this.saving.set(false);
+          this.createError.set(errorText(err, 'The material could not be added. Try again.'));
         },
-        error: (e) => this.fail(e, 'Approval request failed.'),
       });
-  }
-
-  purchase(): void {
-    const sel = this.selected();
-    if (!sel) return;
-    this.api
-      .recordPurchase(sel.id, {
-        quantity: Number(this.pu.quantity),
-        cost: Number(this.pu.cost),
-        note: this.pu.note || undefined,
-        approvalRequestId: this.pu.approvalRequestId,
-        supplierName: this.pu.supplierName || undefined,
-        leadTimeDays: this.pu.leadTimeDays ? Number(this.pu.leadTimeDays) : undefined,
-      })
-      .subscribe({
-        next: () => {
-          this.pu = {
-            quantity: 0,
-            cost: 0,
-            note: '',
-            supplierName: '',
-            leadTimeDays: 0,
-            approvalRequestId: '',
-          };
-          this.ok('Purchase recorded: stock updated.');
-          this.inspectRefresh(sel.id);
-        },
-        error: (e) => this.fail(e, 'Not approved yet: check the Approvals queue.'),
-      });
-  }
-
-  usage(): void {
-    const sel = this.selected();
-    if (!sel) return;
-    this.api
-      .recordUsage(sel.id, {
-        quantityUsed: Number(this.us.quantityUsed),
-        batchId: this.us.batchId || undefined,
-      })
-      .subscribe({
-        next: () => {
-          this.ok('Usage recorded.');
-          this.inspectRefresh(sel.id);
-        },
-        error: (e) => this.fail(e, 'Usage failed.'),
-      });
-  }
-
-  private inspectRefresh(id: string): void {
-    this.api.material(id).subscribe({
-      next: (m) => this.selected.set(m as unknown as MaterialRow),
-      error: (e) => this.fail(e, 'Could not load that material.'),
-    });
-    this.api.movements(id, 'material').subscribe({
-      next: (res) => this.ledger.set((res.data as unknown as MovementRow[]).slice(0, 8)),
-      error: (e) => this.fail(e, 'Could not load its movement ledger.'),
-    });
   }
 }

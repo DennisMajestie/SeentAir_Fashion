@@ -54,6 +54,7 @@
 /* Metric card: label, value, change, optional trend. */
 .se-metric {
   display: grid;
+  align-content: start;
   gap: var(--se-space-1);
   padding: var(--se-space-4);
 }
@@ -112,4 +113,20 @@ a.se-metric:hover {
   display: grid;
   gap: var(--se-space-4);
   grid-template-columns: repeat(auto-fit, minmax(calc(var(--se-space-16) * 3), 1fr));
+}
+
+/* A metric that leads somewhere: the whole card is one link.
+     <a class="se-metric-link" routerLink="/orders"><se-metric-card ... /></a>  */
+.se-metric-link {
+  display: block;
+  border-radius: var(--se-radius-md);
+  color: inherit;
+  text-decoration: none;
+}
+.se-metric-link .se-metric {
+  height: 100%;
+  transition: border-color var(--se-motion-duration-fast) var(--se-motion-ease-standard);
+}
+.se-metric-link:hover .se-metric {
+  border-color: var(--se-color-border-strong);
 }

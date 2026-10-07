@@ -1,7 +1,31 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import {
+  SE_STATUS,
+  SeBannerComponent,
+  SeButtonDirective,
+  SeCellDirective,
+  SeColumn,
+  SeConfirmService,
+  SeCurrencyService,
+  SeDatePipe,
+  SeDrawerComponent,
+  SeFieldComponent,
+  SeFilter,
+  SeFilterBarComponent,
+  SeInputDirective,
+  SeMetricCardComponent,
+  SePageComponent,
+  SeRowAction,
+  SeStatusComponent,
+  SeTableComponent,
+  SeToastService,
+} from '@seentair/ui';
+import { AccessService } from '../access.service';
 import { ApiService, Batch } from '../api.service';
+import { urlFilters } from '../url-filters';
+import { batchRef, moveCopy, nextStage, num, stageLabel, units } from './production-format';
 
 interface ProductOpt {
   id: string;
@@ -9,909 +33,427 @@ interface ProductOpt {
   variants: Array<{ id: string; sku: string }>;
 }
 
-/** A2/A3/A4, Production Kanban Board, Batch Detail dossier and the
-    Record-QC-Rejection modal, per the approved Stitch screens. All actions
-    keep their approval-gated API flows (batch creation, cost, QC, moves). */
+/**
+ * Production batches, from Planned through to Completed.
+ *
+ * The list finds a batch and moves it to its next stage; the batch's own page
+ * (production/:id) holds its cost, QC rejects, materials and machine readings.
+ * Starting a batch is approval-gated: the API refuses it without an approved
+ * request, so the form asks for the approval first.
+ */
 @Component({
   selector: 'app-production',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    FormsModule,
+    SeBannerComponent,
+    SeButtonDirective,
+    SeCellDirective,
+    SeDatePipe,
+    SeDrawerComponent,
+    SeFieldComponent,
+    SeFilterBarComponent,
+    SeInputDirective,
+    SeMetricCardComponent,
+    SePageComponent,
+    SeStatusComponent,
+    SeTableComponent,
+  ],
   template: `
-    <div class="ops-head">
-      <div class="ops-id">
-        <p class="eyebrow">Operations · Production floor pipeline</p>
-        <h1>Production Kanban board</h1>
-        <p class="ops-sub">
-          Batches for each product as they move through the factory. Finished batches are added to
-          stock automatically.
-        </p>
-      </div>
-      <div class="ops-actions">
-        <span class="search"
-          ><input
-            placeholder="Filter by SKU…"
-            [(ngModel)]="skuFilter"
-            name="skuFilter"
-            aria-label="Filter batches by SKU"
-        /></span>
-        <button class="cta small" type="button" (click)="showNewBatch.set(!showNewBatch())">
-          {{ showNewBatch() ? 'Close' : '+ New batch' }}
+    <se-page title="Production">
+      @if (canWrite()) {
+        <button seButton variant="primary" sePageActions type="button" (click)="openStart()">
+          Start batch
         </button>
-      </div>
-    </div>
+      }
 
-    <div class="kpi-bar">
-      <div class="kpi">
-        <span class="kpi-label">Active production</span>
-        <span class="kpi-value">{{ activeUnits() | number }} <small>units</small></span>
-        <span class="kpi-sub">{{ activeBatches().length }} batch(es) in flight</span>
+      <div class="se-metric-grid">
+        <se-metric-card label="Units in production" [value]="activeUnits()" [hint]="activeHint()" />
+        <se-metric-card
+          label="Units completed"
+          [value]="completedUnits()"
+          hint="In the latest 100 batches"
+        />
+        <se-metric-card
+          label="Units rejected at QC"
+          [value]="rejectedUnits()"
+          goodDirection="down"
+        />
+        <se-metric-card
+          label="Rejection rate"
+          [value]="rejectionRate()"
+          hint="Rejected units out of all units"
+        />
       </div>
-      <div class="kpi">
-        <span class="kpi-label">Completed</span>
-        <span class="kpi-value">{{ completedUnits() | number }} <small>units</small></span>
-        <span class="kpi-sub">ready to ship (added to stock)</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Rejection rate</span>
-        <span class="kpi-value">{{ rejectionRate() }}<small>%</small></span>
-        <span class="kpi-sub">{{ totalRejected() }} unit(s) flagged across recorded QC</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Costed batches</span>
-        <span class="kpi-value"
-          >{{ costs().size }}<small>/{{ batches().length }}</small></span
+
+      @if (partial()) {
+        <se-banner
+          tone="warning"
+          title="Some costs or QC rejects could not be read"
+          actionLabel="Try again"
+          (action)="load()"
         >
-        <span class="kpi-sub">material + sewing + branding + packaging</span>
-      </div>
-    </div>
+          The batches are listed, but the cost and rejected figures may be incomplete.
+        </se-banner>
+      }
 
-    <p class="rule-strip">
-      STARTING PRODUCTION REQUIRES APPROVAL // request → Management approves in the queue → create
-      the batch.
-    </p>
+      <se-table
+        caption="Batches"
+        [columns]="columns"
+        [rows]="rows()"
+        [loading]="loading()"
+        [error]="error()"
+        (retry)="load()"
+        [pageSize]="25"
+        [actions]="actions"
+        activatable
+        (rowActivate)="open($event)"
+        [emptyHeading]="filtering() ? 'No batches match these filters' : 'No batches yet'"
+        [emptyText]="
+          filtering()
+            ? 'Remove a filter, or clear them all to see every batch.'
+            : 'A batch appears here once its production start is approved and it is started.'
+        "
+        [emptyActionLabel]="filtering() ? 'Clear all filters' : ''"
+        (emptyAction)="clearFilters()"
+      >
+        <se-filter-bar
+          seTableToolbar
+          searchLabel="Search batches"
+          searchPlaceholder="Batch ref or SKU"
+          [(query)]="query"
+          [filters]="filters"
+          [(value)]="filterValue"
+          [summary]="summary()"
+        />
+        <ng-template seCell="stage" let-row>
+          <se-status kind="production" [value]="row.stage" />
+        </ng-template>
+        <ng-template seCell="planned" let-row>{{ row.plannedDate | seDate }}</ng-template>
+      </se-table>
 
-    @if (showNewBatch()) {
-      <div class="cols">
-        <section class="panel">
-          <div class="panel-head">
-            <h2>New batch request</h2>
-            <span class="ph-sub">approval-gated</span>
-          </div>
-          <form class="form-grid" (ngSubmit)="createBatch()">
-            <label class="wide"
-              >Variant (SKU)
-              <select [(ngModel)]="nb.variantId" name="bvar" required>
+      @if (canWrite()) {
+        <se-drawer title="Start batch" [(open)]="starting">
+          <div class="se-form">
+            <se-field label="Product variant" [error]="startErrors().variant">
+              <select seInput [(ngModel)]="nb.variantId">
+                <option value="">Choose a variant</option>
                 @for (p of products(); track p.id) {
                   @for (v of p.variants; track v.id) {
-                    <option [value]="v.id">{{ p.name }}- {{ v.sku }}</option>
+                    <option [value]="v.id">{{ p.name }}: {{ v.sku }}</option>
                   }
                 }
               </select>
-            </label>
-            <label
-              >Quantity <input type="number" min="1" [(ngModel)]="nb.quantity" name="bqty" required
-            /></label>
-            <label
-              >Planned date <input type="date" [(ngModel)]="nb.plannedDate" name="bdate"
-            /></label>
-            <div class="wide actions flat">
-              @if (!nb.approvalRequestId) {
-                <button class="cta small ghost" type="button" (click)="requestBatchApproval()">
-                  Request approval
-                </button>
-              } @else {
-                <span class="chip acid">req {{ nb.approvalRequestId.slice(0, 8) }}</span>
-                <button class="cta small" type="submit">Create batch</button>
-              }
-            </div>
-          </form>
-        </section>
-
-        <section class="panel">
-          <div class="panel-head"><h2>Record batch cost</h2></div>
-          <p class="muted small">Production cost = raw material + sewing + branding + packaging.</p>
-          <form class="form-grid" (ngSubmit)="recordCost()">
-            <label class="wide"
-              >Batch
-              <select [(ngModel)]="nc.batchId" name="cbatch" required>
-                @for (b of batches(); track b.id) {
-                  <option [value]="b.id">
-                    {{ b.variant.sku }} × {{ b.quantity }} ({{ b.stage }})
-                  </option>
-                }
-              </select>
-            </label>
-            <label
-              >Material ₦ <input type="number" min="0" [(ngModel)]="nc.materialCost" name="cm"
-            /></label>
-            <label
-              >Sewing ₦ <input type="number" min="0" [(ngModel)]="nc.sewingCost" name="cs"
-            /></label>
-            <label
-              >Branding ₦ <input type="number" min="0" [(ngModel)]="nc.brandingCost" name="cb"
-            /></label>
-            <label
-              >Packaging ₦ <input type="number" min="0" [(ngModel)]="nc.packagingCost" name="cp"
-            /></label>
-            <div class="wide"><button class="cta small" type="submit">Save cost</button></div>
-          </form>
-          @if (lastCostTotal() !== null) {
-            <p class="success">
-              Total cost: <span class="naira">₦{{ lastCostTotal() | number: '1.0-2' }}</span>
-            </p>
-          }
-        </section>
-      </div>
-    }
-
-    <!-- ===================== A3, Batch detail dossier ===================== -->
-    @if (selected(); as b) {
-      <section class="panel" style="border-color: var(--hairline-strong);">
-        <div class="panel-head">
-          <h2>Batch #{{ b.id.slice(0, 8) }}- {{ b.variant.sku }}</h2>
-          <span class="ph-sub">{{ b.quantity }} units · planned {{ b.plannedDate || '-' }}</span>
-          <span class="ph-end">
-            <button class="cta small ghost" type="button" (click)="openQcModal(b)">
-              ⚠ Record QC rejection
-            </button>
-            @if (nextStage(b.stage); as next) {
-              <button class="cta small" (click)="move(b.id, next)">Advance to {{ next }} →</button>
-            }
-            <button class="link" type="button" (click)="closeDetail()">Close</button>
-          </span>
-        </div>
-
-        <div class="stepper">
-          @for (s of stages(); track s; let i = $index) {
-            <div class="step" [class.done]="stageIndex(b.stage) > i" [class.now]="b.stage === s">
-              <span class="s-idx">{{ i + 1 | number: '2.0' }}</span>
-              <span class="s-name">{{ s }}</span>
-            </div>
-          }
-        </div>
-
-        <div class="cols">
-          <section class="panel flat">
-            <div class="panel-head">
-              <h2>Batch costs</h2>
-              <span class="ph-sub">how the money splits</span>
-            </div>
-            @if (costOf(b.id); as cost) {
-              <table class="table">
-                <tbody>
-                  <tr>
-                    <td>Raw materials intake</td>
-                    <td class="mono">₦{{ num(cost['materialCost']) | number: '1.0-2' }}</td>
-                  </tr>
-                  <tr>
-                    <td>Sewing & assembly labour</td>
-                    <td class="mono">₦{{ num(cost['sewingCost']) | number: '1.0-2' }}</td>
-                  </tr>
-                  <tr>
-                    <td>Branding & hardware</td>
-                    <td class="mono">₦{{ num(cost['brandingCost']) | number: '1.0-2' }}</td>
-                  </tr>
-                  <tr>
-                    <td>Packaging & polybags</td>
-                    <td class="mono">₦{{ num(cost['packagingCost']) | number: '1.0-2' }}</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Total batch value</strong></td>
-                    <td class="mono">
-                      <strong class="naira">₦{{ totalCost(b.id) | number: '1.0-2' }}</strong>
-                      <span class="muted small"> · ₦{{ perUnit(b) | number: '1.0-2' }}/unit</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            } @else {
-              <p class="muted small">No cost recorded yet: use "Record batch cost" above.</p>
-            }
-            <div class="gap-sep"></div>
-            <div class="panel-head">
-              <h2>BOM vs actual consumption</h2>
-              <span class="ph-sub">planned vs floor usage</span>
-            </div>
-            @if (bomOf(b.id); as bom) {
-              @if (bom.length > 0) {
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>Material</th>
-                      <th>Planned</th>
-                      <th>Consumed</th>
-                      <th>Δ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (row of bom; track $index) {
-                      <tr>
-                        <td class="small">{{ row['materialName'] }}</td>
-                        <td class="mono">{{ row['plannedQuantity'] }}</td>
-                        <td class="mono">{{ row['consumedQuantity'] }}</td>
-                        <td
-                          class="mono"
-                          [class.delta.plus]="num(row['variance']) === 0"
-                          [class.delta.minus]="num(row['variance']) !== 0"
-                        >
-                          {{ row['variance'] }}
-                        </td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              } @else {
-                <p class="muted small">No BOM linked to this batch variant yet.</p>
-              }
-            } @else {
-              <p class="muted small">Loading consumption…</p>
-            }
-          </section>
-
-          <section class="panel flat">
-            <div class="panel-head">
-              <h2>Quality control rejections & flaws</h2>
-              <button class="cta small ghost ph-end" type="button" (click)="openQcModal(b)">
-                Record QC rejection
-              </button>
-            </div>
-            @if (rejectsOf(b.id); as rejects) {
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>When</th>
-                    <th>Qty</th>
-                    <th>Root cause</th>
-                    <th>Disposition</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (r of rejects; track $index) {
-                    <tr>
-                      <td class="mono small">{{ str(r['createdAt']) | date: 'MMM d, HH:mm' }}</td>
-                      <td class="mono">{{ r['quantity'] }}</td>
-                      <td class="small">{{ r['reason'] }}</td>
-                      <td>
-                        <span
-                          class="chip"
-                          [class.bad]="r['disposition'] === 'burned'"
-                          [class.ok]="r['disposition'] !== 'burned'"
-                        >
-                          {{
-                            r['disposition'] === 'burned'
-                              ? 'Burned (write-off)'
-                              : 'Repaired & restocked'
-                          }}</span
-                        >
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            } @else {
-              <p class="success small">No flaws recorded on this batch.</p>
-            }
-          </section>
-        </div>
-
-        <div class="panel-head"><h2>Batch record</h2></div>
-        @if (detail(); as d) {
-          <dl class="kv">
-            <dt>Stage</dt>
-            <dd>{{ d['stage'] }}</dd>
-            <dt>Planned date</dt>
-            <dd>{{ d['plannedDate'] || '-' }}</dd>
-            <dt>Created</dt>
-            <dd>{{ str(d['createdAt']) | date: 'medium' }}</dd>
-            <dt>Completed</dt>
-            <dd>
-              {{ d['completedDate'] ? (str(d['completedDate']) | date: 'medium') : 'not yet' }}
-            </dd>
-            <dt>Approval request</dt>
-            <dd>
-              <code>{{ str(d['approvalRequestId']).slice(0, 8) }}</code> (production_start,
-              approved)
-            </dd>
-          </dl>
-
-          <div class="gap-sep"></div>
-          <div class="panel-head">
-            <h2>Line telemetry</h2>
-            <span class="ph-sub">machine audit feed</span>
-            <span class="ph-end"
-              ><button class="cta small ghost" type="button" (click)="openTelemetryForm()">
-                Record snapshot
-              </button></span
+            </se-field>
+            <se-field label="Units to make" [error]="startErrors().quantity">
+              <input seInput type="number" min="1" inputmode="numeric" [(ngModel)]="nb.quantity" />
+            </se-field>
+            <se-field label="Planned date" optional>
+              <input seInput type="date" [(ngModel)]="nb.plannedDate" />
+            </se-field>
+            <se-field
+              label="Approval reference"
+              hint="Filled in when you request approval. Management decides in Approvals."
+              [error]="startErrors().approval"
             >
-          </div>
-          @if (telemetry().length > 0) {
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>When</th>
-                  <th>Stage</th>
-                  <th>Machine</th>
-                  <th>RPM</th>
-                  <th>Needle cycles</th>
-                  <th>Thread reserve</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (t of telemetry(); track $index) {
-                  <tr>
-                    <td class="mono small">{{ str(t['recordedAt']) | date: 'MMM d, HH:mm' }}</td>
-                    <td class="small">{{ t['stage'] }}</td>
-                    <td class="small">{{ t['machine'] }}</td>
-                    <td class="mono">{{ t['rpm'] ?? '-' }}</td>
-                    <td class="mono">{{ t['needleCycles'] ?? '-' }}</td>
-                    <td class="mono">
-                      {{ t['threadReservePct'] !== null ? t['threadReservePct'] + '%' : '-' }}
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          } @else {
-            <p class="muted small">No machine snapshots recorded on this batch yet.</p>
-          }
-
-          @if (showTelemetry()) {
-            <form class="form-grid" (ngSubmit)="recordTelemetry(b)">
-              <label
-                >Stage <input [(ngModel)]="nt.stage" name="tstage" required placeholder="Sewing"
-              /></label>
-              <label
-                >Machine
-                <input
-                  [(ngModel)]="nt.machine"
-                  name="tmachine"
-                  required
-                  placeholder="JUKI DDL-8700 (line 02)"
-              /></label>
-              <label>RPM <input type="number" min="0" [(ngModel)]="nt.rpm" name="trpm" /></label>
-              <label
-                >Needle cycles
-                <input type="number" min="0" [(ngModel)]="nt.needleCycles" name="tcycles"
-              /></label>
-              <label
-                >Thread reserve %
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  [(ngModel)]="nt.threadReservePct"
-                  name="treserve"
-              /></label>
-              <div class="wide actions flat">
-                <button class="cta small" type="submit">Save snapshot</button>
-                <button class="link" type="button" (click)="showTelemetry.set(false)">Close</button>
-              </div>
-            </form>
-          }
-        } @else {
-          <p class="muted small">Loading batch record…</p>
-        }
-      </section>
-    }
-
-    <!-- ===================== A2, Kanban board ===================== -->
-    <div class="panel-head" style="margin-top:1.2rem;">
-      <h2>Board</h2>
-      <span class="ph-sub">finished batches are added to stock automatically</span>
-    </div>
-    <div class="board">
-      @for (stage of stages(); track stage; let i = $index) {
-        <div class="column">
-          <div class="col-head">
-            <h3>{{ i + 1 | number: '2.0' }} · {{ stage }}</h3>
-            <span class="col-n">{{ visibleIn(stage).length }}</span>
-          </div>
-          @for (batch of visibleIn(stage); track batch.id) {
-            <div class="card">
-              <div class="card-top">
-                <code>#{{ batch.id.slice(0, 4) }}</code>
-                @if (rejectedUnits(batch.id) > 0) {
-                  <span class="chip bad">{{ rejectedUnits(batch.id) }} flagged</span>
-                } @else if (costOf(batch.id)) {
-                  <span class="chip acid">costed</span>
-                } @else {
-                  <span class="chip">queue</span>
-                }
-              </div>
-              <p class="card-name">{{ batch.variant.sku }}</p>
-              <p>
-                {{ batch.quantity }} units
-                @if (batch.plannedDate) {
-                  · planned {{ batch.plannedDate }}
-                }
-              </p>
-              @if (costOf(batch.id)) {
-                <p class="small">
-                  Est. cost <span class="naira">₦{{ totalCost(batch.id) | number: '1.0-0' }}</span>
-                  <span class="muted"> · ₦{{ perUnit(batch) | number: '1.0-0' }}/unit</span>
-                </p>
-              } @else {
-                <p class="small muted">No cost recorded</p>
-              }
-              <div class="actions flat">
-                @if (nextStage(stage); as next) {
-                  <button class="cta small" (click)="move(batch.id, next)">→ {{ next }}</button>
-                }
-                <button class="link" type="button" (click)="openDetail(batch)">
-                  {{ selected()?.id === batch.id ? 'close' : 'open batch' }}
-                </button>
-              </div>
-            </div>
-          }
-          @if (visibleIn(stage).length === 0) {
-            <p class="muted small">-</p>
-          }
-        </div>
-      }
-    </div>
-    @if (message()) {
-      <p class="success">{{ message() }}</p>
-    }
-    @if (error()) {
-      <p class="error">{{ error() }}</p>
-    }
-
-    <!-- ===================== A4, Record QC rejection modal ===================== -->
-    @if (qcBatch(); as qb) {
-      <div
-        class="modal-scrim"
-        role="button"
-        tabindex="0"
-        aria-label="Close quality control rejection dialog"
-        (click)="closeQcModal($event)"
-        (keydown.enter)="closeQcModal($event)"
-        (keydown.escape)="qcBatch.set(null)"
-      >
-        <div
-          class="modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="qc-title"
-        >
-          <div class="modal-head">
-            <h2 id="qc-title">⚠ Record quality control rejection</h2>
-            <button class="x" type="button" aria-label="Close" (click)="qcBatch.set(null)">
-              ✕
-            </button>
-          </div>
-          <p class="mini-note">
-            Batch #{{ qb.id.slice(0, 8) }} · {{ qb.variant.sku }} · {{ qb.quantity }} units ·
-            {{ qb.stage }}
-          </p>
-          <form (ngSubmit)="recordQc()">
-            <div class="form-grid">
-              <label
-                >Qty rejected (max {{ qb.quantity }})
-                <input
-                  type="number"
-                  min="1"
-                  [max]="qb.quantity"
-                  [(ngModel)]="nq.quantity"
-                  name="qqty"
-                  required
-                />
-              </label>
-              <label
-                >Defect classification / root cause
-                <select [(ngModel)]="nq.disposition" name="qdisp">
-                  <option value="burned">Defective: burn (write-off)</option>
-                  <option value="repaired_restocked">Minor factory error: repair & restock</option>
-                </select>
-              </label>
-              <label class="wide"
-                >Defect station / anatomic location
-                <input
-                  [(ngModel)]="nq.station"
-                  name="qstation"
-                  placeholder="left thigh pocket seam / line 02…"
-                />
-              </label>
-              <label class="wide"
-                >Assigned inspector (QA sign-off)
-                <select [(ngModel)]="nq.inspectorId" name="qinsp">
-                  <option value="">- unassigned -</option>
-                  @for (u of staff(); track u['id']) {
-                    <option [value]="u['id']">{{ u['name'] }} ({{ roleLabel(u) }})</option>
-                  }
-                </select>
-              </label>
-              <label class="wide"
-                >Detailed notes & remediation observations
-                <textarea
-                  [(ngModel)]="nq.reason"
-                  name="qreason"
-                  rows="3"
-                  required
-                  placeholder="Noticeable warp thread break… cannot be washed or reworked."
-                ></textarea>
-              </label>
-            </div>
-            <div class="form-actions">
-              <button class="cta small" type="submit">Log rejection</button>
-              <button class="cta small ghost" type="button" (click)="qcBatch.set(null)">
-                Cancel
+              <input seInput [(ngModel)]="nb.approvalRequestId" />
+            </se-field>
+            <div>
+              <button seButton type="button" [loading]="requesting()" (click)="requestApproval()">
+                Request approval
               </button>
-              <span class="muted small"
-                >Reason drives disposition: defective → burned; factory error → repaired &
-                restocked.</span
-              >
             </div>
-          </form>
-        </div>
-      </div>
-    }
+          </div>
+          <ng-container seDrawerFooter>
+            <button seButton type="button" (click)="starting.set(false)">Cancel</button>
+            <button
+              seButton
+              variant="primary"
+              type="button"
+              [loading]="saving()"
+              (click)="createBatch()"
+            >
+              Start batch
+            </button>
+          </ng-container>
+        </se-drawer>
+      }
+    </se-page>
   `,
 })
 export class ProductionPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly router = inject(Router);
+  private readonly access = inject(AccessService);
+  private readonly confirm = inject(SeConfirmService);
+  private readonly toast = inject(SeToastService);
+  private readonly currency = inject(SeCurrencyService);
+
+  /** Starting, moving and costing a batch all need full access to manufacturing. */
+  readonly canWrite = computed(() => this.access.can('manufacturing', 'full'));
+
   readonly stages = signal<string[]>([]);
   readonly batches = signal<Batch[]>([]);
   readonly products = signal<ProductOpt[]>([]);
-  readonly message = signal<string | null>(null);
-  readonly error = signal<string | null>(null);
-  readonly lastCostTotal = signal<number | null>(null);
-  readonly showNewBatch = signal(false);
-  /** Read-back caches keyed by batch id (cost + QC rejections). */
-  readonly costs = signal<Map<string, Record<string, unknown>>>(new Map());
-  readonly rejections = signal<Map<string, Array<Record<string, unknown>>>>(new Map());
-  /** A3 detail selection + full record; A4 modal target. */
-  readonly selected = signal<Batch | null>(null);
-  readonly detail = signal<Record<string, unknown> | null>(null);
-  readonly qcBatch = signal<Batch | null>(null);
-  readonly inspector = signal('signed in staff');
-  readonly bomCache = signal<Map<string, Array<Record<string, unknown>>>>(new Map());
-  readonly telemetry = signal<Array<Record<string, unknown>>>([]);
-  readonly showTelemetry = signal(false);
-  readonly staff = signal<Array<Record<string, unknown>>>([]);
-  private meEmail: string | null = null;
-  skuFilter = '';
-  nb = { variantId: '', quantity: 0, plannedDate: '', approvalRequestId: '' };
-  nc = { batchId: '', materialCost: 0, sewingCost: 0, brandingCost: 0, packagingCost: 0 };
-  nq = {
-    batchId: '',
-    quantity: 1,
-    disposition: 'burned',
-    reason: '',
-    station: '',
-    inspectorId: '',
-  };
-  nt = {
-    stage: '',
-    machine: '',
-    rpm: null as number | null,
-    needleCycles: null as number | null,
-    threadReservePct: null as number | null,
-  };
+  /** Read back per batch: the recorded total cost and the units rejected at QC. */
+  readonly costs = signal<Record<string, number>>({});
+  readonly rejected = signal<Record<string, number>>({});
+  /** True only until the first answer arrives; a refresh keeps the rows on screen. */
+  readonly loading = signal(true);
+  readonly error = signal('');
+  readonly partial = signal(false);
+
+  // ---- filters, mirrored in the URL ----
+  private readonly urlState = urlFilters(['stage']);
+  readonly query = this.urlState.query;
+  readonly filterValue = this.urlState.value;
+  readonly filters: SeFilter[] = [
+    {
+      key: 'stage',
+      label: 'Stage',
+      options: Object.entries(SE_STATUS.production).map(([value, m]) => ({
+        value,
+        label: m.label,
+      })),
+    },
+  ];
+  readonly filtering = computed(
+    () => !!this.query().trim() || Object.keys(this.filterValue()).length > 0,
+  );
+  readonly rows = computed(() => {
+    const stage = this.filterValue()['stage'];
+    const q = this.query().trim().toLowerCase().replace(/^#/, '');
+    return this.batches().filter(
+      (b) =>
+        (!stage || b.stage === stage) &&
+        (!q || b.id.toLowerCase().includes(q) || b.variant.sku.toLowerCase().includes(q)),
+    );
+  });
+  readonly summary = computed(() => {
+    const n = this.rows().length;
+    return `${n} ${n === 1 ? 'batch' : 'batches'}`;
+  });
+
+  readonly columns: SeColumn<Batch>[] = [
+    { key: 'ref', header: 'Batch', value: (b) => batchRef(b.id) },
+    { key: 'sku', header: 'SKU', sortable: true, value: (b) => b.variant.sku },
+    {
+      key: 'stage',
+      header: 'Stage',
+      sortable: true,
+      value: (b) => this.stages().indexOf(b.stage),
+    },
+    { key: 'units', header: 'Units', numeric: true, sortable: true, value: (b) => b.quantity },
+    { key: 'planned', header: 'Planned', sortable: true, value: (b) => b.plannedDate ?? '' },
+    {
+      key: 'rejected',
+      header: 'Rejected',
+      numeric: true,
+      sortable: true,
+      value: (b) => this.rejected()[b.id] ?? 0,
+    },
+    {
+      key: 'cost',
+      header: 'Cost',
+      numeric: true,
+      sortable: true,
+      value: (b) => this.costs()[b.id] ?? 0,
+      format: (v, b) => (b.id in this.costs() ? this.currency.format(v as number) : 'Not recorded'),
+    },
+  ];
+
+  /** The move to the next stage, whichever stage that is for the row. */
+  readonly actions: SeRowAction<Batch>[] = Object.keys(SE_STATUS.production).map((stage) => ({
+    label: `Move to ${stageLabel(stage)}`,
+    hidden: (b) => !this.canWrite() || nextStage(this.stages(), b.stage) !== stage,
+    run: (b) => void this.move(b),
+  }));
+
+  // ---- start batch ----
+  readonly starting = signal(false);
+  readonly saving = signal(false);
+  readonly requesting = signal(false);
+  readonly startErrors = signal({ variant: '', quantity: '', approval: '' });
+  nb = { variantId: '', quantity: null as number | null, plannedDate: '', approvalRequestId: '' };
 
   ngOnInit(): void {
     this.load();
-    this.api.products().subscribe((res) => this.products.set(res.data as unknown as ProductOpt[]));
-    this.api.me().subscribe({
-      next: (p) => {
-        this.inspector.set(`${p.name} (${p.role.replaceAll('_', ' ')})`);
-        this.meEmail = p.email;
+    if (this.canWrite()) {
+      this.api.products().subscribe({
+        next: (res) => this.products.set(res.data as unknown as ProductOpt[]),
+        error: () => undefined,
+      });
+    }
+  }
+
+  load(): void {
+    this.partial.set(false);
+    this.api.batches().subscribe({
+      next: (res) => {
+        this.stages.set(res.stages);
+        this.batches.set(res.data);
+        this.loading.set(false);
+        this.error.set('');
+        this.readBack(res.data);
       },
-      error: (e) => this.fail(e, 'Could not load your profile.'),
-    });
-    this.api.users().subscribe((res) => {
-      this.staff.set(res.data as unknown as Array<Record<string, unknown>>);
-      if (this.meEmail) {
-        const me = (res.data as unknown as Array<{ id: string; email: string }>).find(
-          (u) => u.email === this.meEmail,
-        );
-        if (me) this.nq.inspectorId = me.id;
-      }
-    });
-  }
-
-  private load(): void {
-    this.api.batches().subscribe((res) => {
-      this.stages.set(res.stages);
-      this.batches.set(res.data);
-      this.loadCostsAndRejections(res.data);
-      const sel = this.selected();
-      if (sel) {
-        const fresh = res.data.find((b) => b.id === sel.id) ?? null;
-        this.selected.set(fresh);
-        if (fresh) this.api.batch(fresh.id).subscribe((b) => this.detail.set(b));
-      }
+      error: (err) => {
+        this.loading.set(false);
+        // A failed refresh must not wipe a list that is already on screen.
+        if (this.batches().length === 0) {
+          this.error.set(
+            err?.error?.message ?? 'The server did not respond. Nothing has been changed.',
+          );
+        }
+      },
     });
   }
 
-  /** Read back what was written: recorded cost and QC history per batch. */
-  private loadCostsAndRejections(batches: Batch[]): void {
-    const costs = new Map<string, Record<string, unknown>>();
-    const rejects = new Map<string, Array<Record<string, unknown>>>();
+  /** Reads back what was recorded against each batch: its cost and its QC rejects. */
+  private readBack(batches: Batch[]): void {
     for (const b of batches) {
       this.api.batchCost(b.id).subscribe({
         next: (c) => {
-          if (c) {
-            costs.set(b.id, c);
-            this.costs.set(new Map(costs));
-          }
+          if (c) this.costs.update((all) => ({ ...all, [b.id]: num(c['totalCost']) }));
         },
-        // 404 means this batch has no cost recorded yet, which is a normal
-        // state. Any other failure is a failed read, and swallowing it would
-        // show a real production cost as though none existed.
-        error: (e) => {
-          if (e?.status !== 404) this.fail(e, 'Could not read a batch cost.');
+        // 404 means no cost is recorded yet, which is normal. Anything else is
+        // a failed read and must not look like "no cost".
+        error: (err) => {
+          if (err?.status !== 404) this.partial.set(true);
         },
       });
       this.api.qcRejections(b.id).subscribe({
-        next: (r) => {
-          if (r?.length) {
-            rejects.set(b.id, r);
-            this.rejections.set(new Map(rejects));
-          }
-        },
-        // An empty list is a real answer here, so unlike batchCost there is no
-        // 404 to allow. A failure used to leave the panel blank, which read as
-        // "no rejections recorded" on a batch that may well have some.
-        error: (e) => this.fail(e, 'Could not read QC rejections.'),
+        next: (list) =>
+          this.rejected.update((all) => ({
+            ...all,
+            [b.id]: (list ?? []).reduce((sum, r) => sum + num(r['quantity']), 0),
+          })),
+        error: () => this.partial.set(true),
       });
     }
   }
 
-  // --- KPI derivations (all from live batch/QC data) ---
-  readonly activeUnits = computed(() => this.activeBatchList().reduce((s, b) => s + b.quantity, 0));
-  readonly completedUnits = computed(() => {
-    const last = this.stages()[this.stages().length - 1];
-    return this.batches()
-      .filter((b) => b.stage === last)
-      .reduce((s, b) => s + b.quantity, 0);
+  // ---- metrics ----
+  private readonly lastStage = computed(() => this.stages()[this.stages().length - 1]);
+  private readonly active = computed(() =>
+    this.batches().filter((b) => b.stage !== this.lastStage()),
+  );
+  readonly activeUnits = computed(() => this.active().reduce((s, b) => s + b.quantity, 0));
+  readonly activeHint = computed(() => {
+    const n = this.active().length;
+    return `In ${n} ${n === 1 ? 'batch' : 'batches'}`;
   });
-  readonly totalRejected = computed(() => {
-    let n = 0;
-    for (const list of this.rejections().values())
-      n += list.reduce((s, r) => s + Number(r['quantity'] ?? 0), 0);
-    return n;
-  });
+  readonly completedUnits = computed(() =>
+    this.batches()
+      .filter((b) => b.stage === this.lastStage())
+      .reduce((s, b) => s + b.quantity, 0),
+  );
+  readonly rejectedUnits = computed(() =>
+    Object.values(this.rejected()).reduce((s, n) => s + n, 0),
+  );
   readonly rejectionRate = computed(() => {
     const total = this.batches().reduce((s, b) => s + b.quantity, 0);
-    return total > 0 ? (Math.round((this.totalRejected() / total) * 1000) / 10).toFixed(1) : '0.0';
+    return `${total > 0 ? (Math.round((this.rejectedUnits() / total) * 1000) / 10).toFixed(1) : '0.0'}%`;
   });
 
-  private activeBatchList(): Batch[] {
-    const last = this.stages()[this.stages().length - 1];
-    return this.batches().filter((b) => b.stage !== last);
+  // ---- actions ----
+  open(batch: Batch): void {
+    void this.router.navigate(['/production', batch.id]);
   }
 
-  openDetail(batch: Batch): void {
-    if (this.selected()?.id === batch.id) {
-      this.closeDetail();
-      return;
-    }
-    this.selected.set(batch);
-    this.detail.set(null);
-    this.telemetry.set([]);
-    this.api.batch(batch.id).subscribe({
-      next: (b) => this.detail.set(b),
-      error: (e) => this.fail(e, 'Could not load that batch.'),
-    });
-      this.api.plannedVsConsumed(batch.id).subscribe({
-        next: (rows) => {
-          const cache = new Map(this.bomCache());
-          cache.set(batch.id, (rows ?? []) as unknown as Array<Record<string, unknown>>);
-          this.bomCache.set(cache);
-        },
-        error: (e) => this.fail(e, 'Could not compare planned against consumed.'),
-      });
-    this.api.batchTelemetry(batch.id).subscribe({
-      next: (rows) => this.telemetry.set(rows as unknown as Array<Record<string, unknown>>),
-      error: () => this.telemetry.set([]),
+  clearFilters(): void {
+    this.query.set('');
+    this.filterValue.set({});
+  }
+
+  async move(batch: Batch): Promise<void> {
+    const next = nextStage(this.stages(), batch.stage);
+    if (!next) return;
+    if (!(await this.confirm.ask(moveCopy(batch, next, this.stages())))) return;
+    this.api.moveBatch(batch.id, next).subscribe({
+      next: () => {
+        this.toast.show(`Batch ${batchRef(batch.id)} moved to ${stageLabel(next)}`);
+        this.load();
+      },
+      error: (err) =>
+        this.toast.show(err?.error?.message ?? `Batch ${batchRef(batch.id)} could not be moved`, {
+          tone: 'danger',
+          action: { label: 'Try again', run: () => void this.move(batch) },
+        }),
     });
   }
-  closeDetail(): void {
-    this.selected.set(null);
-    this.detail.set(null);
-    this.telemetry.set([]);
+
+  openStart(): void {
+    this.startErrors.set({ variant: '', quantity: '', approval: '' });
+    this.starting.set(true);
   }
 
-  bomOf(batchId: string): Array<Record<string, unknown>> | null {
-    return this.bomCache().get(batchId) ?? null;
-  }
-
-  roleLabel(u: Record<string, unknown>): string {
-    const r = u['role'];
-    return typeof r === 'string' ? r.replaceAll('_', ' ') : '-';
-  }
-
-  openTelemetryForm(): void {
-    this.showTelemetry.set(!this.showTelemetry());
-  }
-
-  recordTelemetry(batch: Batch): void {
-    this.api
-      .recordTelemetry(batch.id, {
-        stage: this.nt.stage,
-        machine: this.nt.machine,
-        rpm: this.nt.rpm ?? undefined,
-        needleCycles: this.nt.needleCycles ?? undefined,
-        threadReservePct: this.nt.threadReservePct ?? undefined,
-        operatorId: this.nq.inspectorId || undefined,
-      })
-      .subscribe({
-        next: () => {
-          this.nt = {
-            stage: '',
-            machine: '',
-            rpm: null,
-            needleCycles: null,
-            threadReservePct: null,
-          };
-          this.showTelemetry.set(false);
-          this.ok('Telemetry snapshot recorded.');
-          this.api
-            .batchTelemetry(batch.id)
-            .subscribe((rows) =>
-              this.telemetry.set(rows as unknown as Array<Record<string, unknown>>),
-            );
-        },
-        error: (e) => this.fail(e, 'Telemetry failed.'),
-      });
-  }
-
-  openQcModal(batch: Batch): void {
-    this.qcBatch.set(batch);
-    this.nq = {
-      batchId: batch.id,
-      quantity: 1,
-      disposition: 'burned',
-      reason: '',
-      station: '',
-      inspectorId: this.nq.inspectorId,
+  /** Checks the variant and quantity; `needApproval` also requires the reference. */
+  private validStart(needApproval: boolean): boolean {
+    const q = Number(this.nb.quantity);
+    const errors = {
+      variant: this.nb.variantId ? '' : 'Choose the variant to make.',
+      quantity: Number.isInteger(q) && q >= 1 ? '' : 'Enter a whole number of units, 1 or more.',
+      approval:
+        needApproval && !this.nb.approvalRequestId.trim()
+          ? 'Request approval first. A batch can only start once management has approved it.'
+          : '',
     };
-  }
-  closeQcModal(ev: Event): void {
-    if (ev.target === ev.currentTarget) this.qcBatch.set(null);
-  }
-
-  stageIndex(stage: string): number {
-    return this.stages().indexOf(stage);
-  }
-  num(v: unknown): number {
-    return Number(v ?? 0);
-  }
-  str(v: unknown): string {
-    return v == null ? '' : String(v);
+    this.startErrors.set(errors);
+    return !errors.variant && !errors.quantity && !errors.approval;
   }
 
-  costOf(batchId: string): Record<string, unknown> | null {
-    return this.costs().get(batchId) ?? null;
-  }
-  rejectsOf(batchId: string): Array<Record<string, unknown>> | null {
-    return this.rejections().get(batchId) ?? null;
-  }
-  rejectedUnits(batchId: string): number {
-    return (this.rejections().get(batchId) ?? []).reduce(
-      (sum, r) => sum + Number(r['quantity'] ?? 0),
-      0,
-    );
-  }
-  totalCost(batchId: string): number {
-    return Number(this.costs().get(batchId)?.['totalCost'] ?? 0);
-  }
-  perUnit(batch: Batch): number {
-    const total = this.totalCost(batch.id);
-    return batch.quantity > 0 ? total / batch.quantity : 0;
-  }
-  private ok(m: string): void {
-    this.message.set(m);
-    this.error.set(null);
-    this.load();
-  }
-  private fail(e: { error?: { message?: string } }, fb: string): void {
-    this.error.set(e?.error?.message ?? fb);
-    this.message.set(null);
-  }
-
-  activeBatches(): Batch[] {
-    return this.activeBatchList();
-  }
-  batchesIn(stage: string): Batch[] {
-    return this.batches().filter((b) => b.stage === stage);
-  }
-  visibleIn(stage: string): Batch[] {
-    const f = this.skuFilter.trim().toLowerCase();
-    const rows = this.batchesIn(stage);
-    return f ? rows.filter((b) => b.variant.sku.toLowerCase().includes(f)) : rows;
-  }
-  nextStage(stage: string): string | null {
-    const s = this.stages();
-    const i = s.indexOf(stage);
-    return i >= 0 && i < s.length - 1 ? s[i + 1] : null;
-  }
-
-  requestBatchApproval(): void {
-    if (!this.nb.variantId || !this.nb.quantity) {
-      this.error.set('Pick a variant and quantity first.');
-      return;
-    }
+  requestApproval(): void {
+    if (!this.validStart(false)) return;
+    this.requesting.set(true);
     this.api
       .createApproval('production_start', {
         variantId: this.nb.variantId,
-        quantity: this.nb.quantity,
+        quantity: Number(this.nb.quantity),
       })
       .subscribe({
         next: (r) => {
+          this.requesting.set(false);
           this.nb.approvalRequestId = r.id;
-          this.ok('Production approval requested: Management decides in the queue.');
+          this.toast.show(
+            `Approval requested for ${units(Number(this.nb.quantity))}. Management decides in Approvals.`,
+          );
         },
-        error: (e) => this.fail(e, 'Request failed.'),
+        error: (err) => {
+          this.requesting.set(false);
+          this.startErrors.update((e) => ({
+            ...e,
+            approval: err?.error?.message ?? 'The approval could not be requested.',
+          }));
+        },
       });
   }
 
   createBatch(): void {
+    if (!this.validStart(true)) return;
+    this.saving.set(true);
     this.api
       .createBatch({
         variantId: this.nb.variantId,
         quantity: Number(this.nb.quantity),
         plannedDate: this.nb.plannedDate || undefined,
-        approvalRequestId: this.nb.approvalRequestId,
+        approvalRequestId: this.nb.approvalRequestId.trim(),
       })
       .subscribe({
         next: () => {
-          this.nb = { variantId: '', quantity: 0, plannedDate: '', approvalRequestId: '' };
-          this.showNewBatch.set(false);
-          this.ok('Batch created in the first stage.');
+          this.saving.set(false);
+          this.starting.set(false);
+          this.nb = { variantId: '', quantity: null, plannedDate: '', approvalRequestId: '' };
+          this.toast.show('Batch started in Planned');
+          this.load();
         },
-        error: (e) => this.fail(e, 'Not approved yet: check the Approvals queue.'),
-      });
-  }
-
-  recordCost(): void {
-    const { batchId, ...costs } = this.nc;
-    this.api
-      .recordBatchCost(batchId, {
-        materialCost: Number(costs.materialCost),
-        sewingCost: Number(costs.sewingCost),
-        brandingCost: Number(costs.brandingCost),
-        packagingCost: Number(costs.packagingCost),
-      })
-      .subscribe({
-        next: (res) => {
-          this.lastCostTotal.set(Number((res as Record<string, unknown>)['totalCost'] ?? 0));
-          this.ok('Cost saved.');
+        error: (err) => {
+          this.saving.set(false);
+          this.startErrors.update((e) => ({
+            ...e,
+            approval:
+              err?.error?.message ??
+              'This request is not approved yet. Check Approvals, then try again.',
+          }));
         },
-        error: (e) => this.fail(e, 'Cost save failed.'),
       });
-  }
-
-  recordQc(): void {
-    const { batchId, station, inspectorId, ...rest } = this.nq;
-    const reason = station ? `${station}- ${rest.reason}` : rest.reason;
-    this.api
-      .recordQcRejection(batchId, {
-        quantity: Number(rest.quantity),
-        reason,
-        disposition: rest.disposition,
-        inspectorId: inspectorId || undefined,
-      })
-      .subscribe({
-        next: () => {
-          this.nq = {
-            batchId: '',
-            quantity: 1,
-            disposition: 'burned',
-            reason: '',
-            station: '',
-            inspectorId: this.nq.inspectorId,
-          };
-          this.qcBatch.set(null);
-          this.ok('Rejection recorded: burned units are excluded from completion stock-in.');
-        },
-        error: (e) => this.fail(e, 'Rejection failed.'),
-      });
-  }
-
-  move(id: string, stage: string): void {
-    this.error.set(null);
-    this.api
-      .moveBatch(id, stage)
-      .subscribe({ next: () => this.load(), error: (e) => this.fail(e, 'Stage move failed.') });
   }
 }

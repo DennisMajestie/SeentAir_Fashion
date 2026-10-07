@@ -10,13 +10,16 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { SeIconComponent, SeIconName } from '@seentair/ui';
+import { AccessService } from './access.service';
 import { ApiService } from './api.service';
+import { navFor } from './nav';
 
 interface GsItem {
   title: string;
   sub?: string;
   route: string;
-  icon: string;
+  icon: SeIconName;
   deep?: boolean;
 }
 
@@ -28,209 +31,122 @@ interface GsGroup {
 type GsRow =
   { kind: 'label'; label: string; idx: number } | { kind: 'item'; item: GsItem; idx: number };
 
-interface PageRef {
-  title: string;
-  route: string;
-  icon: string;
-  keywords: string;
-}
-
-const PAGES: PageRef[] = [
-  { title: 'Dashboard', route: '/', icon: 'dashboard', keywords: 'home overview kpis at a glance' },
-  {
-    title: 'Approvals',
-    route: '/approvals',
-    icon: 'fact_check',
-    keywords: 'approve pending request queue decide management',
-  },
-  {
-    title: 'Orders',
-    route: '/orders',
-    icon: 'shopping_bag',
-    keywords: 'sales fulfilment dispatch shipping order status',
-  },
-  {
-    title: 'Returns',
-    route: '/returns',
-    icon: 'assignment_return',
-    keywords: 'refund sla quarantine inspection return window',
-  },
-  {
-    title: 'Custom orders',
-    route: '/custom-orders',
-    icon: 'checkroom',
-    keywords: 'custom bespoke quote quotation design request progress',
-  },
-  {
-    title: 'Wholesale',
-    route: '/wholesale',
-    icon: 'warehouse',
-    keywords: 'tier discount business account apply moq buy',
-  },
-  {
-    title: 'Messages',
-    route: '/messages',
-    icon: 'forum',
-    keywords: 'customer chat support sms conversation',
-  },
-  {
-    title: 'Catalogue',
-    route: '/catalogue',
-    icon: 'grid_view',
-    keywords: 'product sku collection price edit',
-  },
-  {
-    title: 'Inventory',
-    route: '/inventory',
-    icon: 'inventory_2',
-    keywords: 'stock valuation movement ledger units',
-  },
-  {
-    title: 'Materials',
-    route: '/materials',
-    icon: 'layers',
-    keywords: 'raw material fabric thread threshold purchase usage',
-  },
-  {
-    title: 'Production',
-    route: '/production',
-    icon: 'precision_manufacturing',
-    keywords: 'kanban batch sewing cutting stage plan schedule',
-  },
-  {
-    title: 'Tech pack',
-    route: '/tech-pack',
-    icon: 'description',
-    keywords: 'pattern silhouette spec measurements sizing garment',
-  },
-  {
-    title: 'Floor kiosk',
-    route: '/floor-kiosk',
-    icon: 'tv',
-    keywords: 'factory station scanning qc cutting sewing',
-  },
-  {
-    title: 'Accounting',
-    route: '/accounting',
-    icon: 'account_balance',
-    keywords: 'money ledger naira income expense profit report',
-  },
-  {
-    title: 'Logistics',
-    route: '/logistics',
-    icon: 'local_shipping',
-    keywords: 'delivery waybill shipment gigl haulage zones',
-  },
-  {
-    title: 'Procurement',
-    route: '/vendors',
-    icon: 'request_quote',
-    keywords: 'vendor supplier mill request order inventory restock',
-  },
-  {
-    title: 'Marketing',
-    route: '/marketing',
-    icon: 'campaign',
-    keywords: 'campaign promo sms source code offer',
-  },
-  {
-    title: 'Reviews',
-    route: '/reviews',
-    icon: 'reviews',
-    keywords: 'review moderation publish rating stars',
-  },
-  {
-    title: 'Partners',
-    route: '/partners',
-    icon: 'handshake',
-    keywords: 'investor distribution dividend equity shares',
-  },
-  {
-    title: 'Staff',
-    route: '/staff',
-    icon: 'badge',
-    keywords: 'user employee team role access two factor',
-  },
-  {
-    title: 'Audit log',
-    route: '/audit',
-    icon: 'receipt_long',
-    keywords: 'log history trail activity changes',
-  },
-  {
-    title: 'Security',
-    route: '/security',
-    icon: 'security',
-    keywords: '2fa two factor setup verification authenticator',
-  },
-];
+/**
+ * Extra words that should find a screen, by route. The screens themselves come
+ * from the role's navigation (nav.ts), so search can only ever find a screen
+ * this person can open.
+ */
+const KEYWORDS: Record<string, string> = {
+  '/': 'home overview kpis at a glance',
+  '/approvals': 'approve pending request queue decide management',
+  '/orders': 'sales fulfilment dispatch shipping order status',
+  '/returns': 'refund sla quarantine inspection return window',
+  '/custom-orders': 'custom bespoke quote quotation design request progress',
+  '/wholesale': 'tier discount business account apply moq buy',
+  '/messages': 'customer chat support sms conversation',
+  '/catalogue': 'product sku collection price edit',
+  '/inventory': 'stock valuation movement ledger units',
+  '/materials': 'raw material fabric thread threshold purchase usage',
+  '/production': 'kanban batch sewing cutting stage plan schedule',
+  '/tech-pack': 'pattern silhouette spec measurements sizing garment',
+  '/floor-kiosk': 'factory station scanning qc cutting sewing',
+  '/accounting': 'money ledger naira income expense profit report',
+  '/logistics': 'delivery waybill shipment gigl haulage zones',
+  '/vendors': 'vendor supplier mill request order inventory restock',
+  '/marketing': 'campaign promo sms source code offer',
+  '/reviews': 'review moderation publish rating stars',
+  '/partners': 'investor distribution dividend equity shares',
+  '/staff': 'user employee team role access two factor',
+  '/audit': 'log history trail activity changes',
+  '/security': '2fa two factor setup verification authenticator',
+};
 
 @Component({
   selector: 'app-search',
-  standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, SeIconComponent],
+  styles: [
+    `
+      .gs {
+        position: relative;
+        width: 100%;
+        max-width: var(--se-size-drawer);
+      }
+      .gs__panel {
+        top: calc(100% + var(--se-space-2));
+        left: 0;
+        width: 100%;
+      }
+      /* The "/" shortcut hint inside the field. */
+      .gs__key {
+        position: absolute;
+        right: var(--se-space-3);
+        padding: 0 var(--se-space-2);
+        border: var(--se-border-width) solid var(--se-color-border);
+        border-radius: var(--se-radius-sm);
+        color: var(--se-color-text-muted);
+        font: var(--se-type-caption);
+        pointer-events: none;
+      }
+    `,
+  ],
   template: `
     <div class="gs">
-      <form class="gs-form" (submit)="openFocused($event)">
-        <span class="gs-ico" aria-hidden="true">search</span>
+      <form class="se-search" role="search" (submit)="openFocused($event)">
+        <se-icon name="search" />
         <input
           #box
+          class="se-input"
           type="search"
           role="combobox"
-          aria-label="Search pages and records"
-          aria-expanded="{{ open() }}"
+          aria-label="Search screens and records"
+          [attr.aria-expanded]="open()"
           aria-autocomplete="list"
-          [attr.aria-controls]="'gs-panel'"
+          aria-controls="gs-panel"
           autocomplete="off"
           spellcheck="false"
-          placeholder="Search pages and records"
+          placeholder="Search screens and records"
           [value]="query()"
           (input)="onInput(box.value)"
-          (keydown.arrowdown)="move(1)"
-          (keydown.arrowup)="move(-1)"
+          (keydown.arrowdown)="$event.preventDefault(); move(1)"
+          (keydown.arrowup)="$event.preventDefault(); move(-1)"
           (keydown.escape)="close()"
         />
-        <kbd class="gs-kbd">/</kbd>
+        @if (!query()) {
+          <kbd class="gs__key" aria-hidden="true">/</kbd>
+        }
       </form>
 
       @if (open() && query()) {
-        <div id="gs-panel" class="gs-panel" role="listbox" aria-label="Search results">
+        <div id="gs-panel" class="se-popover gs__panel" role="listbox" aria-label="Search results">
           @if (busy()) {
-            <div class="gs-empty">Searching…</div>
+            <p class="se-popover__note">Searching</p>
           } @else if (rows().length) {
             @for (row of rows(); track $index) {
               @if (row.kind === 'label') {
-                <span class="gs-group" role="presentation">{{ row.label }}</span>
+                <p class="se-popover__heading" role="presentation">{{ row.label }}</p>
               } @else {
                 <a
-                  class="gs-item"
-                  [class.focused]="focus() === row.idx"
+                  class="se-popover__item"
+                  [class.se-popover__item--active]="focus() === row.idx"
                   [routerLink]="row.item.route"
                   role="option"
                   [attr.aria-selected]="focus() === row.idx"
                   (mouseenter)="focus.set(row.idx)"
                   (click)="go(row.item)"
                 >
-                  <span class="gs-item-ico" aria-hidden="true">{{ row.item.icon }}</span>
-                  <span class="gs-item-main">
-                    <strong>{{ row.item.title }}</strong>
+                  <se-icon [name]="row.item.icon" />
+                  <span class="se-popover__main">
+                    <span class="se-popover__title">{{ row.item.title }}</span>
                     @if (row.item.sub) {
-                      <small>{{ row.item.sub }}</small>
+                      <span class="se-popover__text">{{ row.item.sub }}</span>
                     }
                   </span>
-                  <span class="gs-enter" aria-hidden="true">↵</span>
                 </a>
               }
             }
-            <div class="gs-foot">
-              <kbd>↵</kbd> open result
-              <span class="gs-dot" aria-hidden="true">·</span>
-              <kbd>↑</kbd><kbd>↓</kbd> navigate
-              <span class="gs-dot" aria-hidden="true">·</span>
-              <kbd>esc</kbd> close
-            </div>
+            <p class="se-popover__note">Enter opens the result. Up and down move. Escape closes.</p>
           } @else {
-            <div class="gs-empty">No matching pages or records.</div>
+            <p class="se-popover__note">No screens or records match.</p>
           }
         </div>
       }
@@ -239,6 +155,7 @@ const PAGES: PageRef[] = [
 })
 export class AppSearchComponent {
   private readonly api = inject(ApiService);
+  private readonly access = inject(AccessService);
   private readonly router = inject(Router);
   private readonly el = inject(ElementRef);
   private readonly box = viewChild<HTMLInputElement>('box');
@@ -266,7 +183,9 @@ export class AppSearchComponent {
   constructor() {
     effect(() => {
       this.focus();
-      this.el.nativeElement.querySelector('.gs-item.focused')?.scrollIntoView({ block: 'nearest' });
+      this.el.nativeElement
+        .querySelector('.se-popover__item--active')
+        ?.scrollIntoView({ block: 'nearest' });
     });
   }
 
@@ -303,23 +222,30 @@ export class AppSearchComponent {
   private async run(q: string): Promise<void> {
     this.busy.set(true);
     const ql = q.toLowerCase();
-    const nav: GsItem[] = PAGES.filter(
-      (p) => p.title.toLowerCase().includes(ql) || p.keywords.includes(ql),
-    ).map((p) => ({ title: p.title, route: p.route, icon: p.icon }));
+    // Screens: only the ones in this role's navigation.
+    const nav: GsItem[] = navFor(this.access.access())
+      .flatMap((group) => group.items)
+      .filter(
+        (page) => page.label.toLowerCase().includes(ql) || (KEYWORDS[page.link] ?? '').includes(ql),
+      )
+      .map((page) => ({ title: page.label, route: page.link, icon: page.icon }));
 
     const groups: GsGroup[] = [];
-    if (nav.length) groups.push({ label: 'Pages', items: nav });
+    if (nav.length) groups.push({ label: 'Screens', items: nav });
 
     if (ql.length >= 2) {
+      // Records: each kind is searched only if the role can open it, so the
+      // API is never asked for something it would refuse.
+      const can = (...modules: string[]): boolean => this.access.canAny(modules);
       const lookups = [
-        this.orders(ql),
-        this.products(ql),
-        this.materials(ql),
-        this.wholesale(ql),
-        this.custom(ql),
-        this.staff(ql),
-        this.returns(ql),
-      ];
+        can('retail_orders', 'wholesale_orders') ? this.orders(ql) : null,
+        can('catalogue') ? this.products(ql) : null,
+        can('raw_materials') ? this.materials(ql) : null,
+        can('wholesale_orders') ? this.wholesale(ql) : null,
+        can('custom_orders') ? this.custom(ql) : null,
+        can('staff_access') ? this.staff(ql) : null,
+        can('returns') ? this.returns(ql) : null,
+      ].filter((lookup): lookup is Promise<GsGroup | null> => lookup !== null);
       const settled = await Promise.allSettled(lookups);
       for (const s of settled) {
         if (s.status === 'fulfilled' && s.value && s.value.items.length) groups.push(s.value);
@@ -342,11 +268,11 @@ export class AppSearchComponent {
       )
       .slice(0, 6)
       .map((o) => ({
-        title: `#${o.id.slice(0, 8).toUpperCase()} · ${o.status}`,
-        sub: o.customer ? o.customer.name : `${o.channel} order`,
-        route: '/orders',
-        icon: 'shopping_bag',
-        deep: true,
+        title: `Order #${o.id.slice(0, 8).toUpperCase()}`,
+        sub: `${o.customer ? o.customer.name : 'Walk-in customer'}, ${o.status.replace(/_/g, ' ')}`,
+        // Straight to the order's own page.
+        route: `/orders/${o.id}`,
+        icon: 'cart' as const,
       }));
     return items.length ? { label: 'Orders', items } : null;
   }
@@ -371,7 +297,7 @@ export class AppSearchComponent {
         title: name,
         sub: `${category}${skus[0] ? ` · ${skus[0]}` : ''}`,
         route: '/catalogue',
-        icon: 'grid_view',
+        icon: 'tag' as const,
         deep: true,
       }));
     return items.length ? { label: 'Products', items } : null;
@@ -394,7 +320,7 @@ export class AppSearchComponent {
         title: String(m['name'] ?? 'Material'),
         sub: String(m['unit'] ?? ''),
         route: '/materials',
-        icon: 'layers',
+        icon: 'layers' as const,
         deep: true,
       }));
     return items.length ? { label: 'Materials', items } : null;
@@ -426,7 +352,7 @@ export class AppSearchComponent {
         title: a.name,
         sub: `${a.email} · ${a.status}`,
         route: '/wholesale',
-        icon: 'warehouse',
+        icon: 'users' as const,
         deep: true,
       }));
     return items.length ? { label: 'Wholesale accounts', items } : null;
@@ -453,7 +379,7 @@ export class AppSearchComponent {
         title: `#${c.id.slice(0, 8).toUpperCase()}`,
         sub: `${c.customer}${c.product ? ` · ${c.product}` : ''} · ${c.status}`,
         route: '/custom-orders',
-        icon: 'checkroom',
+        icon: 'edit' as const,
         deep: true,
       }));
     return items.length ? { label: 'Custom orders', items } : null;
@@ -478,7 +404,7 @@ export class AppSearchComponent {
         title: u.name,
         sub: `${u.role}${u.email ? ` · ${u.email}` : ''}`,
         route: '/staff',
-        icon: 'badge',
+        icon: 'user' as const,
         deep: true,
       }));
     return items.length ? { label: 'Staff', items } : null;
@@ -499,7 +425,7 @@ export class AppSearchComponent {
         title: `Return ${r.id.slice(0, 8).toUpperCase()}`,
         sub: `${r.variant.sku} · ${r.status}`,
         route: '/returns',
-        icon: 'assignment_return',
+        icon: 'undo' as const,
         deep: true,
       }));
     return items.length ? { label: 'Returns', items } : null;
