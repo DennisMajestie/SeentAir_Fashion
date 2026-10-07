@@ -1,7 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ApprovalActionType, ApprovalStatus } from '../../common/enums';
+import { ApprovalActionType, ApprovalStatus, RoleName } from '../../common/enums';
 import { UsersService } from '../users/users.service';
 import { ApprovalRequest } from './approval-request.entity';
 import { ApprovalsService } from './approvals.service';
@@ -70,6 +70,29 @@ describe('ApprovalsService', () => {
     });
   });
 
+  describe('create', () => {
+    it('auto-approves the Business Owner’s own request, recording them as approver', async () => {
+      const saved = await service.create(
+        { id: 'owner-1', email: 'owner@seentair.test', role: RoleName.BUSINESS_OWNER_ADMIN },
+        ApprovalActionType.PRICE_CHANGE,
+        { to: 8000 },
+      );
+      expect(saved.status).toBe(ApprovalStatus.APPROVED);
+      expect(saved.approvedBy).toEqual({ id: 'owner-1' });
+      expect(saved.decidedAt).toBeInstanceOf(Date);
+    });
+
+    it('leaves a staff request pending for someone else to decide', async () => {
+      const saved = await service.create(
+        { id: 'staff-1', email: 'm@seentair.test', role: RoleName.MANAGEMENT },
+        ApprovalActionType.PRICE_CHANGE,
+      );
+      expect(saved.status).toBe(ApprovalStatus.PENDING);
+      expect(saved.approvedBy).toBeNull();
+      expect(saved.decidedAt).toBeNull();
+    });
+  });
+
   describe('decide', () => {
     it('blocks self-approval', async () => {
       repo.findOne.mockResolvedValue({
@@ -80,6 +103,21 @@ describe('ApprovalsService', () => {
       await expect(
         service.decide('r1', 'approved', { id: 'user-1', email: 'x', role: 'management' as never }),
       ).rejects.toThrow('Requesters cannot decide their own approval requests');
+    });
+
+    it('lets the Business Owner clear their own request — nobody sits above them', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'r1',
+        status: ApprovalStatus.PENDING,
+        requestedBy: { id: 'owner-1' },
+      });
+      const saved = await service.decide('r1', 'approved', {
+        id: 'owner-1',
+        email: 'owner@seentair.test',
+        role: RoleName.BUSINESS_OWNER_ADMIN,
+      });
+      expect(saved.status).toBe(ApprovalStatus.APPROVED);
+      expect(usersService.findById).toHaveBeenCalledWith('owner-1');
     });
 
     it('blocks re-deciding a settled request', async () => {

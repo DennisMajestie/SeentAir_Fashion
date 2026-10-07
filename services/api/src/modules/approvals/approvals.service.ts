@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ApprovalActionType, ApprovalStatus } from '../../common/enums';
+import { ApprovalActionType, ApprovalStatus, RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { UsersService } from '../users/users.service';
 import { ApprovalRequest } from './approval-request.entity';
@@ -20,11 +20,19 @@ export class ApprovalsService {
     payload?: Record<string, unknown>,
   ): Promise<ApprovalRequest> {
     const requestedBy = await this.usersService.findById(actor.id);
+    // The Business Owner is the top approval authority: their own request is
+    // approved the moment it is raised. There is no one above them to decide,
+    // so parking it would only make them wait on themselves (and, before this,
+    // get refused for trying to decide it). The record still carries who
+    // approved it and when, so the audit trail is intact.
+    const isOwner = actor.role === RoleName.BUSINESS_OWNER_ADMIN;
     const request = this.approvalRepo.create({
       actionType,
       payload: payload ?? null,
       requestedBy,
-      status: ApprovalStatus.PENDING,
+      status: isOwner ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING,
+      approvedBy: isOwner ? requestedBy : null,
+      decidedAt: isOwner ? new Date() : null,
     });
     return this.approvalRepo.save(request);
   }
@@ -68,8 +76,12 @@ export class ApprovalsService {
     if (request.status !== ApprovalStatus.PENDING) {
       throw new ForbiddenException(`Approval request ${id} is already ${request.status}`);
     }
-    // Staff cannot self-approve their own requests.
-    if (request.requestedBy.id === decider.id) {
+    // Separation of duties: a requester cannot clear their own request. The
+    // exception is the Business Owner — the top approval authority, with no one
+    // above them to decide. Without it a single-owner business could never
+    // approve its own price changes, purchases or fund movements.
+    const isOwner = decider.role === RoleName.BUSINESS_OWNER_ADMIN;
+    if (request.requestedBy.id === decider.id && !isOwner) {
       throw new ForbiddenException('Requesters cannot decide their own approval requests');
     }
     request.status = decision === 'approved' ? ApprovalStatus.APPROVED : ApprovalStatus.REJECTED;

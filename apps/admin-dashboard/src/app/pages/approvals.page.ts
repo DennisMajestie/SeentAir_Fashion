@@ -36,7 +36,8 @@ import {
  * decides. The queue is short and each request is decided from what is shown,
  * so pending requests are cards; past decisions are a table underneath.
  * The gate itself is server-side (architectural principle #3): the API
- * rejects a decision from the requester or from a role without approve access.
+ * rejects a decision from the requester (the Business Owner excepted, since no
+ * one sits above them to decide) or from a role without approve access.
  */
 @Component({
   selector: 'app-approvals',
