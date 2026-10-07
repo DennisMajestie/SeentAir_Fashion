@@ -199,36 +199,36 @@ a {
   color: inherit;
 }
 
-main {
+/* Element rules below are scoped to the sign-in screen; inside the shell the
+   design system owns typography. */
+.auth-main {
   max-width: 1120px;
   margin: 0 auto;
 }
 
-h1,
-h2,
-h3 {
+.auth-screen :is(h1, h2, h3) {
   font-family: 'Inter', sans-serif;
   text-transform: uppercase;
   margin: 0;
 }
-h1 {
+.auth-screen h1 {
   font-size: var(--type-heading-lg);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
-h2 {
+.auth-screen h2 {
   font-size: var(--type-heading-sm);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-h3 {
+.auth-screen h3 {
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
 
-code {
+.auth-screen code {
   font-family: 'Inter', sans-serif;
   font-size: var(--type-data);
   color: var(--ink);
@@ -682,7 +682,7 @@ strong {
   margin-top: var(--space-md);
   flex-wrap: wrap;
 }
-label {
+.auth-screen label {
   display: block;
   margin: var(--space-md) 0;
   font-size: var(--type-label-md);
@@ -1894,7 +1894,7 @@ html {
 :root {
   --moq-tray-space: calc(96px + env(safe-area-inset-bottom, 0px));
 }
-body {
+body:has(.moq-tray) {
   padding-bottom: var(--moq-tray-space);
 }
 

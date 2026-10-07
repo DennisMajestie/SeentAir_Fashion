@@ -1103,9 +1103,6 @@ $ops-gold-ink: var(--acid-ink);
    Everything within se-shell is styled by the design system
    (src/ui/styles). Only app-specific exceptions live here.
    ============================================================ */
-app-root > se-shell {
-  height: 100dvh;
-}
 /* A footer total under the order's items table, flush with its Total column. */
 .order-total {
   width: 100%;

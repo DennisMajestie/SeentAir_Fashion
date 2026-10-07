@@ -249,6 +249,11 @@
   min-width: 0;
   padding: var(--se-space-6);
 }
+/* At the root of an app the shell is the viewport; the reference page hosts
+   it in a fixed-height frame and keeps the 100%. */
+app-root > .se-shell {
+  height: 100dvh;
+}
 .se-shell__main:focus {
   outline: 0; /* focused by the skip link only; the page itself is not a control */
 }
