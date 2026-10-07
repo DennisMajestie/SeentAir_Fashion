@@ -131,7 +131,7 @@ native element marked `seInput`.
 | `selectable` | `boolean` | `false` | Checkbox column, select-all for the page |
 | `selection` | `(string \| number)[]` | `[]` | Two-way: `[(selection)]` |
 | `sort` | `SeSort \| null` | `null` | Two-way: `{ key, direction }` |
-| `pageSize` | `number` | `0` | Rows per page; 0 turns paging off |
+| `pageSize` | `number` | `0` | Rows per page; 0 turns paging off. The pager appears only when there is more than one page |
 | `page` | `number` | `1` | Two-way |
 | `serverSide` | `boolean` | `false` | The caller sorts and pages; pass `total` |
 | `total` | `number \| null` | `null` | Total rows, with `serverSide` |
@@ -164,7 +164,7 @@ Slots: `[seTableToolbar]` (filters, search), `[seTableBulk]` (actions shown whil
 <se-badge tone="info">Draft</se-badge>
 ```
 
-`se-status` inputs: `kind` (`'order' | 'payment' | 'approval' | 'stock' | 'production' | 'return' | 'account'`) and `value` (the string the API sent). The wording and colour come from `SE_STATUS` in `src/badge/status.ts`, the single mapping for all three apps. An unknown value renders as neutral text so a new state is visible until it is mapped.
+`se-status` inputs: `kind` (`'order' | 'payment' | 'approval' | 'stock' | 'production' | 'return' | 'account' | 'delivery' | 'custom_order' | 'review' | 'qc'`) and `value` (the string the API sent). The wording and colour come from `SE_STATUS` in `src/badge/status.ts`, the single mapping for all three apps. An unknown value renders as neutral text so a new state is visible until it is mapped.
 
 `se-badge` input: `tone` (`'neutral' | 'info' | 'success' | 'warning' | 'danger'`).
 
@@ -419,7 +419,7 @@ Input: `items: { label, link? }[]`. The last item is always plain text with `ari
 <div seTabPanel="payments" [for]="t">...</div>
 ```
 
-`se-tabs` inputs: `tabs: { id, label, count? }[]` (required), `label` (required accessible name), two-way `active` (defaults to the first tab). `[seTabPanel]` takes the tab id and `[for]` the tabs instance; it sets the panel role, ids and visibility.
+`se-tabs` inputs: `tabs: { id, label, count? }[]` (required; `count` is what is waiting on that tab and is hidden at zero), `label` (required accessible name), two-way `active` (defaults to the first tab). `[seTabPanel]` takes the tab id and `[for]` the tabs instance; it sets the panel role, ids and visibility.
 
 **Behaviour:** ARIA tabs with a roving tab stop: ArrowLeft/ArrowRight move and activate, Home/End jump.
 

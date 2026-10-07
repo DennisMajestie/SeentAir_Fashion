@@ -208,6 +208,13 @@ describe('se-table', () => {
       expect(el.querySelector('.se-table__page')!.textContent).toBe('Page 1 of 3');
     });
 
+    it('shows no pager when everything fits on one page', () => {
+      host.pageSize.set(10);
+      render();
+      expect(bodyRows().length).toBe(5);
+      expect(el.querySelector('.se-table__footer')).toBeNull();
+    });
+
     it('moves forward and back, and stops at the ends', () => {
       const [prev, next] = [
         el.querySelector<HTMLButtonElement>('[aria-label="Previous page"]')!,

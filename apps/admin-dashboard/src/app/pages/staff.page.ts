@@ -1,8 +1,27 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
-import { ApiService, AuditEntry } from '../api.service';
+import {
+  SeBannerComponent,
+  SeButtonDirective,
+  SeCardComponent,
+  SeCellDirective,
+  SeColumn,
+  SeConfirmService,
+  SeDrawerComponent,
+  SeFieldComponent,
+  SeFilter,
+  SeFilterBarComponent,
+  SeInputDirective,
+  SePageComponent,
+  SeRowAction,
+  SeSkeletonComponent,
+  SeStatusComponent,
+  SeTableComponent,
+  SeToastService,
+} from '@seentair/ui';
+import { AccessService } from '../access.service';
+import { ApiService } from '../api.service';
+import { urlFilters } from '../url-filters';
 
 interface UserRow {
   id: string;
@@ -14,6 +33,12 @@ interface UserRow {
   role: { name: string };
 }
 
+interface RoleRow {
+  id: string;
+  name: string;
+  permissions: Array<{ module: string; accessLevel: string }>;
+}
+
 const ROLES = [
   'business_owner_admin',
   'management',
@@ -21,483 +46,453 @@ const ROLES = [
   'inventory',
   'production',
   'finance_accounting',
+  'logistics',
+  'marketing',
   'partner_investor',
-  'wholesaler',
-  'customer',
+];
+const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
+/** Modules in the order staff think of them; anything new goes at the end. */
+const MODULE_ORDER = [
+  'manufacturing',
+  'raw_materials',
+  'catalogue',
+  'inventory',
+  'retail_orders',
+  'wholesale_orders',
+  'custom_orders',
+  'payments',
+  'returns',
+  'accounting',
+  'logistics',
+  'marketing',
+  'analytics',
+  'partners',
+  'staff_access',
+  'approvals_audit',
+  'communication',
 ];
 
-const ACCESS_LEVELS = ['none', 'own', 'view', 'approve', 'full'];
+export function roleLabel(role: string): string {
+  const words = role.replaceAll('_', ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
-/** A16, Staff directory & access control matrix. Approved Stitch layout:
-    headcount tiles, searchable directory with role/2FA chips, and a
-    role-inspector rail with the role-change action. Access stays enforced
-    server-side (RBAC principle #6). */
+/**
+ * Staff accounts and what each role may do. Accounts are a table; adding one
+ * and changing a role are drawers; the permission matrix (role x module x
+ * level) is a grid of selects in a card. Every write needs full access on
+ * staff_access, which the API checks as well (principle #6).
+ */
 @Component({
-  selector: 'app-staff-admin',
-  imports: [CommonModule, FormsModule],
+  selector: 'app-staff',
+  imports: [
+    FormsModule,
+    SeBannerComponent,
+    SeButtonDirective,
+    SeCardComponent,
+    SeCellDirective,
+    SeDrawerComponent,
+    SeFieldComponent,
+    SeFilterBarComponent,
+    SeInputDirective,
+    SePageComponent,
+    SeSkeletonComponent,
+    SeStatusComponent,
+    SeTableComponent,
+  ],
   template: `
-    <div class="ops-head">
-      <div class="ops-id">
-        <p class="eyebrow">Admin · Access control</p>
-        <h1>Staff directory & access roles</h1>
-        <p class="ops-sub">
-          Manage staff and operational clearance levels, least privilege by default.
-        </p>
-      </div>
-      <div class="ops-actions">
-        <button class="cta small" type="button" (click)="showInvite.set(!showInvite())">
-          {{ showInvite() ? 'Close' : '★ Invite new staff member' }}
+    <se-page title="Staff">
+      @if (canManage) {
+        <button seButton sePageActions variant="primary" type="button" (click)="openAdd()">
+          Add staff member
         </button>
-      </div>
-    </div>
+      }
 
-    <div class="kpi-bar">
-      <div class="kpi">
-        <span class="kpi-label">Total headcount</span
-        ><span class="kpi-value">{{ users().length }}</span
-        ><span class="kpi-sub">accounts enrolled</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Active</span><span class="kpi-value">{{ activeCount() }}</span
-        ><span class="kpi-sub">{{ users().length - activeCount() }} inactive/suspended</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">2FA enforced</span
-        ><span class="kpi-value"
-          >{{ totpCount() }}<small>/{{ users().length }}</small></span
-        ><span class="kpi-sub">with 2FA on</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Roles in use</span><span class="kpi-value">{{ rolesInUse() }}</span
-        ><span class="kpi-sub">of {{ roles.length }} set up</span>
-      </div>
-    </div>
+      <se-table
+        caption="Staff accounts"
+        [columns]="columns"
+        [rows]="rows()"
+        [loading]="loading()"
+        [error]="error()"
+        (retry)="load()"
+        [actions]="actions"
+        [emptyHeading]="filtering() ? 'No staff match these filters' : 'No staff accounts yet'"
+        [emptyText]="
+          filtering()
+            ? 'Remove a filter, or clear them all to see every account.'
+            : 'Add the first staff member to give someone access.'
+        "
+      >
+        <se-filter-bar
+          seTableToolbar
+          searchLabel="Search staff"
+          searchPlaceholder="Name, email or role"
+          [(query)]="query"
+          [filters]="filters"
+          [(value)]="filterValue"
+          [summary]="summary()"
+        />
+        <ng-template seCell="status" let-row>
+          <se-status kind="account" [value]="row.status" />
+        </ng-template>
+        <ng-template seCell="totp" let-row>{{ row.totpEnabled ? 'On' : 'Off' }}</ng-template>
+      </se-table>
 
-    <p class="rule-strip">
-      START SAFE // new staff start view-only and you give them more access as needed. Turn on 2FA
-      for every account (Security page).
-    </p>
-
-    @if (showInvite()) {
-      <section class="panel">
-        <div class="panel-head"><h2>Invite new staff member</h2></div>
-        <form class="form-grid" (ngSubmit)="create()">
-          <label>Name <input [(ngModel)]="nu.name" name="uname" required /></label>
-          <label>Email <input type="email" [(ngModel)]="nu.email" name="uemail" required /></label>
-          <label>Phone <input [(ngModel)]="nu.phone" name="uphone" /></label>
-          <label
-            >Temporary password
-            <input [(ngModel)]="nu.password" name="upass" required minlength="8"
-          /></label>
-          <label
-            >Role
-            <select [(ngModel)]="nu.role" name="urole" required>
-              @for (r of roles; track r) {
-                <option [value]="r">{{ r.replaceAll('_', ' ') }}</option>
-              }
-            </select>
-          </label>
-          <div class="wide"><button class="cta small" type="submit">Create account</button></div>
-        </form>
-      </section>
-    }
-
-    <div class="ops-toolbar">
-      <span class="search"
-        ><input
-          placeholder="Search by staff name, email or role…"
-          [(ngModel)]="query"
-          name="q"
-          aria-label="Search staff"
-      /></span>
-      <div class="seg" role="group" aria-label="Role filter">
-        <button type="button" [class.on]="roleFilter() === ''" (click)="roleFilter.set('')">
-          All staff <span class="seg-n">{{ users().length }}</span>
-        </button>
-        @for (g of roleGroups(); track g.role) {
-          <button
-            type="button"
-            [class.on]="roleFilter() === g.role"
-            (click)="roleFilter.set(g.role)"
+      <se-card title="Permissions by role">
+        @if (matrixError()) {
+          <se-banner
+            tone="danger"
+            title="Permissions could not be loaded"
+            actionLabel="Try again"
+            (action)="loadMatrix()"
           >
-            {{ g.role.replaceAll('_', ' ') }} <span class="seg-n">{{ g.count }}</span>
-          </button>
-        }
-      </div>
-    </div>
-
-    <div class="side-split">
-      <div class="table-scroll">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Staff name</th>
-              <th>Contact</th>
-              <th>Role / designation</th>
-              <th>Status</th>
-              <th>2FA</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (u of visible(); track u.id) {
-              <tr class="clickable" [class.sel]="selectedId() === u.id" (click)="inspect(u.id)">
-                <td>
-                  <span class="chip acid" style="margin-right:0.4rem;">{{ initials(u.name) }}</span>
-                  <strong>{{ u.name }}</strong
-                  ><br />
-                  <span class="muted small mono">{{ u.id.slice(0, 8) }}</span>
-                </td>
-                <td class="small">
-                  {{ u.email }}<br /><span class="muted mono">{{ u.phone || '-' }}</span>
-                </td>
-                <td>
-                  <span class="chip" [class.acid]="u.role.name !== 'customer'">{{
-                    u.role.name.replaceAll('_', ' ')
-                  }}</span>
-                </td>
-                <td>
-                  <span
-                    class="chip"
-                    [class.ok]="u.status === 'active'"
-                    [class.bad]="u.status !== 'active'"
-                    >{{ u.status }}</span
-                  >
-                </td>
-                <td>
-                  <span class="chip" [class.ok]="u.totpEnabled" [class.warn]="!u.totpEnabled">{{
-                    u.totpEnabled ? 'ON' : 'OFF'
-                  }}</span>
-                </td>
-              </tr>
-            }
-            @if (visible().length === 0) {
-              <tr>
-                <td colspan="5" class="muted small">No staff match.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-
-      <aside class="inspector">
-        @if (selectedUser(); as u) {
-          <div class="insp-head">
-            <h2>{{ u.name }}</h2>
-            <span class="chip acid">{{ u.role.name.replaceAll('_', ' ') }}</span>
-          </div>
-          @if (detail(); as d) {
-            <dl class="kv">
-              <dt>Account id</dt>
-              <dd>
-                <code class="wrap-anywhere">{{ d['id'] }}</code>
-              </dd>
-              <dt>Email</dt>
-              <dd>{{ u.email }}</dd>
-              <dt>Status</dt>
-              <dd>{{ u.status }}</dd>
-              <dt>Created</dt>
-              <dd>{{ dt(d['createdAt']) | date: 'medium' }}</dd>
-              <dt>Last login</dt>
-              <dd>{{ d['lastLoginAt'] ? (dt(d['lastLoginAt']) | date: 'medium') : 'never' }}</dd>
-              <dt>2FA</dt>
-              <dd>{{ u.totpEnabled ? 'on' : 'off' }}</dd>
-            </dl>
-          } @else {
-            <p class="muted small">Loading account record…</p>
-          }
-
-          <div class="gap-sep"></div>
-          <div class="panel-head">
-            <h2>Permission matrix</h2>
-            <span class="ph-sub">dot-matrix view · edit by role</span>
-          </div>
-          <div class="actions" style="margin-bottom:0.6rem;">
-            <select
-              [(ngModel)]="mRole"
-              name="mrole"
-              class="table-filter"
-              (ngModelChange)="setMatrixRole()"
-            >
-              @for (r of matrix(); track r.id) {
-                <option [value]="r.name">{{ r.name.replaceAll('_', ' ') }}</option>
-              }
-            </select>
-            <button class="cta small" (click)="saveMatrix()">Save role permissions</button>
-          </div>
-          @if (draftModules().length > 0) {
-            <table class="table">
+            {{ matrixError() }}
+          </se-banner>
+        } @else if (matrixLoading()) {
+          <div aria-busy="true"><se-skeleton shape="table" [rows]="6" [columns]="3" /></div>
+        } @else {
+          <form class="se-form" (ngSubmit)="saveMatrix()">
+            <se-field label="Role" hint="Choose a role to see and change what it may do">
+              <select
+                seInput
+                name="matrixRole"
+                [ngModel]="matrixRole()"
+                (ngModelChange)="pickRole($event)"
+              >
+                @for (r of matrix(); track r.id) {
+                  <option [value]="r.name">{{ roleLabel(r.name) }}</option>
+                }
+              </select>
+            </se-field>
+            <table class="matrix">
+              <caption>
+                Access level per module for
+                {{
+                  roleLabel(matrixRole())
+                }}
+              </caption>
               <thead>
                 <tr>
-                  <th>Module</th>
-                  <th>Level</th>
+                  <th scope="col">Module</th>
+                  <th scope="col">Access level</th>
                 </tr>
               </thead>
               <tbody>
-                @for (mod of draftModules(); track mod) {
+                @for (m of modules(); track m) {
                   <tr>
-                    <td class="small">{{ mod.replaceAll('_', ' ') }}</td>
+                    <th scope="row" [id]="'module-' + m">{{ roleLabel(m) }}</th>
                     <td>
-                      <span class="seg" role="group" aria-label="{{ mod }}">
-                        @for (lv of ACCESS_LEVELS; track lv) {
-                          <button
-                            type="button"
-                            [class.on]="edit[mod] === lv"
-                            [disabled]="mod === 'staff_access' && lv === 'none'"
-                            (click)="setLevel(mod, lv)"
+                      <select
+                        seInput
+                        [name]="'level-' + m"
+                        [attr.aria-labelledby]="'module-' + m"
+                        [disabled]="!canManage"
+                        [ngModel]="edit()[m]"
+                        (ngModelChange)="setLevel(m, $event)"
+                      >
+                        @for (level of levels; track level) {
+                          <option
+                            [value]="level"
+                            [disabled]="m === 'staff_access' && level === 'none'"
                           >
-                            {{ lv.slice(0, 1).toUpperCase() }}
-                          </button>
+                            {{ roleLabel(level) }}
+                          </option>
                         }
-                      </span>
+                      </select>
                     </td>
                   </tr>
                 }
               </tbody>
             </table>
-            <p class="muted small" style="margin-top:0.5rem;">
-              STAFF_ACCESS cannot drop below view, the owner is never locked out. A dot is
-              VIEW-to-FULL (N → none, O → own, V → view, A → approve, F → full).
-            </p>
-          } @else {
-            <p class="muted small">Loading permission matrix…</p>
-          }
-
-          <div class="panel-head" style="margin-top:0.9rem;"><h2>Role & clearance</h2></div>
-          <p class="muted small">
-            Each staff member can only see and do what their role allows, this is enforced
-            automatically.
-          </p>
-          <div class="actions">
-            <select [(ngModel)]="roleChoice[u.id]" [name]="'r' + u.id" class="table-filter">
-              @for (r of roles; track r) {
-                <option [value]="r">{{ r.replaceAll('_', ' ') }}</option>
-              }
-            </select>
-            <button class="cta small" (click)="changeRole(u)">Save role permissions</button>
-          </div>
-        } @else {
-          <p class="muted small">Select a staff row to open the access inspector.</p>
-        }
-
-        <div class="gap-sep"></div>
-        <div class="panel-head">
-          <h2>Latest permission logs</h2>
-          <span class="ph-sub">from the audit log</span>
-        </div>
-        @if (permLogs().length > 0) {
-          <ul class="activity">
-            @for (e of permLogs(); track e.id) {
-              <li>
-                <time>{{ e.timestamp | date: 'MMM d, HH:mm' }}</time
-                ><span class="act-action">{{ e.action }}</span>
-              </li>
+            @if (canManage) {
+              <div class="se-form__actions">
+                <button seButton variant="primary" type="submit" [loading]="savingMatrix()">
+                  Save permissions
+                </button>
+              </div>
             }
-          </ul>
-        } @else {
-          <p class="muted small">No user/role changes in the recent audit window.</p>
+          </form>
         }
-      </aside>
-    </div>
+      </se-card>
 
-    @if (message()) {
-      <p class="success">{{ message() }}</p>
-    }
-    @if (error()) {
-      <p class="error">{{ error() }}</p>
-    }
+      @if (canManage) {
+        <se-drawer title="Add staff member" [(open)]="adding">
+          <form class="se-form" id="add-staff" (ngSubmit)="create()">
+            <se-field label="Full name" [error]="addErrors()['name']">
+              <input seInput name="name" [(ngModel)]="nu.name" autocomplete="off" />
+            </se-field>
+            <se-field label="Email" [error]="addErrors()['email']">
+              <input seInput name="email" type="email" [(ngModel)]="nu.email" autocomplete="off" />
+            </se-field>
+            <se-field label="Phone" optional>
+              <input seInput name="phone" type="tel" [(ngModel)]="nu.phone" autocomplete="off" />
+            </se-field>
+            <se-field
+              label="Temporary password"
+              hint="Share it securely; they change it with Forgot password"
+              [error]="addErrors()['password']"
+            >
+              <input
+                seInput
+                name="password"
+                type="password"
+                [(ngModel)]="nu.password"
+                autocomplete="new-password"
+              />
+            </se-field>
+            <se-field label="Role">
+              <select seInput name="role" [(ngModel)]="nu.role">
+                @for (r of roles; track r) {
+                  <option [value]="r">{{ roleLabel(r) }}</option>
+                }
+              </select>
+            </se-field>
+          </form>
+          <ng-container seDrawerFooter>
+            <button seButton type="button" (click)="adding.set(false)">Cancel</button>
+            <button seButton variant="primary" type="submit" form="add-staff" [loading]="saving()">
+              Add staff member
+            </button>
+          </ng-container>
+        </se-drawer>
+
+        <se-drawer title="Change role" [(open)]="changing">
+          @if (target(); as u) {
+            <form class="se-form" id="change-role" (ngSubmit)="changeRole()">
+              <p>{{ u.name }} is currently {{ roleLabel(u.role.name) }}.</p>
+              <se-field label="New role">
+                <select seInput name="newRole" [(ngModel)]="newRole">
+                  @for (r of roles; track r) {
+                    <option [value]="r">{{ roleLabel(r) }}</option>
+                  }
+                </select>
+              </se-field>
+            </form>
+          }
+          <ng-container seDrawerFooter>
+            <button seButton type="button" (click)="changing.set(false)">Cancel</button>
+            <button
+              seButton
+              variant="primary"
+              type="submit"
+              form="change-role"
+              [loading]="saving()"
+            >
+              Change role
+            </button>
+          </ng-container>
+        </se-drawer>
+      }
+    </se-page>
   `,
+  styles: [
+    `
+      .matrix {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .matrix caption {
+        text-align: left;
+        padding-block: var(--se-space-2);
+        color: var(--se-color-text-muted);
+      }
+      .matrix th,
+      .matrix td {
+        text-align: left;
+        padding: var(--se-space-1) var(--se-space-3);
+        border-bottom: 1px solid var(--se-color-border);
+      }
+      .matrix th[scope='row'] {
+        font-weight: 400;
+      }
+      .matrix td .se-input {
+        max-width: 14rem;
+      }
+    `,
+  ],
 })
 export class StaffAdminPage implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly route = inject(ActivatedRoute);
+  private readonly access = inject(AccessService);
+  private readonly confirm = inject(SeConfirmService);
+  private readonly toast = inject(SeToastService);
+
+  /** Adding, changing a role and editing permissions all need full access. */
+  readonly canManage = this.access.can('staff_access', 'full');
+
   readonly users = signal<UserRow[]>([]);
+  readonly loading = signal(true);
+  readonly error = signal('');
+  readonly saving = signal(false);
+
   readonly roles = ROLES;
-  readonly message = signal<string | null>(null);
-  readonly error = signal<string | null>(null);
-  readonly showInvite = signal(false);
-  readonly roleFilter = signal('');
-  readonly selectedId = signal<string | null>(null);
-  readonly detail = signal<Record<string, unknown> | null>(null);
-  readonly permLogs = signal<AuditEntry[]>([]);
-  readonly matrix = signal<
-    Array<{ id: string; name: string; permissions: Array<{ module: string; accessLevel: string }> }>
-  >([]);
-  readonly ACCESS_LEVELS = ACCESS_LEVELS;
-  readonly draftModules = computed(() => {
-    const seen = new Set<string>();
-    for (const r of this.matrix()) for (const p of r.permissions) seen.add(p.module);
-    return this.saveOrder(seen);
-  });
-  mRole = '';
-  edit: Record<string, string> = {};
-  roleChoice: Record<string, string> = {};
-  query = '';
-  nu = { name: '', email: '', phone: '', password: '', role: 'sales' };
+  readonly levels = ACCESS_LEVELS;
+  readonly roleLabel = roleLabel;
 
-  ngOnInit(): void {
-    this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
-    this.load();
-    this.loadMatrix();
-    this.api.auditLog({ action: 'user', limit: 6 }).subscribe({
-      next: (res) => this.permLogs.set(res.data),
-      error: () => this.permLogs.set([]),
-    });
-  }
-
-  readonly activeCount = computed(() => this.users().filter((u) => u.status === 'active').length);
-  readonly totpCount = computed(() => this.users().filter((u) => u.totpEnabled).length);
-  readonly rolesInUse = computed(() => new Set(this.users().map((u) => u.role.name)).size);
-  readonly roleGroups = computed(() => {
-    const counts = new Map<string, number>();
-    for (const u of this.users()) counts.set(u.role.name, (counts.get(u.role.name) ?? 0) + 1);
-    return [...counts.entries()].map(([role, count]) => ({ role, count }));
-  });
-
-  visible(): UserRow[] {
-    const q = this.query.trim().toLowerCase();
-    const rf = this.roleFilter();
+  // ---- filters ----
+  private readonly urlState = urlFilters(['role']);
+  readonly query = this.urlState.query;
+  readonly filterValue = this.urlState.value;
+  readonly filters: SeFilter[] = [
+    { key: 'role', label: 'Role', options: ROLES.map((r) => ({ value: r, label: roleLabel(r) })) },
+  ];
+  readonly filtering = computed(
+    () => !!this.query().trim() || Object.keys(this.filterValue()).length > 0,
+  );
+  readonly rows = computed(() => {
+    const q = this.query().trim().toLowerCase();
+    const role = this.filterValue()['role'];
     return this.users().filter((u) => {
-      if (rf && u.role.name !== rf) return false;
+      // Customers and wholesale buyers have accounts too; they are not staff.
+      if (!ROLES.includes(u.role.name)) return false;
+      if (role && u.role.name !== role) return false;
+      if (!q) return true;
       return (
-        !q ||
         u.name.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
         u.role.name.includes(q)
       );
     });
-  }
+  });
+  readonly summary = computed(() => {
+    const n = this.rows().length;
+    return `${n} ${n === 1 ? 'account' : 'accounts'}`;
+  });
 
-  selectedUser(): UserRow | null {
-    const id = this.selectedId();
-    return id ? (this.users().find((u) => u.id === id) ?? null) : null;
-  }
+  readonly columns: SeColumn<UserRow>[] = [
+    { key: 'name', header: 'Name', sortable: true, value: (u) => u.name },
+    { key: 'email', header: 'Email', value: (u) => u.email },
+    { key: 'role', header: 'Role', sortable: true, value: (u) => roleLabel(u.role.name) },
+    { key: 'status', header: 'Status', value: (u) => u.status },
+    { key: 'totp', header: 'Two-factor', value: (u) => u.totpEnabled },
+  ];
+  readonly actions: SeRowAction<UserRow>[] = [
+    { label: 'Change role', hidden: () => !this.canManage, run: (u) => this.openChange(u) },
+  ];
 
-  initials(name: string): string {
-    const parts = String(name ?? '')
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
-    return (
-      (
-        (parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')
-      ).toUpperCase() || 'SE'
-    );
-  }
-  dt(v: unknown): string | null {
-    return v ? String(v) : null;
-  }
+  // ---- add drawer ----
+  readonly adding = signal(false);
+  readonly addErrors = signal<Record<string, string | undefined>>({});
+  nu = { name: '', email: '', phone: '', password: '', role: 'sales' };
 
-  inspect(id: string): void {
-    if (this.selectedId() === id) {
-      this.selectedId.set(null);
-      this.detail.set(null);
-      return;
-    }
-    this.selectedId.set(id);
-    this.detail.set(null);
-    this.api.user(id).subscribe({
-      next: (u) => {
-        this.detail.set(u);
-        const roleName = (u['role'] as Record<string, unknown> | null)?.['name'];
-        this.loadMatrix(
-          roleName ? String(roleName) : String((u as unknown as UserRow).role.name ?? ''),
-        );
-      },
-      error: (e) => this.error.set(e?.error?.message ?? 'Could not load that account.'),
-    });
-  }
+  // ---- change-role drawer ----
+  readonly changing = signal(false);
+  readonly target = signal<UserRow | null>(null);
+  newRole = 'sales';
 
-  private load(): void {
-    this.api.users().subscribe((res) => {
-      const rows = res.data as unknown as UserRow[];
-      this.users.set(rows);
-      for (const u of rows) this.roleChoice[u.id] ??= u.role.name;
-    });
-  }
-
-  private loadMatrix(prefer?: string): void {
-    this.api.rolesMatrix().subscribe({
-      next: (rows) => {
-        this.matrix.set(rows);
-        if (!this.mRole && !prefer && rows.length > 0) this.mRole = rows[0].name;
-        this.setMatrixRole(prefer);
-      },
-      error: (e) => this.error.set(e?.error?.message ?? 'Could not load the permissions matrix.'),
-    });
-  }
-
-  private saveOrder(seen: Set<string>): string[] {
-    const preference = [
-      'manufacturing',
-      'raw_materials',
-      'catalogue',
-      'inventory',
-      'retail_orders',
-      'wholesale_orders',
-      'custom_orders',
-      'payments',
-      'returns',
-      'accounting',
-      'logistics',
-      'marketing',
-      'analytics',
-      'partners',
-      'staff_access',
-      'approvals_audit',
-      'communication',
-    ];
+  // ---- permission matrix ----
+  readonly matrix = signal<RoleRow[]>([]);
+  readonly matrixLoading = signal(true);
+  readonly matrixError = signal('');
+  readonly matrixRole = signal('');
+  readonly edit = signal<Record<string, string>>({});
+  readonly savingMatrix = signal(false);
+  readonly modules = computed(() => {
+    const seen = new Set<string>();
+    for (const r of this.matrix()) for (const p of r.permissions) seen.add(p.module);
     return [...seen].sort((a, b) => {
-      const ia = preference.indexOf(a);
-      const ib = preference.indexOf(b);
+      const ia = MODULE_ORDER.indexOf(a);
+      const ib = MODULE_ORDER.indexOf(b);
       return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
     });
+  });
+
+  ngOnInit(): void {
+    this.load();
+    this.loadMatrix();
   }
 
-  setMatrixRole(prefer?: string): void {
-    const name = prefer ?? this.mRole;
-    const role = this.matrix().find((r) => r.name === name) ?? null;
+  load(): void {
+    this.api.users().subscribe({
+      next: (res) => {
+        this.users.set(res.data as unknown as UserRow[]);
+        this.loading.set(false);
+        this.error.set('');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        if (this.users().length === 0) {
+          this.error.set(err?.error?.message ?? 'The server did not respond.');
+        }
+      },
+    });
+  }
+
+  loadMatrix(): void {
+    this.api.rolesMatrix().subscribe({
+      next: (rows) => {
+        this.matrix.set(rows as RoleRow[]);
+        this.matrixLoading.set(false);
+        this.matrixError.set('');
+        this.pickRole(this.matrixRole() || rows[0]?.name || '');
+      },
+      error: (err) => {
+        this.matrixLoading.set(false);
+        this.matrixError.set(err?.error?.message ?? 'The server did not respond.');
+      },
+    });
+  }
+
+  pickRole(name: string): void {
+    const role = this.matrix().find((r) => r.name === name);
     if (!role) return;
-    this.mRole = role.name;
+    this.matrixRole.set(role.name);
     const next: Record<string, string> = {};
     for (const p of role.permissions) next[p.module] = p.accessLevel;
+    // A role that could not see staff access could lock everyone out.
     if (!next['staff_access']) next['staff_access'] = 'view';
-    this.edit = next;
+    this.edit.set(next);
   }
 
   setLevel(module: string, level: string): void {
     if (module === 'staff_access' && level === 'none') return;
-    this.edit = { ...this.edit, [module]: level };
+    this.edit.update((e) => ({ ...e, [module]: level }));
   }
 
-  saveMatrix(): void {
-    const role = this.mRole;
-    if (!role) {
-      this.error.set('Pick a role first.');
-      return;
-    }
-    const permissions = Object.entries(this.edit).map(([module, accessLevel]) => ({
+  async saveMatrix(): Promise<void> {
+    const role = this.matrixRole();
+    if (!role) return;
+    const permissions = Object.entries(this.edit()).map(([module, accessLevel]) => ({
       module,
       accessLevel,
     }));
-    if (
-      !permissions.some(
-        (p) =>
-          p.module === 'staff_access' && ['view', 'approve', 'full', 'own'].includes(p.accessLevel),
-      )
-    ) {
-      this.error.set('STAFF_ACCESS must keep at least view access, raise it and try again.');
-      return;
-    }
+    const ok = await this.confirm.ask({
+      title: `Change what ${roleLabel(role).toLowerCase()} may do?`,
+      consequence: `Everyone with the ${roleLabel(role).toLowerCase()} role gets these access levels on their next request. The change is written to the audit log; you can change the levels again at any time.`,
+      confirmLabel: 'Save permissions',
+    });
+    if (!ok) return;
+    this.savingMatrix.set(true);
     this.api.updateRolePermissions(role, permissions).subscribe({
       next: () => {
-        this.message.set(`${role.replaceAll('_', ' ')} permission row updated.`);
-        this.error.set(null);
+        this.savingMatrix.set(false);
+        this.toast.show(`Permissions saved for ${roleLabel(role).toLowerCase()}`);
       },
-      error: (e) => this.error.set(e?.error?.message ?? 'Permission update failed.'),
+      error: (err) => {
+        this.savingMatrix.set(false);
+        this.toast.show(err?.error?.message ?? 'Permissions could not be saved', {
+          tone: 'danger',
+          action: { label: 'Try again', run: () => void this.saveMatrix() },
+        });
+      },
     });
   }
 
+  openAdd(): void {
+    this.nu = { name: '', email: '', phone: '', password: '', role: 'sales' };
+    this.addErrors.set({});
+    this.adding.set(true);
+  }
+
   create(): void {
+    const errors: Record<string, string> = {};
+    if (!this.nu.name.trim()) errors['name'] = 'Enter their full name.';
+    if (!/^\S+@\S+\.\S+$/.test(this.nu.email.trim()))
+      errors['email'] = 'Enter a valid email address.';
+    if (this.nu.password.length < 8) errors['password'] = 'Use at least 8 characters.';
+    this.addErrors.set(errors);
+    if (Object.keys(errors).length > 0) return;
+    this.saving.set(true);
     this.api
       .createUser({
         name: this.nu.name,
@@ -508,25 +503,51 @@ export class StaffAdminPage implements OnInit {
       })
       .subscribe({
         next: () => {
-          this.showInvite.set(false);
-          this.message.set(
-            'Account created: share the temporary password securely and have them change it via Forgot password.',
-          );
-          this.error.set(null);
+          this.saving.set(false);
+          this.adding.set(false);
+          this.toast.show(`${this.nu.name} added. Share the temporary password securely.`);
           this.load();
         },
-        error: (e) => this.error.set(e?.error?.message ?? 'Create failed.'),
+        error: (err) => {
+          this.saving.set(false);
+          this.addErrors.set({ email: err?.error?.message ?? 'The account could not be created.' });
+        },
       });
   }
 
-  changeRole(u: UserRow): void {
-    this.api.changeRole(u.id, this.roleChoice[u.id]).subscribe({
+  openChange(u: UserRow): void {
+    this.target.set(u);
+    this.newRole = u.role.name;
+    this.changing.set(true);
+  }
+
+  async changeRole(): Promise<void> {
+    const u = this.target();
+    if (!u || this.newRole === u.role.name) {
+      this.changing.set(false);
+      return;
+    }
+    const ok = await this.confirm.ask({
+      title: `Change ${u.name}'s role to ${roleLabel(this.newRole).toLowerCase()}?`,
+      consequence: `${u.name} loses ${roleLabel(u.role.name).toLowerCase()} access and gains ${roleLabel(this.newRole).toLowerCase()} access on their next request. The change is written to the audit log; the role can be changed again.`,
+      confirmLabel: 'Change role',
+    });
+    if (!ok) return;
+    this.saving.set(true);
+    this.api.changeRole(u.id, this.newRole).subscribe({
       next: () => {
-        this.message.set(`${u.name} is now ${this.roleChoice[u.id].replaceAll('_', ' ')}.`);
-        this.error.set(null);
+        this.saving.set(false);
+        this.changing.set(false);
+        this.toast.show(`${u.name} is now ${roleLabel(this.newRole).toLowerCase()}`);
         this.load();
       },
-      error: (e) => this.error.set(e?.error?.message ?? 'Role change failed.'),
+      error: (err) => {
+        this.saving.set(false);
+        this.toast.show(err?.error?.message ?? `${u.name}'s role could not be changed`, {
+          tone: 'danger',
+          action: { label: 'Try again', run: () => void this.changeRole() },
+        });
+      },
     });
   }
 }

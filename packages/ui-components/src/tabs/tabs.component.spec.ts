@@ -45,7 +45,8 @@ describe('se-tabs', () => {
     ).toBeTrue();
     expect(selected()).toEqual(['true', 'false', 'false']);
     expect(tabs()[0].textContent).toContain('12');
-    expect(tabs()[2].querySelector('.se-tabs__count')!.textContent!.trim()).toBe('0');
+    // Nothing waiting is not news: a zero count is not shown.
+    expect(tabs()[2].querySelector('.se-tabs__count')).toBeNull();
   });
 
   it('keeps only the active tab in the tab order', () => {

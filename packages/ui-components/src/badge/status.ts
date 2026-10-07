@@ -2,7 +2,17 @@ import { SeBadgeTone } from './badge.component';
 
 /** The domain vocabularies a status can come from. */
 export type SeStatusKind =
-  'order' | 'payment' | 'approval' | 'stock' | 'production' | 'return' | 'account';
+  | 'order'
+  | 'payment'
+  | 'approval'
+  | 'stock'
+  | 'production'
+  | 'return'
+  | 'account'
+  | 'delivery'
+  | 'custom_order'
+  | 'review'
+  | 'qc';
 
 export interface SeStatusMeaning {
   label: string;
@@ -76,6 +86,35 @@ export const SE_STATUS: Record<SeStatusKind, Record<string, SeStatusMeaning>> = 
     active: s('Active', 'success'),
     rejected: s('Rejected', 'danger'),
     disabled: s('Disabled', 'neutral'),
+  },
+  delivery: {
+    pending: s('Not dispatched', 'warning'),
+    in_transit: s('In transit', 'info'),
+    delivered: s('Delivered', 'success'),
+    failed: s('Delivery failed', 'danger'),
+  },
+  custom_order: {
+    submitted: s('Submitted', 'warning'),
+    under_review: s('Under review', 'info'),
+    quoted: s('Quoted', 'warning'),
+    quote_accepted: s('Quote accepted', 'info'),
+    paid: s('Paid', 'success'),
+    sample_in_production: s('Sample in production', 'info'),
+    sample_approved: s('Sample approved', 'info'),
+    in_production: s('In production', 'info'),
+    fulfilled: s('Fulfilled', 'success'),
+    delivered: s('Delivered', 'success'),
+    declined: s('Declined', 'danger'),
+    cancelled: s('Cancelled', 'neutral'),
+  },
+  review: {
+    pending: s('Awaiting moderation', 'warning'),
+    published: s('Published', 'success'),
+    rejected: s('Rejected', 'danger'),
+  },
+  qc: {
+    burned: s('Burned', 'danger'),
+    repaired_restocked: s('Repaired and restocked', 'info'),
   },
 };
 

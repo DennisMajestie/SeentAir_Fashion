@@ -65,7 +65,10 @@ export interface CustomRow {
     SeTableComponent,
   ],
   template: `
-    <se-page title="Custom orders" description="Full production starts only after the buyer approves the sample.">
+    <se-page
+      title="Custom orders"
+      description="Full production starts only after the buyer approves the sample."
+    >
       <se-table
         caption="Custom orders"
         [columns]="columns"
@@ -77,12 +80,23 @@ export interface CustomRow {
         activatable
         (rowActivate)="open($event)"
         [emptyHeading]="filtering() ? 'No requests match these filters' : 'No custom requests yet'"
-        [emptyText]="filtering() ? 'Remove a filter, or clear them all.' : 'Bespoke requests from customers appear here.'"
+        [emptyText]="
+          filtering()
+            ? 'Remove a filter, or clear them all.'
+            : 'Bespoke requests from customers appear here.'
+        "
         [emptyActionLabel]="filtering() ? 'Clear all filters' : ''"
         (emptyAction)="clearFilters()"
       >
-        <se-filter-bar seTableToolbar searchLabel="Search custom orders" searchPlaceholder="Buyer, product or ref"
-          [(query)]="query" [filters]="filters" [(value)]="filterValue" [summary]="summary()" />
+        <se-filter-bar
+          seTableToolbar
+          searchLabel="Search custom orders"
+          searchPlaceholder="Buyer, product or ref"
+          [(query)]="query"
+          [filters]="filters"
+          [(value)]="filterValue"
+          [summary]="summary()"
+        />
         <ng-template seCell="status" let-row>
           <se-badge [tone]="state(row.status).tone">{{ state(row.status).label }}</se-badge>
         </ng-template>
@@ -91,7 +105,9 @@ export interface CustomRow {
       <se-drawer [title]="drawerTitle()" [open]="!!selected()" (openChange)="$event || close()">
         @if (selected(); as r) {
           <dl seKv>
-            <div seKvItem label="Status"><se-badge [tone]="state(r.status).tone">{{ state(r.status).label }}</se-badge></div>
+            <div seKvItem label="Status">
+              <se-badge [tone]="state(r.status).tone">{{ state(r.status).label }}</se-badge>
+            </div>
             <div seKvItem label="Buyer">{{ r.buyer.name }} ({{ r.buyer.email }})</div>
             <div seKvItem label="Quantity" numeric>{{ r.quantity }}</div>
             <div seKvItem label="Sizes and colours">{{ r.sizes }} · {{ r.colours }}</div>
@@ -110,7 +126,11 @@ export interface CustomRow {
           </dl>
           @if (canQuote && (r.status === 'submitted' || r.status === 'under_review')) {
             <form class="se-form" (ngSubmit)="quote()">
-              <se-field label="Quotation amount" hint="The full price for the whole order" [error]="amountError()">
+              <se-field
+                label="Quotation amount"
+                hint="The full price for the whole order"
+                [error]="amountError()"
+              >
                 <input seInput type="number" min="1" name="quote" [(ngModel)]="amount" />
               </se-field>
             </form>
@@ -124,7 +144,11 @@ export interface CustomRow {
                   <option value="pos">POS</option>
                 </select>
               </se-field>
-              <se-field label="Amount paid" hint="Must equal the quotation; no part payments" [error]="amountError()">
+              <se-field
+                label="Amount paid"
+                hint="Must equal the quotation; no part payments"
+                [error]="amountError()"
+              >
                 <input seInput type="number" min="1" name="paid" [(ngModel)]="amount" />
               </se-field>
             </form>
@@ -134,14 +158,37 @@ export interface CustomRow {
           <button seButton type="button" (click)="close()">Close</button>
           @if (selected(); as r) {
             @if (canQuote && (r.status === 'submitted' || r.status === 'under_review')) {
-              <button seButton variant="primary" type="button" [loading]="saving()" (click)="quote()">Issue quotation</button>
+              <button
+                seButton
+                variant="primary"
+                type="button"
+                [loading]="saving()"
+                (click)="quote()"
+              >
+                Issue quotation
+              </button>
             }
             @if (canAdvance && r.status === 'quote_accepted') {
-              <button seButton variant="primary" type="button" [loading]="saving()" (click)="recordPayment()">Record payment</button>
+              <button
+                seButton
+                variant="primary"
+                type="button"
+                [loading]="saving()"
+                (click)="recordPayment()"
+              >
+                Record payment
+              </button>
             }
             @if (canAdvance && next(r.status); as n) {
-              <button seButton [variant]="r.status === 'submitted' ? 'secondary' : 'primary'" type="button"
-                [loading]="saving()" (click)="advance(r, n.status)">{{ n.label }}</button>
+              <button
+                seButton
+                [variant]="r.status === 'submitted' ? 'secondary' : 'primary'"
+                type="button"
+                [loading]="saving()"
+                (click)="advance(r, n.status)"
+              >
+                {{ n.label }}
+              </button>
             }
           }
         </ng-container>
@@ -173,17 +220,25 @@ export class CustomAdminPage implements OnInit {
   private readonly urlState = urlFilters(['status']);
   readonly query = this.urlState.query;
   readonly filterValue = this.urlState.value;
-  readonly filters: SeFilter[] = [{ key: 'status', label: 'Status', options: CUSTOM_STATUS_OPTIONS }];
-  readonly filtering = computed(() => !!this.query().trim() || Object.keys(this.filterValue()).length > 0);
+  readonly filters: SeFilter[] = [
+    { key: 'status', label: 'Status', options: CUSTOM_STATUS_OPTIONS },
+  ];
+  readonly filtering = computed(
+    () => !!this.query().trim() || Object.keys(this.filterValue()).length > 0,
+  );
   readonly rows = computed(() => {
     const status = this.filterValue()['status'];
     const q = this.query().trim().toLowerCase();
     return this.requests().filter((r) => {
       if (status && r.status !== status) return false;
       if (!q) return true;
-      return [r.id, r.buyer.name, r.buyer.email, r.productName ?? '', this.state(r.status).label].some((v) =>
-        v.toLowerCase().includes(q),
-      );
+      return [
+        r.id,
+        r.buyer.name,
+        r.buyer.email,
+        r.productName ?? '',
+        this.state(r.status).label,
+      ].some((v) => v.toLowerCase().includes(q));
     });
   });
   readonly summary = computed(() => countOf(this.rows().length, 'request'));
@@ -228,7 +283,9 @@ export class CustomAdminPage implements OnInit {
       error: (err) => {
         this.loading.set(false);
         if (this.requests().length === 0) {
-          this.error.set(err?.error?.message ?? 'The server did not respond. Nothing has been changed.');
+          this.error.set(
+            err?.error?.message ?? 'The server did not respond. Nothing has been changed.',
+          );
         }
       },
     });
@@ -268,7 +325,8 @@ export class CustomAdminPage implements OnInit {
     const amount = Number(this.amount);
     const ok = await this.confirm.ask({
       title: `Issue a quotation of ${this.currency.format(amount, 2)} to ${r.buyer.name}?`,
-      consequence: 'The buyer sees the price in their portal and can accept it. A quotation cannot be withdrawn once issued.',
+      consequence:
+        'The buyer sees the price in their portal and can accept it. A quotation cannot be withdrawn once issued.',
       confirmLabel: 'Issue quotation',
     });
     if (!ok) return;
@@ -280,7 +338,11 @@ export class CustomAdminPage implements OnInit {
         this.open(r);
         this.load();
       },
-      error: (err) => this.fail(err?.error?.message ?? 'The quotation could not be issued', () => void this.quote()),
+      error: (err) =>
+        this.fail(
+          err?.error?.message ?? 'The quotation could not be issued',
+          () => void this.quote(),
+        ),
     });
   }
 
@@ -295,7 +357,8 @@ export class CustomAdminPage implements OnInit {
     const amount = Number(this.amount);
     const ok = await this.confirm.ask({
       title: `Record a payment of ${this.currency.format(amount, 2)} from ${r.buyer.name}?`,
-      consequence: 'The payment is written to the ledger and the request moves to paid, so sample production can start. This is audited and cannot be undone.',
+      consequence:
+        'The payment is written to the ledger and the request moves to paid, so sample production can start. This is audited and cannot be undone.',
       confirmLabel: 'Record payment',
     });
     if (!ok) return;
@@ -306,7 +369,11 @@ export class CustomAdminPage implements OnInit {
         this.toast.show('Payment recorded');
         this.load();
       },
-      error: (err) => this.fail(err?.error?.message ?? 'The payment could not be recorded', () => void this.recordPayment()),
+      error: (err) =>
+        this.fail(
+          err?.error?.message ?? 'The payment could not be recorded',
+          () => void this.recordPayment(),
+        ),
     });
   }
 
@@ -323,10 +390,16 @@ export class CustomAdminPage implements OnInit {
     this.api.updateCustomStatus(r.id, status).subscribe({
       next: () => {
         this.saving.set(false);
-        this.toast.show(`${shortRef('CO', r.id)} is now ${customState(status).label.toLowerCase()}`);
+        this.toast.show(
+          `${shortRef('CO', r.id)} is now ${customState(status).label.toLowerCase()}`,
+        );
         this.load();
       },
-      error: (err) => this.fail(err?.error?.message ?? 'The status could not be changed', () => void this.advance(r, status)),
+      error: (err) =>
+        this.fail(
+          err?.error?.message ?? 'The status could not be changed',
+          () => void this.advance(r, status),
+        ),
     });
   }
 }

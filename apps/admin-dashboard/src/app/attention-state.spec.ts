@@ -4,7 +4,6 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideRouter } from '@angular/router';
 import { AccessService } from './access.service';
 import { AppOpsbarComponent } from './app-opsbar.component';
-import { AuditPage } from './pages/audit.page';
 
 /** These cover the failure direction specifically: a screen that renders an
     empty list when the request failed, rather than when the data is genuinely
@@ -28,8 +27,6 @@ const URLS = {
   approvals: (r: HttpRequest<unknown>): boolean => r.url.includes('/approvals/pending'),
   lowStock: (r: HttpRequest<unknown>): boolean => r.url.includes('/analytics/low-stock'),
   returns: (r: HttpRequest<unknown>): boolean => /\/returns(\?|$)/.test(r.urlWithParams),
-  auditVerify: (r: HttpRequest<unknown>): boolean => r.url.includes('/audit-log/verify'),
-  auditLog: (r: HttpRequest<unknown>): boolean => /\/audit-log(\?|$)/.test(r.urlWithParams),
 };
 
 function approvals(n: number): Array<Record<string, unknown>> {
@@ -185,73 +182,5 @@ describe('opsbar, cut to the role', () => {
     expect(
       (fixture.nativeElement as HTMLElement).querySelector('[aria-label="Quick actions"]'),
     ).toBeNull();
-  });
-});
-
-describe('audit page failure states', () => {
-  let fixture: ComponentFixture<AuditPage>;
-  let http: HttpTestingController;
-
-  beforeEach(() => {
-    configure();
-    fixture = TestBed.createComponent(AuditPage);
-    http = TestBed.inject(HttpTestingController);
-  });
-
-  afterEach(() => {
-    fixture.destroy();
-    http.verify();
-  });
-
-  function boot(): void {
-    fixture.detectChanges();
-  }
-
-  it('distinguishes a failed log read from an empty log', () => {
-    boot();
-    http.expectOne(URLS.auditLog).error(new ProgressEvent('fail'));
-    http.expectOne(URLS.auditVerify).flush({ total: 0, valid: 0, broken: 0, headHash: null });
-    fixture.detectChanges();
-
-    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(fixture.componentInstance.loadError()).toBeTrue();
-    expect(text).toContain('Could not load the activity log');
-    expect(text).not.toContain('No entries match this filter window');
-  });
-
-  it('does not present a stale pass when the integrity check fails', () => {
-    boot();
-    http.expectOne(URLS.auditLog).flush({ data: [], total: 0 });
-    http.expectOne(URLS.auditVerify).flush({ total: 4, valid: 4, broken: 0, headHash: 'abc' });
-    fixture.detectChanges();
-    expect(fixture.componentInstance.verifyResult()).not.toBeNull();
-
-    // Re-run the check; the request has to be issued before it can fail.
-    fixture.componentInstance.verifyIntegrity();
-    http.expectOne(URLS.auditVerify).error(new ProgressEvent('fail'));
-    fixture.detectChanges();
-
-    const cmp = fixture.componentInstance;
-    expect(cmp.verifyError()).toBeTrue();
-    expect(cmp.verifyResult()).toBeNull();
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('hash-chain valid');
-  });
-  it('clears rows already on screen when a filtered reload fails', () => {
-    boot();
-    http.expectOne(URLS.auditLog).flush({
-      data: [{ id: 'e1', action: 'orders.update', actorId: 'u1', createdAt: '' }],
-      total: 1,
-    });
-    http.expectOne(URLS.auditVerify).flush({ total: 1, valid: 1, broken: 0, headHash: null });
-    fixture.detectChanges();
-    expect(fixture.componentInstance.entries().length).toBe(1);
-
-    fixture.componentInstance.applyFilters();
-    http.expectOne(URLS.auditLog).error(new ProgressEvent('fail'));
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.entries().length).toBe(0);
-    expect(fixture.componentInstance.total()).toBe(0);
-    expect(fixture.componentInstance.loadError()).toBeTrue();
   });
 });

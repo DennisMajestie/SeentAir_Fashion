@@ -61,9 +61,21 @@ import { countOf, deadlineLabel, isOverdue, shortRef } from './ops-format';
       description="A customer must ask within 12 hours of receiving an order, and the return must be completed within 24 hours. Custom orders cannot be returned."
     >
       <div class="se-metric-grid">
-        <se-metric-card label="Waiting for inspection" [value]="pending().length" [hint]="pendingUnits()" />
-        <se-metric-card label="Past the deadline" [value]="overdueCount()" hint="Open returns older than 24 hours" />
-        <se-metric-card label="Refunds at stake" [value]="exposure() | seMoney" hint="On returns not yet resolved" />
+        <se-metric-card
+          label="Waiting for inspection"
+          [value]="pending().length"
+          [hint]="pendingUnits()"
+        />
+        <se-metric-card
+          label="Past the deadline"
+          [value]="overdueCount()"
+          hint="Open returns older than 24 hours"
+        />
+        <se-metric-card
+          label="Refunds at stake"
+          [value]="exposure() | seMoney"
+          hint="On returns not yet resolved"
+        />
         <se-metric-card label="All returns" [value]="returns().length" hint="Latest loaded" />
       </div>
 
@@ -95,7 +107,9 @@ import { countOf, deadlineLabel, isOverdue, shortRef } from './ops-format';
           [(value)]="filterValue"
           [summary]="summary()"
         />
-        <ng-template seCell="requested" let-row>{{ row.requestedAt | seDate: 'datetime' }}</ng-template>
+        <ng-template seCell="requested" let-row>{{
+          row.requestedAt | seDate: 'datetime'
+        }}</ng-template>
         <ng-template seCell="deadline" let-row>
           @if (row.status === 'requested') {
             <se-badge [tone]="overdue(row) ? 'danger' : 'warning'">{{ deadline(row) }}</se-badge>
@@ -155,7 +169,9 @@ import { countOf, deadlineLabel, isOverdue, shortRef } from './ops-format';
               </se-field>
             </form>
           } @else if (r.status !== 'requested') {
-            <p>This return is closed. The outcome is recorded in inventory and in the activity log.</p>
+            <p>
+              This return is closed. The outcome is recorded in inventory and in the activity log.
+            </p>
           }
         }
         <ng-container seDrawerFooter>
@@ -163,10 +179,22 @@ import { countOf, deadlineLabel, isOverdue, shortRef } from './ops-format';
             {{ canAct() ? 'Cancel' : 'Close' }}
           </button>
           @if (canAct()) {
-            <button seButton variant="danger" type="button" [loading]="saving()" (click)="resolve('damaged')">
+            <button
+              seButton
+              variant="danger"
+              type="button"
+              [loading]="saving()"
+              (click)="resolve('damaged')"
+            >
               Write off as damaged
             </button>
-            <button seButton variant="primary" type="button" [loading]="saving()" (click)="resolve('restocked')">
+            <button
+              seButton
+              variant="primary"
+              type="button"
+              [loading]="saving()"
+              (click)="resolve('restocked')"
+            >
               Restock item
             </button>
           }
@@ -225,7 +253,13 @@ export class ReturnsPage implements OnInit {
   readonly columns: SeColumn<ReturnRequest>[] = [
     { key: 'ref', header: 'Return', value: (r) => shortRef('RET', r.id) },
     { key: 'item', header: 'Item', sortable: true, value: (r) => r.variant.sku },
-    { key: 'quantity', header: 'Quantity', numeric: true, sortable: true, value: (r) => r.quantity },
+    {
+      key: 'quantity',
+      header: 'Quantity',
+      numeric: true,
+      sortable: true,
+      value: (r) => r.quantity,
+    },
     { key: 'reason', header: 'Reason', value: (r) => r.reason },
     { key: 'requested', header: 'Requested', sortable: true, value: (r) => r.requestedAt },
     { key: 'deadline', header: 'Return due', sortable: true, value: (r) => r.returnDeadline },
@@ -234,11 +268,12 @@ export class ReturnsPage implements OnInit {
 
   // ---- metrics ----
   readonly pending = computed(() => this.returns().filter((r) => r.status === 'requested'));
-  readonly pendingUnits = computed(() =>
-    countOf(
-      this.pending().reduce((sum, r) => sum + r.quantity, 0),
-      'unit',
-    ) + ' held back from stock',
+  readonly pendingUnits = computed(
+    () =>
+      countOf(
+        this.pending().reduce((sum, r) => sum + r.quantity, 0),
+        'unit',
+      ) + ' held back from stock',
   );
   readonly overdueCount = computed(() => this.pending().filter((r) => this.overdue(r)).length);
   readonly exposure = computed(() =>

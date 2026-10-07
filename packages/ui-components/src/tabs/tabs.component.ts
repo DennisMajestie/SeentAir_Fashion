@@ -12,7 +12,7 @@ import {
 export interface SeTab {
   id: string;
   label: string;
-  /** A count shown after the label, e.g. orders waiting. */
+  /** Things waiting on this tab, shown after the label; zero shows nothing. */
   count?: number;
 }
 
@@ -54,7 +54,7 @@ let nextId = 0;
           (click)="active.set(tab.id)"
         >
           {{ tab.label }}
-          @if (tab.count !== undefined) {
+          @if (tab.count) {
             <span class="se-tabs__count">{{ tab.count }}</span>
           }
         </button>

@@ -1,282 +1,266 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  SeBannerComponent,
+  SeButtonDirective,
+  SeCellDirective,
+  SeColumn,
+  SeDatePipe,
+  SeDrawerComponent,
+  SeFilterBarComponent,
+  SeKvDirective,
+  SeKvItemComponent,
+  SePageComponent,
+  SeTableComponent,
+} from '@seentair/ui';
 import { ApiService, AuditEntry } from '../api.service';
+import { urlFilters } from '../url-filters';
 
-/** A15, Immutable operational audit log. Approved Stitch layout: integrity
-    header, entry tiles, server-side filters (action / actor / date window) and
-    an expandable before/after state inspector per entry. Entries are written
-    automatically by the API's audit interceptor (principle #4). */
+interface VerifyResult {
+  total: number;
+  valid: number;
+  broken: number;
+  headHash: string | null;
+}
+
+/** The time window a filter chip stands for, in days back from today. */
+const WINDOWS: Array<{ value: string; label: string; days: number }> = [
+  { value: '1', label: 'Today', days: 0 },
+  { value: '7', label: 'Last 7 days', days: 7 },
+  { value: '30', label: 'Last 30 days', days: 30 },
+];
+
+/**
+ * The audit log: every write, by whom, with the before and after states
+ * (principle #4). Reading it needs approve access on approvals_audit; the
+ * integrity check needs view. A failed read must never look like a quiet
+ * day, so the error state replaces the table rather than an empty one.
+ */
 @Component({
   selector: 'app-audit',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    SeBannerComponent,
+    SeButtonDirective,
+    SeCellDirective,
+    SeDatePipe,
+    SeDrawerComponent,
+    SeFilterBarComponent,
+    SeKvDirective,
+    SeKvItemComponent,
+    SePageComponent,
+    SeTableComponent,
+  ],
   template: `
-    <div class="ops-head">
-      <div class="ops-id">
-        <p class="eyebrow">Governance · Audit</p>
-        <h1>Activity log</h1>
-        <p class="ops-sub">
-          Every change to the business is recorded here automatically, nothing needs to be typed in
-          by hand.
-        </p>
-      </div>
-      <div class="ops-actions">
-        <span class="live-chip">Automatic</span>
-        <button
-          class="cta small ghost"
-          type="button"
-          (click)="verifyIntegrity()"
-          [disabled]="verifying()"
+    <se-page title="Audit log">
+      <button
+        seButton
+        sePageActions
+        type="button"
+        [loading]="verifying()"
+        (click)="verifyIntegrity()"
+      >
+        Check integrity
+      </button>
+
+      @if (verifyError()) {
+        <se-banner
+          tone="danger"
+          title="The integrity check could not run"
+          actionLabel="Try again"
+          (action)="verifyIntegrity()"
         >
-          {{ verifying() ? 'Verifying...' : 'Verify data integrity' }}
-        </button>
-        @if (verifyError()) {
-          <span class="chip bad" role="status"
-            >Integrity check failed to run &mdash; unverified</span
+          The ledger has not been verified. Nothing has been changed.
+        </se-banner>
+      } @else if (verifyResult(); as v) {
+        @if (v.broken > 0) {
+          <se-banner
+            tone="danger"
+            [title]="v.broken + ' of ' + v.total + ' entries fail the hash chain'"
           >
-        }
-        @if (verifyResult(); as v) {
-          <span class="chip" [class.ok]="v.broken === 0" [class.bad]="v.broken > 0">
-            {{ v.broken === 0 ? 'hash-chain valid' : v.broken + ' broken link(s)' }} &middot;
-            {{ v.valid }}/{{ v.total }}
-          </span>
-        }
-      </div>
-    </div>
-
-    @if (verifyError()) {
-      <div class="rule-strip" style="border-color: var(--danger);">
-        <strong>Integrity check did not complete.</strong> The server could not be reached, so the
-        hash chain is currently <em>unverified</em>. Absence of a result here is not a pass &mdash;
-        retry before relying on this log as evidence.
-      </div>
-    } @else if (verifyResult(); as v) {
-      <div class="rule-strip" [style.borderColor]="v.broken > 0 ? 'var(--danger)' : ''">
-        <strong>Hash-chain integrity check</strong>- every audit entry is SHA-256 chained to the
-        previous one.
-        @if (v.broken === 0) {
-          All {{ v.total }} entries verify end-to-end; the ledger has not been tampered with.
+            Someone or something has altered the ledger. Keep this page open and tell the owner.
+          </se-banner>
         } @else {
-          {{ v.broken }} of {{ v.total }} entries fail verification: investigate immediately.
-        }
-        @if (v.headHash) {
-          <code class="mono">{{ v.headHash }}</code>
-        }
-      </div>
-    }
-
-    @if (loadError()) {
-      <div class="rule-strip" style="border-color: var(--danger);">
-        <strong>Could not load the activity log.</strong> The figures below are empty because the
-        request failed, not because nothing was recorded.
-      </div>
-    }
-
-    <div class="kpi-bar">
-      <div class="kpi">
-        <span class="kpi-label">Entries recorded</span
-        ><span class="kpi-value">{{ total() | number }}</span
-        ><span class="kpi-sub">matching current filter</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Distinct actors</span
-        ><span class="kpi-value">{{ distinctActors() }}</span
-        ><span class="kpi-sub">on this page of results</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">System writes</span
-        ><span class="kpi-value">{{ systemWrites() }}</span
-        ><span class="kpi-sub">entries without a staff actor</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Window</span><span class="kpi-value">{{ entries().length }}</span
-        ><span class="kpi-sub">entries shown (latest first)</span>
-      </div>
-    </div>
-
-    <div class="ops-toolbar">
-      <span class="search"
-        ><input
-          placeholder="Filter by action (e.g. orders, role, price)…"
-          [(ngModel)]="fAction"
-          name="fa"
-          (keyup.enter)="applyFilters()"
-          aria-label="Filter by action"
-      /></span>
-      <label class="inline">From <input type="date" [(ngModel)]="fFrom" name="ff" /></label>
-      <label class="inline">To <input type="date" [(ngModel)]="fTo" name="ft" /></label>
-      <button class="cta small ghost" type="button" (click)="applyFilters()">Apply filters</button>
-      @if (filtered()) {
-        <button class="link" type="button" (click)="clearFilters()">clear</button>
-      }
-    </div>
-
-    <div class="table-scroll">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Timestamp (WAT)</th>
-            <th>Actor</th>
-            <th>Action</th>
-            <th>State capture</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (entry of entries(); track entry.id) {
-            <tr class="clickable" [class.sel]="openId() === entry.id" (click)="toggle(entry.id)">
-              <td class="mono small">{{ entry.timestamp | date: 'MMM d, y HH:mm:ss' }}</td>
-              <td class="mono small">
-                @if (entry.actorId) {
-                  {{ entry.actorId.slice(0, 8) }}
-                } @else {
-                  <span class="chip">system</span>
-                }
-              </td>
-              <td>
-                <code>{{ entry.action }}</code>
-              </td>
-              <td class="small muted">
-                @if (hasState(entry)) {
-                  before/after captured
-                } @else {
-                  -
-                }
-              </td>
-              <td>
-                <button
-                  class="link"
-                  type="button"
-                  (click)="toggle(entry.id); $event.stopPropagation()"
-                >
-                  {{ openId() === entry.id ? 'hide' : 'inspect' }}
-                </button>
-              </td>
-            </tr>
-            @if (openId() === entry.id) {
-              <tr>
-                <td colspan="5">
-                  <div class="cols">
-                    <div>
-                      <p class="mini-note">Before state</p>
-                      <pre class="json-fold">{{ pretty(entry.beforeState) }}</pre>
-                    </div>
-                    <div>
-                      <p class="mini-note">After state</p>
-                      <pre class="json-fold">{{ pretty(entry.afterState) }}</pre>
-                    </div>
-                  </div>
-                  <p class="mini-note" style="margin-top:0.4rem;">
-                    Entry {{ entry.id }} · actor {{ entry.actorId ?? 'system' }}
-                  </p>
-                </td>
-              </tr>
+          <se-banner tone="success" title="Ledger verified: hash-chain valid">
+            {{ v.valid }} of {{ v.total }} entries check out.
+            @if (v.headHash) {
+              Head {{ v.headHash.slice(0, 12) }}.
             }
-          }
-          @if (entries().length === 0) {
-            <tr>
-              <td colspan="5" class="muted small">
-                @if (loadError()) {
-                  The log could not be read. This is a failed request, not an empty log.
-                } @else if (filtered()) {
-                  No entries match this filter window.
-                } @else {
-                  No entries recorded yet.
-                }
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+          </se-banner>
+        }
+      }
+
+      <se-table
+        caption="Audit entries"
+        [columns]="columns"
+        [rows]="entries()"
+        [loading]="loading()"
+        [error]="
+          loadError() ? 'Could not load the activity log. Nothing on screen is current.' : ''
+        "
+        (retry)="load()"
+        activatable
+        (rowActivate)="open($event)"
+        [emptyHeading]="filtered() ? 'No entries match this filter window' : 'No entries yet'"
+        [emptyText]="
+          filtered()
+            ? 'Widen the window or clear the filters to see every entry.'
+            : 'Every change made in the system is listed here.'
+        "
+      >
+        <se-filter-bar
+          seTableToolbar
+          searchLabel="Search by action"
+          searchPlaceholder="For example orders.update"
+          [(query)]="query"
+          [filters]="filters"
+          [(value)]="filterValue"
+          [summary]="summary()"
+        />
+        <ng-template seCell="timestamp" let-row>{{
+          row.timestamp | seDate: 'datetime'
+        }}</ng-template>
+      </se-table>
+
+      <se-drawer title="Audit entry" [(open)]="inspecting">
+        @if (selected(); as e) {
+          <dl seKv>
+            <div seKvItem label="Action">{{ e.action }}</div>
+            <div seKvItem label="Actor">{{ actorName(e.actorId) }}</div>
+            <div seKvItem label="When">{{ e.timestamp | seDate: 'datetime' }}</div>
+            <div seKvItem label="Before">
+              <pre>{{ pretty(e.beforeState) }}</pre>
+            </div>
+            <div seKvItem label="After">
+              <pre>{{ pretty(e.afterState) }}</pre>
+            </div>
+          </dl>
+        }
+      </se-drawer>
+    </se-page>
   `,
 })
 export class AuditPage implements OnInit {
   private readonly api = inject(ApiService);
+
   readonly entries = signal<AuditEntry[]>([]);
   readonly total = signal(0);
-  readonly openId = signal<string | null>(null);
-  readonly filtered = signal(false);
-  readonly verifyResult = signal<{
-    total: number;
-    valid: number;
-    broken: number;
-    headHash: string | null;
-  } | null>(null);
+  /** True only until the first answer arrives. */
+  readonly loading = signal(true);
   /** Set when the entry fetch fails. Distinguishes "the log is genuinely empty"
       from "we could not read the log", which on this screen is the difference
       between a quiet day and a blind one. */
   readonly loadError = signal(false);
+  readonly verifyResult = signal<VerifyResult | null>(null);
   /** Separate from loadError: the integrity check is the one control on the
       page whose silence would read as good news, so it never fails quietly. */
   readonly verifyError = signal(false);
   readonly verifying = signal(false);
-  fAction = '';
-  fFrom = '';
-  fTo = '';
+
+  // ---- filters, applied by the server and mirrored in the URL ----
+  private readonly urlState = urlFilters(['window']);
+  readonly query = this.urlState.query;
+  readonly filterValue = this.urlState.value;
+  readonly filters = [
+    {
+      key: 'window',
+      label: 'When',
+      options: WINDOWS.map(({ value, label }) => ({ value, label })),
+    },
+  ];
+  readonly filtered = computed(
+    () => !!this.query().trim() || Object.keys(this.filterValue()).length > 0,
+  );
+  readonly summary = computed(() => {
+    const shown = this.entries().length;
+    const noun = this.total() === 1 ? 'entry' : 'entries';
+    return this.total() > shown
+      ? `Latest ${shown} of ${this.total()} entries`
+      : `${this.total()} ${noun}`;
+  });
+
+  readonly columns: SeColumn<AuditEntry>[] = [
+    { key: 'timestamp', header: 'When', value: (e) => e.timestamp },
+    { key: 'action', header: 'Action', value: (e) => e.action },
+    { key: 'actor', header: 'Actor', value: (e) => this.actorName(e.actorId) },
+  ];
+
+  readonly inspecting = signal(false);
+  readonly selected = signal<AuditEntry | null>(null);
+
+  private filterKey(): string {
+    return `${this.query().trim()}|${this.filterValue()['window'] ?? ''}`;
+  }
+  private lastKey = this.filterKey();
+
+  constructor() {
+    // The search and window are applied by the server, so a change re-reads the log.
+    effect(() => {
+      const key = this.filterKey();
+      untracked(() => {
+        if (key !== this.lastKey) {
+          this.lastKey = key;
+          this.applyFilters();
+        }
+      });
+    });
+  }
+
+  /** Who an actor id is, by name; ids stay as ids when the list is not readable. */
+  private readonly names = signal<Record<string, string>>({});
+  actorName(actorId: string | null): string {
+    if (!actorId) return 'System';
+    return this.names()[actorId] ?? actorId;
+  }
 
   ngOnInit(): void {
     this.load();
     this.verifyIntegrity();
+    this.api.users().subscribe({
+      next: (res) =>
+        this.names.set(
+          Object.fromEntries(res.data.map((u) => [u['id'] as string, u['name'] as string])),
+        ),
+      error: () => undefined,
+    });
   }
 
-  readonly distinctActors = computed(
-    () =>
-      new Set(
-        this.entries()
-          .filter((e) => e.actorId)
-          .map((e) => e.actorId),
-      ).size,
-  );
-  readonly systemWrites = computed(() => this.entries().filter((e) => !e.actorId).length);
-
-  private load(): void {
-    this.api
-      .auditLog({
-        action: this.fAction.trim() || undefined,
-        from: this.fFrom || undefined,
-        to: this.fTo ? `${this.fTo}T23:59:59` : undefined,
-        limit: 50,
-      })
-      .subscribe({
-        next: (res) => {
-          this.entries.set(res.data);
-          this.total.set(res.total);
-          this.loadError.set(false);
-        },
-        error: () => {
-          // Drop any rows already on screen: leaving stale entries under a
-          // fresh filter would misreport what the window currently contains.
-          this.entries.set([]);
-          this.total.set(0);
-          this.loadError.set(true);
-        },
-      });
+  load(): void {
+    const window = WINDOWS.find((w) => w.value === this.filterValue()['window']);
+    let from: string | undefined;
+    if (window) {
+      const d = new Date();
+      d.setDate(d.getDate() - window.days);
+      from = d.toISOString().slice(0, 10);
+    }
+    this.api.auditLog({ action: this.query().trim() || undefined, from, limit: 50 }).subscribe({
+      next: (res) => {
+        this.entries.set(res.data);
+        this.total.set(res.total);
+        this.loading.set(false);
+        this.loadError.set(false);
+      },
+      error: () => {
+        // Drop any rows already on screen: leaving stale entries under a
+        // fresh filter would misreport what the window currently contains.
+        this.entries.set([]);
+        this.total.set(0);
+        this.loading.set(false);
+        this.loadError.set(true);
+      },
+    });
   }
 
+  /** Re-reads with the current search and window. */
   applyFilters(): void {
-    this.filtered.set(!!(this.fAction.trim() || this.fFrom || this.fTo));
     this.load();
   }
 
-  clearFilters(): void {
-    this.fAction = '';
-    this.fFrom = '';
-    this.fTo = '';
-    this.filtered.set(false);
-    this.load();
-  }
-
-  toggle(id: string): void {
-    this.openId.set(this.openId() === id ? null : id);
-  }
-
-  hasState(e: AuditEntry): boolean {
-    return e.beforeState != null || e.afterState != null;
+  open(e: AuditEntry): void {
+    this.selected.set(e);
+    this.inspecting.set(true);
   }
 
   pretty(v: unknown): string {
-    if (v == null) return '- not captured -';
+    if (v == null) return 'Not captured';
     try {
       return JSON.stringify(v, null, 2);
     } catch {

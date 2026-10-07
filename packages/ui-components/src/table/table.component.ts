@@ -298,7 +298,7 @@ export class SeCellDirective {
       </table>
     </div>
 
-    @if (pageSize() > 0 && !loading() && !error() && count() > 0) {
+    @if (pageCount() > 1 && !loading() && !error()) {
       <div class="se-table__footer">
         <span class="se-table__range">{{ rangeText() }}</span>
         <div class="se-table__pager">

@@ -1,289 +1,327 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  SeBannerComponent,
+  SeButtonDirective,
+  SeCardComponent,
+  SeCellDirective,
+  SeColumn,
+  SeConfirmService,
+  SeDatePipe,
+  SeEmptyStateComponent,
+  SeFilter,
+  SeFilterBarComponent,
+  SeKvDirective,
+  SeKvItemComponent,
+  SeMoneyPipe,
+  SePageComponent,
+  SeSkeletonComponent,
+  SeStatusComponent,
+  SeTableComponent,
+  SeToastService,
+} from '@seentair/ui';
+import { AccessService } from '../access.service';
 import { ApiService, Approval } from '../api.service';
-import { BrandAlertService } from '../brand-alert.service';
+import { urlFilters } from '../url-filters';
+import {
+  APPROVAL_TYPE_LABEL,
+  approvalRef,
+  approvalTypeLabel,
+  payloadEntries,
+  priceChange,
+} from './approvals-format';
 
-/** A14, Management approvals queue. Approved Stitch layout: compliance strip,
-    per-request dossier cards with the payload decoded into an impact table,
-    approve/reject actions, and the decision history below. Decisions stay
-    server-side gated (architectural principle #3). */
+/**
+ * Management approvals: price changes, purchasing, production starts, fund
+ * movements and stock disposals wait here until someone with approve access
+ * decides. The queue is short and each request is decided from what is shown,
+ * so pending requests are cards; past decisions are a table underneath.
+ * The gate itself is server-side (architectural principle #3): the API
+ * rejects a decision from the requester or from a role without approve access.
+ */
 @Component({
   selector: 'app-approvals',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    SeBannerComponent,
+    SeButtonDirective,
+    SeCardComponent,
+    SeCellDirective,
+    SeDatePipe,
+    SeEmptyStateComponent,
+    SeFilterBarComponent,
+    SeKvDirective,
+    SeKvItemComponent,
+    SeMoneyPipe,
+    SePageComponent,
+    SeSkeletonComponent,
+    SeStatusComponent,
+    SeTableComponent,
+  ],
   template: `
-    <div class="ops-head">
-      <div class="ops-id">
-        <p class="eyebrow">Approvals · who asked & what changed</p>
-        <h1>Management approval queue</h1>
-        <p class="ops-sub">
-          Price changes, purchasing, production starts and stock removals wait here, nothing
-          proceeds without a decision.
-        </p>
-      </div>
-      <div class="ops-actions">
-        <span class="live-chip">Live</span>
-        <span class="chip warn">{{ approvals().length }} pending</span>
-      </div>
-    </div>
+    <se-page
+      title="Approvals"
+      description="Price changes, purchases, production starts and fund movements wait here until management decides."
+    >
+      <se-filter-bar
+        sePageFilters
+        searchLabel=""
+        [filters]="filters"
+        [(value)]="filterValue"
+        [summary]="pendingSummary()"
+      />
 
-    <div class="ops-toolbar">
-      <div class="seg" role="group" aria-label="Filter pending approvals by type">
-        <button type="button" [class.on]="typeFilter() === ''" (click)="typeFilter.set('')">
-          All <span class="seg-n">{{ approvals().length }}</span>
-        </button>
-        @for (g of groups(); track g.type) {
-          <button
-            type="button"
-            [class.on]="typeFilter() === g.type"
-            (click)="typeFilter.set(g.type)"
-          >
-            {{ g.type.replaceAll('_', ' ') }} <span class="seg-n">{{ g.count }}</span>
-          </button>
-        }
-      </div>
-    </div>
-
-    @if (visible().length === 0) {
-      <div class="empty-state ok">
-        <span class="empty-state-icon" aria-hidden="true"
-          ><svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="9" />
-            <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
-        ></span>
-        <h2 class="empty-state-title">Nothing pending{{ typeFilter() ? ' for this type' : '' }}</h2>
-        <p class="empty-state-sub">Every request has been decided.</p>
-      </div>
-    }
-
-    @for (approval of visible(); track approval.id) {
-      <section class="panel">
-        <div class="panel-head">
-          <h2>{{ title(approval.actionType) }}</h2>
-          <span class="chip acid">{{ approval.actionType.replaceAll('_', ' ') }}</span>
-          <span class="ph-sub"
-            >REF {{ approval.id.slice(0, 8) }} ·
-            {{ approval.createdAt | date: 'd MMM y, HH:mm' }} WAT</span
-          >
-          <span class="ph-end mini-note">Requested by {{ approval.requestedBy.name }}</span>
-        </div>
-
-        @if (priceChange(approval); as pc) {
-          <div class="kpi-bar" style="margin-bottom:0.7rem;">
-            <div class="kpi">
-              <span class="kpi-label">Current price</span
-              ><span class="kpi-value">₦{{ pc.from | number: '1.0-0' }}</span
-              ><span class="kpi-sub">{{ pc.product }}</span>
-            </div>
-            <div class="kpi">
-              <span class="kpi-label">Proposed</span
-              ><span class="kpi-value">₦{{ pc.to | number: '1.0-0' }}</span>
-              <span
-                class="kpi-sub delta"
-                [class.plus]="pc.to >= pc.from"
-                [class.minus]="pc.to < pc.from"
-                >{{ pc.deltaPct }}% {{ pc.to >= pc.from ? 'increase' : 'decrease' }}</span
-              >
-            </div>
-            @if (pc.saleEndsAt) {
-              <div class="kpi">
-                <span class="kpi-label">Timed sale ends</span
-                ><span class="kpi-value">{{ pc.saleEndsAt | date: 'd MMM, HH:mm' }}</span
-                ><span class="kpi-sub">normal price returns automatically</span>
-              </div>
-            }
-          </div>
-        } @else {
-          <dl class="kv">
-            @for (kv of payloadEntries(approval); track kv[0]) {
-              <dt>{{ kv[0] }}</dt>
-              <dd class="wrap-anywhere">{{ kv[1] }}</dd>
-            }
-          </dl>
-        }
-
-        <div class="actions">
-          <label class="wide" style="margin:0; text-transform:none; font-weight:600;">
-            Written justification for this decision
-            <textarea
-              rows="2"
-              placeholder="Recorded to the audit log: required."
-              [(ngModel)]="justifications[approval.id]"
-              name="j-{{ approval.id }}"
-              aria-label="Justification"
-            ></textarea>
-          </label>
-          <button class="cta small" (click)="decide(approval.id, 'approved')">
-            ✓ Approve & execute
-          </button>
-          <button class="danger" (click)="decide(approval.id, 'rejected')">✕ Reject</button>
-        </div>
-      </section>
-    }
-    @if (error()) {
-      <p class="error">{{ error() }}</p>
-    }
-
-    <div class="panel-head" style="margin-top:1.4rem;">
-      <h2>Decision history</h2>
-      <span class="ph-end">
-        <select
-          class="table-filter"
-          [(ngModel)]="historyFilter"
-          name="hf"
-          (ngModelChange)="loadHistory()"
+      @if (loading()) {
+        <div aria-busy="true"><se-skeleton shape="detail" /></div>
+      } @else if (error()) {
+        <se-banner
+          tone="danger"
+          title="Approvals could not be loaded"
+          actionLabel="Try again"
+          (action)="load()"
         >
-          <option value="">all</option>
-          <option value="approved">approved</option>
-          <option value="rejected">rejected</option>
-        </select>
-      </span>
-    </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Ref</th>
-          <th>Action</th>
-          <th>Requested by</th>
-          <th>Status</th>
-          <th>When</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (h of history(); track h.id) {
-          <tr>
-            <td class="mono small">{{ h.id.slice(0, 8) }}</td>
-            <td>{{ h.actionType.replaceAll('_', ' ') }}</td>
-            <td class="small">{{ h.requestedBy.name }}</td>
-            <td>
-              <span
-                class="chip"
-                [class.ok]="h.status === 'approved'"
-                [class.bad]="h.status === 'rejected'"
-                [class.warn]="h.status === 'pending'"
-                >{{ h.status }}</span
-              >
-            </td>
-            <td class="mono small">{{ h.createdAt | date: 'MMM d, HH:mm' }}</td>
-          </tr>
-        }
-      </tbody>
-    </table>
+          {{ error() }}
+        </se-banner>
+      } @else if (visible().length === 0) {
+        <se-empty-state
+          heading="Nothing waiting"
+          [text]="
+            filterValue()['type']
+              ? 'No pending requests of this type. Remove the filter to see every request.'
+              : 'Every request has been decided.'
+          "
+        />
+      } @else {
+        <div class="queue">
+          @for (a of visible(); track a.id) {
+            <se-card [title]="typeLabel(a.actionType) + ' ' + ref(a.id)">
+              <ng-container seCardActions>
+                <se-status kind="approval" [value]="a.status" />
+              </ng-container>
+              <p>Requested by {{ a.requestedBy.name }} on {{ a.createdAt | seDate: 'datetime' }}</p>
+              @if (price(a); as pc) {
+                <dl seKv>
+                  @if (pc.product) {
+                    <div seKvItem label="Product">{{ pc.product }}</div>
+                  }
+                  <div seKvItem label="Current price" numeric>{{ pc.from | seMoney }}</div>
+                  <div seKvItem label="Proposed price" numeric>{{ pc.to | seMoney }}</div>
+                  <div seKvItem label="Change" numeric>
+                    {{ pc.deltaPct }}% {{ pc.to >= pc.from ? 'increase' : 'decrease' }}
+                  </div>
+                  @if (pc.saleEndsAt) {
+                    <div seKvItem label="Timed sale ends">
+                      {{ pc.saleEndsAt | seDate: 'datetime' }} (the normal price returns on its own)
+                    </div>
+                  }
+                </dl>
+              } @else {
+                <dl seKv>
+                  @for (kv of entries(a); track kv[0]) {
+                    <div seKvItem [label]="kv[0]">{{ kv[1] }}</div>
+                  }
+                </dl>
+              }
+              @if (canDecide) {
+                <ng-container seCardFooter>
+                  <button seButton variant="danger" type="button" (click)="reject(a)">
+                    Reject
+                  </button>
+                  <button seButton variant="primary" type="button" (click)="approve(a)">
+                    Approve
+                  </button>
+                </ng-container>
+              }
+            </se-card>
+          }
+        </div>
+      }
+
+      <se-card title="Decision history" flush>
+        <se-table
+          caption="Decision history"
+          [columns]="historyColumns"
+          [rows]="history()"
+          [loading]="historyLoading()"
+          [error]="historyError()"
+          (retry)="loadHistory()"
+          hideDensity
+          emptyHeading="No decisions yet"
+          emptyText="Approved and rejected requests are listed here."
+        >
+          <se-filter-bar
+            seTableToolbar
+            searchLabel=""
+            [filters]="historyFilters"
+            [(value)]="historyValue"
+          />
+          <ng-template seCell="status" let-row>
+            <se-status kind="approval" [value]="row.status" />
+          </ng-template>
+          <ng-template seCell="when" let-row>{{ row.createdAt | seDate: 'datetime' }}</ng-template>
+        </se-table>
+      </se-card>
+    </se-page>
   `,
+  styles: [
+    `
+      .queue {
+        display: grid;
+        gap: var(--se-space-4);
+        margin-bottom: var(--se-space-6);
+      }
+    `,
+  ],
 })
 export class ApprovalsPage implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly alerts = inject(BrandAlertService);
+  private readonly access = inject(AccessService);
+  private readonly confirm = inject(SeConfirmService);
+  private readonly toast = inject(SeToastService);
+
+  /** Deciding needs approve access on the module; the API checks this too. */
+  readonly canDecide = this.access.can('approvals_audit', 'approve');
+
   readonly approvals = signal<Approval[]>([]);
+  /** True only until the first answer arrives. */
+  readonly loading = signal(true);
+  readonly error = signal('');
   readonly history = signal<Approval[]>([]);
-  readonly error = signal<string | null>(null);
-  readonly typeFilter = signal('');
-  historyFilter = '';
-  justifications: Record<string, string> = {};
+  readonly historyLoading = signal(true);
+  readonly historyError = signal('');
+
+  // ---- filters, mirrored in the URL ----
+  private readonly urlState = urlFilters(['type']);
+  readonly filterValue = this.urlState.value;
+  readonly filters: SeFilter[] = [
+    {
+      key: 'type',
+      label: 'Type',
+      options: Object.entries(APPROVAL_TYPE_LABEL).map(([value, label]) => ({ value, label })),
+    },
+  ];
+  /** The history's own filter, applied by the server. */
+  readonly historyValue = signal<Record<string, string>>({});
+  readonly historyFilters: SeFilter[] = [
+    {
+      key: 'decision',
+      label: 'Decision',
+      options: [
+        { value: 'approved', label: 'Approved' },
+        { value: 'rejected', label: 'Rejected' },
+      ],
+    },
+  ];
+
+  readonly visible = computed(() => {
+    const t = this.filterValue()['type'];
+    return t ? this.approvals().filter((a) => a.actionType === t) : this.approvals();
+  });
+  readonly pendingSummary = computed(() => {
+    const n = this.visible().length;
+    return `${n} pending ${n === 1 ? 'request' : 'requests'}`;
+  });
+
+  readonly historyColumns: SeColumn<Approval>[] = [
+    { key: 'ref', header: 'Request', value: (a) => approvalRef(a.id) },
+    { key: 'type', header: 'Type', value: (a) => approvalTypeLabel(a.actionType) },
+    { key: 'requestedBy', header: 'Requested by', value: (a) => a.requestedBy.name },
+    { key: 'status', header: 'Decision', value: (a) => a.status },
+    { key: 'when', header: 'Requested', value: (a) => a.createdAt },
+  ];
+
+  private lastDecision = '';
+
+  readonly typeLabel = approvalTypeLabel;
+  readonly ref = approvalRef;
+  readonly price = priceChange;
+  readonly entries = payloadEntries;
 
   ngOnInit(): void {
     this.load();
     this.loadHistory();
   }
 
-  readonly groups = computed(() => {
-    const counts = new Map<string, number>();
-    for (const a of this.approvals()) counts.set(a.actionType, (counts.get(a.actionType) ?? 0) + 1);
-    return [...counts.entries()].map(([type, count]) => ({ type, count }));
-  });
-
-  visible(): Approval[] {
-    const t = this.typeFilter();
-    return t ? this.approvals().filter((a) => a.actionType === t) : this.approvals();
-  }
-
-  title(actionType: string): string {
-    switch (actionType) {
-      case 'price_change':
-        return 'Target retail price revision';
-      case 'purchasing':
-        return 'Purchase order: raw materials';
-      case 'production_start':
-        return 'Production batch allocation';
-      case 'stock_disposal':
-        return 'Stock removal / write-off';
-      default:
-        return actionType.replaceAll('_', ' ');
-    }
-  }
-
-  /** Decoded price-change payload for the before/after impact tiles. */
-  priceChange(a: Approval): {
-    product: string;
-    from: number;
-    to: number;
-    deltaPct: string;
-    /** Set when the request is a timed sale rather than a permanent change. */
-    saleEndsAt: string | null;
-  } | null {
-    if (a.actionType !== 'price_change') return null;
-    const p = a.payload as Record<string, unknown> | null;
-    const from = Number(p?.['from']);
-    const to = Number(p?.['to']);
-    if (!p || Number.isNaN(from) || Number.isNaN(to)) return null;
-    const deltaPct = from > 0 ? (Math.round(((to - from) / from) * 1000) / 10).toFixed(1) : '-';
-    const saleEndsAt = p['kind'] === 'sale' ? String(p['saleEndsAt'] ?? '') || null : null;
-    return { product: String(p['product'] ?? ''), from, to, deltaPct, saleEndsAt };
-  }
-
-  payloadEntries(a: Approval): Array<[string, string]> {
-    const p = a.payload;
-    if (!p || typeof p !== 'object') return [['payload', String(p ?? '-')]];
-    return Object.entries(p as Record<string, unknown>).map(([k, v]) => [
-      k.replace(/([A-Z])/g, ' $1').toLowerCase(),
-      typeof v === 'object' ? JSON.stringify(v) : String(v),
-    ]);
-  }
-
-  private load(): void {
-    this.api.pendingApprovals().subscribe((a) => this.approvals.set(a));
+  load(): void {
+    this.api.pendingApprovals().subscribe({
+      next: (a) => {
+        this.approvals.set(a);
+        this.loading.set(false);
+        this.error.set('');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.error.set(
+          err?.error?.message ?? 'The server did not respond. Nothing has been changed.',
+        );
+      },
+    });
   }
 
   loadHistory(): void {
-    this.api
-      .approvalsHistory(this.historyFilter || undefined)
-      .subscribe((res) => this.history.set(res.data));
-  }
-
-  async decide(id: string, decision: 'approved' | 'rejected'): Promise<void> {
-    const a = this.approvals().find((x) => x.id === id);
-    const label = a ? this.title(a.actionType) : 'this request';
-    const justification = (this.justifications[id] ?? '').trim();
-    if (!justification) {
-      this.error.set('A written justification is required on every decision.');
-      return;
-    }
-    const ok = await this.alerts.confirm({
-      title: decision === 'approved' ? 'Approve & execute?' : 'Reject request?',
-      html: `${label}- the decision and your justification are written to the audit log and cannot be reversed.`,
-      confirm: decision === 'approved' ? 'Approve' : 'Reject',
-      danger: decision === 'rejected',
-      icon: decision === 'approved' ? 'warning' : 'error',
-    });
-    if (!ok) return;
-    this.api.decideApprovalWithJustification(id, decision, justification).subscribe({
-      next: () => {
-        this.justifications[id] = '';
-        this.load();
-        this.loadHistory();
-        void this.alerts.toast(`${label} ${decision}`);
+    const decision = this.historyValue()['decision'] ?? '';
+    this.lastDecision = decision;
+    this.api.approvalsHistory(decision || undefined).subscribe({
+      next: (res) => {
+        this.history.set(res.data);
+        this.historyLoading.set(false);
+        this.historyError.set('');
       },
       error: (err) => {
-        this.error.set(err?.error?.message ?? 'Decision failed.');
-        void this.alerts.toast('Decision failed', { icon: 'error' });
+        this.historyLoading.set(false);
+        this.historyError.set(err?.error?.message ?? 'The server did not respond.');
       },
+    });
+  }
+
+  constructor() {
+    // The history is filtered by the server, so a changed decision filter re-reads it.
+    effect(() => {
+      const decision = this.historyValue()['decision'] ?? '';
+      untracked(() => {
+        if (decision !== this.lastDecision) this.loadHistory();
+      });
+    });
+  }
+
+  async approve(a: Approval): Promise<void> {
+    const label = `${approvalTypeLabel(a.actionType).toLowerCase()} ${approvalRef(a.id)}`;
+    const ok = await this.confirm.ask({
+      title: `Approve ${label}?`,
+      consequence: `The ${approvalTypeLabel(a.actionType).toLowerCase()} requested by ${a.requestedBy.name} goes ahead. The decision is written to the audit log and cannot be withdrawn.`,
+      confirmLabel: 'Approve request',
+    });
+    if (!ok) return;
+    this.decide(a, 'approved', '');
+  }
+
+  async reject(a: Approval): Promise<void> {
+    const label = `${approvalTypeLabel(a.actionType).toLowerCase()} ${approvalRef(a.id)}`;
+    const reason = await this.confirm.askWithReason({
+      title: `Reject ${label}?`,
+      consequence: `${a.requestedBy.name} will have to raise a new request. The rejection and your reason are written to the audit log and cannot be withdrawn.`,
+      confirmLabel: 'Reject request',
+      reasonLabel: 'Reason for rejection',
+      danger: true,
+    });
+    if (reason === null) return;
+    this.decide(a, 'rejected', reason);
+  }
+
+  private decide(a: Approval, decision: 'approved' | 'rejected', justification: string): void {
+    const label = `${approvalTypeLabel(a.actionType)} ${approvalRef(a.id)}`;
+    this.api.decideApprovalWithJustification(a.id, decision, justification).subscribe({
+      next: () => {
+        this.toast.show(`${label} ${decision}`);
+        this.load();
+        this.loadHistory();
+      },
+      error: (err) =>
+        this.toast.show(err?.error?.message ?? `${label} could not be ${decision}`, {
+          tone: 'danger',
+          action: {
+            label: 'Try again',
+            run: () => (decision === 'approved' ? void this.approve(a) : void this.reject(a)),
+          },
+        }),
     });
   }
 }

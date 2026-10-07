@@ -20,9 +20,9 @@
   padding: var(--se-space-2) var(--se-space-3);
   border-bottom: var(--se-border-width) solid var(--se-color-border);
 }
-/* A table with nothing to put in its toolbar (no filters, no selection, no
-   density toggle) has no toolbar. */
-.se-table__toolbar:has(> .se-table__toolbar-main:empty):not(:has(> .se-btn)) {
+/* A table with no filters or selection has no toolbar: a density toggle on
+   its own is not worth a row. */
+.se-table__toolbar:has(> .se-table__toolbar-main:empty) {
   display: none;
 }
 .se-table__toolbar-main {

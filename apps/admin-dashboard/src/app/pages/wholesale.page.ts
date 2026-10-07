@@ -1,440 +1,570 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import {
+  SE_STATUS,
+  SeButtonDirective,
+  SeCellDirective,
+  SeColumn,
+  SeConfirmService,
+  SeDatePipe,
+  SeDrawerComponent,
+  SeFieldComponent,
+  SeFilter,
+  SeFilterBarComponent,
+  SeInputDirective,
+  SeKvDirective,
+  SeKvItemComponent,
+  SePageComponent,
+  SeRowAction,
+  SeStatusComponent,
+  SeTableComponent,
+  SeTabPanelDirective,
+  SeTabsComponent,
+  SeToastService,
+} from '@seentair/ui';
+import { AccessService } from '../access.service';
 import { ApiService } from '../api.service';
-import { BrandAlertService } from '../brand-alert.service';
+import { urlFilters } from '../url-filters';
+import { AccountRow, TierRow, buyerLabel, place, tierLabel } from './wholesale-format';
 
-interface AccountRow {
-  id: string;
-  status: string;
-  createdAt: string;
-  user: { name: string; email: string };
-  tier: { id: string; name: string } | null;
-  // Application-form details. Null on rows created through the one-click apply
-  // in the catalogue, so every read here has to tolerate null.
-  businessName: string | null;
-  buyerType: string | null;
-  businessPhone: string | null;
-  city: string | null;
-  state: string | null;
-  openingVolume: number | null;
-}
-interface TierRow {
-  id: string;
-  name: string;
-  discountPercent: number;
-  ruleDescription: string | null;
-}
+const EMPTY_TIER = () => ({
+  name: '',
+  discountPercent: null as number | null,
+  ruleDescription: '',
+});
 
-/** Wholesale administration, applications table with approve/tier-assign,
-    price tiers panel with approval-gated discount changes. */
+/**
+ * Wholesale: buyer applications and the price tiers. Approving an application
+ * assigns a tier; rejecting needs a reason. A tier's name and rule can be
+ * edited at once, but its discount is a price change, so it goes through an
+ * approval request that Management decides in the queue before it is applied.
+ */
 @Component({
   selector: 'app-wholesale-admin',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    FormsModule,
+    SeButtonDirective,
+    SeCellDirective,
+    SeDatePipe,
+    SeDrawerComponent,
+    SeFieldComponent,
+    SeFilterBarComponent,
+    SeInputDirective,
+    SeKvDirective,
+    SeKvItemComponent,
+    SePageComponent,
+    SeStatusComponent,
+    SeTableComponent,
+    SeTabPanelDirective,
+    SeTabsComponent,
+  ],
   template: `
-    <div class="ops-head">
-      <div class="ops-id"><h1>Wholesale</h1></div>
-    </div>
+    <se-page title="Wholesale">
+      @if (canEditTiers && tab() === 'tiers') {
+        <button seButton sePageActions variant="primary" type="button" (click)="openAddTier()">
+          Add tier
+        </button>
+      }
+      <se-tabs #t sePageTabs label="Wholesale sections" [tabs]="tabs()" [(active)]="tab" />
 
-    <p class="section-label">
-      Applications & accounts
-      <span class="count">[{{ filteredAccounts().length | number: '2.0' }}]</span>
-    </p>
-    <div class="ops-toolbar" style="padding:0 0 0.7rem 0;">
-      <span class="search"
-        ><input
-          placeholder="Search business, email or status…"
-          [(ngModel)]="query"
-          name="q"
-          aria-label="Search wholesale accounts"
-      /></span>
-    </div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Business user</th>
-          <th>Applicant</th>
-          <th>Applied</th>
-          <th>Status</th>
-          <th>Tier</th>
-          <th>Decision</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (a of filteredAccounts(); track a.id) {
-          <tr>
-            <td>
-              <strong>{{ a.user.name }}</strong
-              ><br /><span class="muted small">{{ a.user.email }}</span>
-            </td>
-            <!-- Legacy one-click applications have no business details, so
-                 every column here has to tolerate a null rather than assume
-                 the public form was used. -->
-            <td class="small">
-              @if (a.businessName) {
-                <strong>{{ a.businessName }}</strong
-                ><br />
-                <span class="muted">
-                  {{ buyerLabel(a.buyerType) }}
-                  @if (place(a); as where) {
-                    · {{ where }}
-                  }
-                </span>
-                <br />
-                <span class="muted">
-                  @if (a.businessPhone) {
-                    <span class="mono">{{ a.businessPhone }}</span> ·
-                  }
-                  est. {{ a.openingVolume ?? '—' }} units
-                </span>
-              } @else {
-                <span class="muted">one-click apply (no details)</span>
-              }
-            </td>
-            <td class="mono small">{{ a.createdAt | date: 'mediumDate' }}</td>
-            <td>
-              <span
-                class="chip"
-                [class.ok]="a.status === 'approved'"
-                [class.warn]="a.status === 'pending'"
-                [class.bad]="a.status === 'rejected'"
-                >{{ a.status }}</span
-              >
-            </td>
-            <td>
-              <select [(ngModel)]="tierChoice[a.id]" [name]="'t' + a.id">
-                <option value="">- tier -</option>
-                @for (t of tiers(); track t.id) {
-                  <option [value]="t.id">{{ t.name }} ({{ t.discountPercent }}%)</option>
-                }
-              </select>
-            </td>
-            <td>
-              <div class="actions flat">
-                <button class="cta small" (click)="decide(a, 'approved')">Approve</button>
-                <button class="danger" (click)="decide(a, 'rejected')">Reject</button>
-                <button class="link" type="button" (click)="inspect(a.id)">
-                  {{ detail()?.['id'] === a.id ? 'hide' : 'details' }}
-                </button>
-              </div>
-            </td>
-          </tr>
-          @if (detail(); as d) {
-            @if (d['id'] === a.id) {
-              <tr>
-                <td colspan="6" class="small">
-                  <span class="chip acid">account on file</span>
-                  Status {{ d['status'] }} · tier {{ tierName(d) }} · applied
-                  {{ dt(d['createdAt']) | date: 'medium' }}
-                  @if (d['reviewedAt']) {
-                    · reviewed {{ dt(d['reviewedAt']) | date: 'medium' }}
-                  }
-                </td>
-              </tr>
+      <div seTabPanel="accounts" [for]="t">
+        <se-table
+          caption="Wholesale accounts"
+          [columns]="accountColumns"
+          [rows]="accountRows()"
+          [loading]="loading()"
+          [error]="error()"
+          (retry)="load()"
+          [pageSize]="25"
+          [actions]="accountActions"
+          activatable
+          (rowActivate)="openAccount($event)"
+          [emptyHeading]="filtering() ? 'No accounts match' : 'No applications yet'"
+          emptyText="Wholesale buyers apply from the storefront and appear here for review."
+        >
+          <se-filter-bar
+            seTableToolbar
+            searchLabel="Search accounts"
+            searchPlaceholder="Name, email or business"
+            [(query)]="query"
+            [filters]="filters"
+            [(value)]="filterValue"
+            [summary]="accountSummary()"
+          />
+          <ng-template seCell="createdAt" let-row>{{ row.createdAt | seDate }}</ng-template>
+          <ng-template seCell="status" let-row
+            ><se-status kind="account" [value]="row.status"
+          /></ng-template>
+        </se-table>
+      </div>
+
+      <div seTabPanel="tiers" [for]="t">
+        <se-table
+          caption="Price tiers"
+          [columns]="tierColumns"
+          [rows]="tiers()"
+          [loading]="loading()"
+          [error]="error()"
+          (retry)="load()"
+          [actions]="tierActions"
+          hideDensity
+          emptyHeading="No tiers yet"
+          emptyText="Add a tier to give wholesale buyers a discount. Tier criteria are still open (question 2)."
+        />
+      </div>
+
+      <!-- One account: the application on file, the tier choice and the decision. -->
+      <se-drawer [title]="account()?.user?.name ?? 'Account'" [(open)]="accountOpen">
+        @if (account(); as a) {
+          <dl seKv>
+            <div seKvItem label="Email">{{ a.user.email }}</div>
+            <div seKvItem label="Status"><se-status kind="account" [value]="a.status" /></div>
+            <div seKvItem label="Business">
+              {{ a.businessName || 'One-click application, no details' }}
+            </div>
+            <div seKvItem label="Buyer type">{{ buyerLabel(a.buyerType) }}</div>
+            <div seKvItem label="Location">{{ place(a) || 'Not given' }}</div>
+            <div seKvItem label="Phone">{{ a.businessPhone || 'Not given' }}</div>
+            <div seKvItem label="Expected volume" numeric>
+              {{ a.openingVolume === null ? 'Not given' : a.openingVolume + ' units' }}
+            </div>
+            <div seKvItem label="Applied">{{ a.createdAt | seDate: 'datetime' }}</div>
+            @if (a.reviewedAt) {
+              <div seKvItem label="Reviewed">{{ a.reviewedAt | seDate: 'datetime' }}</div>
             }
+          </dl>
+          @if (canDecide) {
+            <form class="se-form">
+              <se-field label="Tier" hint="The discount this buyer gets once approved">
+                <select seInput [(ngModel)]="tierChoice[a.id]" name="tier">
+                  <option value="">No tier</option>
+                  @for (tier of tiers(); track tier.id) {
+                    <option [value]="tier.id">{{ tierLabel(tier) }}</option>
+                  }
+                </select>
+              </se-field>
+            </form>
           }
         }
-      </tbody>
-    </table>
+        <ng-container seDrawerFooter>
+          <button seButton type="button" (click)="accountOpen.set(false)">Close</button>
+          @if (canDecide && account(); as a) {
+            <button seButton variant="danger" type="button" (click)="decide(a, 'rejected')">
+              Reject
+            </button>
+            <button seButton variant="primary" type="button" (click)="decide(a, 'approved')">
+              Approve
+            </button>
+          }
+        </ng-container>
+      </se-drawer>
 
-    <div class="cols">
-      <section class="panel">
-        <p class="section-label">
-          Price tiers <span class="count">// criteria pending Open Question #2</span>
-        </p>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Tier</th>
-              <th>Discount</th>
-              <th>Change discount</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (t of tiers(); track t.id) {
-              <tr>
-                <td>
-                  @if (editing[t.id]) {
-                    <div class="form-grid" style="margin:0;">
-                      <label
-                        >Name <input [(ngModel)]="editName[t.id]" [name]="'en' + t.id" required
-                      /></label>
-                      <label
-                        >Rule
-                        <input
-                          [(ngModel)]="editRule[t.id]"
-                          [name]="'er' + t.id"
-                          placeholder="assignment criteria"
-                      /></label>
-                    </div>
-                  } @else {
-                    <strong>{{ t.name }}</strong
-                    ><br /><span class="muted small">{{ t.ruleDescription }}</span>
-                  }
-                  <div class="actions flat" style="margin-top:0.35rem;">
-                    @if (editing[t.id]) {
-                      <button class="cta small" (click)="saveTier(t)">Save</button>
-                      <button class="link" (click)="editingClose(t.id)">Cancel</button>
-                    } @else {
-                      <button class="link" (click)="editingStart(t)">edit name / rule</button>
-                      <button class="danger" (click)="deleteTier(t)">Delete</button>
-                    }
-                  </div>
-                </td>
-                <td class="mono">{{ t.discountPercent }}%</td>
-                <td>
-                  <div class="actions flat">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      placeholder="%"
-                      [(ngModel)]="newDiscounts[t.id]"
-                      [name]="'d' + t.id"
-                      class="num-input-xs"
-                    />
-                    @if (!tierApprovals[t.id]) {
-                      <button class="cta small ghost" (click)="requestTierApproval(t)">
-                        Request approval
-                      </button>
-                    } @else {
-                      <button class="cta small" (click)="applyDiscount(t)">Apply</button>
-                      <button class="link" (click)="cancelTierApproval(t)">cancel request</button>
-                    }
-                  </div>
-                </td>
-              </tr>
+      <!-- Add or edit a tier. The discount of an existing tier is approval-gated. -->
+      @if (canEditTiers) {
+        <se-drawer [title]="tier() ? 'Edit tier ' + tier()!.name : 'Add tier'" [(open)]="tierOpen">
+          <form class="se-form" id="tier-form" (ngSubmit)="saveTier()">
+            <se-field label="Name" [error]="errors()['name']">
+              <input seInput [(ngModel)]="tierForm.name" name="name" />
+            </se-field>
+            <se-field
+              label="Rule"
+              optional
+              hint="Who qualifies, in words, until question 2 is settled"
+            >
+              <input seInput [(ngModel)]="tierForm.ruleDescription" name="ruleDescription" />
+            </se-field>
+            @if (!tier()) {
+              <se-field label="Discount percent" [error]="errors()['discountPercent']">
+                <input
+                  seInput
+                  type="number"
+                  min="0"
+                  max="100"
+                  [(ngModel)]="tierForm.discountPercent"
+                  name="discountPercent"
+                />
+              </se-field>
+            } @else {
+              <se-field
+                label="New discount percent"
+                optional
+                [hint]="
+                  tierApprovals[tier()!.id]
+                    ? 'Approval ' +
+                      tierApprovals[tier()!.id].slice(0, 8) +
+                      ' requested. Apply it once Management has approved.'
+                    : 'Now ' +
+                      tier()!.discountPercent +
+                      '%. A change is a price change and needs Management approval.'
+                "
+                [error]="errors()['discountPercent']"
+              >
+                <input
+                  seInput
+                  type="number"
+                  min="0"
+                  max="100"
+                  [(ngModel)]="tierForm.discountPercent"
+                  name="discountPercent"
+                  [disabled]="!!tierApprovals[tier()!.id]"
+                />
+              </se-field>
+              <div class="se-form__actions">
+                @if (!tierApprovals[tier()!.id]) {
+                  <button seButton size="sm" type="button" (click)="requestTierApproval(tier()!)">
+                    Request discount approval
+                  </button>
+                } @else {
+                  <button seButton size="sm" type="button" (click)="cancelTierApproval(tier()!)">
+                    Cancel request
+                  </button>
+                  <button seButton size="sm" type="button" (click)="applyDiscount(tier()!)">
+                    Apply discount
+                  </button>
+                }
+              </div>
             }
-          </tbody>
-        </table>
-      </section>
-
-      <section class="panel">
-        <p class="section-label">Create tier</p>
-        <form class="form-grid" (ngSubmit)="createTier()">
-          <label
-            >Name <input [(ngModel)]="nt.name" name="tname" required placeholder="Tier A"
-          /></label>
-          <label
-            >Discount %
-            <input
-              type="number"
-              min="0"
-              max="100"
-              [(ngModel)]="nt.discountPercent"
-              name="tdisc"
-              required
-          /></label>
-          <label class="wide"
-            >Rule description
-            <input
-              [(ngModel)]="nt.ruleDescription"
-              name="trule"
-              placeholder="assignment criteria pending client decision"
-          /></label>
-          <div class="wide"><button class="cta small" type="submit">Create tier</button></div>
-        </form>
-      </section>
-    </div>
-    @if (message()) {
-      <p class="success">{{ message() }}</p>
-    }
-    @if (error()) {
-      <p class="error">{{ error() }}</p>
-    }
+          </form>
+          <ng-container seDrawerFooter>
+            <button seButton type="button" (click)="tierOpen.set(false)">Cancel</button>
+            <button seButton variant="primary" type="submit" form="tier-form" [loading]="saving()">
+              {{ tier() ? 'Save tier' : 'Add tier' }}
+            </button>
+          </ng-container>
+        </se-drawer>
+      }
+    </se-page>
   `,
 })
 export class WholesaleAdminPage implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly alerts = inject(BrandAlertService);
-  private readonly route = inject(ActivatedRoute);
+  private readonly confirm = inject(SeConfirmService);
+  private readonly toast = inject(SeToastService);
+  private readonly access = inject(AccessService);
+
+  readonly canDecide = this.access.can('wholesale_orders', 'full');
+  readonly canEditTiers = this.access.can('catalogue', 'full');
+  readonly buyerLabel = buyerLabel;
+  readonly place = place;
+  readonly tierLabel = tierLabel;
+
   readonly accounts = signal<AccountRow[]>([]);
-
-  /** "Aba, Abia" from whatever the applicant supplied; empty when neither. */
-  place(row: { city: string | null; state: string | null }): string {
-    return [row.city, row.state].filter((v): v is string => !!v && v.length > 0).join(', ');
-  }
-
-  /** Buyer type is stored as a machine value; staff read a label. */
-  buyerLabel(value: string | null): string {
-    return (
-      {
-        retailer: 'Retailer / boutique',
-        online_reseller: 'Online reseller',
-        institution: 'Institution',
-        distributor: 'Distributor',
-        other: 'Other',
-      }[value ?? ''] ?? '—'
-    );
-  }
   readonly tiers = signal<TierRow[]>([]);
-  /** One account's full record, read on demand. */
-  readonly detail = signal<Record<string, unknown> | null>(null);
-  readonly message = signal<string | null>(null);
-  readonly error = signal<string | null>(null);
-  query = '';
+  /** True only until the first answer arrives. */
+  readonly loading = signal(true);
+  readonly error = signal('');
+  readonly tab = signal('accounts');
+  readonly tabs = computed(() => [
+    {
+      id: 'accounts',
+      label: 'Accounts',
+      count: this.accounts().filter((a) => a.status === 'pending').length,
+    },
+    { id: 'tiers', label: 'Tiers', count: this.tiers().length },
+  ]);
+
+  private readonly urlState = urlFilters(['status']);
+  readonly query = this.urlState.query;
+  readonly filterValue = this.urlState.value;
+  readonly filters: SeFilter[] = [
+    {
+      key: 'status',
+      label: 'Status',
+      options: Object.entries(SE_STATUS.account).map(([value, m]) => ({ value, label: m.label })),
+    },
+  ];
+  readonly filtering = computed(
+    () => !!this.query().trim() || Object.keys(this.filterValue()).length > 0,
+  );
+  readonly accountRows = computed(() => {
+    const q = this.query().trim().toLowerCase();
+    const status = this.filterValue()['status'];
+    return this.accounts().filter((a) => {
+      if (status && a.status !== status) return false;
+      if (!q) return true;
+      return [a.user.name, a.user.email, a.businessName ?? '', a.tier?.name ?? ''].some((v) =>
+        v.toLowerCase().includes(q),
+      );
+    });
+  });
+  readonly accountSummary = computed(() => {
+    const n = this.accountRows().length;
+    return `${n} ${n === 1 ? 'account' : 'accounts'}`;
+  });
+
+  readonly accountColumns: SeColumn<AccountRow>[] = [
+    { key: 'name', header: 'Applicant', sortable: true, value: (a) => a.user.name },
+    {
+      key: 'business',
+      header: 'Business',
+      value: (a) => a.businessName || 'One-click application',
+    },
+    { key: 'createdAt', header: 'Applied', sortable: true },
+    { key: 'status', header: 'Status', sortable: true },
+    { key: 'tier', header: 'Tier', value: (a) => a.tier?.name ?? 'None' },
+  ];
+  readonly accountActions: SeRowAction<AccountRow>[] = this.canDecide
+    ? [
+        {
+          label: 'Approve',
+          hidden: (a) => a.status !== 'pending',
+          run: (a) => void this.decide(a, 'approved'),
+        },
+        {
+          label: 'Reject',
+          danger: true,
+          hidden: (a) => a.status !== 'pending',
+          run: (a) => void this.decide(a, 'rejected'),
+        },
+      ]
+    : [];
+
+  readonly tierColumns: SeColumn<TierRow>[] = [
+    { key: 'name', header: 'Tier', sortable: true },
+    {
+      key: 'discountPercent',
+      header: 'Discount',
+      numeric: true,
+      sortable: true,
+      format: (v) => `${v}%`,
+    },
+    { key: 'ruleDescription', header: 'Rule', value: (t) => t.ruleDescription || 'Not set' },
+    {
+      key: 'accounts',
+      header: 'Accounts',
+      numeric: true,
+      value: (t) => this.accounts().filter((a) => a.tier?.id === t.id).length,
+    },
+  ];
+  readonly tierActions: SeRowAction<TierRow>[] = this.canEditTiers
+    ? [
+        { label: 'Edit', run: (t) => this.openEditTier(t) },
+        { label: 'Delete', danger: true, run: (t) => void this.deleteTier(t) },
+      ]
+    : [];
+
+  // ---- drawers ----
+  readonly accountOpen = signal(false);
+  readonly account = signal<AccountRow | null>(null);
   tierChoice: Record<string, string> = {};
-  newDiscounts: Record<string, number> = {};
+  readonly tierOpen = signal(false);
+  readonly tier = signal<TierRow | null>(null);
+  readonly saving = signal(false);
+  readonly errors = signal<Record<string, string>>({});
+  tierForm = EMPTY_TIER();
+  /** Pending price-change approvals, by tier, until applied or cancelled. */
   tierApprovals: Record<string, string> = {};
-  editing: Record<string, boolean> = {};
-  editName: Record<string, string> = {};
-  editRule: Record<string, string> = {};
-  nt = { name: '', discountPercent: 0, ruleDescription: '' };
 
   ngOnInit(): void {
-    this.query = this.route.snapshot.queryParamMap.get('q') ?? '';
     this.load();
   }
 
-  filteredAccounts(): AccountRow[] {
-    const q = this.query.trim().toLowerCase();
-    if (!q) return this.accounts();
-    return this.accounts().filter(
-      (a) =>
-        a.user.name.toLowerCase().includes(q) ||
-        a.user.email.toLowerCase().includes(q) ||
-        a.status.toLowerCase().includes(q) ||
-        (a.tier?.name.toLowerCase().includes(q) ?? false),
-    );
-  }
-  private load(): void {
-    this.api.wholesaleAccounts().subscribe((res) => {
-      const rows = res as unknown as AccountRow[];
-      this.accounts.set(rows);
-      for (const a of rows) if (a.tier) this.tierChoice[a.id] ??= a.tier.id;
+  load(): void {
+    this.api.wholesaleAccounts().subscribe({
+      next: (res) => {
+        const rows = res as unknown as AccountRow[];
+        this.accounts.set(rows);
+        for (const a of rows) if (a.tier) this.tierChoice[a.id] ??= a.tier.id;
+        this.loading.set(false);
+        this.error.set('');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        if (this.accounts().length === 0) {
+          this.error.set(
+            err?.error?.message ?? 'The server did not respond. Nothing has been changed.',
+          );
+        }
+      },
     });
-    this.api.tiers().subscribe((res) => this.tiers.set(res as unknown as TierRow[]));
-  }
-  /** Read one account back (GET /wholesale/accounts/:id). */
-  dt(v: unknown): string | null {
-    return v ? String(v) : null;
+    this.api.tiers().subscribe({
+      next: (res) => this.tiers.set(res as unknown as TierRow[]),
+      error: () => undefined,
+    });
   }
 
-  inspect(id: string): void {
-    if (this.detail()?.['id'] === id) {
-      this.detail.set(null);
-      return;
+  private fail(err: { error?: { message?: string } }, fallback: string, retry: () => void): void {
+    this.toast.show(err?.error?.message ?? fallback, {
+      tone: 'danger',
+      action: { label: 'Try again', run: retry },
+    });
+  }
+
+  // ---- accounts ----
+  /** Opens the drawer with the row, then reads the full record back (GET /wholesale/accounts/:id). */
+  openAccount(row: AccountRow): void {
+    this.account.set(row);
+    this.accountOpen.set(true);
+    this.api.wholesaleAccount(row.id).subscribe({
+      next: (a) => this.account.set({ ...row, ...(a as unknown as AccountRow) }),
+      error: () => undefined,
+    });
+  }
+
+  async decide(a: AccountRow, status: 'approved' | 'rejected'): Promise<void> {
+    const tier = this.tiers().find((t) => t.id === this.tierChoice[a.id]);
+    const who = a.businessName || a.user.name;
+    let ok: boolean;
+    if (status === 'approved') {
+      ok = await this.confirm.ask({
+        title: `Approve ${who} as a wholesale buyer?`,
+        consequence: `${a.user.name} can sign in to the wholesale portal and order at ${tier ? tierLabel(tier) : 'no tier discount'}, with the 20-unit minimum. The decision is audited and can be reversed by rejecting the account later.`,
+        confirmLabel: 'Approve account',
+      });
+    } else {
+      const reason = await this.confirm.askWithReason({
+        title: `Reject ${who}?`,
+        consequence:
+          'The applicant cannot order wholesale. The decision is audited; they may apply again.',
+        confirmLabel: 'Reject account',
+        danger: true,
+        reasonLabel: 'Reason for rejecting',
+      });
+      ok = reason !== null;
     }
-    this.api.wholesaleAccount(id).subscribe({
-      next: (a) => this.detail.set(a),
-      error: (e) => this.fail(e, 'Could not load that account.'),
-    });
-  }
-  tierName(account: Record<string, unknown>): string {
-    const tier = account['tier'] as { name?: string } | null;
-    return tier?.name ?? 'none';
-  }
-
-  private ok(m: string): void {
-    this.message.set(m);
-    this.error.set(null);
-    this.load();
-    void this.alerts.toast(m);
-  }
-  private fail(e: { error?: { message?: string } }, fb: string): void {
-    this.error.set(e?.error?.message ?? fb);
-    this.message.set(null);
-    void this.alerts.toast(e?.error?.message ?? fb, { icon: 'error' });
-  }
-
-  decide(a: AccountRow, status: 'approved' | 'rejected'): void {
+    if (!ok) return;
+    // The body is what the API checks; the reason is for the person deciding.
     this.api
       .reviewWholesaleAccount(a.id, { status, tierId: this.tierChoice[a.id] || undefined })
       .subscribe({
-        next: () => this.ok(`${a.user.name}: ${status}.`),
-        error: (e) => this.fail(e, 'Decision failed.'),
+        next: () => {
+          this.toast.show(`${who} ${status}`);
+          this.accountOpen.set(false);
+          this.load();
+        },
+        error: (err) =>
+          this.fail(err, `${who} could not be ${status}`, () => void this.decide(a, status)),
       });
   }
 
-  createTier(): void {
-    this.api
-      .createTier({
-        name: this.nt.name,
-        discountPercent: Number(this.nt.discountPercent),
-        ruleDescription: this.nt.ruleDescription || undefined,
-      })
-      .subscribe({
-        next: () => this.ok('Tier created.'),
-        error: (e) => this.fail(e, 'Tier failed.'),
-      });
+  // ---- tiers ----
+  openAddTier(): void {
+    this.tier.set(null);
+    this.tierForm = EMPTY_TIER();
+    this.errors.set({});
+    this.tierOpen.set(true);
   }
 
+  openEditTier(t: TierRow): void {
+    this.tier.set(t);
+    this.tierForm = {
+      name: t.name,
+      discountPercent: null,
+      ruleDescription: t.ruleDescription ?? '',
+    };
+    this.errors.set({});
+    this.tierOpen.set(true);
+  }
+
+  /** Name and rule are saved at once; a new tier's discount too, since it is not yet a price. */
+  saveTier(): void {
+    const name = this.tierForm.name.trim();
+    const rule = this.tierForm.ruleDescription.trim();
+    const errors: Record<string, string> = {};
+    if (!name) errors['name'] = 'Give the tier a name.';
+    const t = this.tier();
+    if (
+      !t &&
+      (this.tierForm.discountPercent === null ||
+        this.tierForm.discountPercent < 0 ||
+        this.tierForm.discountPercent > 100)
+    ) {
+      errors['discountPercent'] = 'A discount is between 0 and 100 percent.';
+    }
+    this.errors.set(errors);
+    if (Object.keys(errors).length > 0) return;
+    this.saving.set(true);
+    const req = t
+      ? this.api.updateTier(t.id, { name, ruleDescription: rule || undefined })
+      : this.api.createTier({
+          name,
+          discountPercent: Number(this.tierForm.discountPercent),
+          ruleDescription: rule || undefined,
+        });
+    req.subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.tierOpen.set(false);
+        this.toast.show(t ? `Tier ${name} saved` : `Tier ${name} added`);
+        this.load();
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.errors.set({ name: err?.error?.message ?? 'The tier could not be saved.' });
+      },
+    });
+  }
+
+  /** Asking for approval changes nothing yet, so no dialog. */
   requestTierApproval(t: TierRow): void {
-    const to = this.newDiscounts[t.id];
-    if (to === undefined) {
-      this.error.set('Enter the new discount first.');
-      void this.alerts.toast('Enter the new discount first.', { icon: 'warning' });
+    const to = this.tierForm.discountPercent;
+    if (to === null) {
+      this.errors.set({ discountPercent: 'Enter the new discount first.' });
       return;
     }
+    this.errors.set({});
     this.api
       .createApproval('price_change', { tier: t.name, from: t.discountPercent, to })
       .subscribe({
         next: (r) => {
-          this.tierApprovals[t.id] = r.id;
-          this.ok('Approval requested: Management decides in the queue.');
+          this.tierApprovals = { ...this.tierApprovals, [t.id]: r.id };
+          this.toast.show('Approval requested. Management decides in the approvals queue.');
         },
-        error: (e) => this.fail(e, 'Request failed.'),
+        error: (err) =>
+          this.errors.set({
+            discountPercent: err?.error?.message ?? 'The approval could not be requested.',
+          }),
       });
   }
 
-  applyDiscount(t: TierRow): void {
+  async applyDiscount(t: TierRow): Promise<void> {
+    const to = Number(this.tierForm.discountPercent);
+    const ok = await this.confirm.ask({
+      title: `Change ${t.name} from ${t.discountPercent}% to ${to}%?`,
+      consequence:
+        'Every wholesale buyer on this tier pays the new price from their next order. This is a price change: it is applied against the approval and audited. Changing it back needs another approval.',
+      confirmLabel: 'Apply discount',
+    });
+    if (!ok) return;
     this.api
-      .updateTier(t.id, {
-        discountPercent: Number(this.newDiscounts[t.id]),
-        approvalRequestId: this.tierApprovals[t.id],
-      })
+      .updateTier(t.id, { discountPercent: to, approvalRequestId: this.tierApprovals[t.id] })
       .subscribe({
         next: () => {
-          delete this.tierApprovals[t.id];
-          this.ok('Discount updated.');
+          const { [t.id]: _, ...rest } = this.tierApprovals;
+          this.tierApprovals = rest;
+          this.tierOpen.set(false);
+          this.toast.show(`Tier ${t.name} is now ${to}% off`);
+          this.load();
         },
-        error: (e) => this.fail(e, 'Not approved yet.'),
+        error: (err) =>
+          this.errors.set({
+            discountPercent: err?.error?.message ?? 'Not approved yet. Check the approvals queue.',
+          }),
       });
   }
 
-  editingStart(t: TierRow): void {
-    this.editName[t.id] = t.name;
-    this.editRule[t.id] = t.ruleDescription ?? '';
-    this.editing[t.id] = true;
-  }
-  editingClose(id: string): void {
-    delete this.editing[id];
-  }
-  /** Name and rule edits, allowed immediately; only discounts stay approval-gated. */
-  saveTier(t: TierRow): void {
-    const name = (this.editName[t.id] ?? '').trim();
-    if (!name) {
-      this.error.set('Tier name is required.');
-      return;
-    }
-    const rule = (this.editRule[t.id] ?? '').trim();
-    this.api.updateTier(t.id, { name, ruleDescription: rule || undefined }).subscribe({
-      next: () => this.ok('Tier saved.'),
-      error: (e) => this.fail(e, 'Could not save the tier.'),
-    });
-  }
-  /** Drop a pending approval locally, the tier discount stays unchanged. */
+  /** Drops the pending request locally; the tier's discount stays unchanged. */
   cancelTierApproval(t: TierRow): void {
-    delete this.tierApprovals[t.id];
-    this.ok(`Approval request for '${t.name}' cancelled: the tier is unchanged.`);
+    const { [t.id]: _, ...rest } = this.tierApprovals;
+    this.tierApprovals = rest;
+    this.toast.show(`Request for ${t.name} cancelled. The tier is unchanged.`);
   }
-  deleteTier(t: TierRow): void {
-    void this.alerts
-      .confirm({
-        title: `Delete tier '${t.name}'?`,
-        html: `This removes the <strong>${t.discountPercent}%</strong> tier permanently. It cannot be deleted while wholesale accounts still use it.`,
-        confirm: 'Delete tier',
-        cancel: 'Cancel',
-        danger: true,
-        icon: 'warning',
-      })
-      .then((yes) => {
-        if (!yes) return;
-        this.api.deleteTier(t.id).subscribe({
-          next: () => this.ok('Tier deleted.'),
-          error: (e) => this.fail(e, 'Could not delete the tier.'),
-        });
-      });
+
+  async deleteTier(t: TierRow): Promise<void> {
+    const ok = await this.confirm.ask({
+      title: `Delete tier ${t.name}?`,
+      consequence: `The ${t.discountPercent}% tier is removed for good. It cannot be deleted while wholesale accounts still use it.`,
+      confirmLabel: 'Delete tier',
+      danger: true,
+    });
+    if (!ok) return;
+    this.api.deleteTier(t.id).subscribe({
+      next: () => {
+        this.toast.show(`Tier ${t.name} deleted`);
+        this.load();
+      },
+      error: (err) =>
+        this.fail(err, `Tier ${t.name} could not be deleted`, () => void this.deleteTier(t)),
+    });
   }
 }

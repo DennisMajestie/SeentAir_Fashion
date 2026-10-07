@@ -1,9 +1,33 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import {
+  SeActivityComponent,
+  SeActivityEntry,
+  SeBannerComponent,
+  SeButtonDirective,
+  SeCellDirective,
+  SeColumn,
+  SeCurrencyService,
+  SeDrawerComponent,
+  SeFieldComponent,
+  SeFilterBarComponent,
+  SeInputDirective,
+  SeMetricCardComponent,
+  SePageComponent,
+  SeRowAction,
+  SeStatusComponent,
+  SeTableComponent,
+  SeToastService,
+  formatDate,
+  statusMeaning,
+} from '@seentair/ui';
+import { AccessService } from '../access.service';
 import { AdminOrder, ApiService } from '../api.service';
+import { urlFilters } from '../url-filters';
+import { channelLabel, orderRef } from './order-format';
 
-interface CustomerThread {
+export interface CustomerThread {
   id: string;
   name: string;
   orders: AdminOrder[];
@@ -11,276 +35,313 @@ interface CustomerThread {
   lastOrderAt: string;
 }
 
-/** 060, Client communications & dispatch support desk. LAYOUT SHELL: there is
-    no inbound-messaging module (live chat / WhatsApp APIs are future work), so
-    the inbox is approximated with real customer order activity, and the
-    composer sends real in-platform notifications tied to an order. */
+/** Canned starters for the composer; text only, there is no macro backend. */
+export const MACROS = [
+  {
+    label: 'Send tracking',
+    text: 'Hello! Your order is with the courier; we will share the live tracking link as soon as it is dispatched.',
+  },
+  {
+    label: 'Size exchange',
+    text: 'Thanks for reaching out. Size exchanges follow the returns window: request within 12 hours of receipt and we will guide you through the swap.',
+  },
+  {
+    label: 'Payment reminder',
+    text: 'Hi! Your order is reserved and awaiting full payment; it ships as soon as payment is confirmed.',
+  },
+];
+
+/** Groups recent orders by customer account; guest orders have no one to message. */
+export function threadsFrom(orders: readonly AdminOrder[]): CustomerThread[] {
+  const byCustomer = new Map<string, CustomerThread>();
+  for (const o of orders) {
+    if (!o.customer) continue;
+    const t = byCustomer.get(o.customer.id) ?? {
+      id: o.customer.id,
+      name: o.customer.name,
+      orders: [],
+      lifetimeValue: 0,
+      lastOrderAt: o.createdAt,
+    };
+    t.orders.push(o);
+    t.lifetimeValue += Number(o.totalAmount) || 0;
+    if (new Date(o.createdAt) > new Date(t.lastOrderAt)) t.lastOrderAt = o.createdAt;
+    byCustomer.set(o.customer.id, t);
+  }
+  const list = [...byCustomer.values()];
+  const newestFirst = (a: { createdAt: string }, b: { createdAt: string }) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  for (const t of list) t.orders.sort(newestFirst);
+  return list.sort((a, b) => new Date(b.lastOrderAt).getTime() - new Date(a.lastOrderAt).getTime());
+}
+
+/**
+ * Customer support desk. There is no inbound messaging yet (live chat and
+ * WhatsApp are future integrations), so the desk is built on what is real:
+ * customers with recent orders, and an order update that goes out as an
+ * in-platform notification tied to one of their orders.
+ */
 @Component({
   selector: 'app-messages',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    FormsModule,
+    RouterLink,
+    SeActivityComponent,
+    SeBannerComponent,
+    SeButtonDirective,
+    SeCellDirective,
+    SeDrawerComponent,
+    SeFieldComponent,
+    SeFilterBarComponent,
+    SeInputDirective,
+    SeMetricCardComponent,
+    SePageComponent,
+    SeStatusComponent,
+    SeTableComponent,
+  ],
   template: `
-    <div class="ops-head">
-      <div class="ops-id">
-        <p class="eyebrow">Customer support</p>
-        <h1>Customer messages & order support</h1>
-        <p class="ops-sub">See who needs help and send order updates. Live chat isn't built yet.</p>
+    <se-page
+      title="Messages"
+      description="Send an order update to a customer. It arrives as an in-app notification on their order; inbound chat and WhatsApp are not connected yet."
+    >
+      <div class="se-metric-grid">
+        <se-metric-card label="Customers" [value]="threads().length" hint="with recent orders" />
+        <se-metric-card label="Open orders" [value]="openOrders()" hint="not yet delivered" />
+        <se-metric-card
+          label="Awaiting payment"
+          [value]="unpaidOrders()"
+          hint="the most common reason to get in touch"
+        />
+        <a class="se-metric-link" routerLink="/returns">
+          <se-metric-card
+            label="Returns requested"
+            [value]="returnsPending()"
+            hint="handled on the Returns page"
+          />
+        </a>
       </div>
-      <div class="ops-actions">
-        <span class="live-chip">Online now</span>
-      </div>
-    </div>
 
-    <p class="rule-strip">
-      SENDING ONLY // messages go out as real in-app notifications on an order. Inbound live web
-      chat & WhatsApp Business API are future integrations.
-    </p>
-    <!-- GAP: inbound customer messages, thread history, macros/AI replies, SLA response
-         timers and escalate-to-WhatsApp, no messaging module exists in the API. -->
+      <se-table
+        caption="Customers"
+        [columns]="columns"
+        [rows]="rows()"
+        [loading]="loading()"
+        [error]="error()"
+        (retry)="load()"
+        [actions]="actions"
+        activatable
+        (rowActivate)="open($event)"
+        [emptyHeading]="query().trim() ? 'No customers match that search' : 'No customers yet'"
+        [emptyText]="
+          query().trim()
+            ? 'Try another name.'
+            : 'Customers with an account and an order appear here so you can reach them.'
+        "
+      >
+        <se-filter-bar
+          seTableToolbar
+          searchLabel="Search customers"
+          searchPlaceholder="Customer name"
+          [(query)]="query"
+          [summary]="summary()"
+        />
+        <ng-template seCell="latest" let-row>
+          <se-status kind="order" [value]="row.orders[0].status" />
+        </ng-template>
+      </se-table>
 
-    <div class="kpi-bar">
-      <div class="kpi">
-        <span class="kpi-label">Customers</span><span class="kpi-value">{{ threads().length }}</span
-        ><span class="kpi-sub">with order activity (latest {{ orders().length }} orders)</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Open orders</span><span class="kpi-value">{{ openOrders() }}</span
-        ><span class="kpi-sub">not yet delivered</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Awaiting payment</span
-        ><span class="kpi-value">{{ unpaidOrders() }}</span
-        ><span class="kpi-sub">most common support trigger</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Returns pending</span
-        ><span class="kpi-value">{{ returnsPending() }}</span
-        ><span class="kpi-sub">start it on the Returns page</span>
-      </div>
-    </div>
-
-    <div class="side-split" style="grid-template-columns: minmax(220px, 0.8fr) minmax(0, 2fr);">
-      <div>
-        <div class="ops-toolbar" style="margin-bottom:0.5rem;">
-          <span class="search"
-            ><input
-              placeholder="Filter customers…"
-              [(ngModel)]="query"
-              name="q"
-              aria-label="Filter customers"
-          /></span>
-        </div>
-        <div class="attention">
-          @for (t of visibleThreads(); track t.id) {
+      <se-drawer [title]="selected()?.name ?? 'Customer'" [(open)]="drawerOpen">
+        @if (selected(); as t) {
+          @if (canSend) {
+            <form class="se-form" id="send-update" (ngSubmit)="send(t)">
+              <se-field label="Regarding order">
+                <select seInput name="orderId" [(ngModel)]="orderId">
+                  @for (o of t.orders; track o.id) {
+                    <option [value]="o.id">
+                      {{ orderRef(o.id) }}, {{ statusLabel(o.status) }}
+                    </option>
+                  }
+                </select>
+              </se-field>
+              <se-field label="Message" [error]="draftError()">
+                <textarea seInput name="draft" rows="4" [(ngModel)]="draft"></textarea>
+              </se-field>
+              <div class="macros" role="group" aria-label="Starter messages">
+                @for (m of macros; track m.label) {
+                  <button seButton size="sm" type="button" (click)="applyMacro(m.text)">
+                    {{ m.label }}
+                  </button>
+                }
+              </div>
+            </form>
+          } @else {
+            <se-banner tone="info">Your role can see customers but not message them.</se-banner>
+          }
+          <h3 class="drawer-heading">Order activity</h3>
+          <se-activity [entries]="activity()" />
+        }
+        <ng-container seDrawerFooter>
+          <button seButton type="button" (click)="drawerOpen.set(false)">Close</button>
+          @if (canSend) {
             <button
-              class="att-item"
-              style="text-align:left; cursor:pointer; width:100%; font: inherit;"
-              [class.warn]="selected()?.id === t.id"
-              type="button"
-              (click)="select(t)"
+              seButton
+              variant="primary"
+              type="submit"
+              form="send-update"
+              [loading]="sending()"
             >
-              <span class="att-tag"
-                >{{ t.name }} <span>{{ t.lastOrderAt | date: 'MMM d' }}</span></span
-              >
-              <p class="att-body">
-                {{ t.orders.length }} order(s) · ₦{{ t.lifetimeValue | number: '1.0-0' }} lifetime
-              </p>
-              <span class="att-act"
-                ><span class="mini-note"
-                  >latest #{{ t.orders[0].id.slice(0, 8) }} ·
-                  {{ t.orders[0].status.replaceAll('_', ' ') }}</span
-                ></span
-              >
+              Send update
             </button>
           }
-          @if (visibleThreads().length === 0) {
-            <div class="empty-state">
-              <span class="empty-state-icon" aria-hidden="true"
-                ><svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="m8.2 12.4 2.6 2.6 5-5.2" /></svg
-              ></span>
-              <h2 class="empty-state-title">No customers yet</h2>
-              <p class="empty-state-sub">People with orders appear here so you can reach them.</p>
-            </div>
-          }
-        </div>
-      </div>
-
-      <aside class="inspector">
-        @if (selected(); as t) {
-          <div class="insp-head">
-            <h2>{{ t.name }}</h2>
-            <span class="chip acid">₦{{ t.lifetimeValue | number: '1.0-0' }} lifetime</span>
-          </div>
-
-          <div class="panel-head">
-            <h2>Order activity</h2>
-            <span class="ph-sub">the thread's real context</span>
-          </div>
-          <ul class="activity">
-            @for (o of t.orders; track o.id) {
-              <li>
-                <time>{{ o.createdAt | date: 'MMM d, HH:mm' }}</time>
-                <span class="act-action"
-                  >#{{ o.id.slice(0, 8) }} · {{ o.channel.replaceAll('_', ' ') }} · ₦{{
-                    o.totalAmount | number: '1.0-0'
-                  }}
-                  · {{ o.status.replaceAll('_', ' ') }} ({{ o.paymentStatus }})</span
-                >
-              </li>
-            }
-          </ul>
-          <p class="mini-note">
-            No message history: inbound chat is not integrated; only order context is available.
-          </p>
-
-          <div class="gap-sep"></div>
-          <div class="panel-head">
-            <h2>Send order update</h2>
-            <span class="ph-sub">in-platform notification</span>
-          </div>
-          <form (ngSubmit)="send(t)">
-            <label
-              >Regarding order
-              <select [(ngModel)]="orderId" name="oid" required>
-                @for (o of t.orders; track o.id) {
-                  <option [value]="o.id">
-                    #{{ o.id.slice(0, 8) }}- {{ o.status.replaceAll('_', ' ') }}
-                  </option>
-                }
-              </select>
-            </label>
-            <label
-              >Message
-              <textarea
-                [(ngModel)]="draft"
-                name="draft"
-                rows="3"
-                required
-                placeholder="Hi: your batch has cleared quality inspection and is scheduled for courier dispatch…"
-              ></textarea>
-            </label>
-            <div class="actions flat" style="margin-bottom:0.6rem;">
-              @for (m of macros; track m.label) {
-                <button class="cta small ghost" type="button" (click)="applyMacro(m.text)">
-                  {{ m.label }}
-                </button>
-              }
-            </div>
-            <button class="cta small" type="submit">Send reply →</button>
-          </form>
-        } @else {
-          <p class="muted small">
-            Select a customer to see their order activity and send an update.
-          </p>
-        }
-      </aside>
-    </div>
-
-    @if (message()) {
-      <p class="success">{{ message() }}</p>
-    }
-    @if (error()) {
-      <p class="error">{{ error() }}</p>
-    }
+        </ng-container>
+      </se-drawer>
+    </se-page>
   `,
+  styles: [
+    `
+      .drawer-heading {
+        margin: var(--se-space-6) 0 var(--se-space-2);
+        font: var(--se-type-overline);
+        letter-spacing: var(--se-type-overline-tracking);
+        text-transform: uppercase;
+        color: var(--se-color-text-muted);
+      }
+      .macros {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--se-space-2);
+      }
+    `,
+  ],
 })
 export class MessagesPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly access = inject(AccessService);
+  private readonly toast = inject(SeToastService);
+  private readonly currency = inject(SeCurrencyService);
+
+  /** Sending a notification is a write on the communication module. */
+  readonly canSend = this.access.can('communication', 'full');
+
   readonly orders = signal<AdminOrder[]>([]);
-  readonly selected = signal<CustomerThread | null>(null);
   readonly returnsPending = signal(0);
-  readonly message = signal<string | null>(null);
-  readonly error = signal<string | null>(null);
-  query = '';
-  draft = '';
-  orderId = '';
+  readonly loading = signal(true);
+  readonly error = signal('');
+  readonly macros = MACROS;
+  readonly orderRef = orderRef;
+  readonly statusLabel = statusLabel;
 
-  /** Canned composer starters (client-side text only, no macro backend). */
-  readonly macros = [
-    {
-      label: 'Send tracking',
-      text: 'Hello! Your order is with the courier, we will share the live tracking link as soon as the leg is dispatched.',
-    },
-    {
-      label: 'Confirm size exchange',
-      text: 'Thanks for reaching out: size exchanges follow the returns window: request within 12h of receipt and we will guide you through the swap.',
-    },
-    {
-      label: 'Payment reminder',
-      text: 'Hi! Your order is reserved and awaiting full payment, it ships as soon as payment is confirmed.',
-    },
-  ];
+  readonly query = urlFilters([]).query;
 
-  ngOnInit(): void {
-    this.api.orders(undefined, 100).subscribe((res) => this.orders.set(res.data));
-    this.api
-      .returns()
-      .subscribe((res) =>
-        this.returnsPending.set(res.data.filter((r) => r.status === 'requested').length),
-      );
-  }
-
-  readonly threads = computed<CustomerThread[]>(() => {
-    const byCustomer = new Map<string, CustomerThread>();
-    for (const o of this.orders()) {
-      if (!o.customer) continue;
-      const t = byCustomer.get(o.customer.id) ?? {
-        id: o.customer.id,
-        name: o.customer.name,
-        orders: [],
-        lifetimeValue: 0,
-        lastOrderAt: o.createdAt,
-      };
-      t.orders.push(o);
-      t.lifetimeValue += Number(o.totalAmount) || 0;
-      if (new Date(o.createdAt) > new Date(t.lastOrderAt)) t.lastOrderAt = o.createdAt;
-      byCustomer.set(o.customer.id, t);
-    }
-    const list = [...byCustomer.values()];
-    for (const t of list)
-      t.orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return list.sort(
-      (a, b) => new Date(b.lastOrderAt).getTime() - new Date(a.lastOrderAt).getTime(),
-    );
+  readonly threads = computed(() => threadsFrom(this.orders()));
+  readonly rows = computed(() => {
+    const q = this.query().trim().toLowerCase();
+    return q ? this.threads().filter((t) => t.name.toLowerCase().includes(q)) : this.threads();
   });
-
+  readonly summary = computed(() => {
+    const n = this.rows().length;
+    return `${n} ${n === 1 ? 'customer' : 'customers'}`;
+  });
   readonly openOrders = computed(
-    () => this.orders().filter((o) => !['delivered', 'returned'].includes(o.status)).length,
+    () =>
+      this.orders().filter((o) => !['delivered', 'returned', 'cancelled'].includes(o.status))
+        .length,
   );
   readonly unpaidOrders = computed(
     () => this.orders().filter((o) => o.paymentStatus !== 'paid').length,
   );
 
-  visibleThreads(): CustomerThread[] {
-    const q = this.query.trim().toLowerCase();
-    return q ? this.threads().filter((t) => t.name.toLowerCase().includes(q)) : this.threads();
+  readonly columns: SeColumn<CustomerThread>[] = [
+    { key: 'name', header: 'Customer', sortable: true },
+    { key: 'orders', header: 'Orders', numeric: true, value: (t) => t.orders.length },
+    {
+      key: 'lifetimeValue',
+      header: 'Lifetime value',
+      numeric: true,
+      sortable: true,
+      format: (v) => this.currency.format(v as number),
+    },
+    {
+      key: 'lastOrderAt',
+      header: 'Last order',
+      sortable: true,
+      format: (v) => formatDate(v as string),
+    },
+    { key: 'latest', header: 'Latest order', value: (t) => t.orders[0]?.status },
+  ];
+  readonly actions: SeRowAction<CustomerThread>[] = [
+    {
+      label: 'Send update',
+      icon: 'message',
+      hidden: () => !this.canSend,
+      run: (t) => this.open(t),
+    },
+  ];
+
+  // ---- drawer ----
+  readonly drawerOpen = signal(false);
+  readonly selected = signal<CustomerThread | null>(null);
+  readonly sending = signal(false);
+  readonly draftError = signal('');
+  draft = '';
+  orderId = '';
+  readonly activity = computed<SeActivityEntry[]>(() => {
+    const t = this.selected();
+    if (!t) return [];
+    return t.orders.map((o) => ({
+      at: o.createdAt,
+      text: `${orderRef(o.id)} · ${channelLabel(o.channel)} · ${this.currency.format(Number(o.totalAmount))} · ${statusLabel(o.status)}`,
+      actor: o.paymentStatus === 'paid' ? 'Paid' : 'Awaiting payment',
+      tone: o.paymentStatus === 'paid' ? undefined : 'warning',
+    }));
+  });
+
+  ngOnInit(): void {
+    this.load();
   }
 
-  select(t: CustomerThread): void {
-    if (this.selected()?.id === t.id) {
-      this.selected.set(null);
-      return;
-    }
+  load(): void {
+    this.api.orders(undefined, 100).subscribe({
+      next: (res) => {
+        this.orders.set(res.data);
+        this.loading.set(false);
+        this.error.set('');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        if (this.orders().length === 0) {
+          this.error.set(err?.error?.message ?? 'The server did not respond.');
+        }
+      },
+    });
+    this.api.returns().subscribe({
+      next: (res) =>
+        this.returnsPending.set(res.data.filter((r) => r.status === 'requested').length),
+      error: () => undefined,
+    });
+  }
+
+  open(t: CustomerThread): void {
     this.selected.set(t);
     this.orderId = t.orders[0]?.id ?? '';
     this.draft = '';
+    this.draftError.set('');
+    this.drawerOpen.set(true);
   }
 
   applyMacro(text: string): void {
-    this.draft = this.draft ? `${this.draft}\n${text}` : text;
+    this.draft = this.draft.trim() ? `${this.draft.trim()}\n${text}` : text;
   }
 
   send(t: CustomerThread): void {
     const message = this.draft.trim();
-    if (!message || !this.orderId) return;
+    if (!message) {
+      this.draftError.set('Write the update first.');
+      return;
+    }
+    if (!this.orderId) return;
+    this.draftError.set('');
+    this.sending.set(true);
     this.api
       .sendNotification({
         recipientId: t.id,
@@ -291,14 +352,19 @@ export class MessagesPage implements OnInit {
       })
       .subscribe({
         next: () => {
+          this.sending.set(false);
+          this.drawerOpen.set(false);
           this.draft = '';
-          this.message.set(`Update sent to ${t.name}.`);
-          this.error.set(null);
+          this.toast.show(`Update sent to ${t.name}`);
         },
-        error: (e) => {
-          this.error.set(e?.error?.message ?? 'Send failed.');
-          this.message.set(null);
+        error: (err) => {
+          this.sending.set(false);
+          this.draftError.set(err?.error?.message ?? 'The update could not be sent.');
         },
       });
   }
+}
+
+function statusLabel(status: string): string {
+  return statusMeaning('order', status).label;
 }
