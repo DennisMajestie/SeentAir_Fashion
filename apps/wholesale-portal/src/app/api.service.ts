@@ -201,10 +201,14 @@ export class ApiService {
 
   placeOrder(
     items: Array<{ variantId: string; quantity: number }>,
+    options?: { deliveryMethod?: 'freight' | 'pickup'; customerNote?: string },
   ): Observable<{ id: string; totalAmount: number }> {
+    const note = options?.customerNote?.trim();
     return this.http.post<{ id: string; totalAmount: number }>(`${API_BASE}/orders`, {
       items,
       source: 'wholesale_portal',
+      ...(options?.deliveryMethod ? { deliveryMethod: options.deliveryMethod } : {}),
+      ...(note ? { customerNote: note } : {}),
     });
   }
 

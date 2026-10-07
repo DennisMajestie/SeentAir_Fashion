@@ -14,7 +14,7 @@ import { AccountingService } from '../accounting/accounting.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { OrderAccessToken } from './entities/order-access-token.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
-import { Order } from './entities/order.entity';
+import { Order, DeliveryMethod } from './entities/order.entity';
 import { Payment } from './entities/payment.entity';
 import { DeliveryLeg } from '../logistics/entities/delivery-leg.entity';
 import { OrderStatusBus } from './order-status.bus';
@@ -119,6 +119,26 @@ describe('OrdersService — wholesale rules', () => {
     expect(order.items[0].unitPrice).toBe(7650);
     expect(order.totalAmount).toBe(153000);
     expect(order.channel).toBe('wholesale');
+  });
+
+  it('keeps the buyer delivery choice and desk note from wholesale checkout', async () => {
+    const order = await service.create(
+      {
+        items: [{ variantId: 'v1', quantity: 20 }],
+        source: 'wholesale_portal',
+        deliveryMethod: DeliveryMethod.PICKUP,
+        customerNote: '  Call the Aba desk before dispatch  ',
+      },
+      wholesaler,
+    );
+    expect(order.deliveryMethod).toBe(DeliveryMethod.PICKUP);
+    expect(order.customerNote).toBe('Call the Aba desk before dispatch');
+  });
+
+  it('leaves the delivery choice and note null when the buyer sends neither', async () => {
+    const order = await service.create({ items: [{ variantId: 'v1', quantity: 20 }] }, wholesaler);
+    expect(order.deliveryMethod).toBeNull();
+    expect(order.customerNote).toBeNull();
   });
 
   it('MOQ counts total units across items, not per line', async () => {

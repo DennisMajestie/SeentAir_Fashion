@@ -217,6 +217,22 @@ type OrderLine = NonNullable<AdminOrder['items']>[number];
               } @else {
                 <p class="se-type-body">No delivery address on this order.</p>
               }
+              @if (o.deliveryMethod || o.customerNote) {
+                <dl seKv>
+                  @if (o.deliveryMethod) {
+                    <div seKvItem label="Requested delivery">
+                      {{
+                        o.deliveryMethod === 'pickup'
+                          ? 'Factory pickup, Aba'
+                          : 'Courier freight (GIGL)'
+                      }}
+                    </div>
+                  }
+                  @if (o.customerNote) {
+                    <div seKvItem label="Buyer note">{{ o.customerNote }}</div>
+                  }
+                </dl>
+              }
             </se-card>
 
             <se-card title="Activity">

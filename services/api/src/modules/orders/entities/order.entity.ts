@@ -32,6 +32,16 @@ export enum OrderChannel {
 }
 
 /**
+ * How the buyer asked to receive the batch, captured at wholesale checkout.
+ * Courier freight goes out on the waybill; pickup is collected at the Aba
+ * factory. Null where the channel never asks (retail, in-store).
+ */
+export enum DeliveryMethod {
+  FREIGHT = 'freight',
+  PICKUP = 'pickup',
+}
+
+/**
  * AWAITING_PAYMENT is internal (full payment upfront — appendix 08);
  * the rest are the confirmed customer-facing states (appendix 09).
  */
@@ -123,10 +133,19 @@ export class Order {
   @Column({ name: 'shipping_address', type: 'jsonb', nullable: true })
   shippingAddress: OrderShippingAddress | null;
 
+  /** Buyer's requested fulfilment mode; null when the channel does not ask. */
+  @Column({ name: 'delivery_method', type: 'enum', enum: DeliveryMethod, nullable: true })
+  deliveryMethod: DeliveryMethod | null;
+
   /** Handover instructions for the waybill — not routable data, so kept out
       of the address. Set by staff at pack-out. */
   @Column({ name: 'delivery_note', type: 'text', nullable: true })
   deliveryNote: string | null;
+
+  /** Buyer's own note for the factory desk, captured at wholesale checkout.
+      Distinct from deliveryNote, which staff write at pack-out. */
+  @Column({ name: 'customer_note', type: 'text', nullable: true })
+  customerNote: string | null;
 
   @Column({
     name: 'gross_weight_kg',

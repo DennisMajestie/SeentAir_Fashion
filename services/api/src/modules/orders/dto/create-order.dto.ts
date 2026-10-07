@@ -8,10 +8,11 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
-import { OrderChannel } from '../entities/order.entity';
+import { DeliveryMethod, OrderChannel } from '../entities/order.entity';
 import { GuestContactDto } from './guest-contact.dto';
 import { ShippingAddressDto } from './shipping-address.dto';
 
@@ -67,4 +68,21 @@ export class CreateOrderDto {
   @ValidateNested()
   @Type(() => GuestContactDto)
   guest?: GuestContactDto;
+
+  /**
+   * Wholesale checkout: the buyer's requested fulfilment. Optional so every
+   * other channel is unaffected; the wholesale portal sends it on every order.
+   */
+  @IsOptional()
+  @IsEnum(DeliveryMethod)
+  deliveryMethod?: DeliveryMethod;
+
+  /**
+   * Wholesale checkout: the buyer's free-text note for the factory desk.
+   * Separate from deliveryNote, which staff write at pack-out.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  customerNote?: string;
 }

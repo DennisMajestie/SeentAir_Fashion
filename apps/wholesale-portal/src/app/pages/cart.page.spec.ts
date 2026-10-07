@@ -218,13 +218,32 @@ describe('CartPage', () => {
       await component.placeOrder();
       expect(leave).toHaveBeenCalledWith('https://paystack.test/pay/1');
       expect(router.navigate).not.toHaveBeenCalled();
-      expect(api.placeOrder).toHaveBeenCalledWith([
-        { variantId: 'a', quantity: 12 },
-        { variantId: 'b', quantity: 8 },
-      ]);
+      expect(api.placeOrder).toHaveBeenCalledWith(
+        [
+          { variantId: 'a', quantity: 12 },
+          { variantId: 'b', quantity: 8 },
+        ],
+        { deliveryMethod: 'freight', customerNote: '' },
+      );
       expect(cart.lines().length).toBe(0);
       expect(api.payWithPaystack).toHaveBeenCalledWith('abcdef12-0000', 50000);
       expect(show.calls.mostRecent().args[0]).toContain('#ABCDEF12');
+    });
+
+    it('sends the buyer delivery choice and factory-desk note with the order', async () => {
+      mount([line('a', 20)]);
+      component.freight = 'pickup';
+      component.notes = 'Deliver after the Friday restock';
+      spyOn(confirm, 'ask').and.resolveTo(true);
+      const leave = spyOn(component, 'leaveFor');
+      api.placeOrder.and.returnValue(of({ id: 'order-p', totalAmount: 50000 }));
+      api.payWithPaystack.and.returnValue(of({ authorizationUrl: 'https://paystack.test/pay/2' }));
+      await component.placeOrder();
+      expect(api.placeOrder).toHaveBeenCalledWith([{ variantId: 'a', quantity: 20 }], {
+        deliveryMethod: 'pickup',
+        customerNote: 'Deliver after the Friday restock',
+      });
+      expect(leave).toHaveBeenCalledWith('https://paystack.test/pay/2');
     });
 
     it('sends the buyer to the invoice when Paystack returns no payment page', async () => {

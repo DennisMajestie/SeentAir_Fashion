@@ -32,8 +32,9 @@ clean up).
 - **Admin dashboard**: every screen is on the design system. Legacy styles and
   SweetAlert are gone; confirms and toasts use Seentair's own components.
 - **Wholesale portal**: every screen is on the design system, each with a spec
-  (123 specs passing, build clean). Checkout now goes to Paystack for the full
-  amount. A cancelled or returned order can never be paid.
+  (124 specs passing, build clean). Checkout now goes to Paystack for the full
+  amount. A cancelled or returned order can never be paid. The cart's delivery
+  choice and buyer note are posted with the order and shown to staff.
 - **Partner portal**: every screen is on the design system, each with a spec
   (33 specs passing, build clean).
 - **Storefront**: mobile redesign matches the approved references in
@@ -45,11 +46,13 @@ clean up).
 1. **Check the partner and wholesale screens in a browser.** Both rebuilds pass
    their specs but have not been reviewed in a browser yet. Check light and dark
    themes and phone width.
-2. **Known gaps to raise with the backend:**
-   - The wholesale cart collects a delivery choice and notes, but the order
-     endpoint has no fields for them, so they are not sent.
-   - The wholesale initial bundle is ~594 kB, over the 500 kB budget (build
-     warning only).
+2. **Two wholesale gaps closed in this pass:**
+   - The cart's delivery choice and buyer note now reach the API. `Order` gained
+     `delivery_method` (enum) and `customer_note` (text); the admin order detail
+     shows both.
+   - The initial bundle is **484.89 kB**, under the 500 kB budget, after
+     lazy-loading every route and dropping the redundant `zone.js` polyfill
+     (the app runs zoneless).
 3. **Before go-live (outside the codebase):** production keys for Paystack,
    GIGL and Termii; answers to the High-priority Open Questions in
    `docs/project/03-Open-Questions.md` (#1 POS, #6 currency, #7 NDPR); POS

@@ -286,22 +286,27 @@ export class CartPage implements OnInit {
     if (!ok) return;
     this.placing.set(true);
     const items = this.cart.toOrderItems();
-    this.api.placeOrder(items).subscribe({
-      next: (order) => {
-        this.cart.clear();
-        this.toast.show(
-          `Order #${order.id.slice(0, 8).toUpperCase()} placed. Taking you to Paystack.`,
-        );
-        this.pay(order.id, order.totalAmount);
-      },
-      error: (err) => {
-        this.placing.set(false);
-        this.toast.show(err?.error?.message ?? 'The order could not be placed', {
-          tone: 'danger',
-          action: { label: 'Try again', run: () => void this.placeOrder() },
-        });
-      },
-    });
+    this.api
+      .placeOrder(items, {
+        deliveryMethod: this.freight === 'pickup' ? 'pickup' : 'freight',
+        customerNote: this.notes,
+      })
+      .subscribe({
+        next: (order) => {
+          this.cart.clear();
+          this.toast.show(
+            `Order #${order.id.slice(0, 8).toUpperCase()} placed. Taking you to Paystack.`,
+          );
+          this.pay(order.id, order.totalAmount);
+        },
+        error: (err) => {
+          this.placing.set(false);
+          this.toast.show(err?.error?.message ?? 'The order could not be placed', {
+            tone: 'danger',
+            action: { label: 'Try again', run: () => void this.placeOrder() },
+          });
+        },
+      });
   }
 
   /** Full amount, always: the API rejects any other figure. */

@@ -420,6 +420,8 @@ export class OrdersService {
       channel,
       source: dto.source ?? null,
       shippingAddress: dto.shippingAddress ?? null,
+      deliveryMethod: dto.deliveryMethod ?? null,
+      customerNote: dto.customerNote?.trim() || null,
       status: OrderStatus.AWAITING_PAYMENT,
       paymentStatus: PaymentStatus.UNPAID,
       totalAmount: Math.round(total * 100) / 100,

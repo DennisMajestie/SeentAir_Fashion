@@ -118,6 +118,10 @@ export interface AdminOrder {
   shippingAddress?: ShippingAddress | null;
   /** Handover instructions for the waybill, staff note, not routable data. */
   deliveryNote?: string | null;
+  /** Buyer's requested fulfilment at wholesale checkout: courier freight or factory pickup. */
+  deliveryMethod?: 'freight' | 'pickup' | null;
+  /** Buyer's own note for the factory desk, captured at wholesale checkout. */
+  customerNote?: string | null;
   oqrCode?: string | null;
   grossWeightKg?: number | null;
   palletRef?: string | null;
