@@ -267,7 +267,7 @@ export class SeCellDirective {
                 }
                 @if (actions().length > 0) {
                   <td class="se-table__actions">
-                    @for (a of actions(); track a.label) {
+                    @for (a of actions(); track $index) {
                       @if (!a.hidden || !a.hidden(row)) {
                         <button
                           seButton

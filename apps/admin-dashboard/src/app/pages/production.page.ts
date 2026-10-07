@@ -2,7 +2,6 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
-  SE_STATUS,
   SeBannerComponent,
   SeButtonDirective,
   SeCellDirective,
@@ -104,7 +103,7 @@ interface ProductOpt {
         [error]="error()"
         (retry)="load()"
         [pageSize]="25"
-        [actions]="actions"
+        [actions]="actions()"
         activatable
         (rowActivate)="open($event)"
         [emptyHeading]="filtering() ? 'No batches match these filters' : 'No batches yet'"
@@ -121,7 +120,7 @@ interface ProductOpt {
           searchLabel="Search batches"
           searchPlaceholder="Batch ref or SKU"
           [(query)]="query"
-          [filters]="filters"
+          [filters]="filters()"
           [(value)]="filterValue"
           [summary]="summary()"
         />
@@ -206,16 +205,14 @@ export class ProductionPage implements OnInit {
   private readonly urlState = urlFilters(['stage']);
   readonly query = this.urlState.query;
   readonly filterValue = this.urlState.value;
-  readonly filters: SeFilter[] = [
+  /** The stage filter offers the factory's configured stages, as the API names them. */
+  readonly filters = computed<SeFilter[]>(() => [
     {
       key: 'stage',
       label: 'Stage',
-      options: Object.entries(SE_STATUS.production).map(([value, m]) => ({
-        value,
-        label: m.label,
-      })),
+      options: this.stages().map((stage) => ({ value: stage, label: stageLabel(stage) })),
     },
-  ];
+  ]);
   readonly filtering = computed(
     () => !!this.query().trim() || Object.keys(this.filterValue()).length > 0,
   );
@@ -261,12 +258,18 @@ export class ProductionPage implements OnInit {
     },
   ];
 
-  /** The move to the next stage, whichever stage that is for the row. */
-  readonly actions: SeRowAction<Batch>[] = Object.keys(SE_STATUS.production).map((stage) => ({
-    label: `Move to ${stageLabel(stage)}`,
-    hidden: (b) => !this.canWrite() || nextStage(this.stages(), b.stage) !== stage,
-    run: (b) => void this.move(b),
-  }));
+  /**
+   * The move to the next stage, whichever stage that is for the row. Built from
+   * the configured stage list (PRODUCTION_STAGES on the API), not from the
+   * status mapping: the factory names its own stages.
+   */
+  readonly actions = computed<SeRowAction<Batch>[]>(() =>
+    this.stages().map((stage) => ({
+      label: `Move to ${stageLabel(stage)}`,
+      hidden: (b) => !this.canWrite() || nextStage(this.stages(), b.stage) !== stage,
+      run: (b) => void this.move(b),
+    })),
+  );
 
   // ---- start batch ----
   readonly starting = signal(false);

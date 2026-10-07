@@ -76,9 +76,9 @@ const COST_FIELDS = [
       @if (batch(); as b) {
         <se-status sePageStatus kind="production" [value]="b.stage" />
       }
-      @if (batch(); as b) {
-        @if (canWrite()) {
-          <ng-container sePageActions>
+      <!-- One @if, not two: a slot is only matched on the direct root of a block. -->
+      @if (batch() && canWrite()) {
+        <ng-container sePageActions>
             <button seButton type="button" (click)="costing.set(true)">Record cost</button>
             <button seButton type="button" (click)="rejecting.set(true)">Record QC reject</button>
             @if (next(); as n) {
@@ -86,8 +86,7 @@ const COST_FIELDS = [
                 Move to {{ label(n) }}
               </button>
             }
-          </ng-container>
-        }
+        </ng-container>
       }
 
       @if (loading()) {

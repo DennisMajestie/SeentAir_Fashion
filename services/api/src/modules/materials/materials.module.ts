@@ -19,7 +19,9 @@ import { SuppliersService } from './suppliers.service';
     ApprovalsModule,
     AccountingModule,
   ],
-  controllers: [MaterialsController, SuppliersController],
+  // Suppliers first: registered after MaterialsController, GET /materials/suppliers
+  // was matched by its ':id' route and rejected as a bad uuid.
+  controllers: [SuppliersController, MaterialsController],
   providers: [MaterialsService, SuppliersService],
   exports: [MaterialsService],
 })
