@@ -77,7 +77,11 @@ describe('HomePage', () => {
       of({ id: 'u1', email: 'b@x.test', role: 'wholesaler', name: 'Test Buyer' }),
     );
     api.pricing.and.returnValue(
-      of({ moq: 20, tier: { name: 'Tier B', discountPercent: 20 }, hasDiscount: true } as unknown as Pricing),
+      of({
+        moq: 20,
+        tier: { name: 'Tier B', discountPercent: 20 },
+        hasDiscount: true,
+      } as unknown as Pricing),
     );
     api.invoices.and.returnValue(invoices as never);
     api.notifications.and.returnValue(of({ data: [], total: 0 }));

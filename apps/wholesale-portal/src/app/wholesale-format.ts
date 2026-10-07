@@ -101,3 +101,6 @@ export function summarise(invoices: ReadonlyArray<Invoice>): AccountSummary {
 
 export const payMethod = (invoice: Pick<Invoice, 'payments'>): string =>
   (invoice.payments[0]?.method ?? 'confirmed').replaceAll('_', ' ');
+
+/** How a buyer refers to a custom design request: "#CR-" + the first eight characters. */
+export const customRef = (id: string): string => `#CR-${id.slice(0, 8).toUpperCase()}`;

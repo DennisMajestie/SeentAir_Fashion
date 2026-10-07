@@ -1,68 +1,79 @@
-import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { SeConfirmService, SeCurrencyService } from '@seentair/ui';
 import { of, throwError } from 'rxjs';
 
 import { ApiService, Invoice } from '../api.service';
 import { InvoiceDetailPage } from './invoice-detail.page';
 
-/**
- * The invoice is the document a buyer forwards to their finance team, so the
- * one thing that must never be wrong on it is whether it is paid.
- *
- * Payment used to be reachable only by scrolling to the settlement ledger. These
- * cover the banner that replaced that: settled reads green and needs no action,
- * unpaid reads as a demand and points at the finance desk. The no-part-payment
- * rule is spelled out here too, because a pro-forma invoice is exactly where a
- * buyer looks for permission to pay a third of it now and the rest later.
- */
-const ORDER_ID = 'a1b2c3d4-e5f6-0000-1111-222233334444';
+const ORDER_ID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 
-function invoice(over: Partial<Invoice> = {}): Invoice {
+function invoice(overrides: Partial<Invoice> = {}): Invoice {
   return {
     orderId: ORDER_ID,
     createdAt: '2026-03-04T10:00:00Z',
-    status: 'processing',
-    paymentStatus: 'pending',
-    totalAmount: 153000,
-    items: [{ sku: 'CARGO-S', quantity: 20, unitPrice: 7650, lineTotal: 153000 }],
+    status: 'order_received',
+    paymentStatus: 'unpaid',
+    totalAmount: 120000,
+    items: [{ sku: 'SE-TEE-BLK-L', quantity: 4, unitPrice: 30000, lineTotal: 120000 }],
     payments: [],
-    ...over,
-  } as Invoice;
+    ...overrides,
+  };
 }
+
+const paidInvoice = (): Invoice =>
+  invoice({
+    status: 'processing',
+    paymentStatus: 'paid',
+    payments: [{ id: 'pay-1', method: 'paystack', amount: 120000, date: '2026-03-05T09:00:00Z' }],
+  });
 
 describe('InvoiceDetailPage', () => {
   let fixture: ComponentFixture<InvoiceDetailPage>;
-  let payCalls: Array<{ id: string; amount: number }>;
-  payCalls = [];
+  let api: jasmine.SpyObj<ApiService>;
+  let confirm: jasmine.SpyObj<SeConfirmService>;
+  const el = (): HTMLElement => fixture.nativeElement as HTMLElement;
+  const text = (): string => (el().textContent ?? '').replace(/\s+/g, ' ');
+  const kv = (label: string): string | null => {
+    const dt = Array.from(el().querySelectorAll('dt')).find((d) => d.textContent?.trim() === label);
+    return dt?.nextElementSibling?.textContent?.trim() ?? null;
+  };
+  const button = (label: string): HTMLButtonElement | undefined =>
+    Array.from(el().querySelectorAll('button')).find((b) => b.textContent?.trim() === label);
 
   async function boot(
-    data: Invoice[] = [invoice()],
+    data: Invoice[] | 'fail' = [invoice()],
     payResult: { authorizationUrl: string } | 'fail' = { authorizationUrl: '' },
   ): Promise<void> {
-    payCalls.length = 0;
+    api = jasmine.createSpyObj<ApiService>('ApiService', ['invoices', 'me', 'payWithPaystack']);
+    api.invoices.and.returnValue(
+      data === 'fail' ? throwError(() => new Error('down')) : of({ data, total: data.length }),
+    );
+    api.me.and.returnValue(
+      of({ id: 'u1', email: 'b@test', role: 'wholesaler', name: 'Test Buyer' }),
+    );
+    api.payWithPaystack.and.returnValue(
+      payResult === 'fail'
+        ? throwError(() => ({ error: { message: 'Paystack unavailable' } }))
+        : of(payResult),
+    );
+    confirm = jasmine.createSpyObj<SeConfirmService>('SeConfirmService', ['ask', 'askWithReason']);
+    confirm.ask.and.resolveTo(true);
     TestBed.configureTestingModule({
-      imports: [InvoiceDetailPage],
       providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => ORDER_ID } } } },
+        { provide: ApiService, useValue: api },
+        { provide: SeConfirmService, useValue: confirm },
         {
-          provide: ApiService,
-          useValue: {
-            invoices: () => of({ data, total: data.length }),
-            me: () => of({ name: 'Test Buyer', email: 'b@test' }),
-            payWithPaystack: (id: string, amount: number) => {
-              payCalls.push({ id, amount });
-              return payResult === 'fail'
-                ? throwError(() => ({ error: { message: 'Paystack unavailable' } }))
-                : of(payResult);
-            },
-          },
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ id: ORDER_ID }) } },
         },
       ],
+    });
+    TestBed.inject(SeCurrencyService).config.set({
+      currencyCode: 'NGN',
+      currencySymbol: '₦',
+      locale: 'en-NG',
     });
     fixture = TestBed.createComponent(InvoiceDetailPage);
     fixture.detectChanges();
@@ -70,108 +81,106 @@ describe('InvoiceDetailPage', () => {
     fixture.detectChanges();
   }
 
-  function bar(): HTMLElement | null {
-    return (fixture.nativeElement as HTMLElement).querySelector('.paybar');
+  async function settle(): Promise<void> {
+    await fixture.whenStable();
+    await Promise.resolve();
+    fixture.detectChanges();
   }
 
-  function text(): string {
-    return ((fixture.nativeElement as HTMLElement).textContent ?? '').replace(/\s+/g, ' ');
-  }
+  afterEach(() => fixture?.destroy());
 
-  describe('payment banner', () => {
-    it('puts payment state above the manifest, not below it', async () => {
-      await boot();
-      const doc = (fixture.nativeElement as HTMLElement).innerHTML;
-      expect(doc.indexOf('paybar')).toBeLessThan(doc.indexOf('Itemized manifest'));
-    });
+  it('titles the page with the order reference and both statuses beside it', async () => {
+    await boot();
+    expect(el().querySelector('h1')!.textContent).toContain('#AAAAAAAA');
+    const badges = Array.from(el().querySelectorAll('se-status')).map((b) => b.textContent?.trim());
+    expect(badges).toEqual(['Order received', 'Unpaid']);
+    expect(el().querySelector('.se-page__meta, [sePageMeta]')?.textContent).toContain(
+      'Pro-forma invoice',
+    );
+  });
 
-    it('demands action on an unpaid invoice', async () => {
-      await boot();
-      expect(bar()!.classList.contains('settied')).toBe(false);
-      expect(text()).toContain('Action required');
-    });
+  it('lists the lines and totals in the configured currency', async () => {
+    await boot();
+    const row = el().querySelector('se-table tbody tr')!;
+    expect(row.textContent).toContain('SE-TEE-BLK-L');
+    expect(row.textContent).toContain('₦30,000.00');
+    expect(kv('Total payable')).toBe('₦120,000.00');
+    expect(text()).not.toContain('NaN');
+  });
 
+  describe('payment', () => {
     it('states the no-part-payment rule while payment is outstanding', async () => {
       await boot();
+      expect(el().querySelector('.se-banner--warning')).not.toBeNull();
+      expect(text()).toContain('full payment upfront');
       expect(text()).toContain('no part-payments');
-    });
-
-    it('offers Pay now as a real button, not a link', async () => {
-      await boot();
-      const cta = bar()!.querySelector('.paybar-cta') as HTMLButtonElement;
-      expect(cta.tagName).toBe('BUTTON');
-      expect(cta.textContent).toContain('153,000.00');
     });
 
     it('keeps the finance desk reachable for buyers paying by transfer', async () => {
       await boot();
-      const alt = bar()!.querySelector('.paybar-alt') as HTMLAnchorElement;
-      expect(alt.getAttribute('href')).toBe('tel:+23418887400');
+      expect(el().querySelector('a[href="tel:+23418887400"]')).not.toBeNull();
     });
 
-    it('charges the invoice total, because wholesale has no part-payments', async () => {
-      await boot([invoice({ totalAmount: 153000 })]);
-      (bar()!.querySelector('.paybar-cta') as HTMLButtonElement).click();
-      fixture.detectChanges();
-      expect(payCalls).toEqual([{ id: ORDER_ID, amount: 153000 }]);
+    it('charges the invoice total after the buyer confirms the amount', async () => {
+      await boot([invoice()], { authorizationUrl: '' });
+      button('Pay now')!.click();
+      await settle();
+      expect(confirm.ask).toHaveBeenCalledWith(
+        jasmine.objectContaining({ confirmLabel: 'Pay ₦120,000.00' }),
+      );
+      expect(api.payWithPaystack).toHaveBeenCalledWith(ORDER_ID, 120000);
+    });
+
+    it('does nothing when the buyer cancels the confirmation', async () => {
+      await boot();
+      confirm.ask.and.resolveTo(false);
+      button('Pay now')!.click();
+      await settle();
+      expect(api.payWithPaystack).not.toHaveBeenCalled();
     });
 
     it('reports a failed handoff instead of pretending it worked', async () => {
       await boot([invoice()], 'fail');
-      (bar()!.querySelector('.paybar-cta') as HTMLButtonElement).click();
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-      expect(text()).toContain('Paystack unavailable');
-      // The button must come back, or the buyer is locked out of retrying.
-      expect((bar()!.querySelector('.paybar-cta') as HTMLButtonElement).disabled).toBe(false);
+      button('Pay now')!.click();
+      await settle();
+      expect(el().querySelector('.se-banner--danger')!.textContent).toContain(
+        'Paystack unavailable',
+      );
+      expect(fixture.componentInstance.paying()).toBeFalse();
     });
 
     it('refuses to navigate to an empty checkout URL', async () => {
       await boot([invoice()], { authorizationUrl: '' });
-      (bar()!.querySelector('.paybar-cta') as HTMLButtonElement).click();
-      fixture.detectChanges();
-      await fixture.whenStable();
-      fixture.detectChanges();
-      expect(text()).toContain('no checkout URL');
+      button('Pay now')!.click();
+      await settle();
+      expect(text()).toContain('Nothing has been charged');
+      expect(fixture.componentInstance.paying()).toBeFalse();
     });
 
-    it('confirms settlement in green once paid', async () => {
-      await boot([
-        invoice({
-          paymentStatus: 'paid',
-          payments: [
-            { id: 'pay0000001111', method: 'bank_transfer', date: '2026-03-05T10:00:00Z' } as never,
-          ],
-        }),
-      ]);
-      expect(bar()!.classList.contains('settled')).toBe(true);
-      expect(text()).toContain('Paid in full');
-      expect(text()).toContain('bank transfer');
-      expect(text()).not.toContain('Action required');
-    });
-
-    it('offers no action once settled', async () => {
-      await boot([invoice({ paymentStatus: 'paid' })]);
-      expect(bar()!.querySelector('.paybar-cta')).toBeNull();
-      expect(bar()!.querySelector('.paybar-alt')).toBeNull();
-    });
-
-    it('labels an unpaid invoice pro-forma', async () => {
-      await boot();
-      expect(text()).toContain('Pro-forma invoice');
-      expect(text()).not.toContain('Commercial tax invoice');
-    });
-
-    it('labels a settled invoice a commercial tax invoice', async () => {
-      await boot([invoice({ paymentStatus: 'paid' })]);
+    it('offers no payment action once settled, and names the settlement', async () => {
+      await boot([paidInvoice()]);
+      expect(button('Pay now')).toBeUndefined();
+      expect(button('Print')).toBeDefined();
+      expect(el().querySelector('.se-banner--warning')).toBeNull();
       expect(text()).toContain('Commercial tax invoice');
-      expect(text()).not.toContain('Pro-forma invoice');
+      expect(kv('Total settled')).toBe('₦120,000.00');
+      expect(text()).toContain('via paystack');
     });
+  });
 
-    it('renders no banner when the order id does not resolve', async () => {
-      await boot([]);
-      expect(bar()).toBeNull();
-    });
+  it('shows the empty state with a way back when the order id does not resolve', async () => {
+    await boot([]);
+    expect(el().querySelector('se-empty-state')!.textContent).toContain('Invoice not found');
+    expect(el().querySelector('se-banner')).toBeNull();
+  });
+
+  it('shows a retryable error, not the empty state, when the load fails', async () => {
+    await boot('fail');
+    expect(el().querySelector('se-empty-state')).toBeNull();
+    expect(el().querySelector('.se-banner--danger')!.textContent).toContain('Try again');
+    api.invoices.and.returnValue(of({ data: [invoice()], total: 1 }));
+    fixture.componentInstance.load();
+    fixture.detectChanges();
+    expect(el().querySelector('se-table')).not.toBeNull();
   });
 });

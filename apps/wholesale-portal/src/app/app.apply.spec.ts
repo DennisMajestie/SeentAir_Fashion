@@ -144,10 +144,12 @@ describe('App wholesale application form', () => {
     fixture.componentInstance.submitApplication();
     fixture.detectChanges();
 
-    http.expectOne(`${API_BASE}/wholesale/apply`).flush(
-      { message: 'That email is already registered.' },
-      { status: 409, statusText: 'Conflict' },
-    );
+    http
+      .expectOne(`${API_BASE}/wholesale/apply`)
+      .flush(
+        { message: 'That email is already registered.' },
+        { status: 409, statusText: 'Conflict' },
+      );
     fixture.detectChanges();
 
     // The server routes a known email to the catalogue flow, so the buyer has

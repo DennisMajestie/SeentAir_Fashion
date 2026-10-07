@@ -1,302 +1,280 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
-import { ApiService, Invoice } from '../api.service';
-import { pill } from '../status-pill';
+import { Component, OnInit, ViewEncapsulation, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
-  FactsComponent,
-  LedgerComponent,
-  PayBannerComponent,
-  StripComponent,
-} from '../ui/primitives';
+  SeBannerComponent,
+  SeButtonDirective,
+  SeCardComponent,
+  SeColumn,
+  SeConfirmService,
+  SeCurrencyService,
+  SeDatePipe,
+  SeEmptyStateComponent,
+  SeKvDirective,
+  SeKvItemComponent,
+  SeMoneyPipe,
+  SePageComponent,
+  SeSkeletonComponent,
+  SeStatusComponent,
+  SeTableComponent,
+  formatDate,
+} from '@seentair/ui';
+import { ApiService, Invoice } from '../api.service';
+import { isPaid, orderRef, payMethod, units } from '../wholesale-format';
+
+type Line = Invoice['items'][number];
 
 /**
- * Date formatting for facts built in TypeScript. `Intl` rather than injecting
- * `DatePipe`, which a standalone component only receives if it declares the
- * pipe — a dependency that fails at runtime, not at build time.
- */
-const dayFormat = new Intl.DateTimeFormat('en-NG', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-});
-
-/**
- * W7, Invoice detail: the commercial document for one order.
+ * Invoice detail: the commercial document for one wholesale order.
  *
- * A document, not a list, so this page uses `se-strip` throughout and never
- * collapses anything: everything on an invoice has to stay visible and
- * printable at once. The manifest stays a real `<table>` because a ledger
- * with per-line totals is exactly the thing a flexbox will not line up.
+ * Nothing on it collapses, because the page doubles as the printable
+ * invoice. The money comes from the server-computed order total; the
+ * amount handed to Paystack is that total, never an editable field, because
+ * wholesale is full payment upfront.
  */
 @Component({
   selector: 'app-invoice-detail',
   imports: [
-    CommonModule,
-    RouterLink,
-    StripComponent,
-    FactsComponent,
-    LedgerComponent,
-    PayBannerComponent,
+    SeBannerComponent,
+    SeButtonDirective,
+    SeCardComponent,
+    SeDatePipe,
+    SeEmptyStateComponent,
+    SeKvDirective,
+    SeKvItemComponent,
+    SeMoneyPipe,
+    SePageComponent,
+    SeSkeletonComponent,
+    SeStatusComponent,
+    SeTableComponent,
   ],
   template: `
-    <a class="link backlink" routerLink="/orders">
-      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
-      Back to orders &amp; invoices
-    </a>
-
-    @if (invoice(); as inv) {
-      <se-pay
-        [paid]="paid(inv)"
-        [title]="'Paid in full'"
-        [sub]="
-          paid(inv)
-            ? 'Settled ' + payMethod(inv) + '. Nothing further is needed on this order.'
-            : 'Payable in full before production starts. Wholesale is full payment upfront; there are no part-payments.'
-        "
-        [action]="paid(inv) ? '' : 'Pay ' + naira(inv.totalAmount) + ' now'"
-        [actionHref]="paid(inv) ? '' : 'tel:+23418887400'"
-        [payable]="!paid(inv)"
-        [busy]="paying()"
-        (pay)="payNow(inv)"
-        secondary="Prefer to transfer? Call the finance desk"
-        [secondaryHref]="paid(inv) ? '' : 'tel:+23418887400'"
-      />
-
-      @if (payError(); as msg) {
-        <p class="pay-error" role="alert">{{ msg }}</p>
+    <se-page [title]="invoice() ? 'Invoice ' + ref() : 'Invoice'" [breadcrumbs]="crumbs()">
+      @if (invoice(); as inv) {
+        <ng-container sePageStatus>
+          <se-status kind="order" [value]="inv.status" />
+          <se-status kind="payment" [value]="inv.paymentStatus" />
+        </ng-container>
+      }
+      @if (invoice(); as inv) {
+        <p sePageMeta>
+          {{ paid(inv) ? 'Commercial tax invoice' : 'Pro-forma invoice' }} issued
+          {{ inv.createdAt | seDate }}{{ paid(inv) ? '. ' + settledLine(inv) : '' }}
+        </p>
+      }
+      @if (invoice(); as inv) {
+        <ng-container sePageActions>
+          <button seButton type="button" (click)="print()">Print</button>
+          @if (!paid(inv)) {
+            <button
+              seButton
+              variant="primary"
+              type="button"
+              [loading]="paying()"
+              (click)="payNow(inv)"
+            >
+              Pay now
+            </button>
+          }
+        </ng-container>
       }
 
-      <se-strip
-        label="Document issued"
-        [badge]="paid(inv) ? 'Commercial tax invoice' : 'Pro-forma invoice'"
-        trailing
-      >
-        <span stripTrailing class="status {{ pill(inv.status) }}">{{
-          inv.status.replaceAll('_', ' ')
-        }}</span>
-        <div class="doc-num">INV-{{ code(inv) }}</div>
-        <p class="muted small" style="margin: 0 0 var(--space-sm)">
-          Order production code #SNT-{{ code(inv) }}
-        </p>
-        <se-facts [facts]="settlementFacts(inv)" />
-      </se-strip>
-
-      <div class="parties">
-        <se-strip label="Manufacturer / issuer" badge="Aba hub">
-          <p class="party-name">Seentair Limited</p>
-          <p class="muted small" style="margin: 0">
-            Streetwear manufacturer: single factory, Aba, Nigeria.
-          </p>
-          <se-ledger [rows]="issuerRows()" />
-        </se-strip>
-
-        <se-strip label="Billed to &amp; consignee" badge="Verified buyer">
-          <p class="party-name">{{ buyer()?.name ?? 'Wholesale account' }}</p>
-          <p class="muted small" style="margin: 0">Approved Seentair wholesale buyer.</p>
-          <se-ledger [rows]="buyerRows()" />
-        </se-strip>
-      </div>
-
-      <se-strip
-        label="Itemized manifest"
-        [badge]="
-          lines(inv) + (lines(inv) === 1 ? ' line' : ' lines') + ' · ' + units(inv) + ' units'
-        "
-      >
-        <div class="table-scroll">
-          <table class="table">
-            <caption class="sr-only">
-              Items on invoice
-              {{
-                code(inv)
-              }}
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Item &amp; SKU</th>
-                <th scope="col" class="num">Qty</th>
-                <th scope="col" class="num">Unit price</th>
-                <th scope="col" class="num">Line total</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of inv.items; track item.sku) {
-                <tr>
-                  <td>
-                    <code>{{ item.sku }}</code>
-                  </td>
-                  <td class="num">{{ item.quantity }} pcs</td>
-                  <td class="num">₦{{ item.unitPrice | number: '1.0-2' }}</td>
-                  <td class="num">
-                    <strong>₦{{ item.lineTotal | number: '1.0-2' }}</strong>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </se-strip>
-
-      <se-strip label="Manufacturing quality guarantee">
-        <p class="small muted" style="margin: 0">
-          Every batch passes factory quality control before dispatch. Defective rejects are
-          destroyed and never shipped; garments with minor factory errors are repaired and restocked
-          under a recorded reason code. Each movement writes to the immutable audit log.
-        </p>
-        <!-- GAP: signed audit code + factory-controller signature block awaits the
-             audit-log export endpoint; the guarantee text states only live policy. -->
-      </se-strip>
-
-      <se-strip label="Commercial ledger">
-        <se-ledger [rows]="ledgerRows(inv)" />
-        @for (payment of inv.payments; track payment.id) {
-          <p class="muted small" style="margin: var(--space-sm) 0 0">
-            Paid ₦{{ payment.amount | number: '1.0-2' }} via
-            {{ payment.method.replaceAll('_', ' ') }} on {{ payment.date | date: 'medium' }}
-          </p>
+      @if (invoice(); as inv) {
+        @if (!paid(inv)) {
+          <se-banner tone="warning" title="Payable in full before production starts">
+            Wholesale is full payment upfront; there are no part-payments. Prefer a transfer? Call
+            the finance desk on <a href="tel:+23418887400">+234 1 888 7400</a>.
+          </se-banner>
         }
-      </se-strip>
+        @if (payError(); as msg) {
+          <se-banner tone="danger" title="Payment could not start">{{ msg }}</se-banner>
+        }
 
-      <button class="cta" style="width:100%" (click)="print()">
-        <span class="material-symbols-outlined" aria-hidden="true">download</span>
-        Download / print PDF invoice
-      </button>
-      <!-- GAP: server-rendered PDF + WhatsApp share await the document service;
-           browser print-to-PDF covers the download meanwhile. -->
-      <div class="actions" style="justify-content: center">
-        <button class="link" disabled title="WhatsApp desk line pending messaging-provider setup">
-          Share via WhatsApp desk
-        </button>
-        <span class="status {{ pill(inv.status) }}">{{ inv.status.replaceAll('_', ' ') }}</span>
-      </div>
-    } @else if (missing()) {
-      <p class="error">
-        Invoice not found. <a class="link" routerLink="/orders">Back to orders</a>
-      </p>
-    } @else {
-      <p class="muted">Loading invoice…</p>
-    }
+        <div class="se-detail">
+          <div class="se-detail__main">
+            <se-card [title]="lineSummary(inv)" flush>
+              <se-table
+                [caption]="'Items on invoice ' + ref()"
+                [columns]="columns"
+                [rows]="inv.items"
+                [rowId]="rowId"
+                hideDensity
+              />
+            </se-card>
+            <se-card title="Manufacturing quality guarantee">
+              <p class="invoice-note">
+                Every batch passes factory quality control before dispatch. Defective rejects are
+                destroyed and never shipped; garments with minor factory errors are repaired and
+                restocked under a recorded reason code.
+              </p>
+            </se-card>
+          </div>
+          <aside class="se-detail__aside">
+            <se-card title="Totals">
+              <dl seKv>
+                <div seKvItem [label]="'Merchandise (' + units(inv) + ' units)'" numeric>
+                  {{ subtotal(inv) | seMoney: 2 }}
+                </div>
+                <div seKvItem label="Wholesale tier rate">Applied at order time</div>
+                <div seKvItem [label]="paid(inv) ? 'Total settled' : 'Total payable'" numeric>
+                  <strong>{{ inv.totalAmount | seMoney: 2 }}</strong>
+                </div>
+              </dl>
+            </se-card>
+            <se-card title="Payments">
+              @if (inv.payments.length) {
+                <dl seKv>
+                  @for (payment of inv.payments; track payment.id) {
+                    <div seKvItem [label]="payment.date | seDate: 'datetime'" numeric>
+                      {{ payment.amount | seMoney: 2 }} via {{ method(payment.method) }}
+                    </div>
+                  }
+                </dl>
+              } @else {
+                <p class="invoice-note">No payment recorded yet.</p>
+              }
+            </se-card>
+            <se-card title="Parties">
+              <dl seKv>
+                <div seKvItem label="Issuer">Seentair Limited, Aba, Nigeria</div>
+                <div seKvItem label="Finance desk">
+                  <a href="tel:+23418887400">+234 1 888 7400</a>
+                </div>
+                <div seKvItem label="Billed to">{{ buyer()?.name ?? '—' }}</div>
+                <div seKvItem label="Account email">{{ buyer()?.email ?? '—' }}</div>
+                <div seKvItem label="Order">{{ ref() }}</div>
+                <div seKvItem label="Channel">Wholesale portal</div>
+              </dl>
+            </se-card>
+          </aside>
+        </div>
+      } @else if (failed()) {
+        <se-banner
+          tone="danger"
+          title="The invoice could not be loaded"
+          actionLabel="Try again"
+          (action)="load()"
+        >
+          Check your connection and try again.
+        </se-banner>
+      } @else if (missing()) {
+        <se-empty-state
+          heading="Invoice not found"
+          text="This order is not on your account."
+          actionLabel="Back to orders"
+          (action)="router.navigate(['/orders'])"
+        />
+      } @else {
+        <div aria-busy="true"><se-skeleton shape="detail" /></div>
+      }
+    </se-page>
   `,
+  styles: [
+    `
+      .invoice-note {
+        margin: 0;
+        color: var(--se-color-text-muted);
+      }
+      /* The printed invoice is the page body alone: no shell chrome, no
+         buttons, no banners. Unencapsulated so the rule reaches the shell. */
+      @media print {
+        .se-shell__sidebar,
+        .se-shell__topbar,
+        .se-shell__scrim,
+        .se-page__actions,
+        se-banner {
+          display: none !important;
+        }
+      }
+    `,
+  ],
+  encapsulation: ViewEncapsulation.None,
 })
 export class InvoiceDetailPage implements OnInit {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
-  readonly pill = pill;
+  private readonly confirm = inject(SeConfirmService);
+  private readonly currency = inject(SeCurrencyService);
+  readonly router = inject(Router);
+
   readonly invoice = signal<Invoice | null>(null);
   readonly buyer = signal<{ name: string; email: string } | null>(null);
   readonly missing = signal(false);
+  readonly failed = signal(false);
   /** True while the Paystack handoff is in flight, so the button cannot double-fire. */
   readonly paying = signal(false);
   readonly payError = signal<string | null>(null);
 
+  readonly units = units;
+  readonly paid = isPaid;
+  readonly ref = computed(() => orderRef(this.invoice()?.orderId ?? this.id));
+  readonly crumbs = computed(() => [{ label: 'Orders', link: '/orders' }, { label: this.ref() }]);
+
+  readonly columns: SeColumn<Line>[] = [
+    { key: 'sku', header: 'Item / SKU' },
+    { key: 'quantity', header: 'Qty', numeric: true },
+    {
+      key: 'unitPrice',
+      header: 'Unit price',
+      numeric: true,
+      format: (v) => this.currency.format(v as number, 2),
+    },
+    {
+      key: 'lineTotal',
+      header: 'Line total',
+      numeric: true,
+      format: (v) => this.currency.format(v as number, 2),
+    },
+  ];
+  readonly rowId = (row: Line): string => row.sku;
+
+  private id = '';
+
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id');
-    this.api.invoices().subscribe({
-      next: (res) => {
-        const inv = res.data.find((i) => i.orderId === id) ?? null;
-        this.invoice.set(inv);
-        this.missing.set(!inv);
-      },
-      error: () => this.missing.set(true),
-    });
+    this.id = this.route.snapshot.paramMap.get('id') ?? '';
+    this.load();
     this.api.me().subscribe({ next: (m) => this.buyer.set(m), error: () => undefined });
   }
 
-  /** Shared by the invoice number, the production code and the caption. */
-  code(inv: Invoice): string {
-    return inv.orderId.slice(0, 8).toUpperCase();
-  }
-
-  paid(inv: Invoice): boolean {
-    return inv.paymentStatus === 'paid';
-  }
-
-  payMethod(inv: Invoice): string {
-    return (inv.payments[0]?.method ?? 'desk-confirmed').replaceAll('_', ' ');
-  }
-
-  units(inv: Invoice): number {
-    return inv.items.reduce((n, i) => n + i.quantity, 0);
-  }
-
-  lines(inv: Invoice): number {
-    return inv.items.length;
-  }
-
-  settlementFacts(inv: Invoice): Array<{ label: string; value: string; numeric?: boolean }> {
-    const settlement = inv.payments[0];
-    return [
-      { label: 'Issue date', value: dayFormat.format(new Date(inv.createdAt)) },
-      {
-        label: this.paid(inv) ? 'Settlement date' : 'Payment ref',
-        value: !settlement
-          ? 'Pending'
-          : this.paid(inv)
-            ? dayFormat.format(new Date(settlement.date))
-            : settlement.id.slice(0, 8).toUpperCase(),
+  load(): void {
+    this.failed.set(false);
+    this.missing.set(false);
+    this.api.invoices().subscribe({
+      next: (res) => {
+        const inv = res.data.find((i) => i.orderId === this.id) ?? null;
+        this.invoice.set(inv);
+        this.missing.set(!inv);
       },
-      { label: 'Channel', value: 'Wholesale portal' },
-    ];
+      error: () => this.failed.set(true),
+    });
   }
 
-  issuerRows(): Array<{ label: string; value: string; numeric?: boolean }> {
-    return [{ label: 'Finance desk', value: '+234 1 888 7400', numeric: false }];
+  lineSummary(inv: Invoice): string {
+    const n = inv.items.length;
+    return `${n} ${n === 1 ? 'line' : 'lines'}, ${units(inv)} units`;
   }
 
-  buyerRows(): Array<{ label: string; value: string; numeric?: boolean }> {
-    return [{ label: 'Account email', value: this.buyer()?.email ?? '—', numeric: false }];
-  }
-
-  ledgerRows(
-    inv: Invoice,
-  ): Array<{ label: string; value: string; note?: string; total?: boolean; numeric?: boolean }> {
-    const subtotal = this.subtotal(inv);
-    const total: { label: string; value: string; note?: string; total: boolean } = {
-      label: this.paid(inv) ? 'Total settled' : 'Total payable',
-      value: `₦${this.money(inv.totalAmount)}`,
-      total: true,
-    };
-    if (this.paid(inv)) total.note = 'Paid in full via ' + this.payMethod(inv);
-    return [
-      {
-        label: `Merchandise subtotal (${this.units(inv)} units)`,
-        value: `₦${this.money(subtotal)}`,
-        numeric: false,
-      },
-      { label: 'Wholesale tier rate', value: 'Applied at order time', numeric: false },
-      // GAP: freight and statutory-charge lines await the logistics/fees module;
-      // the server-computed order total is authoritative.
-      total,
-    ];
+  method(raw: string): string {
+    return raw.replaceAll('_', ' ');
   }
 
   subtotal(inv: Invoice): number {
     return inv.items.reduce((n, i) => n + i.lineTotal, 0);
   }
 
-  /** Two decimals, matching the numbers the manifest table prints. */
-  private money(value: number): string {
-    return value.toLocaleString('en-NG', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  }
-
-  /** Formatted naira total, for the pay button. Public because the template reads it. */
-  naira(value: number): string {
-    return `₦${this.money(value)}`;
-  }
-
   /**
-   * Hands the invoice to Paystack and leaves the app.
-   *
-   * The amount sent is the invoice total, never an editable field: wholesale is
-   * full payment upfront, so there is nothing for a buyer to choose and an
-   * editable amount would only invite an error the API rejects anyway.
+   * Hands the invoice to Paystack and leaves the app, after the buyer has
+   * confirmed the amount. The amount is the invoice total, never an editable
+   * field: wholesale is full payment upfront.
    */
-  payNow(inv: Invoice): void {
+  async payNow(inv: Invoice): Promise<void> {
     if (this.paying()) return;
+    const amount = this.currency.format(inv.totalAmount, 2);
+    const ok = await this.confirm.ask({
+      title: `Pay ${amount} for order ${orderRef(inv.orderId)}?`,
+      consequence: `You will be taken to Paystack to settle ${amount} in full. Wholesale orders have no part-payments; production starts once payment clears.`,
+      confirmLabel: `Pay ${amount}`,
+    });
+    if (!ok) return;
     this.paying.set(true);
     this.payError.set(null);
     this.api.payWithPaystack(inv.orderId, inv.totalAmount).subscribe({
@@ -308,15 +286,13 @@ export class InvoiceDetailPage implements OnInit {
           this.payError.set('Paystack returned no checkout URL. Nothing has been charged.');
           return;
         }
-        // Paystack hosts the payment; the webhook settles it and the browser
-        // returns here afterwards.
         window.location.href = res.authorizationUrl;
       },
       error: (err) => {
         this.paying.set(false);
         this.payError.set(
           err?.error?.message ??
-            'Could not reach Paystack. Nothing has been charged — try again, or call the finance desk.',
+            'Could not reach Paystack. Nothing has been charged. Try again, or call the finance desk.',
         );
       },
     });
@@ -324,5 +300,11 @@ export class InvoiceDetailPage implements OnInit {
 
   print(): void {
     window.print();
+  }
+
+  /** How and when the invoice was settled, for the meta line. */
+  settledLine(inv: Invoice): string {
+    const p = inv.payments[0];
+    return p ? `Settled ${payMethod(inv)} on ${formatDate(p.date)}` : 'Settled';
   }
 }

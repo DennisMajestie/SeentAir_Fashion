@@ -1,9 +1,20 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { ApiService, DeliveryLegView, Invoice } from '../api.service';
-import { pill } from '../status-pill';
-import { FactsComponent, LedgerComponent, StripComponent } from '../ui/primitives';
+import {
+  SeActivityComponent,
+  SeActivityEntry,
+  SeBannerComponent,
+  SeBreadcrumb,
+  SeButtonDirective,
+  SeCardComponent,
+  SeKvDirective,
+  SeKvItemComponent,
+  SePageComponent,
+  SeSkeletonComponent,
+  SeStatusComponent,
+} from '@seentair/ui';
+import { ApiService, DeliveryCheckpoint, DeliveryLegView, Invoice } from '../api.service';
+import { orderRef, units } from '../wholesale-format';
 
 /** Fallback poll cadence while the SSE stream is down, and the slow cadence
     used while it is up. Visibility-aware, so a backgrounded tab costs nothing. */
@@ -12,225 +23,110 @@ const POLL_SLOW_MS = 60_000;
 /** Wait before re-dialling a stream that dropped. */
 const STREAM_RETRY_MS = 30_000;
 
-/**
- * Date formatting for facts built in TypeScript.
- *
- * `Intl` rather than injecting `DatePipe`: a pipe is only injectable when the
- * component declares it, and a fact builder that silently cannot format a date
- * is worse than one that never pretends to.
- */
-const eventFormat = new Intl.DateTimeFormat('en-NG', {
-  day: '2-digit',
-  month: 'short',
-  hour: '2-digit',
-  minute: '2-digit',
-});
-
 interface TrackingEvent {
   status: string;
-  /** Optional: a customer-facing projection omits staff-authored free text. */
   note?: string | null;
   createdAt: string;
 }
 
-interface Stage {
-  key: RegExp;
-  label: string;
-  fallbackNote: string;
-}
-
 /**
- * W8, Wholesale order tracking: freight header, GIGL corridor panel,
- * progress timeline mapped onto the four canonical stages (fed by the
- * live tracking events), freight leg, package manifest, support & policy.
+ * Order tracking for one wholesale batch: where it is now, every update the
+ * courier has posted (newest first), and the freight facts. Only the
+ * customer-facing projection is rendered: staff notes and zones never reach
+ * the page even when the API still sends them.
  */
 @Component({
   selector: 'app-tracking',
-  imports: [CommonModule, RouterLink, StripComponent, FactsComponent, LedgerComponent],
+  imports: [
+    RouterLink,
+    SeActivityComponent,
+    SeBannerComponent,
+    SeButtonDirective,
+    SeCardComponent,
+    SeKvDirective,
+    SeKvItemComponent,
+    SePageComponent,
+    SeSkeletonComponent,
+    SeStatusComponent,
+  ],
   template: `
-    <div
-      style="display:flex; justify-content:space-between; align-items:center; gap: var(--space-sm); flex-wrap:wrap"
-    >
-      <a class="link backlink" routerLink="/orders">
-        <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span> Back to orders
-      </a>
-      <span class="chip">GIGL logistics</span>
-    </div>
+    <se-page [title]="'Tracking ' + ref()" [breadcrumbs]="crumbs()">
+      @if (loaded()) {
+        <se-status sePageStatus kind="delivery" [value]="deliveryState()" />
+      }
+      @if (loaded()) {
+        <p sePageMeta>{{ summary() }}</p>
+      }
+      <a seButton sePageActions [routerLink]="['/orders', orderId(), 'invoice']">View invoice</a>
 
-    @if (loaded()) {
-      <se-strip label="Wholesale freight tracking" trailing>
-        <span stripTrailing class="status {{ pill(status()) }}">{{
-          status().replaceAll('_', ' ')
-        }}</span>
-        <h1 class="tl-h1">Order #SNT-{{ orderId().slice(0, 8).toUpperCase() }}</h1>
-        <se-facts [facts]="headerFacts()" />
-        <div class="actions">
-          <a class="link" [routerLink]="['/orders', orderId(), 'invoice']"
-            >Manifest &amp; invoice</a
-          >
-        </div>
-      </se-strip>
-
-      <!-- GAP: live GPS corridor map awaits GIGL telemetry via the logistics
-           adapter: the corridor strip states the real route policy instead. -->
-      <se-strip label="Logistics freight corridor" badge="Aba: nationwide">
-        <p class="muted small" style="margin: 0">
-          Batches dispatch from the Aba workshop onto the GIGL national freight network. Waybill
-          telemetry appears here as the carrier integration comes online.
-        </p>
-      </se-strip>
-
-      <div class="section-head">
-        <h2>Order progress timeline</h2>
-        <span class="aside">Local time (WAT)</span>
-      </div>
-      <div class="timeline">
-        @for (stage of stages; track stage.label; let idx = $index) {
-          <div
-            class="tl-step"
-            [class.done]="stageState(idx) === 'done'"
-            [class.current]="stageState(idx) === 'current'"
-            [class.pending]="stageState(idx) === 'pending'"
-          >
-            <span class="tl-dot">
-              <span class="material-symbols-outlined" aria-hidden="true">
-                {{
-                  stageState(idx) === 'done'
-                    ? 'check'
-                    : stageState(idx) === 'current'
-                      ? 'sync'
-                      : 'schedule'
-                }}
-              </span>
-            </span>
-            <div class="tl-card">
-              <div class="tl-head">
-                <span>{{ stage.label }}</span>
-                <span class="tl-when">
-                  {{
-                    stageEvent(idx)
-                      ? (stageEvent(idx)!.createdAt | date: 'dd MMM, HH:mm')
-                      : 'Pending'
-                  }}
-                </span>
-              </div>
-              <p class="tl-note">
-                {{ stageEvent(idx)?.note || stage.fallbackNote }}
+      @if (loaded()) {
+        <div class="se-detail">
+          <div class="se-detail__main">
+            <se-card title="Delivery updates">
+              <se-activity [entries]="history()" emptyText="No updates posted yet." />
+            </se-card>
+            <se-card title="Returns">
+              <p class="tracking-note">
+                Return requests must be submitted within 12 hours of confirmed delivery and are
+                completed within 24 hours. Custom orders are excluded from returns. To open a
+                request, call the desk on <a href="tel:+23418887400">+234 1 888 7400</a>.
               </p>
-            </div>
+            </se-card>
           </div>
-        }
-      </div>
-      @if (extraEvents().length > 0) {
-        <se-strip label="Additional ledger events" [badge]="extraEvents().length + ''">
-          @for (event of extraEvents(); track event.createdAt) {
-            <p class="small" style="margin: 0 0 var(--space-xs)">
-              <strong>{{ event.status.replaceAll('_', ' ') }}</strong> -
-              {{ event.note ?? 'recorded' }}
-              <span class="muted">({{ event.createdAt | date: 'medium' }})</span>
-            </p>
-          }
-        </se-strip>
-      }
-
-      <div class="section-head">
-        <h2>Freight breakdown</h2>
-        <span class="aside">Single leg · GIGL</span>
-      </div>
-      <!-- GAP: multi-leg waybill breakdown (carrier, route vectors, waybill refs)
-           awaits the GIGL adapter's shipment API: one honest leg is shown. -->
-      <se-strip
-        label="Freight breakdown"
-        [badge]="
-          leg() ? 'Carrier dispatch via ' + carrierLabel(leg()!) : 'Factory dispatch via GIGL'
-        "
-      >
-        <se-ledger [rows]="freightRows()" />
-
-        @if (leg(); as l) {
-          <div class="section-head" style="margin-top: var(--space-md)">
-            <h2>Delivery updates</h2>
-            <span class="aside">{{ l.checkpoints.length }}</span>
-          </div>
-          @if (l.checkpoints.length) {
-            @for (cp of l.checkpoints; track $index) {
-              <div class="leg-row">
-                <span>{{ cp.at | date: 'medium' }}</span>
-                <span class="v">{{ checkpointLabel(cp) }}</span>
-              </div>
-            }
-          } @else {
-            <p class="muted small" style="margin: 0">
-              No delivery updates recorded yet. They appear here the moment the factory or courier
-              reports them.
-            </p>
-          }
-        }
-
-        <p class="muted small" style="margin: var(--space-sm) 0 0">
-          @if (live()) {
-            Live: this page updates itself while it stays open.
-          } @else {
-            Checking every {{ pollSeconds() }}s while this tab is open.
-          }
-        </p>
-      </se-strip>
-
-      @if (invoice(); as inv) {
-        <se-strip label="Package manifest" [badge]="units(inv) + ' units'">
-          @for (item of inv.items; track item.sku) {
-            <div class="oc-line" style="margin-top: 0; margin-bottom: var(--space-sm)">
-              <span
-                ><code>{{ item.sku }}</code></span
-              >
-              <span class="num">{{ item.quantity }}×</span>
-            </div>
-          }
-          <!-- GAP: bale counts and gross weights await warehouse packing data -->
-          <p class="muted small" style="margin:0">Packed and sealed at the Aba factory floor.</p>
-        </se-strip>
-      }
-
-      <div class="section-head"><h2>Dispatch support &amp; policy</h2></div>
-      <a class="cta" style="width:100%" href="tel:+23418887400">
-        <span class="material-symbols-outlined" aria-hidden="true">support_agent</span>
-        Need logistics help? Call the Aba hub
-      </a>
-      <div class="policy-strip">
-        <span class="material-symbols-outlined" aria-hidden="true">assignment_return</span>
-        <div>
-          <strong>Return policy notice</strong>
-          Return requests must be submitted within 12 hours of confirmed delivery and are completed
-          within 24 hours. Custom production batches are non-returnable.
+          <aside class="se-detail__aside">
+            <se-card title="Courier">
+              <dl seKv>
+                <div seKvItem label="Carrier">{{ carrier() }}</div>
+                <div seKvItem label="Waybill">{{ leg()?.trackingRef ?? 'Issued at dispatch' }}</div>
+                <div seKvItem label="Route">{{ legZone() || 'Aba workshop to consignee hub' }}</div>
+                @if (riderFirstName(); as rider) {
+                  <div seKvItem label="Rider">{{ rider }}</div>
+                }
+                <div seKvItem label="Leg">{{ leg() ? legLabel(leg()!) : 'Being booked' }}</div>
+              </dl>
+            </se-card>
+            <se-card title="Batch">
+              <dl seKv>
+                <div seKvItem label="Order">{{ ref() }}</div>
+                <div seKvItem label="Units" numeric>{{ invoice() ? units(invoice()!) : '—' }}</div>
+                <div seKvItem label="Updates">
+                  {{
+                    live()
+                      ? 'Live while this page stays open'
+                      : 'Checked every ' + pollSeconds() + 's'
+                  }}
+                </div>
+              </dl>
+            </se-card>
+          </aside>
         </div>
-      </div>
-      <!-- GAP: returns intake endpoint not exposed to the portal yet, the desk
-           handles the 12-hour window by phone; button stays locked. -->
-      <button
-        class="cta quiet"
-        style="width:100%"
-        disabled
-        [title]="
-          delivered() ? 'Returns are handled by the desk, call the hub' : 'Available upon delivery'
-        "
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">lock</span>
-        Request return {{ delivered() ? '(call the hub)' : '(available upon delivery)' }}
-      </button>
-    } @else if (failed()) {
-      <p class="error">
-        Tracking unavailable for this order. <a class="link" routerLink="/orders">Back to orders</a>
-      </p>
-    } @else {
-      <p class="muted">Loading freight tracking…</p>
-    }
+      } @else if (failed()) {
+        <se-banner
+          tone="danger"
+          title="Tracking could not be loaded"
+          actionLabel="Try again"
+          (action)="retry()"
+        >
+          Check your connection and try again.
+        </se-banner>
+      } @else {
+        <div aria-busy="true"><se-skeleton shape="detail" /></div>
+      }
+    </se-page>
   `,
+  styles: [
+    `
+      .tracking-note {
+        margin: 0;
+        color: var(--se-color-text-muted);
+      }
+    `,
+  ],
 })
 export class TrackingPage implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  readonly pill = pill;
   readonly orderId = signal('');
   readonly status = signal('');
   readonly events = signal<TrackingEvent[]>([]);
@@ -240,44 +136,80 @@ export class TrackingPage implements OnInit, OnDestroy {
   readonly invoice = signal<Invoice | null>(null);
   readonly loaded = signal(false);
   readonly failed = signal(false);
+  readonly units = units;
+
+  readonly ref = computed(() => orderRef(this.orderId()));
+  readonly crumbs = computed<SeBreadcrumb[]>(() => [
+    { label: 'Orders', link: '/orders' },
+    { label: this.ref(), link: `/orders/${this.orderId()}/invoice` },
+    { label: 'Tracking' },
+  ]);
+  readonly leg = computed<DeliveryLegView | null>(() => this.deliveries()[0] ?? null);
+
+  /** The delivery state as `se-status kind="delivery"` knows it. */
+  readonly deliveryState = computed(() => {
+    if (this.delivered()) return 'delivered';
+    const leg = this.leg();
+    if (leg?.status === 'failed') return 'failed';
+    if (leg?.status === 'in_transit' || /shipped|transit|dispatch|out_for/.test(this.status())) {
+      return 'in_transit';
+    }
+    return 'pending';
+  });
+
+  readonly summary = computed(() => {
+    switch (this.deliveryState()) {
+      case 'delivered':
+        return 'Your batch has been handed over to the consignee.';
+      case 'failed':
+        return 'The courier could not complete the last attempt; the desk will rebook it.';
+      case 'in_transit':
+        return 'Your batch is with the courier and on its way.';
+      default:
+        return /received|paid|processing|production|packaging|packing|qc/.test(this.status())
+          ? 'Your batch is with the factory; it is dispatched once finished and packed.'
+          : 'Your batch has not been dispatched yet.';
+    }
+  });
+
+  /** Courier checkpoints and order events, newest first, with no staff notes. */
+  readonly history = computed<SeActivityEntry[]>(() => {
+    const entries: SeActivityEntry[] = [];
+    for (const leg of this.deliveries()) {
+      for (const cp of leg.checkpoints ?? []) {
+        if (!cp.at) continue;
+        entries.push({
+          at: cp.at,
+          text: this.checkpointLabel(cp),
+          actor: this.carrierLabel(leg),
+          tone:
+            cp.status === 'delayed'
+              ? 'warning'
+              : cp.status === 'handed_over'
+                ? 'success'
+                : undefined,
+        });
+      }
+    }
+    for (const ev of this.events()) {
+      entries.push({
+        at: ev.createdAt,
+        text: this.eventLabel(ev.status),
+        tone: /delivered|completed/.test(ev.status) ? 'success' : undefined,
+      });
+    }
+    return entries.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  });
 
   private pollTimer: ReturnType<typeof setInterval> | undefined;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private streamAbort: AbortController | undefined;
   private refetchQueued = false;
 
-  /** The four canonical W8 stages; live events map in by status. */
-  readonly stages: Stage[] = [
-    {
-      key: /received|verified|confirmed|paid/,
-      label: 'Order received & verified',
-      fallbackNote:
-        'Payment verification pending: the batch is allocated once the desk confirms settlement.',
-    },
-    {
-      key: /processing|production|packaging|packing|qc/,
-      label: 'Processing & packaging',
-      fallbackNote: 'Cutting, sewing, finishing and QC at the Aba workshop, then carton bundling.',
-    },
-    {
-      key: /shipped|dispatch|transit|out_for/,
-      label: 'Shipped / waybill dispatched',
-      fallbackNote: 'Waybill documentation prepared ahead of GIGL haulage loading.',
-    },
-    {
-      key: /delivered|handover|completed/,
-      label: 'Delivered / consignee handover',
-      fallbackNote: 'Consignee verification on physical freight release at the destination hub.',
-    },
-  ];
-
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') ?? '';
     this.orderId.set(id);
-    this.refreshTracking((ok) => {
-      if (ok) this.loaded.set(true);
-      else this.failed.set(true);
-    });
+    this.retry();
     this.startPolling();
     this.openStream();
     this.api.invoices().subscribe({
@@ -291,11 +223,18 @@ export class TrackingPage implements OnInit, OnDestroy {
     this.streamAbort?.abort();
   }
 
+  retry(): void {
+    this.failed.set(false);
+    this.refreshTracking((ok) => {
+      if (ok) this.loaded.set(true);
+      else this.failed.set(true);
+    });
+  }
+
   /**
-   * Re-reads tracking. Coalesces bursts into one request so several corridor
-   * checkpoints arriving together cannot stampede the API. `settled` fires on
-   * the first attempt only, so it can drive the loaded/failed banner without
-   * later polls resetting it.
+   * One fetch per microtask: the stream and the poll timer can both ask for
+   * a refresh in the same tick, and the later response must not overwrite
+   * the earlier one with stale data.
    */
   private refreshTracking(settled?: (ok: boolean) => void): void {
     if (this.refetchQueued) {
@@ -313,11 +252,6 @@ export class TrackingPage implements OnInit, OnDestroy {
           settled?.(true);
         },
         error: () => {
-          // A lost session and a missing order are indistinguishable from here:
-          // the API answers both with 404 on purpose, so an unauthenticated
-          // caller cannot probe which order ids exist. Reporting "not found"
-          // for what is really an expired session sent people hunting for a
-          // broken order. Send them to sign in and back to this order instead.
           if (!this.api.isLoggedIn) {
             this.router.navigate(['/'], {
               queryParams: { returnUrl: this.router.url, reason: 'session' },
@@ -333,7 +267,6 @@ export class TrackingPage implements OnInit, OnDestroy {
   private startPolling(): void {
     this.stopPolling();
     this.pollTimer = setInterval(() => {
-      // A hidden tab is not watching; skip the round trip entirely.
       if (typeof document !== 'undefined' && document.hidden) return;
       this.refreshTracking();
     }, POLL_FAST_MS);
@@ -371,7 +304,6 @@ export class TrackingPage implements OnInit, OnDestroy {
     if (abort.signal.aborted) return;
     this.live.set(false);
     this.setPoll(POLL_FAST_MS / 1000);
-    // Back off before retrying, so a server without SSE support cannot spin us.
     clearTimeout(this.retryTimer);
     this.retryTimer = setTimeout(() => {
       if (!abort.signal.aborted) this.openStream();
@@ -385,9 +317,13 @@ export class TrackingPage implements OnInit, OnDestroy {
     this.retryTimer = undefined;
   }
 
-  /** 'gigl' is the carrier key; anything else is already a carrier name. */
   carrierLabel(leg: DeliveryLegView): string {
     return leg.carrier === 'gigl' ? 'GIGL courier' : leg.carrier;
+  }
+
+  carrier(): string {
+    const l = this.leg();
+    return l ? this.carrierLabel(l) : 'GIGL';
   }
 
   legLabel(leg: DeliveryLegView): string {
@@ -403,40 +339,19 @@ export class TrackingPage implements OnInit, OnDestroy {
     }
   }
 
-  /** The first delivery leg, if one has been booked. Public: the template reads it. */
-  leg(): DeliveryLegView | null {
-    return this.deliveries()[0] ?? null;
-  }
-
-  /**
-   * Courier zone, when the API still sends one. Optional by design: a
-   * customer-facing projection omits it, so this must degrade to null rather
-   * than render an empty cell or the string "undefined". Written to be safe to
-   * ship before or after that backend change.
-   */
   legZone(): string | null {
-    const zone = (this.leg() as { zone?: string | null } | null)?.zone;
+    const zone = this.leg()?.zone;
     return zone && zone.trim() ? zone : null;
   }
 
-  /** Rider, first name only. Returns null when the field is absent or blank. */
   riderFirstName(): string | null {
     const name = (this.leg()?.driverName ?? '').trim();
     if (!name) return null;
     return name.split(/\s+/)[0] || null;
   }
 
-  /**
-   * Checkpoint label: status only. `zone` is an internal corridor label and
-   * `note` is free text typed by staff, so neither is shown to a wholesale
-   * buyer. Read defensively, so this renders correctly against both the
-   * current full projection and the reduced customer one.
-   */
-  checkpointLabel(cp: {
-    status?: string | null;
-    zone?: string | null;
-    note?: string | null;
-  }): string {
+  /** Only known checkpoint statuses get words; an unknown token is never echoed. */
+  checkpointLabel(cp: Partial<DeliveryCheckpoint> | null | undefined): string {
     switch ((cp?.status ?? '').trim()) {
       case 'on_track':
         return 'On track';
@@ -451,86 +366,12 @@ export class TrackingPage implements OnInit, OnDestroy {
     }
   }
 
-  private stageIndexOf(status: string): number {
-    for (let i = this.stages.length - 1; i >= 0; i--) {
-      if (this.stages[i].key.test(status)) return i;
-    }
-    return 0;
-  }
-
-  private currentIndex(): number {
-    const fromEvents = this.events().map((e) => this.stageIndexOf(e.status));
-    const fromStatus = this.status() ? [this.stageIndexOf(this.status())] : [];
-    return Math.max(0, ...fromEvents, ...fromStatus);
-  }
-
-  stageState(idx: number): 'done' | 'current' | 'pending' {
-    const current = this.currentIndex();
-    const finished = idx === this.stages.length - 1 && /delivered|completed/.test(this.status());
-    if (idx < current || finished) return 'done';
-    if (idx === current) return 'current';
-    return 'pending';
-  }
-
-  stageEvent(idx: number): TrackingEvent | null {
-    const matches = this.events().filter((e) => this.stageIndexOf(e.status) === idx);
-    return matches.length ? matches[matches.length - 1] : null;
-  }
-
-  extraEvents(): TrackingEvent[] {
-    // Events whose status maps to stage 0 by fallback but isn't a genuine match anywhere.
-    return this.events().filter((e) => !this.stages.some((s) => s.key.test(e.status)));
-  }
-
-  lastEventAt(): string | null {
-    const ev = this.events();
-    return ev.length ? ev[ev.length - 1].createdAt : null;
+  private eventLabel(status: string): string {
+    const words = status.replaceAll('_', ' ').trim();
+    return words ? words[0].toUpperCase() + words.slice(1) : 'Update';
   }
 
   delivered(): boolean {
     return /delivered|completed/.test(this.status());
-  }
-
-  legStatus(): string {
-    return /shipped|transit|dispatch/.test(this.status()) ? 'In transit' : 'Awaiting dispatch';
-  }
-
-  units(inv: Invoice): number {
-    return inv.items.reduce((n, i) => n + i.quantity, 0);
-  }
-
-  headerFacts(): Array<{ label: string; value: string; numeric?: boolean }> {
-    const last = this.lastEventAt();
-    const inv = this.invoice();
-    return [
-      { label: 'Current status', value: this.status().replaceAll('_', ' ') },
-      {
-        label: 'Last event',
-        value: last ? eventFormat.format(new Date(last)) : '—',
-      },
-      { label: 'Batch volume', value: inv ? `${this.units(inv)} garment units` : '—' },
-      // GAP: consignee destination address awaits the buyer address-book module
-      { label: 'Destination', value: 'Confirmed with desk' },
-    ];
-  }
-
-  /** The single freight leg, as ledger rows instead of a bespoke card. */
-  freightRows(): Array<{ label: string; value: string; note?: string; total?: boolean }> {
-    const l = this.leg();
-    const rows: Array<{ label: string; value: string; note?: string; total?: boolean }> = [
-      {
-        label: 'Assigned carrier',
-        value: l ? this.carrierLabel(l) : 'GIGL (first-line, pluggable)',
-      },
-      { label: 'Route vector', value: this.legZone() || 'Aba workshop → consignee hub' },
-      { label: 'Tracking waybill', value: l?.trackingRef ?? 'Issued at dispatch' },
-    ];
-    if (this.riderFirstName()) rows.push({ label: 'Rider', value: this.riderFirstName()! });
-    rows.push({
-      label: 'Leg status',
-      value: this.delivered() ? 'Delivered' : this.legStatus(),
-      total: true,
-    });
-    return rows;
   }
 }

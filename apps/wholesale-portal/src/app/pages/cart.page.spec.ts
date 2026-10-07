@@ -1,305 +1,276 @@
-import { CommonModule } from '@angular/common';
-import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
+import { SeConfirmService, SeCurrencyService, SeToastService } from '@seentair/ui';
 import { of, throwError } from 'rxjs';
-import { CartPage } from './cart.page';
 import { ApiService, Pricing } from '../api.service';
-import { CartService } from '../cart.service';
+import { CartLine, CartService } from '../cart.service';
+import { CartPage } from './cart.page';
 
 /**
- * W5 checkout on the shared primitives.
- *
- * Two rules get the most attention here, because this is the page where money
- * is committed:
- *  - the allocation a buyer is verifying is always visible (rows start open)
- *  - the MOQ never comes from a hardcoded constant, and an unknown MOQ defers
- *    to the server instead of guessing
+ * What matters here is money and the minimum: the MOQ comes from the API and
+ * is never a constant, the order body is exactly the cart, nothing is placed
+ * without the buyer confirming the full total, and a placed order goes
+ * straight to Paystack for the full amount.
  */
-
-function line(over: Partial<CartService['lines'] extends never ? never : any> = {}) {
+function line(variantId: string, quantity: number, unitPrice = 2500, size = 'M'): CartLine {
   return {
-    variantId: 'v1',
-    productId: 'p1',
-    productName: 'Aba Cargo',
-    sku: 'CARGO-S',
-    size: 'S',
+    variantId,
+    productId: `p-${variantId.charAt(0)}`,
+    productName: `Tee ${variantId.charAt(0).toUpperCase()}`,
+    sku: `SE-${variantId.toUpperCase()}`,
+    size,
     colour: 'black',
-    unitPrice: 7650,
-    quantity: 10,
-    ...over,
+    unitPrice,
+    quantity,
   };
 }
-
-const pricing: Pricing = {
-  tier: { name: 'Standard', discountPercent: 15 },
-  hasDiscount: true,
-  moq: 20,
-  total: 1,
-  data: [],
-};
 
 describe('CartPage', () => {
   let fixture: ComponentFixture<CartPage>;
   let component: CartPage;
+  let api: jasmine.SpyObj<ApiService>;
   let cart: CartService;
-  let placed: Array<{ variantId: string; quantity: number }>[];
+  let confirm: SeConfirmService;
+  let toast: SeToastService;
+  let router: Router;
+  const el = (): HTMLElement => fixture.nativeElement as HTMLElement;
+  const text = (sel: string): string => el().querySelector(sel)?.textContent?.trim() ?? '';
+  const placeButton = (): HTMLButtonElement => el().querySelector('.place') as HTMLButtonElement;
 
-  async function boot(
-    lines: ReturnType<typeof line>[] = [line()],
-    tier: Pricing | 'error' = pricing,
-  ): Promise<void> {
-    placed = [];
-
+  const mount = (lines: CartLine[], pricing: unknown = of({ moq: 20, tier: null })): void => {
+    api = jasmine.createSpyObj<ApiService>('ApiService', [
+      'pricing',
+      'placeOrder',
+      'payWithPaystack',
+    ]);
+    api.pricing.and.returnValue(pricing as never);
+    api.placeOrder.and.returnValue(
+      of({ id: 'abcdef12-3456-7890-abcd-ef1234567890', totalAmount: 1 }),
+    );
+    api.payWithPaystack.and.returnValue(of({ authorizationUrl: '' }));
     TestBed.configureTestingModule({
-      imports: [CartPage],
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideRouter([]),
-        {
-          provide: ApiService,
-          useValue: {
-            me: () => of({ name: 'Aba Textiles Ltd' }),
-            pricing: () => (tier === 'error' ? throwError(() => new Error('403')) : of(tier)),
-            placeOrder: (items: Array<{ variantId: string; quantity: number }>) => {
-              placed.push(items);
-              return of({ id: 'committed0000-1111-2222', totalAmount: 153000 });
-            },
-          },
-        },
-      ],
+      providers: [provideRouter([]), { provide: ApiService, useValue: api }],
     });
-    fixture = TestBed.createComponent(CartPage);
-    component = fixture.componentInstance;
-    // CartService is root-provided, so the draft is shared with the component.
+    TestBed.inject(SeCurrencyService).config.set({
+      currencyCode: 'NGN',
+      currencySymbol: '₦',
+      locale: 'en-NG',
+    });
     cart = TestBed.inject(CartService);
     cart.clear();
     cart.add(lines);
+    confirm = TestBed.inject(SeConfirmService);
+    toast = TestBed.inject(SeToastService);
+    router = TestBed.inject(Router);
+    spyOn(router, 'navigate').and.resolveTo(true);
+    fixture = TestBed.createComponent(CartPage);
+    component = fixture.componentInstance;
     fixture.detectChanges();
-  }
-
-  function text(): string {
-    return (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
-  }
-
-  function rows(): HTMLElement[] {
-    return [...fixture.nativeElement.querySelectorAll('se-row')];
-  }
+  };
+  afterEach(() => fixture?.destroy());
 
   describe('the MOQ is real data, never a constant', () => {
-    it('reads the minimum from the API response', async () => {
-      await boot([line()], { ...pricing, moq: 40 });
-      expect(component.moq()).toBe(40);
-      expect(text()).toContain('30 short of the 40 minimum');
+    it('reads the minimum from the API response', () => {
+      mount([line('a', 5)], of({ moq: 50, tier: null } as unknown as Pricing));
+      expect(component.moq()).toBe(50);
+      expect(text('.se-banner--warning')).toContain('at least 50 units');
+      expect(text('.se-banner--warning')).toContain('Add 45 more');
     });
 
-    it('does not invent 20 when the pricing call fails', async () => {
-      await boot([line()], 'error');
-      // Guessing here could block a valid order or wave through an invalid one.
+    it('does not invent 20 when the pricing call fails', () => {
+      mount(
+        [line('a', 5)],
+        throwError(() => new Error('down')),
+      );
       expect(component.moq()).toBe(0);
-      expect(component.moqKnown()).toBe(false);
-      expect(text()).toContain('minimum being confirmed');
+      expect(component.moqKnown()).toBeFalse();
+      expect(el().querySelector('.se-banner--warning')).toBeNull();
+      expect(text('.se-banner--info')).toContain('Minimum being confirmed');
     });
 
-    it('blocks commit while below the real minimum', async () => {
-      await boot([line()]);
-      expect(cart.units()).toBe(10);
-      expect(component.moqMet()).toBe(false);
-      const commit = [...fixture.nativeElement.querySelectorAll('button')].find((b) =>
-        b.textContent!.includes('Commit batch'),
-      ) as HTMLButtonElement;
-      expect(commit.disabled).toBe(true);
-      expect(text()).toContain('Minimum order is 20 units: you have 10.');
+    it('blocks placing the order while below the real minimum', () => {
+      mount([line('a', 19)]);
+      expect(component.moqMet()).toBeFalse();
+      expect(placeButton().disabled).toBeTrue();
     });
 
-    it('unlocks commit exactly at the minimum', async () => {
-      await boot([line({ quantity: 20 })]);
-      expect(component.moqMet()).toBe(true);
-      const commit = [...fixture.nativeElement.querySelectorAll('button')].find((b) =>
-        b.textContent!.includes('Commit batch'),
-      ) as HTMLButtonElement;
-      expect(commit.disabled).toBe(false);
+    it('unlocks exactly at the minimum', () => {
+      mount([line('a', 20)]);
+      expect(component.moqMet()).toBeTrue();
+      expect(placeButton().disabled).toBeFalse();
+      expect(el().querySelector('.se-banner--warning')).toBeNull();
     });
 
-    it('defers to the server when the minimum is unknown', async () => {
-      await boot([line()], 'error');
-      // The server enforces MOQ on POST /orders either way.
-      expect(component.moqMet()).toBe(true);
-      expect(text()).not.toContain('Minimum order is');
+    it('defers to the server when the minimum is unknown', () => {
+      mount(
+        [line('a', 1)],
+        throwError(() => new Error('down')),
+      );
+      expect(component.moqMet()).toBeTrue();
+      expect(placeButton().disabled).toBeFalse();
     });
   });
 
-  describe('the allocation is visible without a click', () => {
-    it('starts every batch row open, because this is a verify step', async () => {
-      await boot([line(), line({ variantId: 'v2', productId: 'p2', productName: 'Woven Shirt' })]);
-      expect(rows().length).toBe(2);
-      expect(fixture.nativeElement.querySelectorAll('.drow.open').length).toBe(2);
-      expect(fixture.nativeElement.querySelectorAll('.drow-panel').length).toBe(2);
+  describe('the lines are the cart', () => {
+    it('renders one table row per variant with SKU, size and colour', () => {
+      mount([line('a', 10, 2500, 'M'), line('b', 10, 2500, 'L')]);
+      const rows = el().querySelectorAll('se-table tbody tr');
+      expect(rows.length).toBe(2);
+      expect(rows[0].textContent).toContain('SE-A');
+      expect(rows[0].textContent).toContain('M / black');
+      expect(rows[0].textContent).toContain('₦25,000.00');
     });
 
-    it('shows the size breakdown per colourway', async () => {
-      await boot([
-        line({ variantId: 'v1', size: 'S', colour: 'black', quantity: 6 }),
-        line({ variantId: 'v2', size: 'M', colour: 'black', quantity: 4 }),
+    it('edits a quantity through the cart service', () => {
+      mount([line('a', 10)]);
+      component.setQuantity(cart.lines()[0], 12);
+      expect(cart.units()).toBe(12);
+      expect(cart.lines()[0].variantId).toBe('a');
+    });
+
+    it('removes a line on a zero quantity or the Remove action', () => {
+      mount([line('a', 10), line('b', 10)]);
+      component.setQuantity(cart.lines()[0], 0);
+      expect(cart.lines().map((l) => l.variantId)).toEqual(['b']);
+      fixture.detectChanges();
+      (
+        el().querySelector('se-table tbody button[aria-label^="Remove"]') as HTMLButtonElement
+      ).click();
+      fixture.detectChanges();
+      expect(cart.lines().length).toBe(0);
+    });
+  });
+
+  describe('the summary reconciles with the cart', () => {
+    it('shows units, subtotal and total at the same magnitude', () => {
+      mount([line('a', 20, 1850000 / 20)]);
+      const kv = text('dl');
+      expect(kv).toContain('20');
+      expect(kv.match(/₦1,850,000\.00/g)?.length).toBe(2);
+    });
+
+    it('keeps the naira scale for a fractional unit price', () => {
+      mount([line('a', 20, 1234.56)]);
+      expect(text('dl')).toContain('₦24,691.20');
+    });
+
+    it('names the applied tier rate from the API, and omits it when unknown', () => {
+      mount([line('a', 20)], of({ moq: 20, tier: { name: 'Tier B', discountPercent: 20 } }));
+      expect(text('dl')).toContain('Tier B · 20% off retail');
+      fixture.destroy();
+      TestBed.resetTestingModule();
+      mount(
+        [line('a', 20)],
+        throwError(() => new Error('down')),
+      );
+      expect(text('dl')).not.toContain('Rate card');
+    });
+
+    it('states the full-payment rule', () => {
+      mount([line('a', 20)]);
+      expect(text('.rule')).toContain('Full payment upfront');
+      expect(text('.rule')).toContain('No part-payments');
+    });
+  });
+
+  describe('empty and placing states', () => {
+    it('shows the empty state with a catalogue action when there is no batch', () => {
+      mount([]);
+      expect(text('se-empty-state')).toContain('Your cart is empty');
+      expect(el().querySelector('se-table')).toBeNull();
+      (el().querySelector('se-empty-state button') as HTMLButtonElement).click();
+      expect(router.navigate).toHaveBeenCalledWith(['/catalogue']);
+    });
+
+    it('confirms with the full total and that payment is taken in full', async () => {
+      mount([line('a', 20, 2500)]);
+      const ask = spyOn(confirm, 'ask').and.resolveTo(false);
+      await component.placeOrder();
+      const opts = ask.calls.mostRecent().args[0];
+      expect(opts.title).toContain('20-unit');
+      expect(opts.title).toContain('₦50,000.00');
+      expect(opts.consequence).toContain('in full');
+      expect(opts.consequence).toContain('part-paid');
+    });
+
+    it('does not place an order when the confirmation is declined', async () => {
+      mount([line('a', 20)]);
+      spyOn(confirm, 'ask').and.resolveTo(false);
+      await component.placeOrder();
+      expect(api.placeOrder).not.toHaveBeenCalled();
+      expect(cart.units()).toBe(20);
+    });
+
+    it('does not place an order below the minimum even if called directly', async () => {
+      mount([line('a', 5)]);
+      spyOn(confirm, 'ask').and.resolveTo(true);
+      await component.placeOrder();
+      expect(api.placeOrder).not.toHaveBeenCalled();
+    });
+
+    it('sends the cart items, clears the draft, then pays the full amount with Paystack', async () => {
+      mount([line('a', 12), line('b', 8)]);
+      spyOn(confirm, 'ask').and.resolveTo(true);
+      const show = spyOn(toast, 'show');
+      const leave = spyOn(component, 'leaveFor');
+      api.placeOrder.and.returnValue(of({ id: 'abcdef12-0000', totalAmount: 50000 }));
+      api.payWithPaystack.and.returnValue(of({ authorizationUrl: 'https://paystack.test/pay/1' }));
+      await component.placeOrder();
+      expect(leave).toHaveBeenCalledWith('https://paystack.test/pay/1');
+      expect(router.navigate).not.toHaveBeenCalled();
+      expect(api.placeOrder).toHaveBeenCalledWith([
+        { variantId: 'a', quantity: 12 },
+        { variantId: 'b', quantity: 8 },
       ]);
-      expect(text()).toContain('6× S');
-      expect(text()).toContain('4× M');
-      expect(text()).toContain('10');
+      expect(cart.lines().length).toBe(0);
+      expect(api.payWithPaystack).toHaveBeenCalledWith('abcdef12-0000', 50000);
+      expect(show.calls.mostRecent().args[0]).toContain('#ABCDEF12');
     });
 
-    it('renders the allocation as a real table with headers', async () => {
-      await boot();
-      const table = fixture.nativeElement.querySelector('.alloc') as HTMLTableElement;
-      expect(table).toBeTruthy();
-      expect(table.querySelectorAll('th').length).toBe(3);
-      // Row totals are aligned by the table, not by hand-tuned flex.
-      expect(table.querySelector('tfoot td.num')?.textContent?.trim()).toBe('10');
+    it('sends the buyer to the invoice when Paystack returns no payment page', async () => {
+      mount([line('a', 20)]);
+      spyOn(confirm, 'ask').and.resolveTo(true);
+      const leave = spyOn(component, 'leaveFor');
+      api.placeOrder.and.returnValue(of({ id: 'order-7', totalAmount: 50000 }));
+      await component.placeOrder();
+      expect(leave).not.toHaveBeenCalled();
+      expect(router.navigate).toHaveBeenCalledWith(['/orders', 'order-7', 'invoice']);
     });
 
-    it('can still collapse a row to focus on the others', async () => {
-      await boot([line(), line({ variantId: 'v2', productId: 'p2', productName: 'Woven Shirt' })]);
-      const head = fixture.nativeElement.querySelector('.drow-head') as HTMLButtonElement;
-      head.click();
-      fixture.detectChanges();
-      // Unlike the Orders log, collapsing one leaves the other open.
-      expect(fixture.nativeElement.querySelectorAll('.drow.open').length).toBe(1);
+    it('toasts the failure with Try again and keeps the cart', async () => {
+      mount([line('a', 20)]);
+      spyOn(confirm, 'ask').and.resolveTo(true);
+      const show = spyOn(toast, 'show');
+      api.placeOrder.and.returnValue(
+        throwError(() => ({ error: { message: 'Variant sold out' } })),
+      );
+      await component.placeOrder();
+      expect(cart.units()).toBe(20);
+      expect(component.placing()).toBeFalse();
+      const [msg, opts] = show.calls.mostRecent().args;
+      expect(msg).toBe('Variant sold out');
+      expect(opts?.tone).toBe('danger');
+      expect(opts?.action?.label).toBe('Try again');
+      expect(api.payWithPaystack).not.toHaveBeenCalled();
     });
 
-    it('groups lines by product, not by variant', async () => {
-      await boot([
-        line({ variantId: 'v1', size: 'S', colour: 'black', quantity: 6 }),
-        line({ variantId: 'v2', size: 'M', colour: 'black', quantity: 4 }),
-      ]);
-      expect(component.groups().length).toBe(1);
-      expect(component.groups()[0].units).toBe(10);
-    });
-
-    it('reopens a row that is removed and re-added', async () => {
-      await boot([line()]);
-      const head = fixture.nativeElement.querySelector('.drow-head') as HTMLButtonElement;
-      head.click();
-      fixture.detectChanges();
-      expect(component.isOpen('p1')).toBe(false);
-
-      cart.removeProduct('p1');
-      fixture.detectChanges();
-      cart.add([line()]);
-      fixture.detectChanges();
-      expect(component.isOpen('p1')).toBe(true);
-    });
-  });
-
-  describe('the cost summary reconciles with the cart', () => {
-    it('marks one total line', async () => {
-      await boot([line({ quantity: 20 })]);
-      const totals = fixture.nativeElement.querySelectorAll('.ledger .lg-row.total');
-      expect(totals.length).toBe(1);
-    });
-
-    it('totals the merchandise, not the allocation count', async () => {
-      await boot([line({ quantity: 20 })]);
-      expect(cart.amount()).toBe(153000);
-      // Grouping is locale-dependent, so assert on the digits, not the format.
-      expect(text().replace(/\D/g, '')).toContain('15300000');
-    });
-
-    it('names the applied tier rate from the API', async () => {
-      await boot([line()]);
-      expect(text()).toContain('Standard wholesale rate');
-      expect(text()).toContain('15% off retail: applied');
-    });
-
-    it('omits the tier row rather than inventing one when pricing fails', async () => {
-      await boot([line()], 'error');
-      expect(text()).not.toContain('off retail: applied');
-    });
-
-    it('names freight without pricing it', async () => {
-      await boot([line()]);
-      expect(text()).toContain('Freight logistics waybill');
-      expect(text()).toContain('On final invoice');
+    it('falls back to the invoice when Paystack cannot be started', async () => {
+      mount([line('a', 20)]);
+      spyOn(confirm, 'ask').and.resolveTo(true);
+      const show = spyOn(toast, 'show');
+      api.placeOrder.and.returnValue(of({ id: 'order-9', totalAmount: 50000 }));
+      api.payWithPaystack.and.returnValue(
+        throwError(() => ({ error: { message: 'Gateway down' } })),
+      );
+      await component.placeOrder();
+      expect(router.navigate).toHaveBeenCalledWith(['/orders', 'order-9', 'invoice']);
+      expect(show.calls.mostRecent().args[1]?.tone).toBe('danger');
     });
   });
 
-  describe('empty and committed states', () => {
-    it('shows the shared empty state when there is no batch', async () => {
-      await boot([]);
-      expect(fixture.nativeElement.querySelector('se-empty')).toBeTruthy();
-      expect(text()).toContain('Your draft batch is empty');
-      expect(rows().length).toBe(0);
-    });
-
-    it('confirms the commit with the real unit count', async () => {
-      await boot([line({ quantity: 20 })]);
-      spyOn(component['alerts'], 'confirm').and.resolveTo(true);
-      await component.commit();
-      expect(component['alerts'].confirm).toHaveBeenCalled();
-    });
-
-    it('does not place an order when the desk confirmation is declined', async () => {
-      await boot([line({ quantity: 20 })]);
-      spyOn(component['alerts'], 'confirm').and.resolveTo(false);
-      await component.commit();
-      expect(placed).toHaveSize(0);
-    });
-
-    it('sends the cart items and clears the draft on success', async () => {
-      await boot([line({ quantity: 20 })]);
-      spyOn(component['alerts'], 'confirm').and.resolveTo(true);
-      spyOn(component['alerts'], 'toast').and.returnValue(Promise.resolve());
-      await component.commit();
-      fixture.detectChanges();
-      expect(placed).toHaveSize(1);
-      expect(placed[0]).toEqual([{ variantId: 'v1', quantity: 20 }]);
-      expect(cart.lines()).toHaveSize(0);
-      expect(component.orderResult()).toEqual({
-        id: 'committed0000-1111-2222',
-        totalAmount: 153000,
-      });
-      // The committed order's short code is on screen, so the confirmation
-      // strip rendered rather than the page silently clearing.
-      expect(text()).toContain('COMMITTE');
-    });
+  it('leaves no legacy markup behind', () => {
+    mount([line('a', 20)]);
+    expect(el().querySelector('se-row, se-ledger, .cta, .panel')).toBeNull();
+    expect(el().textContent).not.toContain('NaN');
   });
-
-describe('shared primitives in use', () => {
-      it('uses strips rather than the old rounded panels', async () => {
-        await boot([line()]);
-        expect(fixture.nativeElement.querySelectorAll('se-strip').length).toBeGreaterThanOrEqual(5);
-        expect(fixture.nativeElement.querySelectorAll('.panel').length).toBe(0);
-      });
-
-      it('leaves no ordercard behind', async () => {
-        await boot([line()]);
-        expect(fixture.nativeElement.querySelectorAll('.ordercard').length).toBe(0);
-      });
-    });
-
-    describe('money is printed once, at the same magnitude everywhere', () => {
-      // money() used to do Math.round(value * 100) and then format with two
-      // fraction digits, printing the scaled integer. A 1,850,000 batch read as
-      // "185,000,000.00" in Merchandise subtotal and Total payable while the
-      // commit button, fed the same cart amount through the number pipe, showed
-      // the correct 1,850,000. A buyer reading the summary before paying was
-      // shown a figure 100x the amount actually charged.
-      it('shows the same total in the summary and on the commit button', async () => {
-        await boot([line({ quantity: 20, unitPrice: 92500 })]);
-
-        const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
-        // 20 x 92,500 = 1,850,000
-        expect(text).toContain('1,850,000.00');
-        expect(text).not.toContain('185,000,000');
-      });
-
-      it('keeps the naira scale for a fractional unit price', async () => {
-        await boot([line({ quantity: 20, unitPrice: 7650.5 })]);
-
-        const text = (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
-        // 20 x 7,650.50 = 153,010.00
-        expect(text).toContain('153,010.00');
-        expect(text).not.toContain('15,301,000');
-      });
-    });
-  });
+});

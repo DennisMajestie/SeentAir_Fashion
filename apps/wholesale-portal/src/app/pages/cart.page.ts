@@ -1,397 +1,244 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
+import {
+  SeBannerComponent,
+  SeButtonDirective,
+  SeCardComponent,
+  SeCellDirective,
+  SeColumn,
+  SeConfirmService,
+  SeCurrencyService,
+  SeEmptyStateComponent,
+  SeFieldComponent,
+  SeInputDirective,
+  SeKvDirective,
+  SeKvItemComponent,
+  SeMoneyPipe,
+  SePageComponent,
+  SeRowAction,
+  SeTableComponent,
+  SeToastService,
+} from '@seentair/ui';
 import { ApiService, Pricing } from '../api.service';
-import { BrandAlertService } from '../brand-alert.service';
 import { CartLine, CartService } from '../cart.service';
-import { EmptyComponent, LedgerComponent, RowComponent, StripComponent } from '../ui/primitives';
-
-interface CartGroup {
-  productId: string;
-  productName: string;
-  units: number;
-  unitPrice: number;
-  amount: number;
-  sku: string;
-  colourways: Array<{ colour: string; breakdown: string; pcs: number }>;
-}
 
 /**
- * W5, Bulk cart & checkout: batch production items, consignee destination,
- * freight options, factory policy & SLA, production cost summary and
- * settlement method. Commit places the order through POST /orders (the
- * server re-prices at the buyer's tier and enforces MOQ).
- *
- * Built on the shared primitives, with one deliberate difference from the
- * Orders log: batch rows start **open**. A buyer is not scanning here, they are
- * verifying an allocation before committing money to it, so hiding the
- * breakdown behind a click would be the wrong default. The primitive supports
- * both behaviours because open state is controlled by the page, not the row.
+ * Bulk cart and checkout. The cart lines live in `CartService` (shared with
+ * the catalogue and the matrix); this page edits quantities, checks the batch
+ * against the account's real minimum, places the order through POST /orders
+ * (the server re-prices at the buyer's tier and enforces MOQ) and then sends
+ * the buyer to Paystack for the full amount. Wholesale is full payment
+ * upfront: there is no part-payment path here, by design.
  */
 @Component({
   selector: 'app-cart',
   imports: [
-    CommonModule,
     FormsModule,
-    RouterLink,
-    StripComponent,
-    RowComponent,
-    LedgerComponent,
-    EmptyComponent,
+    SeBannerComponent,
+    SeButtonDirective,
+    SeCardComponent,
+    SeCellDirective,
+    SeEmptyStateComponent,
+    SeFieldComponent,
+    SeInputDirective,
+    SeKvDirective,
+    SeKvItemComponent,
+    SeMoneyPipe,
+    SePageComponent,
+    SeTableComponent,
   ],
   template: `
-    <a class="link backlink" routerLink="/catalogue">
-      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span> Bulk cart &
-      checkout
-    </a>
+    <se-page
+      title="Bulk cart"
+      [breadcrumbs]="[{ label: 'Catalogue', link: '/catalogue' }, { label: 'Cart' }]"
+      [description]="tierLine()"
+    >
+      @if (cart.lines().length === 0) {
+        <se-empty-state
+          heading="Your cart is empty"
+          text="Add units from the catalogue, then come back to place the batch."
+          actionLabel="Browse catalogue"
+          (action)="router.navigate(['/catalogue'])"
+        />
+      } @else {
+        <div class="se-detail">
+          <div class="se-detail__main">
+            <se-card title="Batch lines" flush>
+              <se-table
+                caption="Cart lines"
+                [columns]="columns"
+                [rows]="cart.lines()"
+                [rowId]="rowId"
+                [actions]="actions"
+                hideDensity
+              >
+                <ng-template seCell="item" let-row>
+                  <strong>{{ row.productName }}</strong>
+                  <div class="sub">{{ row.sku }} · {{ variantLabel(row) }}</div>
+                </ng-template>
+                <ng-template seCell="quantity" let-row>
+                  <se-field [label]="'Quantity for ' + row.sku" hideLabel>
+                    <input
+                      seInput
+                      type="number"
+                      inputmode="numeric"
+                      min="1"
+                      step="1"
+                      class="qty"
+                      [ngModel]="row.quantity"
+                      (ngModelChange)="setQuantity(row, $event)"
+                      [name]="'qty-' + row.variantId"
+                    />
+                  </se-field>
+                </ng-template>
+              </se-table>
+            </se-card>
 
-    <!-- MOQ state as a tone on a flat strip, not a floating pill bar. -->
-    <div class="status-strip" [class.ok]="moqMet()" [class.warn]="!moqMet()">
-      <span class="dot" aria-hidden="true"></span>
-      <span class="left">
-        {{ cart.units() }} unit{{ cart.units() === 1 ? '' : 's' }} selected
-        @if (moqKnown()) {
-          @if (moqMet()) {
-            · minimum of {{ moq() }} met
-          } @else {
-            · {{ moqShort() }} short of the {{ moq() }} minimum
-          }
-        } @else {
-          · minimum being confirmed
-        }
-      </span>
-      <span class="strip-badge">{{ cart.units() > 0 ? 'Draft batch' : 'Empty' }}</span>
-    </div>
+            <se-card title="Delivery and notes">
+              <div class="se-form">
+                <se-field
+                  label="Delivery"
+                  hint="Freight is quoted on the waybill at dispatch; pickup is free."
+                >
+                  <select seInput [(ngModel)]="freight" name="freight">
+                    <option value="gigl">GIGL freight dispatch (tracked)</option>
+                    <option value="pickup">Factory pickup, Aba workshop</option>
+                  </select>
+                </se-field>
+                <se-field
+                  label="Notes for the factory desk"
+                  optional
+                  hint="Consignee contact and destination are confirmed with the desk after payment."
+                >
+                  <textarea seInput rows="3" [(ngModel)]="notes" name="notes"></textarea>
+                </se-field>
+              </div>
+            </se-card>
+          </div>
 
-    @if (cart.units() === 0 && !orderResult()) {
-      <se-empty
-        icon="shopping_cart"
-        title="Your draft batch is empty"
-        sub="Add units from the catalogue, then come back to commit the batch."
-        ctaLabel="Browse catalogue"
-        ctaHref="/catalogue"
-      />
-    }
-
-    @if (cart.units() > 0) {
-      <se-strip
-        label="1. Batch production items"
-        [badge]="moqMet() ? 'Ready for cutting' : 'Below MOQ'"
-      >
-        @for (group of groups(); track group.productId) {
-          <se-row
-            [id]="group.productId"
-            [open]="isOpen(group.productId)"
-            (toggled)="onToggle(group.productId, $event)"
-          >
-            <ng-container rowIdent>
-              <span class="drow-code">
-                {{ group.productName }}
-                <span class="chip">{{ group.units }} units</span>
-              </span>
-              <span class="drow-meta">SKU: {{ group.sku }}</span>
-            </ng-container>
-
-            <ng-container rowTail>
-              <span class="drow-amount">₦{{ group.amount | number: '1.0-2' }}</span>
-            </ng-container>
-
-            <div rowPanel>
-              <!-- Allocation is the thing being verified, so it is a table
-                   with real column alignment, not a run-on string. -->
-              <table class="alloc">
-                <caption class="sr-only">
-                  Size allocation for
-                  {{
-                    group.productName
-                  }}
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Colourway</th>
-                    <th scope="col">Cut breakdown</th>
-                    <th scope="col" class="right">Units</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (cw of group.colourways; track cw.colour) {
-                    <tr>
-                      <td>{{ cw.colour }}</td>
-                      <td class="mono">{{ cw.breakdown }}</td>
-                      <td class="right num">{{ cw.pcs }}</td>
-                    </tr>
-                  }
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colspan="2">Allocated total</td>
-                    <td class="right num">{{ group.units }}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            <ng-container rowActions>
-              <a class="cta small quiet" [routerLink]="['/catalogue', group.productId, 'matrix']">
-                <span class="material-symbols-outlined" aria-hidden="true">grid_on</span> Edit
-                matrix
-              </a>
-              <button class="cta small quiet" (click)="cart.removeProduct(group.productId)">
-                Remove
-              </button>
-            </ng-container>
-          </se-row>
-        }
-      </se-strip>
-
-      <!-- GAP: no buyer address-book endpoint yet, destination is agreed with the
-           Aba desk after commit instead of rendering a stored consignee address. -->
-      <se-strip label="2. Delivery consignee destination" badge="Verified buyer">
-        <strong>{{ buyerName() ?? 'Wholesale account' }}</strong>
-        <p class="muted small" style="margin: 2px 0 0">
-          Delivery destination and consignee contact are confirmed with the Aba desk once the batch
-          is committed: GIGL dispatch or factory pickup.
-        </p>
-      </se-strip>
-
-      <se-strip label="3. Freight waybill options" [badge]="cart.units() + ' units'">
-        <!-- GAP: no delivery-fee quotation endpoint, freight is quoted on the waybill
-             at dispatch, so no fee figures are shown against each option. -->
-        <label class="radio-opt" [class.selected]="freight === 'gigl'">
-          <input type="radio" name="freight" value="gigl" [(ngModel)]="freight" />
-          <span class="r-body">
-            <span class="r-title"
-              ><span>GIGL freight dispatch</span>
-              <span class="r-price muted">Quoted at dispatch</span></span
-            >
-            <span class="r-sub"
-              >First-line carrier: doorstep commercial drop with tracked waybill.</span
-            >
-          </span>
-        </label>
-        <label class="radio-opt" [class.selected]="freight === 'pickup'">
-          <input type="radio" name="freight" value="pickup" [(ngModel)]="freight" />
-          <span class="r-body">
-            <span class="r-title"
-              ><span>Factory pickup (Aba workshop hub)</span>
-              <span class="r-price">₦0 (Free)</span></span
-            >
-            <span class="r-sub">Collect directly from the Seentair production floor, Aba.</span>
-          </span>
-        </label>
-
-        <div class="status-strip warn">
-          <span class="dot" aria-hidden="true"></span>
-          <span>
-            <strong>Seentair factory policy &amp; SLA.</strong> Full payment is required before
-            production batch slot allocation and material cutting. No part-payments, cash on
-            delivery, or staggered releases.
-          </span>
+          <div class="se-detail__aside">
+            <se-card title="Order summary">
+              @if (moqKnown() && !moqMet()) {
+                <se-banner tone="warning" title="Below the batch minimum">
+                  Wholesale orders are at least {{ moq() }} units. Add {{ moqShort() }} more to
+                  place this batch.
+                </se-banner>
+              } @else if (!moqKnown()) {
+                <se-banner tone="info" title="Minimum being confirmed">
+                  The server checks the batch minimum when you place the order.
+                </se-banner>
+              }
+              <dl seKv>
+                <div seKvItem label="Units" numeric>{{ cart.units() }}</div>
+                <div seKvItem label="Minimum order" numeric>
+                  {{ moqKnown() ? moq() + ' units' : 'Confirmed by the desk' }}
+                </div>
+                @if (pricing()?.tier; as tier) {
+                  <div seKvItem label="Rate card">
+                    {{ tier.name }} · {{ tier.discountPercent }}% off retail
+                  </div>
+                }
+                <div seKvItem label="Subtotal" numeric>{{ cart.amount() | seMoney: 2 }}</div>
+                <div seKvItem label="Freight" numeric>On final invoice</div>
+                <div seKvItem label="Total payable" numeric>
+                  <strong>{{ cart.amount() | seMoney: 2 }}</strong>
+                </div>
+              </dl>
+              <p class="rule">
+                Full payment upfront. No part-payments: the batch enters production once Paystack
+                confirms the full amount.
+              </p>
+              <ng-container seCardFooter>
+                <button
+                  seButton
+                  variant="primary"
+                  type="button"
+                  class="place"
+                  [disabled]="!moqMet()"
+                  [loading]="placing()"
+                  (click)="placeOrder()"
+                >
+                  Place order &amp; pay
+                </button>
+              </ng-container>
+            </se-card>
+          </div>
         </div>
-      </se-strip>
-
-      <se-strip label="4. Production cost summary">
-        <se-ledger [rows]="costLedger()" />
-      </se-strip>
-
-      <se-strip label="5. Settlement method">
-        <!-- GAP: Paystack is the confirmed processor, but the portal has no
-             payment-initialisation endpoint yet, settlement today is bank
-             transfer / POS confirmed by the desk, so commit places the order
-             and the desk follows up with payment instructions. -->
-        <label class="radio-opt" [class.selected]="settlement === 'transfer'">
-          <input type="radio" name="settlement" value="transfer" [(ngModel)]="settlement" />
-          <span class="r-body">
-            <span class="r-title"><span>Direct corporate bank transfer / POS</span></span>
-            <span class="r-sub"
-              >Current live flow: the desk confirms your payment, then the batch enters
-              production.</span
-            >
-          </span>
-        </label>
-        <label class="radio-opt" [class.selected]="settlement === 'paystack'">
-          <input type="radio" name="settlement" value="paystack" [(ngModel)]="settlement" />
-          <span class="r-body">
-            <span class="r-title"
-              ><span>Paystack direct merchant gateway</span>
-              <span class="r-price muted">Coming online</span></span
-            >
-            <span class="r-sub"
-              >Instant confirmation: cards, NIBSS transfer, USSD. Awaiting production keys; the desk
-              will settle this order manually meanwhile.</span
-            >
-          </span>
-        </label>
-      </se-strip>
-
-      <button
-        class="cta"
-        style="width:100%; margin-top: var(--space-md)"
-        (click)="commit()"
-        [disabled]="!moqMet() || placing()"
-      >
-        <span class="material-symbols-outlined" aria-hidden="true">lock</span>
-        {{
-          placing() ? 'Committing batch…' : 'Commit batch: ₦' + (cart.amount() | number: '1.0-2')
-        }}
-      </button>
-      @if (!moqMet()) {
-        <p class="error" style="text-align:center">
-          @if (moqKnown()) {
-            Minimum order is {{ moq() }} units: you have {{ cart.units() }}.
-          } @else {
-            Confirming the batch minimum before this order can be committed.
-          }
-        </p>
       }
-      <p class="muted small" style="text-align:center; margin-top: var(--space-sm)">
-        Full payment upfront confirms the production slot, the cutting floor is notified once the
-        desk verifies settlement.
-      </p>
-    }
-
-    @if (orderResult(); as result) {
-      <se-strip label="Batch committed" badge="OK">
-        <p class="apply-copy">
-          Order <code>{{ result.id.slice(0, 8).toUpperCase() }}</code> placed -
-          <strong>₦{{ result.totalAmount | number: '1.0-2' }}</strong
-          >. Payment: bank transfer / POS, our team confirms it, then production starts.
-        </p>
-        <div class="actions">
-          <a class="cta small" [routerLink]="['/orders', result.id, 'invoice']"
-            >View pro-forma invoice</a
-          >
-          <a class="link" routerLink="/orders">Orders &amp; invoices</a>
-        </div>
-      </se-strip>
-    }
-    @if (error()) {
-      <p class="error">{{ error() }}</p>
-    }
-
-    <div class="status-strip" style="margin-top: var(--space-xl)">
-      <span class="dot" aria-hidden="true"></span>
-      <span>Need a custom wholesale invoice?</span>
-      <a class="link strip-trailing" href="tel:+23418887400">Call hub</a>
-    </div>
+    </se-page>
   `,
+  styles: [
+    `
+      .sub {
+        color: var(--se-color-text-muted);
+        font: var(--se-type-caption);
+      }
+      .qty {
+        width: 5.5rem;
+      }
+      .rule {
+        margin: var(--se-space-3) 0 0;
+        color: var(--se-color-text-muted);
+        font: var(--se-type-caption);
+      }
+      .place {
+        width: 100%;
+      }
+    `,
+  ],
 })
 export class CartPage implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly alerts = inject(BrandAlertService);
+  private readonly confirm = inject(SeConfirmService);
+  private readonly toast = inject(SeToastService);
+  private readonly currency = inject(SeCurrencyService);
+  readonly router = inject(Router);
   readonly cart = inject(CartService);
-  readonly buyerName = signal<string | null>(null);
   readonly pricing = signal<Pricing | null>(null);
   readonly placing = signal(false);
-  readonly error = signal<string | null>(null);
-  readonly orderResult = signal<{ id: string; totalAmount: number } | null>(null);
   freight: 'gigl' | 'pickup' = 'gigl';
-  settlement: 'transfer' | 'paystack' = 'transfer';
+  notes = '';
 
-  /**
-   * Batch rows start open so the buyer can verify the allocation before
-   * committing money. Toggling one leaves the rest alone: unlike the Orders
-   * log, this is a review step, not a scan step.
-   */
-  private readonly closedGroups = signal<ReadonlySet<string>>(new Set());
+  readonly rowId = (l: CartLine) => l.variantId;
+  readonly columns: SeColumn<CartLine>[] = [
+    { key: 'item', header: 'Item', value: (l) => l.productName },
+    {
+      key: 'unitPrice',
+      header: 'Unit price',
+      numeric: true,
+      format: (v) => this.currency.format(v as number, 2),
+    },
+    { key: 'quantity', header: 'Qty', numeric: true, width: '7rem' },
+    {
+      key: 'lineTotal',
+      header: 'Line total',
+      numeric: true,
+      value: (l) => l.quantity * l.unitPrice,
+      format: (v) => this.currency.format(v as number, 2),
+    },
+  ];
+  readonly actions: SeRowAction<CartLine>[] = [
+    { label: 'Remove', icon: 'trash', danger: true, run: (l) => this.remove(l) },
+  ];
 
-  readonly groups = computed<CartGroup[]>(() => {
-    const map = new Map<string, CartLine[]>();
-    for (const line of this.cart.lines()) {
-      map.set(line.productId, [...(map.get(line.productId) ?? []), line]);
-    }
-    return [...map.entries()].map(([productId, lines]) => {
-      const byColour = new Map<string, CartLine[]>();
-      for (const l of lines) {
-        const c = l.colour || 'standard';
-        byColour.set(c, [...(byColour.get(c) ?? []), l]);
-      }
-      return {
-        productId,
-        productName: lines[0].productName,
-        sku: lines[0].sku,
-        unitPrice: lines[0].unitPrice,
-        units: lines.reduce((n, l) => n + l.quantity, 0),
-        amount: Math.round(lines.reduce((n, l) => n + l.quantity * l.unitPrice, 0) * 100) / 100,
-        colourways: [...byColour.entries()].map(([colour, cls]) => ({
-          colour,
-          breakdown: cls.map((l) => `${l.quantity}× ${l.size || 'OS'}`).join(' | '),
-          pcs: cls.reduce((n, l) => n + l.quantity, 0),
-        })),
-      };
-    });
+  readonly tierLine = computed(() => {
+    const t = this.pricing()?.tier;
+    return t ? `${t.name} wholesale rate · ${t.discountPercent}% off retail` : '';
   });
-
-  /** The cost summary, built only from figures the API and cart actually hold. */
-  readonly costLedger = computed<
-    Array<{ label: string; value: string; note?: string; total?: boolean; numeric?: boolean }>
-  >(() => {
-    const tier = this.pricing()?.tier;
-    return [
-      { label: 'Garment allocation units', value: `${this.cart.units()} units`, numeric: false },
-      { label: 'Merchandise subtotal', value: `₦${this.money(this.cart.amount())}` },
-      // GAP: freight + statutory charges land on the final invoice; there is no
-      // quotation endpoint to price them here, so they are named, not guessed.
-      {
-        label: 'Freight logistics waybill',
-        value: 'On final invoice',
-        numeric: false,
-        note: 'quoted at dispatch',
-      },
-      ...(tier
-        ? [
-            {
-              label: `${tier.name} wholesale rate`,
-              value: `${tier.discountPercent}% off retail: applied`,
-              numeric: false,
-            },
-          ]
-        : []),
-      { label: 'Total payable', value: `₦${this.money(this.cart.amount())}`, total: true },
-    ];
-  });
-
-  constructor() {
-    // Nothing to collapse until there is a batch; drop closed state for lines
-    // that no longer exist so a re-added product shows its allocation again.
-    effect(() => {
-      const ids = new Set(this.groups().map((g) => g.productId));
-      this.closedGroups.update((closed) => {
-        const next = new Set([...closed].filter((id) => ids.has(id)));
-        return next.size === closed.size ? closed : next;
-      });
-    });
-  }
 
   ngOnInit(): void {
-    this.api.me().subscribe({ next: (m) => this.buyerName.set(m.name), error: () => undefined });
     this.api.pricing().subscribe({ next: (p) => this.pricing.set(p), error: () => undefined });
   }
 
-  isOpen(productId: string): boolean {
-    return !this.closedGroups().has(productId);
-  }
-
-  onToggle(productId: string, open: boolean): void {
-    this.closedGroups.update((closed) => {
-      const next = new Set(closed);
-      if (open) next.delete(productId);
-      else next.add(productId);
-      return next;
-    });
-  }
-
-  tier() {
-    return this.pricing()?.tier ?? null;
+  variantLabel(line: CartLine): string {
+    return [line.size || 'One size', line.colour || 'Standard'].join(' / ');
   }
 
   /**
-   * The real MOQ, from the API.
-   *
-   * No hardcoded fallback: 20 is the configured default, but the account's
-   * actual minimum is what the server enforces at commit, so guessing one here
-   * could either block a valid order or wave through an invalid one.
+   * The real MOQ, from the API. No hardcoded fallback: the account's actual
+   * minimum is what the server enforces, so guessing could block a valid
+   * order or wave through an invalid one.
    */
   moq(): number {
     return this.pricing()?.moq ?? 0;
@@ -402,10 +249,7 @@ export class CartPage implements OnInit {
     return this.moq() > 0;
   }
 
-  /**
-   * With an unknown MOQ the client defers to the server rather than blocking or
-   * waving through: POST /orders enforces the minimum regardless.
-   */
+  /** With an unknown MOQ the client defers to the server, which enforces it regardless. */
   moqMet(): boolean {
     return !this.moqKnown() || this.cart.units() >= this.moq();
   }
@@ -414,47 +258,80 @@ export class CartPage implements OnInit {
     return Math.max(0, this.moq() - this.cart.units());
   }
 
-  async commit(): Promise<void> {
-    if (this.placing()) return;
+  /** Quantity edits go through the cart service; a zero or blank removes the line. */
+  setQuantity(line: CartLine, value: number | string | null): void {
+    const qty = Math.floor(Number(value));
+    if (!Number.isFinite(qty) || qty <= 0) {
+      this.remove(line);
+      return;
+    }
+    this.cart.lines.set(
+      this.cart.lines().map((l) => (l.variantId === line.variantId ? { ...l, quantity: qty } : l)),
+    );
+  }
+
+  remove(line: CartLine): void {
+    this.cart.lines.set(this.cart.lines().filter((l) => l.variantId !== line.variantId));
+  }
+
+  async placeOrder(): Promise<void> {
+    if (this.placing() || !this.moqMet() || this.cart.lines().length === 0) return;
     const units = this.cart.units();
-    const ok = await this.alerts.confirm({
-      title: 'Commit this batch order?',
-      html: `${units} unit${units === 1 ? '' : 's'} at wholesale rate: full payment upfront, and the order is final once committed.`,
-      confirm: 'Commit order',
-      icon: 'warning',
+    const total = this.currency.format(this.cart.amount(), 2);
+    const ok = await this.confirm.ask({
+      title: `Place this ${units}-unit order for ${total}?`,
+      consequence: `Payment of ${total} is taken in full through Paystack now. Wholesale orders cannot be part-paid or changed once placed.`,
+      confirmLabel: 'Place order & pay',
     });
     if (!ok) return;
     this.placing.set(true);
-    this.error.set(null);
-    this.api.placeOrder(this.cart.toOrderItems()).subscribe({
+    const items = this.cart.toOrderItems();
+    this.api.placeOrder(items).subscribe({
       next: (order) => {
-        this.placing.set(false);
-        this.orderResult.set(order);
         this.cart.clear();
-        void this.alerts.toast(`Batch committed: ref ${order.id.slice(0, 8).toUpperCase()}`);
+        this.toast.show(
+          `Order #${order.id.slice(0, 8).toUpperCase()} placed. Taking you to Paystack.`,
+        );
+        this.pay(order.id, order.totalAmount);
       },
       error: (err) => {
         this.placing.set(false);
-        this.error.set(err?.error?.message ?? 'Order failed.');
-        void this.alerts.toast('Order failed: please retry.', { icon: 'error' });
+        this.toast.show(err?.error?.message ?? 'The order could not be placed', {
+          tone: 'danger',
+          action: { label: 'Try again', run: () => void this.placeOrder() },
+        });
       },
     });
   }
 
-  /**
-   * Naira with two decimals.
-   *
-   * Intl already rounds for us, so this must not pre-scale the value. It used
-   * to do `Math.round(value * 100)` and then format with 2 fraction digits,
-   * which printed the scaled integer: a 1,850,000 batch read as
-   * "185,000,000.00" in Merchandise subtotal and Total payable, 100x the amount
-   * the commit button showed from the same cart state. toLocaleString rounds to
-   * the requested precision on its own.
-   */
-private money(value: number): string {
-    return value.toLocaleString('en-NG', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+  /** Full amount, always: the API rejects any other figure. */
+  private pay(orderId: string, amount: number): void {
+    this.api.payWithPaystack(orderId, amount).subscribe({
+      next: (res) => {
+        this.placing.set(false);
+        // Never navigate to an empty URL: fall back to the invoice, which
+        // carries its own Pay now.
+        if (!res?.authorizationUrl) {
+          this.paymentFailed(orderId, 'Paystack did not return a payment page');
+          return;
+        }
+        this.leaveFor(res.authorizationUrl);
+      },
+      error: (err) => {
+        this.placing.set(false);
+        this.paymentFailed(orderId, err?.error?.message ?? 'Payment could not be started');
+      },
     });
+  }
+
+  /** Paystack hosts the payment and redirects back, so the app is left entirely. */
+  leaveFor(url: string): void {
+    window.location.href = url;
+  }
+
+  /** The order exists but is unpaid: send the buyer to its invoice, which has Pay now. */
+  private paymentFailed(orderId: string, reason: string): void {
+    this.toast.show(`${reason}. Pay from the invoice when ready.`, { tone: 'danger' });
+    void this.router.navigate(['/orders', orderId, 'invoice']);
   }
 }

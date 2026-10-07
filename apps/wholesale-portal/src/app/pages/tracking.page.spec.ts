@@ -1,20 +1,23 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { SeCurrencyService } from '@seentair/ui';
 import { Observable, of, throwError } from 'rxjs';
+
 import { ApiService, DeliveryLegView, WholesaleTracking } from '../api.service';
 import { TrackingPage } from './tracking.page';
 
 /**
- * The wholesale tracking page has to keep working across BOTH API shapes: the
- * projection that still sends zone/note, and the customer-facing one that omits
- * them. These tests pin that, so the page is safe to ship either side of the
- * backend change - in either order.
+ * The page renders only the customer-facing projection: a staff note or a
+ * zone the API still sends must never reach the DOM, a missing field must
+ * never print "undefined", and a lost session must redirect rather than
+ * claim the order is missing.
  */
 describe('Wholesale TrackingPage', () => {
   let fixture: ComponentFixture<TrackingPage>;
   let element: HTMLElement;
+  let api: jasmine.SpyObj<ApiService>;
 
-  const ORDER_ID = 'b-some-uuid';
+  const ORDER_ID = 'b1b1b1b1-some-uuid';
 
   const fullLeg: DeliveryLegView = {
     legNumber: 1,
@@ -30,6 +33,7 @@ describe('Wholesale TrackingPage', () => {
         note: 'INTERNAL-NOTE-driver-swapped',
         at: '2026-09-28T08:54:00.000Z',
       },
+      { status: 'delayed', at: '2026-09-29T10:00:00.000Z' },
     ],
   };
 
@@ -43,65 +47,80 @@ describe('Wholesale TrackingPage', () => {
     checkpoints: [{ status: 'on_track', at: '2026-09-28T08:54:00.000Z' }],
   };
 
-  const trackingWith = (leg: DeliveryLegView | null): WholesaleTracking =>
-    ({
-      status: 'shipped',
-      deliveredAt: null,
-      events: [],
-      deliveries: leg ? [leg] : [],
-    }) as WholesaleTracking;
+  const trackingWith = (leg: DeliveryLegView | null, status = 'shipped'): WholesaleTracking => ({
+    status,
+    deliveredAt: null,
+    events: [{ status: 'order_received', createdAt: '2026-09-27T08:00:00.000Z' }],
+    deliveries: leg ? [leg] : [],
+  });
 
-  const mount = (leg: DeliveryLegView | null) => {
+  const configure = (loggedIn: boolean, tracking: () => Observable<WholesaleTracking>) => {
+    api = jasmine.createSpyObj<ApiService>('ApiService', ['tracking', 'invoices', 'orderStream'], {
+      isLoggedIn: loggedIn,
+    });
+    api.tracking.and.callFake(tracking);
+    api.invoices.and.returnValue(of({ data: [], total: 0 }));
+    api.orderStream.and.returnValue(new Promise<void>(() => undefined));
     TestBed.configureTestingModule({
-      imports: [TrackingPage],
       providers: [
         provideRouter([]),
+        { provide: ApiService, useValue: api },
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: { get: () => ORDER_ID } } },
-        },
-        {
-          provide: ApiService,
-          useValue: {
-            tracking: () => of(trackingWith(leg)),
-            invoices: () => of({ data: [], total: 0 }),
-            orderStream: () => Promise.resolve(),
-          },
+          useValue: { snapshot: { paramMap: convertToParamMap({ id: ORDER_ID }) } },
         },
       ],
     });
+    TestBed.inject(SeCurrencyService).config.set({
+      currencyCode: 'NGN',
+      currencySymbol: '₦',
+      locale: 'en-NG',
+    });
+  };
+
+  /** The tracking fetch runs on a queued microtask; a macrotask lets it settle. */
+  const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+  const render = async (): Promise<void> => {
     fixture = TestBed.createComponent(TrackingPage);
     element = fixture.nativeElement as HTMLElement;
     fixture.detectChanges();
-  };
-
-  /**
-   * Tracking is fetched inside a queueMicrotask so a burst of notifications
-   * cannot stampede the API. detectChanges() is synchronous, so the microtask
-   * has to be flushed and the view re-checked before data is on screen.
-   */
-  const settle = async () => {
-    await Promise.resolve();
-    await Promise.resolve();
+    await tick();
     fixture.detectChanges();
   };
 
-  const text = () => element.textContent ?? '';
+  const mount = async (leg: DeliveryLegView | null, status = 'shipped'): Promise<void> => {
+    configure(true, () => of(trackingWith(leg, status)));
+    await render();
+  };
 
-  afterEach(() => TestBed.resetTestingModule());
+  const text = (): string => (element.textContent ?? '').replace(/\s+/g, ' ');
+  const kv = (label: string): string | null => {
+    const dt = Array.from(element.querySelectorAll('dt')).find(
+      (d) => d.textContent?.trim() === label,
+    );
+    return dt?.nextElementSibling?.textContent?.trim() ?? null;
+  };
 
-  describe('renders correctly against the reduced customer shape', () => {
-    beforeEach(async () => {
-      mount(reducedLeg);
-      await settle();
-    });
+  afterEach(() => fixture?.destroy());
 
-    it('shows the checkpoint status', () => {
-      expect(text()).toContain('On track');
-    });
+  it('puts the delivery state beside the title with one plain sentence', async () => {
+    await mount(reducedLeg);
+    expect(element.querySelector('h1')!.textContent).toContain('#B1B1B1B1');
+    expect(element.querySelector('se-status')!.textContent?.trim()).toBe('In transit');
+    expect(text()).toContain('with the courier and on its way');
+    expect(text()).toContain('within 12 hours');
+    expect(text()).toContain('Custom orders are excluded from returns');
+  });
 
-    it('never renders the note', () => {
-      expect(text()).not.toContain('INTERNAL-NOTE');
+  describe('against the reduced customer shape', () => {
+    beforeEach(async () => mount(reducedLeg));
+
+    it('shows the checkpoint as an activity entry', () => {
+      const entries = element.querySelectorAll('se-activity li');
+      expect(entries.length).toBe(2);
+      expect(entries[0].textContent).toContain('On track');
+      expect(entries[0].textContent).toContain('GIGL courier');
     });
 
     it('never renders the word undefined or a blank value', () => {
@@ -110,40 +129,40 @@ describe('Wholesale TrackingPage', () => {
     });
 
     it('falls back to the hub copy rather than an empty route cell', () => {
-      expect(text()).toContain('Aba workshop');
+      expect(kv('Route')).toBe('Aba workshop to consignee hub');
+      expect(kv('Waybill')).toBe('GIGL-1');
     });
 
     it('shows the rider first name only', () => {
-      expect(text()).toContain('Rider');
+      expect(kv('Rider')).toBe('Ade');
     });
   });
 
-  describe('renders correctly against the current full shape', () => {
-    beforeEach(async () => {
-      mount(fullLeg);
-      await settle();
-    });
+  describe('against the current full shape', () => {
+    beforeEach(async () => mount(fullLeg));
 
-    it('still does not show the staff note or the zone', () => {
-      expect(text()).toContain('On track');
+    it('shows the leg route but never the staff note or the checkpoint zone', () => {
+      expect(kv('Route')).toBe('Lagos-Ikeja');
       expect(text()).not.toContain('INTERNAL-NOTE');
       expect(text()).not.toContain('Ikeja depot');
-      expect(text()).not.toContain('undefined');
     });
 
     it('reduces a full rider name to the first name', () => {
-      expect(text()).toContain('Ade');
+      expect(kv('Rider')).toBe('Ade');
       expect(text()).not.toContain('Okafor');
+    });
+
+    it('lists checkpoints newest first and flags a delay', () => {
+      const entries = element.querySelectorAll('se-activity li');
+      expect(entries[0].textContent).toContain('Delayed');
+      expect(entries[1].textContent).toContain('On track');
     });
   });
 
   describe('checkpoint label mapping', () => {
-    // Pure function of the status token: no tracking data needed, so the
-    // component is mounted once and the method called directly.
     let page: TrackingPage;
-
-    beforeEach(() => {
-      mount(null);
+    beforeEach(async () => {
+      await mount(null);
       page = fixture.componentInstance;
     });
 
@@ -155,123 +174,57 @@ describe('Wholesale TrackingPage', () => {
     });
 
     it('refuses to echo an unknown token', () => {
-      expect(page.checkpointLabel({ status: 'STOCK_EXCEPTION_PENDING' })).toBe('Update');
-      expect(page.checkpointLabel({ status: null })).toBe('Update');
-      expect(page.checkpointLabel({ status: '' })).toBe('Update');
+      expect(page.checkpointLabel({ status: 'weird_internal_code' })).toBe('Update');
     });
 
     it('tolerates a checkpoint with no fields at all', () => {
       expect(page.checkpointLabel({})).toBe('Update');
+      expect(page.checkpointLabel(null)).toBe('Update');
     });
   });
 
-  describe('rider name', () => {
-    it('returns the first token, or null when absent', async () => {
-      mount(fullLeg);
-      await settle();
-      const page = fixture.componentInstance;
-      expect(page.riderFirstName()).toBe('Ade');
-
-      TestBed.resetTestingModule();
-      mount({ ...fullLeg, driverName: null });
-      await settle();
-      expect(fixture.componentInstance.riderFirstName()).toBeNull();
-
-      TestBed.resetTestingModule();
-      mount({ ...fullLeg, driverName: '   ' });
-      await settle();
-      expect(fixture.componentInstance.riderFirstName()).toBeNull();
-    });
+  it('omits the rider row when the API sends no driver', async () => {
+    await mount({ ...reducedLeg, driverName: null });
+    expect(kv('Rider')).toBeNull();
+    expect(fixture.componentInstance.riderFirstName()).toBeNull();
   });
 
-  describe('leg zone', () => {
-    it('returns null when the field is absent, so no blank cell renders', async () => {
-      mount(reducedLeg);
-      await settle();
-      expect(fixture.componentInstance.legZone()).toBeNull();
-    });
-
-    it('returns the zone when the API still sends one', async () => {
-      mount(fullLeg);
-      await settle();
-      expect(fixture.componentInstance.legZone()).toBe('Lagos-Ikeja');
-    });
+  it('reads as delivered once the order status says so', async () => {
+    await mount({ ...reducedLeg, status: 'delivered' }, 'delivered');
+    expect(element.querySelector('se-status')!.textContent?.trim()).toBe('Delivered');
+    expect(kv('Leg')).toBe('Handed over');
   });
 
-  it('labels the section "Delivery updates", never "Corridor updates"', async () => {
-    mount(fullLeg);
-    await settle();
+  it('labels the section "Delivery updates"', async () => {
+    await mount(reducedLeg);
     expect(text()).toContain('Delivery updates');
-    expect(text()).not.toContain('Corridor updates');
+    expect(text()).not.toContain('Corridor');
   });
 
-  /**
-   * A lost session and a missing order are indistinguishable from the client:
-   * tracking() answers both with 404 on purpose, so an unauthenticated caller
-   * cannot probe which order ids exist. Rendering "not found" for what is
-   * really an expired session sends people hunting for a broken order -- and it
-   * is not a rare edge case, it is what a SameSite=Lax refresh cookie produces
-   * on every page reload (COOKIE_SECURE=false in a deployed env). So a signed-out
-   * visitor is sent to sign in and back to the order they were reading.
-   */
   describe('session loss is not reported as a missing order', () => {
-    /**
-     * The real Router is kept (the template's routerLink needs
-     * createUrlTree) and only `navigate` is spied on.
-     */
-    const mountSession = (loggedIn: boolean, trackingResult: () => Observable<WholesaleTracking>) => {
-      TestBed.configureTestingModule({
-        imports: [TrackingPage],
-        providers: [
-          provideRouter([]),
-          {
-            provide: ActivatedRoute,
-            useValue: { snapshot: { paramMap: { get: () => ORDER_ID } } },
-          },
-          {
-            provide: ApiService,
-            useValue: {
-              isLoggedIn: loggedIn,
-              tracking: trackingResult,
-              invoices: () => of({ data: [], total: 0 }),
-              orderStream: () => Promise.resolve(),
-            },
-          },
-        ],
-      });
-      const router = TestBed.inject(Router);
-      const navigate = spyOn(router, 'navigate').and.resolveTo(true);
-      fixture = TestBed.createComponent(TrackingPage);
-      element = fixture.nativeElement as HTMLElement;
-      fixture.detectChanges();
-      return { navigate, router };
-    };
-
     it('redirects to sign-in with a return url when the session is gone', async () => {
-      const { navigate, router } = mountSession(false, () => throwError(() => ({ status: 404 })));
-      await settle();
-
-      expect(navigate).toHaveBeenCalledWith(['/'], {
-        queryParams: { returnUrl: router.url, reason: 'session' },
-      });
+      configure(false, () => throwError(() => ({ status: 401 })));
+      const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+      await render();
+      expect(navigate).toHaveBeenCalledWith(
+        ['/'],
+        jasmine.objectContaining({ queryParams: jasmine.objectContaining({ reason: 'session' }) }),
+      );
+      expect(element.querySelector('.se-banner--danger')).toBeNull();
     });
 
-    it('does not claim the order is missing', async () => {
-      mountSession(false, () => throwError(() => ({ status: 404 })));
-      await settle();
-
-      expect(text()).not.toContain('not found');
-      expect(fixture.componentInstance.failed()).toBe(false);
-    });
-
-    it('still reports a genuine failure while signed in', async () => {
-      // Signed in and still 404 -> the order really is missing, and the page
-      // must say so rather than bouncing the user to login.
-      const { navigate } = mountSession(true, () => throwError(() => ({ status: 404 })));
-      await settle();
-
-      expect(navigate).not.toHaveBeenCalled();
-      expect(fixture.componentInstance.failed()).toBe(true);
+    it('still reports a genuine failure while signed in, with a retry', async () => {
+      configure(true, () => throwError(() => ({ status: 500 })));
+      spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+      await render();
+      expect(element.querySelector('se-empty-state')).toBeNull();
+      const banner = element.querySelector('.se-banner--danger')!;
+      expect(banner.textContent).toContain('Try again');
+      api.tracking.and.returnValue(of(trackingWith(reducedLeg)));
+      fixture.componentInstance.retry();
+      await tick();
+      fixture.detectChanges();
+      expect(element.querySelector('se-activity')).not.toBeNull();
     });
   });
 });

@@ -1,10 +1,22 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
+import {
+  SeButtonDirective,
+  SeCardComponent,
+  SeCellDirective,
+  SeColumn,
+  SeDrawerComponent,
+  SeFieldComponent,
+  SeInputDirective,
+  SePageComponent,
+  SeStatusComponent,
+  SeTableComponent,
+  SeToastService,
+  formatDate,
+} from '@seentair/ui';
 import { ApiService, CustomOrder, Pricing } from '../api.service';
-import { pill } from '../status-pill';
-import { LedgerComponent, StripComponent } from '../ui/primitives';
+import { customRef } from '../wholesale-format';
 
 const SIZE_KEYS = ['S', 'M', 'L', 'XL', 'XXL'] as const;
 
@@ -15,227 +27,218 @@ const ROADMAP: Array<{ label: string; detail: string }> = [
     detail: 'Production engineers validate feasibility against factory capability.',
   },
   {
-    label: 'Quotation & pricing allocation',
+    label: 'Quotation',
     detail: 'Per-batch quote covering raw material, sewing, branding and packaging.',
   },
   {
-    label: 'Payment (100% upfront)',
-    detail: 'Full settlement: bank transfer or POS, desk-confirmed, before the sample run.',
+    label: 'Payment, 100% upfront',
+    detail: 'Full settlement by bank transfer or POS, desk-confirmed, before the sample run.',
   },
   {
-    label: 'Physical approval sample',
-    detail: 'You sign off a strike-off sample before any bulk cutting starts.',
+    label: 'Approval sample',
+    detail: 'You sign off a physical sample before any bulk cutting starts.',
   },
   {
     label: 'Full batch production',
-    detail: 'Cutting → sewing → finishing → QC → dispatch from the Aba factory.',
+    detail: 'Cutting, sewing, finishing, QC and dispatch from the Aba factory.',
   },
 ];
 
+type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desiredDate' | 'sizes';
+
 /**
- * W9, Request a custom design.
- *
- * Built on the shared primitives: the four numbered steps are strips, the
- * factory roadmap is an ordered list, and the existing requests are a flat
- * hairline list rather than a stack of floating cards.
+ * Custom design requests: the buyer's requests as a table, and the request
+ * form in a drawer. The request body is unchanged: sizes are serialised from
+ * the size grid plus a free note, quantity is their sum.
  */
 @Component({
   selector: 'app-custom',
-  imports: [CommonModule, FormsModule, RouterLink, StripComponent, LedgerComponent],
+  imports: [
+    FormsModule,
+    SeButtonDirective,
+    SeCardComponent,
+    SeCellDirective,
+    SeDrawerComponent,
+    SeFieldComponent,
+    SeInputDirective,
+    SePageComponent,
+    SeStatusComponent,
+    SeTableComponent,
+  ],
   template: `
-    <a class="link backlink" routerLink="/">
-      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
-      Back to wholesale home
-    </a>
+    <se-page
+      title="Custom designs"
+      description="Bespoke silhouettes and finishes for commercial batches. Every request is reviewed and quoted by the factory; full payment is due upfront once you accept the quote, and custom orders are excluded from the 12-hour returns window."
+    >
+      <button seButton variant="primary" sePageActions type="button" (click)="openForm()">
+        New request
+      </button>
 
-    <se-strip label="Manufacturing production">
-      <h1 class="form-h1">Request a custom design</h1>
-      <p class="muted" style="margin: 0 0 var(--space-sm)">
-        Bespoke garment silhouettes, cut &amp; sew engineering and custom fabric finishing for
-        commercial batch orders.
-      </p>
-      <p class="policy-line">
-        <strong>Production policy &amp; SLA terms.</strong> Custom batch requests are technically
-        reviewed and quoted by the factory. Full payment is due upfront once you accept the
-        quotation, and a physical sample must be approved before the full batch enters production.
-        Custom orders are excluded from the 12-hour returns window.
-      </p>
-    </se-strip>
+      <se-card title="Your requests" flush>
+        <se-table
+          caption="Custom design requests"
+          [columns]="columns"
+          [rows]="requests()"
+          [rowId]="rowId"
+          [loading]="loading()"
+          [error]="error()"
+          (retry)="load()"
+          activatable
+          (rowActivate)="open($event)"
+          hideDensity
+          emptyHeading="No custom requests yet"
+          emptyText="Describe the garment you need and the factory will review and quote it."
+          emptyActionLabel="New request"
+          (emptyAction)="openForm()"
+        >
+          <ng-template seCell="status" let-row>
+            <se-status kind="custom_order" [value]="row.status" />
+          </ng-template>
+        </se-table>
+      </se-card>
 
-    <form (ngSubmit)="submit()" novalidate>
-      <se-strip label="01 · Garment specifications" badge="Step 1 of 4">
-        <label
-          >Fabric weight / quality *
-          <input
-            [(ngModel)]="form.fabricQuality"
-            name="fabricQuality"
-            required
-            placeholder="e.g. 450 GSM heavyweight french terry"
-        /></label>
-        <label
-          >Colourways / dye notes *
-          <input
-            [(ngModel)]="form.colours"
-            name="colours"
-            required
-            placeholder="e.g. washed vintage moss, industrial slate, onyx black"
-        /></label>
-        <label
-          >Design &amp; construction description *
-          <textarea
-            [(ngModel)]="form.description"
-            name="description"
-            rows="4"
-            required
-            placeholder="Silhouette, panels, print/embroidery placements, trims, stitch spec…"
-          ></textarea>
-        </label>
-      </se-strip>
-
-      <se-strip label="02 · Techpack & assets" badge="Step 2 of 4">
-        <!-- GAP: techpack file upload awaits the S3 asset pipeline on custom
-             orders: the dropzone is present but locked, and buyers reference
-             assets in the description meanwhile. -->
-        <div class="dropzone" aria-disabled="true">
-          <div class="dz-icon">
-            <span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span>
-          </div>
-          <div class="dz-title">Upload techpack or CAD sketches</div>
-          <p class="dz-sub">PDF, PNG, AI, SVG or CAD vector renders.</p>
-          <button
-            class="cta small quiet"
-            type="button"
-            disabled
-            title="File upload arrives with the S3 asset pipeline"
-          >
-            <span class="material-symbols-outlined" aria-hidden="true">lock</span> Browse files
-          </button>
-          <p class="dz-sub">
-            Upload lands with the asset pipeline, for now, describe reference pieces in your design
-            description and the desk will request files.
-          </p>
-        </div>
-      </se-strip>
-
-      <se-strip label="03 · Size breakdown & volume" badge="Step 3 of 4">
-        <div class="size-grid">
-          @for (size of sizeKeys; track size) {
-            <div class="sz">
-              <span class="s-l">{{ size }}</span>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                inputmode="numeric"
-                [ngModel]="qtyOf(size)"
-                (ngModelChange)="setQty(size, $event)"
-                [name]="'size-' + size"
-                [attr.aria-label]="'Units size ' + size"
-              />
-            </div>
-          }
-        </div>
-        <label
-          >Other sizes / grading notes
-          <input [(ngModel)]="sizeNote" name="sizeNote" placeholder="e.g. bespoke chest 46in × 4"
-        /></label>
-
-        <!-- MOQ comes from the API, never a literal. 20 is the configured
-             default, not a constant this page is entitled to assume. -->
-        <se-ledger [rows]="moqRows()" />
-      </se-strip>
-
-      <se-strip label="04 · Delivery & logistics" badge="Step 4 of 4">
-        <label
-          >Delivery destination / consignee hub *
-          <input
-            [(ngModel)]="form.location"
-            name="location"
-            required
-            placeholder="e.g. Onitsha Commercial Hub, Anambra State"
-        /></label>
-        <label
-          >Target delivery / timeline date *
-          <input type="date" [(ngModel)]="form.desiredDate" name="desiredDate" required
-        /></label>
-        <p class="muted small" style="margin: 0">
-          The desired date guides production scheduling, the factory confirms the final SLA with
-          your quotation.
-        </p>
-      </se-strip>
-
-      <se-strip label="Production roadmap" badge="5-stage pipeline">
-        <p class="muted small" style="margin: 0 0 var(--space-sm)">
-          Every custom batch moves through manufacturer-grade gates before mainline production
-          begins.
-        </p>
-        <ol class="roadmap-list">
-          @for (stage of roadmap; track stage.label; let i = $index) {
-            <li [class.active]="i === 0">
-              <span class="rm-n">{{ i + 1 }}</span>
-              <div>
-                <span class="rm-t">{{ stage.label }}</span>
-                @if (i === 0) {
-                  <span class="chip soft">First gate</span>
-                }
-                <p class="rm-d">{{ stage.detail }}</p>
-              </div>
+      <se-card title="How a custom batch moves">
+        <ol class="roadmap">
+          @for (stage of roadmap; track stage.label) {
+            <li>
+              <strong>{{ stage.label }}</strong>
+              <span>{{ stage.detail }}</span>
             </li>
           }
         </ol>
-      </se-strip>
+      </se-card>
+    </se-page>
 
-      <button class="cta" style="width:100%" type="submit" [disabled]="busy()">
-        <span class="material-symbols-outlined" aria-hidden="true">engineering</span>
-        {{ busy() ? 'Submitting…' : 'Submit for technical review' }}
-      </button>
-      @if (message()) {
-        <p class="success">{{ message() }}</p>
-      }
-      @if (error()) {
-        <p class="error">{{ error() }}</p>
-      }
-    </form>
+    <se-drawer title="New custom design request" [(open)]="formOpen">
+      <form class="se-form" id="custom-request-form" (ngSubmit)="submit()" novalidate>
+        <div class="se-form__section">
+          <se-field label="Fabric weight / quality" [error]="errors()['fabricQuality']">
+            <input
+              seInput
+              [(ngModel)]="form.fabricQuality"
+              name="fabricQuality"
+              placeholder="e.g. 450 GSM heavyweight french terry"
+            />
+          </se-field>
+          <se-field label="Colourways / dye notes" [error]="errors()['colours']">
+            <input
+              seInput
+              [(ngModel)]="form.colours"
+              name="colours"
+              placeholder="e.g. washed moss, industrial slate, onyx black"
+            />
+          </se-field>
+          <se-field
+            label="Design and construction"
+            hint="Silhouette, panels, print or embroidery placements, trims, stitch spec. Describe any reference pieces here; techpack upload is not available yet."
+            [error]="errors()['description']"
+          >
+            <textarea seInput [(ngModel)]="form.description" name="description" rows="4"></textarea>
+          </se-field>
+        </div>
 
-    <se-strip label="Your requests" [badge]="requests().length + ' lodged'">
-      @if (requests().length === 0) {
-        <p class="muted small" style="margin: 0">No custom requests yet.</p>
-      } @else {
-        <ul class="reqs">
-          @for (request of requests(); track request.id) {
-            <li>
-              <a [routerLink]="['/custom', request.id]">
-                <span class="req-id">#CR-{{ request.id.slice(0, 8).toUpperCase() }}</span>
-                <span class="req-meta"
-                  >{{ request.quantity }} pcs · target {{ request.desiredDate }}</span
-                >
-                <span class="status {{ pill(request.status) }}">
-                  {{ request.status.replaceAll('_', ' ') }}
-                </span>
-              </a>
-              <p class="req-desc muted small">{{ request.description }}</p>
-            </li>
-          }
-        </ul>
-      }
-    </se-strip>
+        <div class="se-form__section">
+          <se-field label="Units per size" [hint]="moqHint()" [error]="errors()['sizes']" group>
+            <div class="sizes">
+              @for (size of sizeKeys; track size) {
+                <input
+                  seInput
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputmode="numeric"
+                  [ngModel]="qtyOf(size)"
+                  (ngModelChange)="setQty(size, $event)"
+                  [name]="'size-' + size"
+                  [placeholder]="size"
+                  [attr.aria-label]="'Units size ' + size"
+                />
+              }
+            </div>
+          </se-field>
+          <se-field label="Other sizes / grading notes" optional>
+            <input
+              seInput
+              [(ngModel)]="sizeNote"
+              name="sizeNote"
+              placeholder="e.g. bespoke chest 46in × 4"
+            />
+          </se-field>
+        </div>
+
+        <div class="se-form__section">
+          <se-field label="Delivery destination" [error]="errors()['location']">
+            <input
+              seInput
+              [(ngModel)]="form.location"
+              name="location"
+              placeholder="e.g. Onitsha Commercial Hub, Anambra State"
+            />
+          </se-field>
+          <se-field
+            label="Wanted by"
+            hint="Guides production scheduling; the factory confirms the final date with your quote."
+            [error]="errors()['desiredDate']"
+          >
+            <input seInput type="date" [(ngModel)]="form.desiredDate" name="desiredDate" />
+          </se-field>
+        </div>
+      </form>
+      <ng-container seDrawerFooter>
+        <button seButton type="button" (click)="formOpen.set(false)">Cancel</button>
+        <button
+          seButton
+          variant="primary"
+          type="submit"
+          form="custom-request-form"
+          [loading]="busy()"
+        >
+          Submit for review
+        </button>
+      </ng-container>
+    </se-drawer>
   `,
+  styles: [
+    `
+      .roadmap {
+        margin: 0;
+        padding-left: var(--se-space-5);
+        display: grid;
+        gap: var(--se-space-2);
+      }
+      .roadmap li {
+        display: grid;
+        gap: var(--se-space-1);
+      }
+      .sizes {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: var(--se-space-2);
+      }
+      .roadmap span {
+        color: var(--se-color-text-muted);
+        font: var(--se-type-caption);
+      }
+    `,
+  ],
 })
 export class CustomPage implements OnInit {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
-  readonly pill = pill;
+  private readonly toast = inject(SeToastService);
+
   readonly requests = signal<CustomOrder[]>([]);
+  readonly loading = signal(true);
+  readonly error = signal('');
   readonly pricingData = signal<Pricing | null>(null);
-  readonly message = signal<string | null>(null);
-  readonly error = signal<string | null>(null);
+  readonly formOpen = signal(false);
   readonly busy = signal(false);
+  readonly errors = signal<Partial<Record<FieldKey, string>>>({});
   readonly sizeKeys = SIZE_KEYS;
   readonly roadmap = ROADMAP;
 
   /** Size-grid quantities in a signal, so totals recompute from one source. */
   readonly sizeQty = signal<Record<string, number>>({});
-
   sizeNote = '';
 
   form = {
@@ -250,6 +253,15 @@ export class CustomPage implements OnInit {
     this.sizeKeys.reduce((n, s) => n + (this.sizeQty()[s] ?? 0), 0),
   );
 
+  readonly rowId = (r: CustomOrder) => r.id;
+  readonly columns: SeColumn<CustomOrder>[] = [
+    { key: 'ref', header: 'Request', value: (r) => customRef(r.id) },
+    { key: 'createdAt', header: 'Submitted', format: (v) => formatDate(v as string) },
+    { key: 'quantity', header: 'Units', numeric: true },
+    { key: 'desiredDate', header: 'Wanted by', format: (v) => formatDate(v as string) },
+    { key: 'status', header: 'Status' },
+  ];
+
   ngOnInit(): void {
     this.load();
     // MOQ is a server-owned policy. If this call fails the form still submits
@@ -260,40 +272,39 @@ export class CustomPage implements OnInit {
     });
   }
 
-  private load(): void {
-    this.api.customOrders().subscribe((res) => this.requests.set(res.data));
-  }
-
-  moq(): number {
-    return this.pricingData()?.moq ?? 0;
-  }
-
-  moqKnown(): boolean {
-    return this.moq() > 0;
-  }
-
-  moqShort(): number {
-    if (!this.moqKnown()) return 0;
-    return Math.max(0, this.moq() - this.totalUnits());
-  }
-
-  moqRows(): Array<{ label: string; value: string; note?: string; total?: boolean }> {
-    const units = this.totalUnits();
-    if (!this.moqKnown()) {
-      return [
-        { label: 'Requested units', value: `${units} units` },
-        { label: 'Batch minimum', value: 'Being confirmed by the desk', note: 'factory decides' },
-      ];
-    }
-    return [
-      { label: 'Requested units', value: `${units} units` },
-      {
-        label: 'Batch minimum',
-        value: `${this.moq()} units`,
-        note: this.moqShort() > 0 ? `${this.moqShort()} short` : 'MOQ met',
-        total: true,
+  load(): void {
+    this.api.customOrders().subscribe({
+      next: (res) => {
+        this.requests.set(res.data);
+        this.loading.set(false);
+        this.error.set('');
       },
-    ];
+      error: (err) => {
+        this.loading.set(false);
+        if (this.requests().length === 0) {
+          this.error.set(err?.error?.message ?? 'The server did not respond.');
+        }
+      },
+    });
+  }
+
+  open(request: CustomOrder): void {
+    void this.router.navigate(['/custom', request.id]);
+  }
+
+  openForm(): void {
+    this.errors.set({});
+    this.formOpen.set(true);
+  }
+
+  /** "12 units requested · 20-unit batch minimum (8 short)", from the API's MOQ. */
+  moqHint(): string {
+    const units = this.totalUnits();
+    const moq = this.pricingData()?.moq ?? 0;
+    const requested = `${units} ${units === 1 ? 'unit' : 'units'} requested`;
+    if (moq <= 0) return `${requested} · batch minimum confirmed by the desk`;
+    const short = Math.max(0, moq - units);
+    return `${requested} · ${moq}-unit batch minimum${short > 0 ? ` (${short} short)` : ' met'}`;
   }
 
   qtyOf(size: string): number {
@@ -305,7 +316,7 @@ export class CustomPage implements OnInit {
     this.sizeQty.update((s) => ({ ...s, [size]: n }));
   }
 
-  /** Serialize the size grid (+ free note) into the API's sizes string. */
+  /** Serialise the size grid (+ free note) into the API's sizes string. */
   private sizesString(): string {
     const parts = this.sizeKeys
       .filter((s) => this.qtyOf(s) > 0)
@@ -314,28 +325,47 @@ export class CustomPage implements OnInit {
     return parts.join(', ');
   }
 
+  private validate(): boolean {
+    const e: Partial<Record<FieldKey, string>> = {};
+    if (!this.form.fabricQuality.trim())
+      e.fabricQuality = 'Say what fabric weight or quality you need.';
+    if (!this.form.colours.trim()) e.colours = 'List at least one colourway.';
+    if (!this.form.description.trim()) e.description = 'Describe the garment and its construction.';
+    if (!this.form.location.trim()) e.location = 'Enter the delivery destination.';
+    if (!this.form.desiredDate) e.desiredDate = 'Choose the date you want the batch by.';
+    if (this.totalUnits() === 0) e.sizes = 'Allocate at least one unit to a size.';
+    this.errors.set(e);
+    return Object.keys(e).length === 0;
+  }
+
   submit(): void {
-    this.error.set(null);
-    this.message.set(null);
+    if (!this.validate()) return;
     const sizes = this.sizesString();
-    if (!sizes || this.totalUnits() === 0) {
-      this.error.set('Allocate at least one unit in the size breakdown (step 3).');
-      return;
-    }
     this.busy.set(true);
     this.api.submitCustomOrder({ ...this.form, sizes, quantity: this.totalUnits() }).subscribe({
       next: (created) => {
         this.busy.set(false);
-        this.message.set(
-          'Request submitted for technical review, you will be notified when it is quoted.',
-        );
+        this.formOpen.set(false);
+        this.resetForm();
+        this.toast.show(`Request ${customRef(created.id)} submitted for technical review`, {
+          action: { label: 'View request', run: () => this.open(created) },
+        });
         this.load();
-        void this.router.navigate(['/custom', created.id]);
       },
       error: (err) => {
         this.busy.set(false);
-        this.error.set(err?.error?.message ?? 'Submission failed.');
+        this.toast.show(err?.error?.message ?? 'The request could not be submitted', {
+          tone: 'danger',
+          action: { label: 'Try again', run: () => this.submit() },
+        });
       },
     });
+  }
+
+  private resetForm(): void {
+    this.form = { colours: '', location: '', fabricQuality: '', description: '', desiredDate: '' };
+    this.sizeQty.set({});
+    this.sizeNote = '';
+    this.errors.set({});
   }
 }
