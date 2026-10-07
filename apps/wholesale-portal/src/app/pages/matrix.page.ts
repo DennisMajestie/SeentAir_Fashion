@@ -66,22 +66,7 @@ import { CartService } from '../cart.service';
       } @else if (loading()) {
         <div aria-busy="true"><se-skeleton shape="detail" /></div>
       } @else if (product(); as prod) {
-        <se-card title="Product">
-          <dl seKv>
-            <div seKvItem label="SKU">{{ prod.variants[0]?.sku ?? '—' }}</div>
-            <div seKvItem label="Category">{{ prod.category ?? 'Garment' }}</div>
-            <div seKvItem label="Wholesale price" numeric>
-              {{ prod.wholesalePrice | seMoney: 2 }} per unit
-            </div>
-            <div seKvItem label="Retail price" numeric>{{ prod.retailPrice | seMoney: 2 }}</div>
-            <div seKvItem label="Rate card">{{ tierName() }}</div>
-            <div seKvItem label="Minimum order">
-              {{ moqKnown() ? moq() + ' units across the batch' : 'Being confirmed' }}
-            </div>
-          </dl>
-        </se-card>
-
-        @if (moqShort() > 0) {
+        @if (moqShort() > 0 && committedUnits() > 0) {
           <se-banner tone="warning" [title]="moqShort() + ' more units to reach the minimum'">
             The {{ moq() }}-unit minimum counts this form ({{ formUnits() }}) and the
             {{ otherUnits() }} units already in your draft. You can still add this product; the cart
@@ -89,75 +74,95 @@ import { CartService } from '../cart.service';
           </se-banner>
         }
 
-        <se-card title="Quantities by colour and size" flush>
-          @if (moqShort() > 0) {
-            <button seButton size="sm" seCardActions type="button" (click)="autoFill()">
-              Spread {{ moqShort() }} units across the grid
-            </button>
-          }
-          <div class="se-table se-table--compact grid-scroll">
-            <table class="se-table__table">
-              <caption>
-                Units per colour and size for
-                {{
-                  prod.name
-                }}
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Colour</th>
-                  @for (size of sizes(); track size) {
-                    <th scope="col" class="se-num">{{ size }}</th>
-                  }
-                  <th scope="col" class="se-num">Row total</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (colour of colours(); track colour) {
-                  <tr>
-                    <th scope="row">{{ colour }}</th>
-                    @for (size of sizes(); track size) {
-                      <td class="se-num">
-                        @if (variantFor(colour, size); as v) {
-                          <input
-                            seInput
-                            type="number"
-                            min="0"
-                            step="1"
-                            inputmode="numeric"
-                            class="qty"
-                            [max]="stockCap(v)"
-                            [ngModel]="qtyOf(v.id)"
-                            (ngModelChange)="setQty(v.id, $event)"
-                            [attr.aria-label]="colour + ' size ' + size"
-                            [attr.aria-describedby]="stockNote(v) ? 'stock-' + v.id : null"
-                          />
-                          @if (stockNote(v); as note) {
-                            <span class="stock" [id]="'stock-' + v.id">{{ note }}</span>
-                          }
-                        } @else {
-                          <span aria-hidden="true">—</span>
+        <div class="se-detail">
+          <div class="se-detail__main">
+            <se-card title="Quantities by colour and size" flush>
+              @if (moqShort() > 0) {
+                <button seButton size="sm" seCardActions type="button" (click)="autoFill()">
+                  Spread {{ moqShort() }} units across the grid
+                </button>
+              }
+              <div class="se-table se-table--compact grid-scroll">
+                <table class="se-table__table">
+                  <caption>
+                    Units per colour and size for
+                    {{
+                      prod.name
+                    }}
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Colour</th>
+                      @for (size of sizes(); track size) {
+                        <th scope="col" class="se-num">{{ size }}</th>
+                      }
+                      <th scope="col" class="se-num">Row total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (colour of colours(); track colour) {
+                      <tr>
+                        <th scope="row">{{ colour }}</th>
+                        @for (size of sizes(); track size) {
+                          <td class="se-num">
+                            @if (variantFor(colour, size); as v) {
+                              <input
+                                seInput
+                                type="number"
+                                min="0"
+                                step="1"
+                                inputmode="numeric"
+                                class="qty"
+                                [max]="stockCap(v)"
+                                [ngModel]="qtyOf(v.id)"
+                                (ngModelChange)="setQty(v.id, $event)"
+                                [attr.aria-label]="colour + ' size ' + size"
+                                [attr.aria-describedby]="stockNote(v) ? 'stock-' + v.id : null"
+                              />
+                              @if (stockNote(v); as note) {
+                                <span class="stock" [id]="'stock-' + v.id">{{ note }}</span>
+                              }
+                            } @else {
+                              <span aria-hidden="true">—</span>
+                            }
+                          </td>
                         }
-                      </td>
+                        <td class="se-num">{{ colourSum(colour) }}</td>
+                      </tr>
                     }
-                    <td class="se-num">{{ colourSum(colour) }}</td>
-                  </tr>
-                }
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th scope="row">Size total</th>
-                  @for (size of sizes(); track size) {
-                    <td class="se-num">{{ sizeSum(size) }}</td>
-                  }
-                  <td class="se-num">
-                    <strong>{{ formUnits() }}</strong>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th scope="row">Size total</th>
+                      @for (size of sizes(); track size) {
+                        <td class="se-num">{{ sizeSum(size) }}</td>
+                      }
+                      <td class="se-num">
+                        <strong>{{ formUnits() }}</strong>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </se-card>
           </div>
-        </se-card>
+          <div class="se-detail__aside">
+            <se-card title="Product">
+              <dl seKv>
+                <div seKvItem label="SKU">{{ prod.variants[0]?.sku ?? '—' }}</div>
+                <div seKvItem label="Category">{{ prod.category ?? 'Garment' }}</div>
+                <div seKvItem label="Wholesale price" numeric>
+                  {{ prod.wholesalePrice | seMoney: 2 }} per unit
+                </div>
+                <div seKvItem label="Retail price" numeric>{{ prod.retailPrice | seMoney: 2 }}</div>
+                <div seKvItem label="Rate card">{{ tierName() }}</div>
+                <div seKvItem label="Minimum order">
+                  {{ moqKnown() ? moq() + ' units across the batch' : 'Being confirmed' }}
+                </div>
+              </dl>
+            </se-card>
+          </div>
+        </div>
 
         <div class="se-form__actions se-form__actions--sticky">
           <span class="total" aria-live="polite">

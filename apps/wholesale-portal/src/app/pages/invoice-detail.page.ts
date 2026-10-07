@@ -19,7 +19,7 @@ import {
   formatDate,
 } from '@seentair/ui';
 import { ApiService, Invoice } from '../api.service';
-import { isPaid, orderRef, payMethod, units } from '../wholesale-format';
+import { isClosed, isPaid, orderRef, payMethod, units } from '../wholesale-format';
 
 type Line = Invoice['items'][number];
 
@@ -58,13 +58,14 @@ type Line = Invoice['items'][number];
       @if (invoice(); as inv) {
         <p sePageMeta>
           {{ paid(inv) ? 'Commercial tax invoice' : 'Pro-forma invoice' }} issued
-          {{ inv.createdAt | seDate }}{{ paid(inv) ? '. ' + settledLine(inv) : '' }}
+          {{ inv.createdAt | seDate }}{{ paid(inv) ? '. ' + settledLine(inv) : ''
+          }}{{ closedNote(inv) }}
         </p>
       }
       @if (invoice(); as inv) {
         <ng-container sePageActions>
           <button seButton type="button" (click)="print()">Print</button>
-          @if (!paid(inv)) {
+          @if (payable(inv)) {
             <button
               seButton
               variant="primary"
@@ -79,7 +80,7 @@ type Line = Invoice['items'][number];
       }
 
       @if (invoice(); as inv) {
-        @if (!paid(inv)) {
+        @if (payable(inv)) {
           <se-banner tone="warning" title="Payable in full before production starts">
             Wholesale is full payment upfront; there are no part-payments. Prefer a transfer? Call
             the finance desk on <a href="tel:+23418887400">+234 1 888 7400</a>.
@@ -115,7 +116,11 @@ type Line = Invoice['items'][number];
                   {{ subtotal(inv) | seMoney: 2 }}
                 </div>
                 <div seKvItem label="Wholesale tier rate">Applied at order time</div>
-                <div seKvItem [label]="paid(inv) ? 'Total settled' : 'Total payable'" numeric>
+                <div
+                  seKvItem
+                  [label]="paid(inv) ? 'Total settled' : payable(inv) ? 'Total payable' : 'Total'"
+                  numeric
+                >
                   <strong>{{ inv.totalAmount | seMoney: 2 }}</strong>
                 </div>
               </dl>
@@ -206,6 +211,13 @@ export class InvoiceDetailPage implements OnInit {
 
   readonly units = units;
   readonly paid = isPaid;
+  /** Why an unpaid invoice has no Pay button. */
+  closedNote(inv: Invoice): string {
+    if (isPaid(inv) || !isClosed(inv)) return '';
+    return `. This order is ${inv.status.replaceAll('_', ' ')}, so nothing is payable.`;
+  }
+  /** Only an open, unpaid order can be paid: a cancelled or returned one never. */
+  readonly payable = (inv: Invoice): boolean => !isPaid(inv) && !isClosed(inv);
   readonly ref = computed(() => orderRef(this.invoice()?.orderId ?? this.id));
   readonly crumbs = computed(() => [{ label: 'Orders', link: '/orders' }, { label: this.ref() }]);
 
@@ -267,7 +279,7 @@ export class InvoiceDetailPage implements OnInit {
    * field: wholesale is full payment upfront.
    */
   async payNow(inv: Invoice): Promise<void> {
-    if (this.paying()) return;
+    if (this.paying() || !this.payable(inv)) return;
     const amount = this.currency.format(inv.totalAmount, 2);
     const ok = await this.confirm.ask({
       title: `Pay ${amount} for order ${orderRef(inv.orderId)}?`,
