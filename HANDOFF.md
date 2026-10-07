@@ -1,6 +1,6 @@
 # Handoff — where the project stands and what to do next
 
-Last updated 2026-10-06. Read [CLAUDE.md](CLAUDE.md) first for the business
+Last updated 2026-10-07. Read [CLAUDE.md](CLAUDE.md) first for the business
 rules and non-negotiable architecture, then [README.md](README.md) for local
 setup. This file covers only the current state and the next steps.
 
@@ -8,13 +8,11 @@ setup. This file covers only the current state and the next steps.
 
 | Branch | State |
 | --- | --- |
-| `main` | Production. Ends at `d1a3a19` (storefront product list fix). |
-| `feature/design-system` | **Active work, pushed.** 19 commits ahead of `main` (including this file). Already includes `feature/timed-sale-and-notices`. |
-| `feature/timed-sale-and-notices` | Merged into `feature/design-system`; no separate PR needed. |
+| `main` | Production. Design system merged (PR #9); partner portal finished at `1ecd1ff`. |
+| `feature/design-system` | **Merged into `main` via PR #9.** Kept for reference; no further work expected here. |
 
-There is **no PR yet** from `feature/design-system` to `main`. Open one once the
-partner portal is finished (see below) or earlier if you want review in stages.
-CLAUDE.md lists the full branch model: `main` / `develop` / `feature/*` / `hotfix/*`.
+New work branches off `main`. CLAUDE.md lists the full branch model:
+`main` / `develop` / `feature/*` / `hotfix/*`.
 
 Local `.claude/worktrees/*` folders and `worktree-agent-*` branches were made by
 AI agents. They are disposable and not pushed (`git worktree remove <path>` to
@@ -36,32 +34,23 @@ clean up).
 - **Wholesale portal**: every screen is on the design system, each with a spec
   (123 specs passing, build clean). Checkout now goes to Paystack for the full
   amount. A cancelled or returned order can never be paid.
-- **Partner portal**: shell and Overview are on the design system.
+- **Partner portal**: every screen is on the design system, each with a spec
+  (33 specs passing, build clean).
 - **Storefront**: mobile redesign matches the approved references in
   `docs/design-review/stitch-approved`. It deliberately does **not** use
   `@seentair/ui`; see `docs/design-system.md`.
 
 ## What to do next, in order
 
-1. **Partner portal: move the remaining screens to the design system.**
-   `apps/partner-portal/src/app/pages/`: `performance`, `investment`,
-   `profit-sharing`, `inventory`, `reports`, `documents`, `settings`. Follow
-   the Overview page (`overview.page.ts` + `overview.page.spec.ts`) and the
-   shared test set-up in `src/app/testing.ts`. Delete sections that have no
-   backend endpoint instead of leaving placeholders. Do not change the sign-in
-   page. Partners must never see customer PII.
-2. **Check the wholesale and partner screens in a browser.** The wholesale
-   rebuild passes its specs but has not been reviewed in a browser yet. Check
-   light and dark themes and phone width.
-3. **Open the PR** `feature/design-system` → `main`. Under CLAUDE.md rules,
-   payment changes (wholesale Paystack handoff) need a second reviewer who
-   knows the domain.
-4. **Known gaps to raise with the backend:**
+1. **Check the partner and wholesale screens in a browser.** Both rebuilds pass
+   their specs but have not been reviewed in a browser yet. Check light and dark
+   themes and phone width.
+2. **Known gaps to raise with the backend:**
    - The wholesale cart collects a delivery choice and notes, but the order
      endpoint has no fields for them, so they are not sent.
    - The wholesale initial bundle is ~594 kB, over the 500 kB budget (build
      warning only).
-5. **Before go-live (outside the codebase):** production keys for Paystack,
+3. **Before go-live (outside the codebase):** production keys for Paystack,
    GIGL and Termii; answers to the High-priority Open Questions in
    `docs/project/03-Open-Questions.md` (#1 POS, #6 currency, #7 NDPR); POS
    planning.
