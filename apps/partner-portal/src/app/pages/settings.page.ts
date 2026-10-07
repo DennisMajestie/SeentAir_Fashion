@@ -1,85 +1,81 @@
-import { CommonModule } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import {
+  SeBadgeComponent,
+  SeBannerComponent,
+  SeButtonDirective,
+  SeCardComponent,
+  SeFieldComponent,
+  SeInputDirective,
+  SeKvDirective,
+  SeKvItemComponent,
+  SePageComponent,
+} from '@seentair/ui';
 import { ApiService } from '../api.service';
 import { PortalStore } from '../portal.store';
 import { ThemeService } from '../theme.service';
 
 /**
- * Investor Settings (sidebar item on every approved screen)- profile record,
- * two-step verification enrolment (live auth/2fa endpoints), terminal theme.
+ * Investor Settings: profile record, two-step verification enrolment (live
+ * auth/2fa endpoints) and terminal theme.
  */
 @Component({
   selector: 'app-settings-page',
-  imports: [CommonModule, FormsModule],
+  imports: [
+    DecimalPipe,
+    FormsModule,
+    SeBadgeComponent,
+    SeBannerComponent,
+    SeButtonDirective,
+    SeCardComponent,
+    SeFieldComponent,
+    SeInputDirective,
+    SeKvDirective,
+    SeKvItemComponent,
+    SePageComponent,
+  ],
   template: `
-    <div class="page-head">
-      <div class="page-head-main">
-        <p class="page-kicker">Account Controls // Terminal Security</p>
-        <h1 class="page-title">Investor Settings</h1>
-        <p class="page-sub">
-          Profile record, two-step hardware verification, and terminal preferences for this partner
-          account.
-        </p>
-      </div>
-    </div>
-
-    <div class="split-half">
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Profile record</h2>
-          <span class="panel-note">Read-only</span>
-        </div>
-        <div class="rail-rows">
-          <div class="rail-row">
-            <span>Account name</span><strong>{{ store.me()?.name ?? '-' }}</strong>
-          </div>
-          <div class="rail-row">
-            <span>Authorized email</span
-            ><strong class="mono">{{ store.me()?.email ?? '-' }}</strong>
-          </div>
-          <div class="rail-row">
-            <span>Role</span><strong>{{ roleLabel() }}</strong>
-          </div>
+    <se-page
+      title="Investor Settings"
+      description="Profile record, two-step hardware verification, and terminal preferences for this partner account."
+      width="narrow"
+    >
+      <se-card title="Profile record">
+        <se-badge seCardActions tone="neutral">Read-only</se-badge>
+        <dl seKv>
+          <div seKvItem label="Account name">{{ store.me()?.name ?? '-' }}</div>
+          <div seKvItem label="Authorized email">{{ store.me()?.email ?? '-' }}</div>
+          <div seKvItem label="Role">{{ roleLabel() }}</div>
           @if (store.dash(); as d) {
-            <div class="rail-row">
-              <span>Equity</span
-              ><strong
-                >{{ d.investmentInformation.equityPercentage }}% ·
-                {{ d.investmentInformation.shares | number }} shares</strong
-              >
+            <div seKvItem label="Equity" numeric>
+              {{ d.investmentInformation.equityPercentage }}% ·
+              {{ d.investmentInformation.shares | number }} shares
             </div>
           }
-        </div>
-        <p class="gap-note" style="margin-top: 0.7rem">
+        </dl>
+        <p class="set-note">
           Registry changes (name, email, payout instrument) are made by Seentair's company secretary
-         - contact the desk via Documents &amp; Messages.
+          — contact the desk via Documents &amp; Messages.
         </p>
-      </section>
+      </se-card>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Two-step verification</h2>
-          <span class="panel-note">
-            @if (store.me()?.totpEnabled) {
-              Enrolled
-            } @else {
-              Not enrolled
-            }
-          </span>
-        </div>
+      <se-card title="Two-step verification">
+        <se-badge seCardActions [tone]="store.me()?.totpEnabled ? 'success' : 'neutral'">
+          {{ store.me()?.totpEnabled ? 'Enrolled' : 'Not enrolled' }}
+        </se-badge>
 
         @if (store.me()?.totpEnabled) {
-          <p class="sec-copy">
+          <p class="set-copy">
             Two-step hardware verification is <strong>active</strong> on this account. Every sign-in
             requires a rotating 6-digit code from your authenticator app.
           </p>
-          <label class="field">
-            Live code to disable
-            <input type="text" inputmode="numeric" maxlength="6" [(ngModel)]="code" name="code" />
-          </label>
+          <se-field label="Live code to disable">
+            <input seInput type="text" inputmode="numeric" maxlength="6" [(ngModel)]="code" name="code" />
+          </se-field>
           <button
-            class="cta ghost"
+            seButton
+            variant="danger"
             type="button"
             [disabled]="busy() || code.length < 6"
             (click)="disable()"
@@ -87,16 +83,16 @@ import { ThemeService } from '../theme.service';
             Disable two-step verification
           </button>
         } @else if (setup(); as s) {
-          <p class="sec-copy">
+          <p class="set-copy">
             Add this secret to your authenticator app, then confirm with a live code to activate.
           </p>
-          <div class="secret-box mono">{{ s.secret }}</div>
-          <label class="field">
-            Live 6-digit code
-            <input type="text" inputmode="numeric" maxlength="6" [(ngModel)]="code" name="code" />
-          </label>
+          <p class="set-secret">{{ s.secret }}</p>
+          <se-field label="Live 6-digit code">
+            <input seInput type="text" inputmode="numeric" maxlength="6" [(ngModel)]="code" name="code" />
+          </se-field>
           <button
-            class="cta"
+            seButton
+            variant="primary"
             type="button"
             [disabled]="busy() || code.length < 6"
             (click)="enable()"
@@ -104,82 +100,56 @@ import { ThemeService } from '../theme.service';
             Activate two-step verification
           </button>
         } @else {
-          <p class="sec-copy">
+          <p class="set-copy">
             Protect the terminal with a rotating 6-digit challenge at sign-in (authenticator app,
             TOTP standard).
           </p>
-          <button class="cta" type="button" [disabled]="busy()" (click)="beginSetup()">
+          <button seButton variant="primary" type="button" [disabled]="busy()" (click)="beginSetup()">
             Begin enrolment
           </button>
         }
-        @if (message(); as m) {
-          <p [class]="m.kind">{{ m.text }}</p>
-        }
-      </section>
 
-      <section class="panel">
-        <div class="panel-head"><h2>Terminal preferences</h2></div>
-        <div class="rail-rows">
-          <div class="rail-row">
-            <span>Theme</span>
-            <button class="link" type="button" (click)="theme.toggle()">
+        @if (message(); as m) {
+          <div class="set-msg">
+            <se-banner [tone]="m.kind === 'ok-msg' ? 'success' : 'danger'">{{ m.text }}</se-banner>
+          </div>
+        }
+      </se-card>
+
+      <se-card title="Terminal preferences">
+        <dl seKv>
+          <div seKvItem label="Theme">
+            <button seButton size="sm" variant="secondary" type="button" (click)="theme.toggle()">
               Switch to {{ theme.theme() === 'dark' ? 'light' : 'dark' }} mode
             </button>
           </div>
-          <div class="rail-row">
-            <span>Currency display</span><strong>₦ Naira (company configuration)</strong>
-          </div>
-        </div>
-      </section>
-    </div>
+          <div seKvItem label="Currency display">₦ Naira (company configuration)</div>
+        </dl>
+      </se-card>
+    </se-page>
   `,
   styles: [
     `
-      .rail-rows {
-        display: flex;
-        flex-direction: column;
+      .set-note,
+      .set-copy {
+        margin: 0 0 var(--se-space-4);
+        color: var(--se-color-text-muted);
+        font: var(--se-type-caption);
       }
-      .rail-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 0.8rem;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid var(--hairline);
-        font-size: var(--type-body-sm);
-        align-items: center;
-        span {
-          color: var(--ink-dim);
-        }
-        strong {
-          text-align: right;
-          overflow-wrap: anywhere;
-        }
-        &:last-child {
-          border-bottom: 0;
-        }
+      .set-copy strong {
+        color: var(--se-color-text);
       }
-      .sec-copy {
-        margin: 0 0 0.7rem;
-        font-size: var(--type-body-sm);
-        strong {
-          color: var(--ok);
-        }
-      }
-      .secret-box {
-        border: 1px dashed var(--hairline-2);
-        background: var(--panel-2);
-        padding: 0.6rem 0.7rem;
-        font-size: var(--type-body-md);
+      .set-secret {
+        margin: 0 0 var(--se-space-3);
+        padding: var(--se-space-3) var(--se-space-4);
+        border: 1px dashed var(--se-color-border-strong);
+        background: var(--se-color-surface-sunken);
+        font: var(--se-type-body-strong);
         letter-spacing: 0.12em;
         overflow-wrap: anywhere;
-        margin-bottom: 0.4rem;
       }
-      .ok-msg {
-        color: var(--ok);
-        font-size: var(--type-body-sm);
-      }
-      .error {
-        font-size: var(--type-body-sm);
+      .set-msg {
+        margin-top: var(--se-space-4);
       }
     `,
   ],
