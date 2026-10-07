@@ -6,6 +6,7 @@
   "scripts": {
     "check": "node scripts/check-tokens.mjs",
     "reference": "cd ../../apps/admin-dashboard && npx ng serve ui-reference --port 4290",
-    "test": "cd ../../apps/admin-dashboard && npx ng test ui-reference --watch=false"
+    "test": "npm run check",
+    "test:reference": "cd ../../apps/admin-dashboard && npx ng test ui-reference --watch=false"
   }
 }

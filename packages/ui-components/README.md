@@ -70,7 +70,13 @@ are built with the admin dashboard's toolchain, as a second project in its
 `angular.json`:
 
 ```
-npm run reference   # http://localhost:4290, every component in its states
-npm test            # the component specs, headless
-npm run check       # the token rules
+npm test              # the token rules (self-contained; runs in CI)
+npm run check         # the token rules, on their own
+npm run reference     # http://localhost:4290, every component in its states
+npm run test:reference   # the component specs, headless
 ```
+
+`test:reference` reaches into `apps/admin-dashboard`, which is not an npm
+workspace and has its own `node_modules`. Run `npm ci` in `apps/admin-dashboard`
+first, and only on a machine with the Angular toolchain — it is not part of the
+root `npm test` or CI.
