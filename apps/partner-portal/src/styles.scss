@@ -75,14 +75,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1,
-h2,
-h3 {
+/* Element rules are scoped to the sign-in screen; inside the shell the design
+   system owns typography. */
+.auth-shell :is(h1, h2, h3) {
   font-weight: 700;
   letter-spacing: -0.01em;
   margin: 0;
 }
-code,
+.auth-shell code,
 .mono {
   font-family: 'Inter', sans-serif;
   font-variant-numeric: tabular-nums;

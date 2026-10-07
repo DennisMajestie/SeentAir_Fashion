@@ -27,7 +27,8 @@
                 "input": "public"
               }
             ],
-            "styles": ["../../packages/ui-components/src/tokens/tokens.css", "src/styles.scss"]
+            "styles": ["src/ui/styles/index.css", "src/styles.scss"],
+            "preserveSymlinks": true
           },
           "configurations": {
             "production": {
@@ -96,7 +97,9 @@
                 "input": "public"
               }
             ],
-            "styles": ["../../packages/ui-components/src/tokens/tokens.css", "src/styles.scss"]
+            "styles": ["src/ui/styles/index.css", "src/styles.scss"],
+            "preserveSymlinks": true,
+            "exclude": ["src/ui/**"]
           }
         }
       }
