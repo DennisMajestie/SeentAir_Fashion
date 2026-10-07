@@ -168,6 +168,18 @@ describe('InvoiceDetailPage', () => {
     });
   });
 
+  it('never offers payment on a cancelled order, and says why', async () => {
+    await boot([invoice({ status: 'cancelled', paymentStatus: 'unpaid' })]);
+    expect(button('Pay now')).toBeUndefined();
+    expect(el().querySelector('.se-banner--warning')).toBeNull();
+    expect(text()).toContain('This order is cancelled, so nothing is payable.');
+    expect(kv('Total')).toBe('₦120,000.00');
+    await fixture.componentInstance.payNow(
+      invoice({ status: 'cancelled', paymentStatus: 'unpaid' }),
+    );
+    expect(api.payWithPaystack).not.toHaveBeenCalled();
+  });
+
   it('shows the empty state with a way back when the order id does not resolve', async () => {
     await boot([]);
     expect(el().querySelector('se-empty-state')!.textContent).toContain('Invoice not found');
