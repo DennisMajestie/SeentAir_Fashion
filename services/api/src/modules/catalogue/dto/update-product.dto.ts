@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 
 export class UpdateProductDto {
   @IsOptional()
@@ -9,8 +9,10 @@ export class UpdateProductDto {
   @IsString()
   description?: string;
 
+  /** When provided it must be a known category; omit it to leave the value alone. */
   @IsOptional()
   @IsString()
+  @IsNotEmpty()
   category?: string;
 
   /** Changing price requires an approved PRICE_CHANGE request (server-side gate). */

@@ -11,12 +11,14 @@ import { ApprovalActionType } from '../../common/enums';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { TechPack } from '../tech-packs/tech-pack.entity';
 import { ReplaceBomDto } from './dto/bom.dto';
+import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateCollectionDto } from './dto/create-collection.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { SetSaleDto } from './dto/set-sale.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
+import { Category } from './entities/category.entity';
 import { Collection } from './entities/collection.entity';
 import { ProductBomItem } from './entities/product-bom-item.entity';
 import { Product } from './entities/product.entity';
@@ -29,6 +31,7 @@ export class CatalogueService {
     @InjectRepository(Product) private readonly productRepo: Repository<Product>,
     @InjectRepository(ProductVariant) private readonly variantRepo: Repository<ProductVariant>,
     @InjectRepository(Collection) private readonly collectionRepo: Repository<Collection>,
+    @InjectRepository(Category) private readonly categoryRepo: Repository<Category>,
     @InjectRepository(ProductBomItem) private readonly bomRepo: Repository<ProductBomItem>,
     @InjectRepository(TechPack) private readonly techPackRepo: Repository<TechPack>,
     private readonly approvalsService: ApprovalsService,
@@ -130,7 +133,7 @@ export class CatalogueService {
     const product = this.productRepo.create({
       name: dto.name,
       description: dto.description ?? null,
-      category: dto.category ?? null,
+      category: await this.resolveCategory(dto.category),
       basePrice: dto.basePrice,
       collection: dto.collectionId ? await this.getCollection(dto.collectionId) : null,
     });
@@ -162,7 +165,7 @@ export class CatalogueService {
 
     if (dto.name !== undefined) product.name = dto.name;
     if (dto.description !== undefined) product.description = dto.description;
-    if (dto.category !== undefined) product.category = dto.category;
+    if (dto.category !== undefined) product.category = await this.resolveCategory(dto.category);
     if (dto.collectionId !== undefined) {
       product.collection = await this.getCollection(dto.collectionId);
     }
@@ -341,5 +344,46 @@ export class CatalogueService {
     const collection = await this.collectionRepo.findOne({ where: { id } });
     if (!collection) throw new NotFoundException(`Collection ${id} not found`);
     return collection;
+  }
+
+  // --- Categories ---
+
+  /** The controlled list behind the admin's category dropdown. */
+  async findCategories(): Promise<Category[]> {
+    return this.categoryRepo.find({ order: { name: 'ASC' } });
+  }
+
+  async createCategory(dto: CreateCategoryDto): Promise<Category> {
+    const name = dto.name.trim();
+    const existing = await this.findCategoryByName(name);
+    if (existing) throw new ConflictException(`Category '${existing.name}' already exists`);
+    return this.categoryRepo.save(this.categoryRepo.create({ name }));
+  }
+
+  /**
+   * Canonicalise a product's category against the categories list.
+   *
+   * Matching is case-insensitive so a lowercase submission still lands on the
+   * existing category rather than creating a near-duplicate; the stored spelling
+   * is what gets written back, so every product for a category renders the same
+   * on the storefront. An unknown name is rejected rather than auto-created, so
+   * a typo cannot silently spawn a new category.
+   */
+  private async resolveCategory(name: string): Promise<string> {
+    const trimmed = name.trim();
+    const category = await this.findCategoryByName(trimmed);
+    if (!category) {
+      throw new BadRequestException(
+        `Unknown category '${trimmed}'. Create it first from the catalogue.`,
+      );
+    }
+    return category.name;
+  }
+
+  private findCategoryByName(name: string): Promise<Category | null> {
+    return this.categoryRepo
+      .createQueryBuilder('category')
+      .where('LOWER(category.name) = LOWER(:name)', { name })
+      .getOne();
   }
 }

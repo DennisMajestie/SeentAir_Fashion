@@ -5,6 +5,7 @@ import { ApprovalActionType } from '../../common/enums';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { TechPack } from '../tech-packs/tech-pack.entity';
 import { CatalogueService } from './catalogue.service';
+import { Category } from './entities/category.entity';
 import { Collection } from './entities/collection.entity';
 import { Product } from './entities/product.entity';
 import { ProductBomItem } from './entities/product-bom-item.entity';
@@ -39,6 +40,7 @@ describe('CatalogueService — price-change approval gate', () => {
         { provide: getRepositoryToken(Product), useValue: productRepo },
         { provide: getRepositoryToken(ProductVariant), useValue: emptyRepo },
         { provide: getRepositoryToken(Collection), useValue: emptyRepo },
+        { provide: getRepositoryToken(Category), useValue: emptyRepo },
         { provide: getRepositoryToken(ProductBomItem), useValue: emptyRepo },
         { provide: getRepositoryToken(TechPack), useValue: emptyRepo },
         { provide: ApprovalsService, useValue: approvalsService },
@@ -101,6 +103,7 @@ describe('CatalogueService — public sold count', () => {
         { provide: getRepositoryToken(Product), useValue: productRepo },
         { provide: getRepositoryToken(ProductVariant), useValue: {} },
         { provide: getRepositoryToken(Collection), useValue: {} },
+        { provide: getRepositoryToken(Category), useValue: {} },
         { provide: getRepositoryToken(ProductBomItem), useValue: {} },
         { provide: getRepositoryToken(TechPack), useValue: {} },
         { provide: ApprovalsService, useValue: {} },

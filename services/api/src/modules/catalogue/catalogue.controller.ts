@@ -15,6 +15,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { CatalogueService } from './catalogue.service';
+import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateCollectionDto } from './dto/create-collection.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
@@ -51,6 +52,12 @@ export class CatalogueController {
   @Get('collections')
   findCollections() {
     return this.catalogueService.findCollections();
+  }
+
+  @Public()
+  @Get('categories')
+  findCategories() {
+    return this.catalogueService.findCategories();
   }
 
   // Admin/Management writes.
@@ -130,5 +137,12 @@ export class CatalogueController {
   @RequireAccess(ModuleName.CATALOGUE, AccessLevel.FULL)
   createCollection(@Body() dto: CreateCollectionDto) {
     return this.catalogueService.createCollection(dto);
+  }
+
+  @Post('categories')
+  @ApiBearerAuth()
+  @RequireAccess(ModuleName.CATALOGUE, AccessLevel.FULL)
+  createCategory(@Body() dto: CreateCategoryDto) {
+    return this.catalogueService.createCategory(dto);
   }
 }

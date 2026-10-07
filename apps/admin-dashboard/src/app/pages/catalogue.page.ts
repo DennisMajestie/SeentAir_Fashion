@@ -52,6 +52,7 @@ import { ProductRow, count, onSale, skuRange, stockOf, stockValue } from './cata
     <se-page title="Catalogue">
       @if (canWrite()) {
         <ng-container sePageActions>
+          <button seButton type="button" (click)="openCategory()">Add category</button>
           <button seButton type="button" (click)="openCollection()">Add collection</button>
           <button seButton variant="primary" type="button" (click)="openProduct()">
             Add product
@@ -129,8 +130,17 @@ import { ProductRow, count, onSale, skuRange, stockOf, stockValue } from './cata
             <input seInput name="pname" [(ngModel)]="np.name" />
           </se-field>
           <div class="se-form__row">
-            <se-field label="Category" optional>
-              <input seInput name="pcat" [(ngModel)]="np.category" />
+            <se-field
+              label="Category"
+              hint="Products are grouped by category on the storefront."
+              [error]="categoryPickError()"
+            >
+              <select seInput name="pcat" [(ngModel)]="np.category">
+                <option value="">Choose a category</option>
+                @for (c of categories(); track c.id) {
+                  <option [value]="c.name">{{ c.name }}</option>
+                }
+              </select>
             </se-field>
             <se-field label="Retail price" [error]="priceError()">
               <input seInput type="number" min="0" name="pprice" [(ngModel)]="np.basePrice" />
@@ -185,6 +195,30 @@ import { ProductRow, count, onSale, skuRange, stockOf, stockValue } from './cata
           </button>
         </ng-container>
       </se-drawer>
+
+      <se-drawer title="Add category" [(open)]="addingCategory">
+        <form class="se-form" (ngSubmit)="createCategory()">
+          <se-field
+            label="Category name"
+            hint="It will appear in the category dropdown when adding a product."
+            [error]="categoryError()"
+          >
+            <input seInput name="ncat" [(ngModel)]="newCategory" />
+          </se-field>
+        </form>
+        <ng-container seDrawerFooter>
+          <button seButton type="button" (click)="addingCategory.set(false)">Cancel</button>
+          <button
+            seButton
+            variant="primary"
+            type="button"
+            [loading]="saving()"
+            (click)="createCategory()"
+          >
+            Add category
+          </button>
+        </ng-container>
+      </se-drawer>
     </se-page>
   `,
 })
@@ -200,6 +234,7 @@ export class CatalogueAdminPage implements OnInit {
 
   readonly products = signal<ProductRow[]>([]);
   readonly collectionRows = signal<Array<{ id: string; name: string }>>([]);
+  readonly categories = signal<Array<{ id: string; name: string }>>([]);
   readonly pendingPriceChanges = signal(0);
   /** variantId to current stock (inventory summary), for valuation. */
   private readonly stockMap = signal<Map<string, number>>(new Map());
@@ -214,18 +249,12 @@ export class CatalogueAdminPage implements OnInit {
   readonly query = this.urlState.query;
   readonly filterValue = this.urlState.value;
   readonly filters = computed<SeFilter[]>(() => {
-    const names = [
-      ...new Set(
-        this.products()
-          .map((p) => p.category ?? '')
-          .filter(Boolean),
-      ),
-    ];
+    const names = this.categories().map((c) => c.name);
     return [
       {
         key: 'category',
         label: 'Category',
-        options: names.sort().map((value) => ({ value, label: value })),
+        options: names.map((value) => ({ value, label: value })),
       },
     ];
   });
@@ -283,13 +312,16 @@ export class CatalogueAdminPage implements OnInit {
     this.products().reduce((sum, p) => sum + stockValue(p, this.stockMap()), 0),
   );
 
-  // ---- add product / add collection ----
+  // ---- add product / add collection / add category ----
   readonly adding = signal(false);
   readonly addingCollection = signal(false);
+  readonly addingCategory = signal(false);
   readonly saving = signal(false);
   readonly nameError = signal('');
   readonly priceError = signal('');
   readonly collectionError = signal('');
+  readonly categoryPickError = signal('');
+  readonly categoryError = signal('');
   np = {
     name: '',
     category: '',
@@ -298,6 +330,7 @@ export class CatalogueAdminPage implements OnInit {
     collectionId: '',
   };
   newCollection = '';
+  newCategory = '';
 
   ngOnInit(): void {
     this.load();
@@ -323,6 +356,10 @@ export class CatalogueAdminPage implements OnInit {
     });
     this.api.collections().subscribe({
       next: (res) => this.collectionRows.set(res),
+      error: () => undefined,
+    });
+    this.api.categories().subscribe({
+      next: (res) => this.categories.set(res),
       error: () => undefined,
     });
   }
@@ -361,6 +398,7 @@ export class CatalogueAdminPage implements OnInit {
   openProduct(): void {
     this.nameError.set('');
     this.priceError.set('');
+    this.categoryPickError.set('');
     this.adding.set(true);
   }
 
@@ -369,19 +407,26 @@ export class CatalogueAdminPage implements OnInit {
     this.addingCollection.set(true);
   }
 
+  openCategory(): void {
+    this.categoryError.set('');
+    this.addingCategory.set(true);
+  }
+
   createProduct(): void {
     const name = this.np.name.trim();
+    const category = this.np.category.trim();
     const price = Number(this.np.basePrice);
     this.nameError.set(name ? '' : 'Enter the product name.');
     this.priceError.set(
       this.np.basePrice !== null && price >= 0 ? '' : 'Enter the retail price, 0 or more.',
     );
-    if (this.nameError() || this.priceError()) return;
+    this.categoryPickError.set(category ? '' : 'Choose a category.');
+    if (this.nameError() || this.priceError() || this.categoryPickError()) return;
     this.saving.set(true);
     this.api
       .createProduct({
         name,
-        category: this.np.category || undefined,
+        category,
         basePrice: price,
         description: this.np.description || undefined,
         collectionId: this.np.collectionId || undefined,
@@ -418,6 +463,28 @@ export class CatalogueAdminPage implements OnInit {
         this.saving.set(false);
         this.collectionError.set(
           err?.error?.message ?? 'The collection could not be added. Try again.',
+        );
+      },
+    });
+  }
+
+  createCategory(): void {
+    const name = this.newCategory.trim();
+    this.categoryError.set(name ? '' : 'Enter the category name.');
+    if (!name) return;
+    this.saving.set(true);
+    this.api.createCategory(name).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.addingCategory.set(false);
+        this.newCategory = '';
+        this.toast.show(`Category ${name} added`);
+        this.load();
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.categoryError.set(
+          err?.error?.message ?? 'The category could not be added. Try again.',
         );
       },
     });

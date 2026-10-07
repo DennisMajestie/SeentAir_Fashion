@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { AppDataSource } from '../data-source';
+import { Category } from '../../modules/catalogue/entities/category.entity';
 import { Collection } from '../../modules/catalogue/entities/collection.entity';
 import { Product } from '../../modules/catalogue/entities/product.entity';
 import {
@@ -97,6 +98,7 @@ async function ensureDemoData(): Promise<void> {
   await AppDataSource.initialize();
 
   const collectionRepo = AppDataSource.getRepository(Collection);
+  const categoryRepo = AppDataSource.getRepository(Category);
   const productRepo = AppDataSource.getRepository(Product);
   const variantRepo = AppDataSource.getRepository(ProductVariant);
   const movementRepo = AppDataSource.getRepository(InventoryMovement);
@@ -106,6 +108,21 @@ async function ensureDemoData(): Promise<void> {
     console.log(`Demo data skipped: ${existingProducts} products already present.`);
     await AppDataSource.destroy();
     return;
+  }
+
+  // Register each category first so the products below reference values the
+  // admin category dropdown actually offers.
+  const categories = new Map<string, string>();
+  for (const p of DEMO_PRODUCTS) {
+    const key = p.category.trim().toLowerCase();
+    if (categories.has(key)) continue;
+    let category = await categoryRepo
+      .createQueryBuilder('c')
+      .where('LOWER(c.name) = LOWER(:name)', { name: p.category.trim() })
+      .getOne();
+    if (!category)
+      category = await categoryRepo.save(categoryRepo.create({ name: p.category.trim() }));
+    categories.set(key, category.name);
   }
 
   const collections = new Map<string, Collection>();
@@ -125,7 +142,7 @@ async function ensureDemoData(): Promise<void> {
       productRepo.create({
         name: p.name,
         description: p.description,
-        category: p.category,
+        category: categories.get(p.category.trim().toLowerCase())!,
         basePrice: p.basePrice,
         collection: collections.get(p.collection)!,
       }),

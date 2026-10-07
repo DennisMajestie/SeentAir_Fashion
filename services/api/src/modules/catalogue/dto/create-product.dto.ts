@@ -9,9 +9,10 @@ export class CreateProductDto {
   @IsString()
   description?: string;
 
-  @IsOptional()
+  /** Required: chosen from the categories list, so the catalogue stays consistent. */
   @IsString()
-  category?: string;
+  @IsNotEmpty()
+  category: string;
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)

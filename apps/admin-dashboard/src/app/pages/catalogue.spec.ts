@@ -24,6 +24,8 @@ const product = (over: Partial<ProductRow> = {}): ProductRow => ({
 const METHODS = [
   'products',
   'collections',
+  'categories',
+  'createCategory',
   'tiers',
   'inventorySummary',
   'pendingApprovals',
@@ -42,6 +44,8 @@ function setUp(products: unknown, level: string, extra: unknown[] = []): void {
   api = jasmine.createSpyObj<ApiService>('ApiService', [...METHODS]);
   api.products.and.returnValue(products as never);
   api.collections.and.returnValue(of([]));
+  api.categories.and.returnValue(of([]));
+  api.createCategory.and.returnValue(of({}));
   api.tiers.and.returnValue(of([]));
   api.inventorySummary.and.returnValue(of([]));
   api.pendingApprovals.and.returnValue(of([]));
@@ -113,9 +117,11 @@ describe('CatalogueAdminPage', () => {
     mount(of({ data: [product()], total: 1 }), 'view');
     expect(pageButtons(el())).not.toContain('Add product');
     expect(pageButtons(el())).not.toContain('Add collection');
+    expect(pageButtons(el())).not.toContain('Add category');
     TestBed.inject(AccessService).me.update((me) => ({ ...me!, access: { catalogue: 'full' } }));
     fixture.detectChanges();
     expect(pageButtons(el())).toContain('Add product');
+    expect(pageButtons(el())).toContain('Add category');
   });
 });
 

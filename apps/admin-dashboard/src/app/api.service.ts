@@ -417,6 +417,12 @@ export class ApiService {
   createCollection(name: string): Observable<unknown> {
     return this.http.post(`${API_BASE}/collections`, { name });
   }
+  categories(): Observable<Array<{ id: string; name: string }>> {
+    return this.http.get<Array<{ id: string; name: string }>>(`${API_BASE}/categories`);
+  }
+  createCategory(name: string): Observable<unknown> {
+    return this.http.post(`${API_BASE}/categories`, { name });
+  }
 
   // --- Materials ---
   materials(): Observable<Array<Record<string, unknown>>> {

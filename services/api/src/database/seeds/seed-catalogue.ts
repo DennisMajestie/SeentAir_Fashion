@@ -4,6 +4,7 @@ import { AppDataSource } from '../data-source';
 import { RoleName, UserStatus } from '../../common/enums';
 import { Role } from '../../modules/users/entities/role.entity';
 import { User } from '../../modules/users/entities/user.entity';
+import { Category } from '../../modules/catalogue/entities/category.entity';
 import { Collection } from '../../modules/catalogue/entities/collection.entity';
 import { Product } from '../../modules/catalogue/entities/product.entity';
 import {
@@ -355,6 +356,7 @@ const REFERENCE_SOURCE = 'seed:reference-ratings';
 async function seedCatalogue(): Promise<void> {
   await AppDataSource.initialize();
   const collectionRepo = AppDataSource.getRepository(Collection);
+  const categoryRepo = AppDataSource.getRepository(Category);
   const productRepo = AppDataSource.getRepository(Product);
   const variantRepo = AppDataSource.getRepository(ProductVariant);
   const movementRepo = AppDataSource.getRepository(InventoryMovement);
@@ -363,6 +365,28 @@ async function seedCatalogue(): Promise<void> {
   let createdVariants = 0;
   let openingMovements = 0;
   let bestSellerFlags = 0;
+  let createdCategories = 0;
+
+  // Products reference categories by name, so make sure each one exists in the
+  // categories list first — otherwise the seeded catalog would carry values the
+  // admin dropdown does not offer.
+  const categoryCache = new Map<string, string>();
+  const ensureCategory = async (name: string): Promise<string> => {
+    const trimmed = name.trim();
+    const key = trimmed.toLowerCase();
+    const cached = categoryCache.get(key);
+    if (cached) return cached;
+    let category = await categoryRepo
+      .createQueryBuilder('c')
+      .where('LOWER(c.name) = LOWER(:name)', { name: trimmed })
+      .getOne();
+    if (!category) {
+      category = await categoryRepo.save(categoryRepo.create({ name: trimmed }));
+      createdCategories++;
+    }
+    categoryCache.set(key, category.name);
+    return category.name;
+  };
 
   const seeded = [...CATALOGUE, ...REFERENCE_ITEMS];
 
@@ -386,7 +410,7 @@ async function seedCatalogue(): Promise<void> {
         productRepo.create({
           name: spec.name,
           description: spec.description,
-          category: spec.category,
+          category: await ensureCategory(spec.category),
           basePrice: spec.basePrice,
           collection,
           isBestseller: spec.isBestseller ?? false,
@@ -447,6 +471,7 @@ async function seedCatalogue(): Promise<void> {
       `${createdVariants} variants, ${openingMovements} opening-stock movements.`,
   );
   if (bestSellerFlags > 0) console.log(`Best-seller flags newly applied: ${bestSellerFlags}.`);
+  if (createdCategories > 0) console.log(`Categories newly created: ${createdCategories}.`);
   console.log(
     `Reference ratings: ${ratingCounts.orders} dev orders, ${ratingCounts.reviews} published reviews.`,
   );
