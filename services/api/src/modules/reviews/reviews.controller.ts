@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { OptionalAuth } from '../../common/decorators/optional-auth.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
@@ -14,15 +15,27 @@ import { ReviewsService } from './reviews.service';
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
-  /** Post-delivery review by the ordering customer (ownership checked in service). */
+  /**
+   * Post-delivery review by the ordering customer (ownership checked in
+   * service). Optional auth: works signed-in, or as a guest with the emailed
+   * tracking token in the query string — the tracking link already proves the
+   * order is theirs.
+   */
   @Post('orders/:id/review')
   @ApiBearerAuth()
+  @OptionalAuth()
+  @ApiQuery({
+    name: 'token',
+    required: false,
+    description: 'Guest tracking token — proves ownership when there is no session',
+  })
   create(
     @Param('id', ParseUUIDPipe) orderId: string,
     @Body() dto: CreateReviewDto,
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() user?: AuthenticatedUser,
+    @Query('token') token?: string,
   ) {
-    return this.reviewsService.create(orderId, dto, user);
+    return this.reviewsService.create(orderId, dto, user, token);
   }
 
   /** Public: published reviews on a product page. */

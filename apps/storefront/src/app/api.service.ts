@@ -352,8 +352,10 @@ export class ApiService {
     variantId: string,
     rating: number,
     comment: string,
+    token?: string,
   ): Observable<unknown> {
-    return this.http.post(`${API_BASE}/orders/${orderId}/review`, {
+    const query = token ? `?token=${encodeURIComponent(token)}` : '';
+    return this.http.post(`${API_BASE}/orders/${orderId}/review${query}`, {
       variantId,
       rating,
       comment: comment || undefined,

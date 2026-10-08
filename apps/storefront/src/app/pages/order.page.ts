@@ -945,6 +945,7 @@ export class OrderPage implements OnInit, OnDestroy {
         variantId,
         this.ratings[variantId] ?? 5,
         this.comments[variantId] ?? '',
+        this.guestToken,
       )
       .subscribe({
         next: () => this.reviewMessage.set('Thanks! Your review is in, it appears once approved.'),

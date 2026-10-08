@@ -19,10 +19,20 @@ export class ReviewsService {
     private readonly ordersService: OrdersService,
   ) {}
 
-  /** Reviews are tied to delivered orders, by that order's customer only. */
-  async create(orderId: string, dto: CreateReviewDto, user: AuthenticatedUser): Promise<Review> {
-    const order = await this.ordersService.findById(orderId, user);
-    if (order.customer?.id !== user.id) {
+  /**
+   * Reviews are tied to delivered orders, by that order's customer only.
+   * `user` is the signed-in path; `token` is the guest path (the emailed
+   * tracking link), consulted only when there is no session — exactly like the
+   * tracking and payment endpoints.
+   */
+  async create(
+    orderId: string,
+    dto: CreateReviewDto,
+    user?: AuthenticatedUser,
+    token?: string,
+  ): Promise<Review> {
+    const order = await this.ordersService.findById(orderId, user, token);
+    if (user && order.customer?.id !== user.id) {
       throw new ForbiddenException('Only the ordering customer can review this order');
     }
     if (order.status !== OrderStatus.DELIVERED) {
@@ -41,7 +51,7 @@ export class ReviewsService {
       this.reviewRepo.create({
         order,
         variant: item.variant,
-        customerId: user.id,
+        customerId: user?.id ?? order.customer?.id ?? null,
         rating: dto.rating,
         comment: dto.comment ?? null,
         status: ReviewStatus.PENDING, // Open Question #4 — moderated by default

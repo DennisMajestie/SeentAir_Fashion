@@ -35,8 +35,9 @@ export class Review {
   @JoinColumn({ name: 'variant_id' })
   variant: ProductVariant;
 
-  @Column({ name: 'customer_id', type: 'uuid' })
-  customerId: string;
+  /** Null for guest reviews: the guest has no user id (identify via the order). */
+  @Column({ name: 'customer_id', type: 'uuid', nullable: true })
+  customerId: string | null;
 
   /** 1–5 stars. */
   @Column({ type: 'integer' })
