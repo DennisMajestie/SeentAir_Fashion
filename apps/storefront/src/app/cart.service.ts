@@ -80,7 +80,9 @@ export class CartService {
         unitPrice: offer.price,
         ...(offer.was !== null ? { listPrice: offer.was, saleEndsAt: offer.endsAt } : {}),
         quantity,
-        imageUrl: variant.imageUrl,
+        // Per-colour photo, else the product's own — both real photos; the
+        // generic placeholder is never persisted into a cart snapshot.
+        imageUrl: variant.imageUrl ?? product.primaryImageUrl ?? null,
         availabilityStatus: variant.availabilityStatus,
       });
     }

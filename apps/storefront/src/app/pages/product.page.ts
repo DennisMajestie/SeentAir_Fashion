@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Offer, offerFor } from '../pricing';
 import { SaleCountdownComponent } from '../sale-countdown.component';
 import { ApiService, Product, ProductVariant } from '../api.service';
+import { PRODUCT_PLACEHOLDER } from '../product-image';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
 import { SeentairTiltCardComponent } from '../tilt-card.component';
@@ -27,21 +28,12 @@ import { NO_REVIEWS_COPY } from '../product-card.component';
       <article class="product-detail">
         <app-tilt-card class="pdp-hero">
           <div class="tilt-product">
-            @if (selected()?.imageUrl) {
-              <img
-                class="tilt-product-img"
-                data-depth="0.5"
-                [src]="selected()!.imageUrl!"
-                [alt]="p.name"
-              />
-            } @else {
-              <img
-                class="tilt-product-img"
-                data-depth="0.5"
-                src="assets/shop-2.jpg"
-                [alt]="p.name"
-              />
-            }
+            <img
+              class="tilt-product-img"
+              data-depth="0.5"
+              [src]="heroImage()"
+              [alt]="p.name"
+            />
             <span class="tilt-price" data-depth="1">₦{{ currentPrice() | number: '1.0-2' }}</span>
           </div>
         </app-tilt-card>
@@ -216,6 +208,15 @@ export class ProductPage implements OnInit {
       ) ?? null
     );
   });
+
+  /**
+   * The photo a shopper is looking at: the selected size/colour's own photo,
+   * then the product's primary photo, then the neutral placeholder — never a
+   * hardcoded stand-in that belongs to nothing in particular.
+   */
+  heroImage(): string {
+    return this.selected()?.imageUrl ?? this.product()?.primaryImageUrl ?? PRODUCT_PLACEHOLDER;
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id')!;

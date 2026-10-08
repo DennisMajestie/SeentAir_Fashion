@@ -32,6 +32,13 @@ export interface Product {
   createdAt: string;
   variants: ProductVariant[];
   /**
+   * The product's own photograph (products.primary_image_url): an absolute URL
+   * for admin uploads, a resolvable path for seeded assets. Read through
+   * productImage() — the storefront's one hierarchy for "which photo do we
+   * show", never raw. Optional because older API builds predate the column.
+   */
+  primaryImageUrl?: string | null;
+  /**
    * Seller-applied "Bestseller" merchandising label (products.is_bestseller).
    * Optional because older API builds predate the column: consumers must treat
    * missing as "not flagged", never as "flagged". It is a label, not a claim --

@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { ApiService, Product } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
+import { PRODUCT_PLACEHOLDER } from '../product-image';
 import { ShopPage } from './shop.page';
 
 /**
@@ -123,13 +124,14 @@ describe('ShopPage', () => {
       await mount();
       const c = fixture.componentInstance;
       expect(c.categoryImage('tops')).toBe('https://cdn.test/t.png');
-      // No variant image, so a shipped photo stands in — never a colour swatch.
-      expect(c.categoryImage('bottoms')).toMatch(/^assets\/shop-\d\.jpg$/);
+      // No product photo anywhere, so the one shared placeholder stands in —
+      // never a colour swatch, and never a photo keyed to a grid slot.
+      expect(c.categoryImage('bottoms')).toBe(PRODUCT_PLACEHOLDER);
     });
 
-    it('falls back to a shipped photo for a category with no products yet', async () => {
+    it('uses the shared placeholder for a category with no products yet', async () => {
       await mount();
-      expect(fixture.componentInstance.categoryImage('nope')).toMatch(/^assets\/shop-\d\.jpg$/);
+      expect(fixture.componentInstance.categoryImage('nope')).toBe(PRODUCT_PLACEHOLDER);
     });
 
     it('marks the active pill for assistive tech as well as visually', async () => {

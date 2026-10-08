@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { ApiService, Product } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
+import { PRODUCT_PLACEHOLDER, productImage } from '../product-image';
 import { LandingPage } from './landing.page';
 
 /**
@@ -180,15 +181,22 @@ describe('LandingPage', () => {
     expect(element.querySelector('.m-cats')?.textContent).not.toContain('Women');
   });
 
-  it('prefers the variant image and only falls back to a shipped asset', async () => {
+  it('shows the product photo, else a variant photo, else the one placeholder', async () => {
     products = [
+      product({ id: 'withprimary', primaryImageUrl: 'https://cdn.test/primary.png', variants: withImage('https://cdn.test/variant.png') }),
       product({ id: 'withimg', variants: withImage('https://cdn.test/real.png') }),
       product({ id: 'noimg', variants: withImage(null) }),
     ];
     await mount();
-    const c = fixture.componentInstance;
-    expect(c.imageFor(c.all()[0], 0)).toBe('https://cdn.test/real.png');
-    expect(c.imageFor(c.all()[1], 0)).toBe('assets/products/product_01.png');
+    // The rail and every card now read through the shared hierarchy.
+    expect(productImage(products[0])).toBe('https://cdn.test/primary.png');
+    expect(productImage(products[1])).toBe('https://cdn.test/real.png');
+    expect(productImage(products[2])).toBe(PRODUCT_PLACEHOLDER);
+    // No grid-position fallback assets remain — anything without a real photo
+    // gets the single placeholder, nothing "by index".
+    expect(fixture.componentInstance.categories().find((c) => c.name === 'tops')?.image).toBe(
+      'https://cdn.test/primary.png',
+    );
   });
 
   it('shows an honest empty state instead of placeholder tiles', async () => {

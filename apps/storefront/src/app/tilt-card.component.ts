@@ -59,9 +59,9 @@ export class TiltEnvironmentService {
  * Usage in the shop grid, wrap the existing card as-is:
  *
  *   <div class="grid">
- *     @for (product of filtered(); track product.id; let i = $index) {
+ *     @for (product of filtered(); track product.id) {
  *       <app-tilt-card>
- *         <app-product-card [product]="product" [index]="i" [rating]="ratingOf(product.id)" />
+ *         <app-product-card [product]="product" [rating]="ratingOf(product.id)" />
  *       </app-tilt-card>
  *     }
  *   </div>

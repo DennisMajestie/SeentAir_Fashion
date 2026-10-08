@@ -8,6 +8,7 @@ import { CartService } from './cart.service';
 import { WishlistService } from './wishlist.service';
 import { environment } from '../environments/environment';
 import { offerFor } from './pricing';
+import { productImage } from './product-image';
 
 /**
  * Phase 1 mobile navigation shell. Reference: seentair-mobile-v2.html
@@ -157,7 +158,7 @@ import { offerFor } from './pricing';
             @for (r of searchResults(); track r.id) {
               <li>
                 <a [routerLink]="['/product', r.id]" (click)="closeSearch()">
-                  <img [src]="r.variants[0]?.imageUrl || 'assets/shop-1.jpg'" [alt]="r.name" />
+                  <img [src]="productImage(r)" [alt]="r.name" />
                   <span class="m-results__info">
                     <span class="m-results__name">{{ r.name }}</span>
                     <span class="m-results__meta">
@@ -231,6 +232,8 @@ export class MobileHeaderComponent implements OnDestroy {
   private readonly api = inject(ApiService);
   readonly cart = inject(CartService);
   readonly wish = inject(WishlistService);
+  /** Template-accessible photo hierarchy (see product-image.ts). */
+  readonly productImage = productImage;
 
   readonly menuOpen = signal(false);
   readonly searchTerm = signal('');

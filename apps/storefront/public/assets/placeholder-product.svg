@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="No photo available">
+  <rect width="400" height="400" fill="#f2efe9"/>
+  <g fill="none" stroke="#c9c2b4" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M200 78 v-8 a13 13 0 1 1 26 13"/>
+    <path d="M200 108 L120 184"/>
+    <path d="M200 108 L280 184"/>
+    <path d="M128 184 h144"/>
+  </g>
+</svg>

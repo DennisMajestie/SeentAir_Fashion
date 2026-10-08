@@ -17,6 +17,7 @@ import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
 import { FilterSheetComponent } from '../filter-sheet.component';
 import { offerFor } from '../pricing';
+import { PRODUCT_PLACEHOLDER, productImage } from '../product-image';
 import { SWATCHES, ProductCardComponent } from '../product-card.component';
 import {
   EMPTY_FILTERS,
@@ -208,8 +209,8 @@ function collectionKey(name: string): string {
       <p class="muted">Nothing matches: clear the search or filters.</p>
     } @else {
       <div class="grid" [class.grid--list]="view() === 'list'">
-        @for (product of filtered(); track product.id; let i = $index) {
-          <app-product-card [product]="product" [index]="i" [rating]="ratingOf(product.id)" />
+        @for (product of filtered(); track product.id) {
+          <app-product-card [product]="product" [rating]="ratingOf(product.id)" />
         }
       </div>
     }
@@ -347,29 +348,16 @@ export class ShopPage implements OnInit {
   );
 
   /**
-   * Circle image for a sub-category pill. Taken from a real product in that
-   * category so the rail shows the actual clothing, then a shipped photo as the
-   * fallback. Never a flat colour standing in for a category.
+   * Circle image for a sub-category pill. The first real product in that
+   * category, read through the shared productImage() hierarchy — a category
+   * shows actual clothing when it can, and the one shared placeholder when it
+   * cannot. Never a flat colour, and never a photo borrowed from another
+   * product's grid position.
    */
   categoryImage(category: string): string {
-    const index = this.all().findIndex((p) => (p.category ?? 'other') === category);
-    if (index < 0) return this.fallbackFor(0);
-    const real = this.all()[index].variants.find((v) => !!v.imageUrl)?.imageUrl;
-    return real ?? this.fallbackFor(index);
+    const found = this.all().find((p) => (p.category ?? 'other') === category);
+    return found ? productImage(found) : PRODUCT_PLACEHOLDER;
   }
-
-  /** Stable per-slot shipped photo, so the same card keeps the same image. */
-  private fallbackFor(index: number): string {
-    return `assets/${this.fallbacks[Math.abs(index) % this.fallbacks.length]}`;
-  }
-
-  private readonly fallbacks = [
-    'shop-1.jpg',
-    'shop-2.jpg',
-    'shop-3.jpg',
-    'shop-5.jpg',
-    'shop-6.jpg',
-  ];
 
   openSheet(): void {
     this.sheetOpen.set(true);

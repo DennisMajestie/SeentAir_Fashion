@@ -5,6 +5,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
 import { ProductCardComponent } from '../product-card.component';
+import { productImage } from '../product-image';
 
 /** Curated order for the home category rail; anything unlisted sorts last. */
 const CATEGORY_ORDER = [
@@ -35,15 +36,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 /**
- * Real product photography shipped in `public/assets/products`. Used only when a
- * variant carries no `imageUrl` of its own, so a card never renders empty and
- * never invents a product image.
+ * One photograph per category, taken from a real product in it via the shared
+ * productImage() hierarchy, so the rail can never show a photo that belongs to
+ * something else's row position.
  */
-const PRODUCT_FALLBACKS = Array.from(
-  { length: 15 },
-  (_, i) => `assets/products/product_${String(i + 1).padStart(2, '0')}.png`,
-);
-
 interface Rating {
   avg: number;
   count: number;
@@ -109,8 +105,8 @@ interface RailCategory {
 
         @if (newArrivals().length > 0) {
           <div class="m-row3">
-            @for (p of newArrivals(); track p.id; let i = $index) {
-              <app-product-card [product]="p" [index]="i" [rating]="ratingOf(p.id)" />
+            @for (p of newArrivals(); track p.id) {
+              <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
             }
           </div>
         } @else {
@@ -128,8 +124,8 @@ interface RailCategory {
 
         @if (bestSellers().length > 0) {
           <div class="m-row3">
-            @for (p of bestSellers(); track p.id; let i = $index) {
-              <app-product-card [product]="p" [index]="i" [rating]="ratingOf(p.id)" />
+            @for (p of bestSellers(); track p.id) {
+              <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
             }
           </div>
         } @else {
@@ -195,7 +191,7 @@ export class LandingPage implements OnInit {
     const counts = new Map<string, { count: number; image: string }>();
     for (const p of this.all()) {
       const key = p.category ?? 'other';
-      const cur = counts.get(key) ?? { count: 0, image: this.imageFor(p, 0) };
+      const cur = counts.get(key) ?? { count: 0, image: productImage(p) };
       cur.count += 1;
       counts.set(key, cur);
     }
@@ -225,14 +221,6 @@ export class LandingPage implements OnInit {
         this.loading.set(false);
         this.loadRatings(products);
       });
-  }
-
-  /**
-   * The variant's own image when the API has one, otherwise a real catalogue
-   * photo. Never a colour swatch or gradient standing in for a product.
-   */
-  imageFor(product: Product, index: number): string {
-    return product.variants[0]?.imageUrl || PRODUCT_FALLBACKS[index % PRODUCT_FALLBACKS.length];
   }
 
   ratingOf(productId: string): Rating | null {

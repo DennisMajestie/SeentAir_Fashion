@@ -5,6 +5,7 @@ import { Product, ProductVariant } from './api.service';
 import { BrandAlertService } from './brand-alert.service';
 import { CartService } from './cart.service';
 import { Offer, offerFor } from './pricing';
+import { productImage } from './product-image';
 import { SaleCountdownComponent } from './sale-countdown.component';
 import { SeentairTiltCardComponent } from './tilt-card.component';
 import { WishlistService } from './wishlist.service';
@@ -54,7 +55,7 @@ export const SWATCHES: Record<string, string> = {
              wishlist and quick-add sit above it and stay put. -->
         <app-tilt-card class="fill">
           <img
-            [src]="product().variants[0]?.imageUrl || 'assets/' + fallback(index())"
+            [src]="productImage(product())"
             [alt]="product().name"
             loading="lazy"
           />
@@ -221,8 +222,9 @@ export class ProductCardComponent implements OnDestroy {
   private readonly alerts = inject(BrandAlertService);
   private readonly router = inject(Router);
   readonly wishlist = inject(WishlistService);
+  /** Template-accessible photo hierarchy (see product-image.ts). */
+  readonly productImage = productImage;
   readonly product = input.required<Product>();
-  readonly index = input(0);
   readonly rating = input<{ avg: number; count: number } | null>(null);
 
   readonly addedId = signal<string | null>(null);
@@ -230,14 +232,6 @@ export class ProductCardComponent implements OnDestroy {
 
   /** Bumped when a running sale reaches its end, so the card re-prices itself. */
   private readonly saleOver = signal(0);
-
-  private readonly fallbacks = [
-    'shop-1.jpg',
-    'shop-2.jpg',
-    'shop-3.jpg',
-    'shop-5.jpg',
-    'shop-6.jpg',
-  ];
 
   /** Price now, and the normal price and end time while a sale is running. */
   offer(): Offer {
@@ -253,9 +247,6 @@ export class ProductCardComponent implements OnDestroy {
     clearTimeout(this.addedTimer);
   }
 
-  fallback(index: number): string {
-    return this.fallbacks[index % this.fallbacks.length];
-  }
   /** Real paid orders behind this product; absent means unknown-but-zero. */
   soldOf(p: Product): number {
     return p.soldCount ?? 0;

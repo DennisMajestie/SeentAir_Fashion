@@ -46,7 +46,10 @@ export class WishlistService {
       {
         productId: product.id,
         productName: product.name,
-        imageUrl: product.variants[0]?.imageUrl ?? null,
+        // A persisted snapshot keeps only real photos (the product's own, then
+        // the first variant's) — never the shared placeholder, which can appear
+        // or disappear as assets ship.
+        imageUrl: product.primaryImageUrl ?? product.variants[0]?.imageUrl ?? null,
         price: offerFor(product).price,
       },
     ]);

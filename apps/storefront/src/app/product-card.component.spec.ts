@@ -26,7 +26,7 @@ import { WishlistService } from './wishlist.service';
         [style.width.px]="width"
       >
         @for (p of products; track p.id) {
-          <app-product-card [product]="p" [index]="$index" [rating]="ratingOf(p)" />
+          <app-product-card [product]="p" [rating]="ratingOf(p)" />
         }
       </div>
     `,
@@ -195,7 +195,6 @@ describe('ProductCardComponent', () => {
     });
     fixture = TestBed.createComponent(ProductCardComponent);
     fixture.componentRef.setInput('product', p);
-    fixture.componentRef.setInput('index', 0);
     fixture.componentRef.setInput('rating', rating);
     element = fixture.nativeElement as HTMLElement;
     fixture.detectChanges();
@@ -527,7 +526,6 @@ describe('ProductCardComponent', () => {
       spyOn(router, 'navigate').and.resolveTo(true);
       fixture = TestBed.createComponent(ProductCardComponent);
       fixture.componentRef.setInput('product', p);
-      fixture.componentRef.setInput('index', 0);
       element = fixture.nativeElement as HTMLElement;
       fixture.detectChanges();
     };
