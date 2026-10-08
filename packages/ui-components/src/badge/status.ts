@@ -41,6 +41,8 @@ export const SE_STATUS: Record<SeStatusKind, Record<string, SeStatusMeaning>> = 
     delivered: s('Delivered', 'success'),
     returned: s('Returned', 'neutral'),
     stock_exception: s('Stock exception', 'danger'),
+    // The buyer-facing name for stock_exception: a paid order short on stock.
+    awaiting_stock: s('Awaiting stock', 'warning'),
     cancelled: s('Cancelled', 'neutral'),
   },
   payment: {

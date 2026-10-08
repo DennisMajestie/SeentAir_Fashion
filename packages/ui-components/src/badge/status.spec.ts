@@ -16,6 +16,8 @@ describe('status mapping', () => {
         'delivered',
         'returned',
         'stock_exception',
+        // The buyer-facing projection of stock_exception.
+        'awaiting_stock',
         'cancelled',
       ],
       payment: ['unpaid', 'paid', 'refunded', 'pending', 'success', 'failed'],
@@ -37,6 +39,11 @@ describe('status mapping', () => {
       tone: 'warning',
     });
     expect(statusMeaning('approval', 'REJECTED')).toEqual({ label: 'Rejected', tone: 'danger' });
+    // A paid order short on stock reads as a caution, never as a hard failure.
+    expect(statusMeaning('order', 'awaiting_stock')).toEqual({
+      label: 'Awaiting stock',
+      tone: 'warning',
+    });
   });
 
   it('reads a configured stage name however it is written', () => {

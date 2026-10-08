@@ -14,7 +14,8 @@ import { AvailabilityStatus } from '../catalogue/entities/product-variant.entity
 import { CatalogueService } from '../catalogue/catalogue.service';
 import { InventoryItemType } from '../inventory/inventory-movement.entity';
 import { InventoryService } from '../inventory/inventory.service';
-import { Order, OrderChannel } from '../orders/entities/order.entity';
+import { CUSTOMER_AWAITING_STOCK } from '../orders/customer-status';
+import { Order, OrderChannel, OrderStatus } from '../orders/entities/order.entity';
 import { Payment, PaymentRecordStatus } from '../orders/entities/payment.entity';
 import { UsersService } from '../users/users.service';
 import { CreateTierDto } from './dto/create-tier.dto';
@@ -346,7 +347,10 @@ export class WholesaleService {
         return {
           orderId: order.id,
           createdAt: order.createdAt,
-          status: order.status,
+          // Never leak the internal stock_exception wording to a buyer: report
+          // it as awaiting_stock, exactly as the tracking projection does.
+          status:
+            order.status === OrderStatus.STOCK_EXCEPTION ? CUSTOMER_AWAITING_STOCK : order.status,
           paymentStatus: order.paymentStatus,
           totalAmount: order.totalAmount,
           items: order.items.map((i) => ({

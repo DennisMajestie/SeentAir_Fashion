@@ -28,6 +28,7 @@ import { AccountingService } from '../accounting/accounting.service';
 import { LedgerEntryType } from '../accounting/ledger-entry.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { DeliveryLeg, DeliveryLegStatus } from '../logistics/entities/delivery-leg.entity';
+import { CUSTOMER_AWAITING_STOCK } from './customer-status';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { GuestContactDto } from './dto/guest-contact.dto';
 import { OrderFulfilmentDto } from './dto/order-fulfilment.dto';
@@ -144,15 +145,8 @@ export function resolveChannelIntent(
  *  caller's effective access; never from anything the client sends. */
 export type TrackingAudience = 'customer' | 'staff';
 
-/**
- * Customer-facing name for OrderStatus.STOCK_EXCEPTION.
- *
- * Not a member of OrderStatus: it is never stored and never staff-facing, it
- * exists only in the customer projection of /orders/:id/tracking. The stored
- * value stays `stock_exception` so admin, the ledger and the staff tracker are
- * unaffected.
- */
-export const CUSTOMER_AWAITING_STOCK = 'awaiting_stock';
+// Re-exported so existing readers can keep importing it from OrdersService.
+export { CUSTOMER_AWAITING_STOCK } from './customer-status';
 
 /** A checkpoint as a customer may see it. `zone` and `note` are absent by
  *  design: zone is an internal corridor label and `note` is free text typed by

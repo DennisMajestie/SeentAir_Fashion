@@ -2,6 +2,8 @@ import { ForbiddenException } from '@nestjs/common';
 import { RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { AvailabilityStatus } from '../catalogue/entities/product-variant.entity';
+import { CUSTOMER_AWAITING_STOCK } from '../orders/customer-status';
+import { OrderStatus } from '../orders/entities/order.entity';
 import { WholesaleService } from './wholesale.service';
 
 const buyer: AuthenticatedUser = {
@@ -190,5 +192,51 @@ describe('WholesaleService.pricing - catalogue projection', () => {
       expect(service.applyTierPrice(9000, tier(15) as never)).toBe(7650);
       expect(service.applyTierPrice(9000, null)).toBe(9000);
     });
+  });
+});
+
+describe('WholesaleService.invoices - customer projection', () => {
+  const buildInvoices = (status: OrderStatus) => {
+    const accountRepo = {
+      findOne: jest.fn(async () => ({ id: 'a1', status: 'approved', tier: null })),
+    };
+    const orderRepo = {
+      findAndCount: jest.fn(async () => [
+        [
+          {
+            id: 'o1',
+            createdAt: new Date('2026-10-01T00:00:00.000Z'),
+            status,
+            paymentStatus: 'paid',
+            totalAmount: 1000,
+            items: [],
+          },
+        ],
+        1,
+      ]),
+    };
+    const paymentRepo = { find: jest.fn(async () => []) };
+    return new WholesaleService(
+      accountRepo as never,
+      { find: jest.fn() } as never,
+      orderRepo as never,
+      paymentRepo as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { get: jest.fn(() => 20) } as never,
+      {} as never,
+    );
+  };
+
+  it('reports a short-on-stock paid order as awaiting_stock, never stock_exception', async () => {
+    const res = await buildInvoices(OrderStatus.STOCK_EXCEPTION).invoices(buyer);
+    expect(res.data[0].status).toBe(CUSTOMER_AWAITING_STOCK);
+    expect(res.data[0].status).not.toBe(OrderStatus.STOCK_EXCEPTION);
+  });
+
+  it('leaves an ordinary status untouched', async () => {
+    const res = await buildInvoices(OrderStatus.ORDER_RECEIVED).invoices(buyer);
+    expect(res.data[0].status).toBe(OrderStatus.ORDER_RECEIVED);
   });
 });
