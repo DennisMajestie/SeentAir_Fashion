@@ -227,4 +227,53 @@ describe('Wholesale TrackingPage', () => {
       expect(element.querySelector('se-activity')).not.toBeNull();
     });
   });
+
+  /**
+   * A paid batch the ledger could not fully allocate.
+   *
+   * The API used to report this as order_received, so a wholesale buyer who
+   * had paid in full for a batch the factory could not cover was told the order
+   * was received and nothing else. The stored status stays stock_exception
+   * (admin wording) and the customer projection renames it to awaiting_stock.
+   */
+  describe('a paid order awaiting stock is not presented as received', () => {
+    it('recognises the status', async () => {
+      await mount(null, 'awaiting_stock');
+      expect(fixture.componentInstance.awaitingStock()).toBe(true);
+    });
+
+    it('tells the buyer the order is paid but short, and needs nothing from them', async () => {
+      await mount(null, 'awaiting_stock');
+
+      expect(text()).toContain('Awaiting stock allocation');
+      expect(text()).toContain('payment is confirmed');
+      expect(text()).toContain('Nothing further is needed from you');
+    });
+
+    it('shows it as a warning banner, not a neutral state', async () => {
+      await mount(null, 'awaiting_stock');
+
+      expect(element.querySelector('.se-banner--warning')).not.toBeNull();
+    });
+
+    it('never leaks the raw internal token', async () => {
+      await mount(null, 'awaiting_stock');
+
+      expect(text()).not.toContain('awaiting_stock');
+      expect(text()).not.toContain('stock_exception');
+    });
+
+    it('leaves the banner off an order that is genuinely just received', async () => {
+      await mount(null, 'order_received');
+
+      expect(fixture.componentInstance.awaitingStock()).toBe(false);
+      expect(text()).not.toContain('Awaiting stock allocation');
+    });
+
+    it('does not fire on an unrelated status that merely mentions stock', async () => {
+      await mount(null, 'in_production');
+
+      expect(fixture.componentInstance.awaitingStock()).toBe(false);
+    });
+  });
 });

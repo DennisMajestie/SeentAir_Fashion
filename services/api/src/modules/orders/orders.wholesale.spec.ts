@@ -188,6 +188,70 @@ describe('OrdersService — wholesale rules', () => {
     ).rejects.toThrow(ForbiddenException);
   });
 
+  /**
+   * `dto.source` is client-supplied, so the wholesale tag is a *claim*, not an
+   * authorisation. resolveChannelIntent() deliberately honours it so that an
+   * approved buyer whose role is still CUSTOMER can order (review() promotes the
+   * role, but the promotion must not be what makes wholesale work). The tag is
+   * therefore only safe because the server re-reads the account and refuses
+   * anyone without an approved one -- these two tests pin that the claim buys
+   * the caller nothing without the account behind it.
+   */
+  describe('a forged wholesale tag is refused by the server', () => {
+    it('rejects a plain CUSTOMER claiming the wholesale portal tag', async () => {
+      wholesaleService.assertApprovedAccount.mockRejectedValueOnce(
+        new ForbiddenException('Wholesale ordering requires an approved wholesale account'),
+      );
+      const customer: AuthenticatedUser = {
+        id: 'c-forged',
+        email: 'forged@x.test',
+        role: RoleName.CUSTOMER,
+      };
+
+      await expect(
+        service.create(
+          { items: [{ variantId: 'v1', quantity: 25 }], source: 'wholesale_portal' },
+          customer,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(orderRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects a CUSTOMER who sends no address, so the retail guard cannot be their fallback', async () => {
+      // Without the server gate this order would be rejected anyway by the
+      // retail-only shippingAddress guard -- which is exactly the bug that made
+      // wholesale unorderable. If the account check ever stops firing, the
+      // failure mode must become Forbidden rather than quietly routing retail.
+      wholesaleService.assertApprovedAccount.mockRejectedValueOnce(
+        new ForbiddenException('Wholesale ordering requires an approved wholesale account'),
+      );
+      const customer: AuthenticatedUser = {
+        id: 'c-forged',
+        email: 'forged@x.test',
+        role: RoleName.CUSTOMER,
+      };
+
+      await expect(
+        service.create(
+          { items: [{ variantId: 'v1', quantity: 25 }], source: 'wholesale_portal' },
+          customer,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('still admits the same customer once an approved account exists behind it', async () => {
+      // The gate is an account check, not a role check: the approved-account
+      // path must keep working, which is what lets a freshly approved buyer
+      // order on the same day.
+      const order = await service.create(
+        { items: [{ variantId: 'v1', quantity: 25 }], source: 'wholesale_portal' },
+        { id: 'c-approved', email: 'ok@x.test', role: RoleName.WHOLESALER },
+      );
+
+      expect(order.channel).toBe('wholesale');
+    });
+  });
+
   it(
     BadRequestException.name + ': over-stock wholesale orders still fail the stock check',
     async () => {

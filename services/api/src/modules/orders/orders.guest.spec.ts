@@ -20,7 +20,7 @@ import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order, OrderChannel, OrderStatus } from './entities/order.entity';
 import { Payment } from './entities/payment.entity';
 import { OrderStatusBus } from './order-status.bus';
-import { OrdersService } from './orders.service';
+import { CUSTOMER_AWAITING_STOCK, OrdersService } from './orders.service';
 import { PaystackService } from './paystack.service';
 
 const SHIP_TO = {
@@ -270,9 +270,11 @@ describe('OrdersService — guest checkout', () => {
         items: [],
       });
       const result = await service.tracking('o1', undefined, 'good-token');
-      // A guest sees the customer projection: the internal stock exception is
-      // reported as ORDER_RECEIVED, and staff-authored notes never appear.
-      expect(result.status).toBe(OrderStatus.ORDER_RECEIVED);
+      // A guest sees the customer projection, which is the same one a signed-in
+      // buyer gets: awaiting_stock, never the reassuring order_received and
+      // never the internal stock_exception. Staff-authored notes never appear.
+      expect(result.status).toBe(CUSTOMER_AWAITING_STOCK);
+      expect(result.status).not.toBe(OrderStatus.STOCK_EXCEPTION);
       expect(result.events).toEqual([]);
     });
 

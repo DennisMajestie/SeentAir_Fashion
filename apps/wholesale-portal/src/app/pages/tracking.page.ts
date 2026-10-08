@@ -59,6 +59,18 @@ interface TrackingEvent {
       }
       <a seButton sePageActions [routerLink]="['/orders', orderId(), 'invoice']">View invoice</a>
 
+      <!-- A paid batch the ledger could not fully allocate. The API reports
+           awaiting_stock rather than the admin-only stock_exception, so the
+           buyer is told the truth instead of a reassuring freeze. -->
+      @if (loaded() && awaitingStock()) {
+        <se-banner tone="warning" title="Awaiting stock allocation">
+          Your payment is confirmed and the batch is booked, but the workshop cannot allocate every
+          unit yet. The Aba desk is sourcing the shortfall or scheduling the balance into production.
+          Nothing further is needed from you, and this page updates as soon as the stock is
+          allocated.
+        </se-banner>
+      }
+
       @if (loaded()) {
         <div class="se-detail">
           <div class="se-detail__main">
@@ -158,6 +170,9 @@ export class TrackingPage implements OnInit, OnDestroy {
   });
 
   readonly summary = computed(() => {
+    if (this.awaitingStock()) {
+      return 'Your payment is confirmed; the workshop is sourcing the shortfall.';
+    }
     switch (this.deliveryState()) {
       case 'delivered':
         return 'Your batch has been handed over to the consignee.';
@@ -373,5 +388,14 @@ export class TrackingPage implements OnInit, OnDestroy {
 
   delivered(): boolean {
     return /delivered|completed/.test(this.status());
+  }
+
+  /**
+   * Customer-facing flag for a paid order that is short on stock. The API
+   * reports `awaiting_stock`; the stored status stays `stock_exception`, which
+   * is admin wording and never reaches this page.
+   */
+  awaitingStock(): boolean {
+    return /^awaiting[_ ]stock$/.test(this.status().trim().toLowerCase());
   }
 }

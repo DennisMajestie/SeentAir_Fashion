@@ -15,6 +15,12 @@ export function pill(status?: string): string {
     s.includes('shipped') ||
     s.includes('quoted') ||
     s.includes('in_production') ||
+    // awaiting_stock is the customer-facing name the API reports for a paid
+    // order that is short on stock. `pending` alone does not catch it because
+    // the value is awaiting_stock, not *pending*_something, so without this it
+    // fell through to the neutral tone and read as an ordinary state.
+    s.includes('awaiting_stock') ||
+    s.includes('awaiting stock') ||
     s.includes('under_review')
   )
     return 'warn';
