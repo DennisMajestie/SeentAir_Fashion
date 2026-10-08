@@ -136,6 +136,7 @@ export class CatalogueService {
       category: await this.resolveCategory(dto.category),
       basePrice: dto.basePrice,
       collection: dto.collectionId ? await this.getCollection(dto.collectionId) : null,
+      primaryImageUrl: dto.primaryImageUrl ?? null,
     });
     const saved = await this.productRepo.save(product);
     return this.findById(saved.id);
@@ -169,6 +170,8 @@ export class CatalogueService {
     if (dto.collectionId !== undefined) {
       product.collection = await this.getCollection(dto.collectionId);
     }
+    // Allow null through so an admin can clear the photo back to a variant/placeholder.
+    if (dto.primaryImageUrl !== undefined) product.primaryImageUrl = dto.primaryImageUrl;
 
     await this.productRepo.save(product);
     return this.findById(id);
@@ -269,6 +272,8 @@ export class CatalogueService {
     const variant = await this.findVariantById(variantId);
     if (dto.size !== undefined) variant.size = dto.size;
     if (dto.colour !== undefined) variant.colour = dto.colour;
+    // Per-colour photo; when unset the product's primary image is shown instead.
+    if (dto.imageUrl !== undefined) variant.imageUrl = dto.imageUrl;
     if (dto.availabilityStatus !== undefined) variant.availabilityStatus = dto.availabilityStatus;
     if (dto.fitNote !== undefined) variant.fitNote = dto.fitNote;
     if (dto.patternGeometry !== undefined) variant.patternGeometry = dto.patternGeometry;

@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { Order, OrderStatus } from '../orders/entities/order.entity';
-import { Review, ReviewStatus } from './review.entity';
+import { ReviewStatus } from './review.entity';
 import { ReviewsService } from './reviews.service';
 
 const customer: AuthenticatedUser = {

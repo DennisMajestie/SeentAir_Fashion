@@ -25,6 +25,7 @@ import { AccountingModule } from './modules/accounting/accounting.module';
 import { LogisticsModule } from './modules/logistics/logistics.module';
 import { MarketingModule } from './modules/marketing/marketing.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { MediaModule } from './modules/media/media.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { CustomOrdersModule } from './modules/custom-orders/custom-orders.module';
 import { PartnersModule } from './modules/partners/partners.module';
@@ -65,6 +66,7 @@ import { PublicConfigModule } from './modules/public-config/public-config.module
     LogisticsModule,
     MarketingModule,
     AnalyticsModule,
+    MediaModule,
     NotificationsModule,
     CustomOrdersModule,
     PartnersModule,

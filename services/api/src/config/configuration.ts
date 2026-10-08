@@ -15,6 +15,16 @@ export default () => ({
     /** How long an order may sit unpaid before the nightly sweep cancels it. */
     unpaidExpiryHours: parseInt(process.env.UNPAID_ORDER_EXPIRY_HOURS ?? '24', 10),
   },
+  media: {
+    /** Where uploaded product photos live. Defaults to <cwd>/uploads. */
+    uploadsDir: process.env.MEDIA_UPLOADS_DIR ?? '',
+    /**
+     * Public base the API advertises for uploaded files. Set this behind a
+     * proxy or on a managed host; empty means "derive from the request's own
+     * origin", which is correct for local development.
+     */
+    publicUrl: process.env.MEDIA_PUBLIC_URL ?? '',
+  },
   mail: {
     smtpHost: process.env.SMTP_HOST ?? '',
     smtpPort: parseInt(process.env.SMTP_PORT ?? '587', 10),

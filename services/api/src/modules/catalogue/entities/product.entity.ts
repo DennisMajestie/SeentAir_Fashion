@@ -65,6 +65,16 @@ export class Product {
   @Column({ name: 'sale_ends_at', type: 'timestamptz', nullable: true })
   saleEndsAt: Date | null;
 
+  /**
+   * The product's own photograph: an absolute URL, or a path the storefront can
+   * resolve (uploaded files are stored as absolute URLs, seed assets as paths).
+   * Nullable: a product without a photo is valid, and storefront surfaces then
+   * fall back to a variant's image (product-variant.imageUrl) or finally to a
+   * neutral placeholder — never to the position the product happens to sit at.
+   */
+  @Column({ name: 'primary_image_url', type: 'varchar', nullable: true })
+  primaryImageUrl: string | null;
+
   @ManyToOne(() => Collection, (collection) => collection.products, { nullable: true, eager: true })
   @JoinColumn({ name: 'collection_id' })
   collection: Collection | null;

@@ -3,8 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import express from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { MediaService } from './modules/media/media.service';
 
 async function bootstrap(): Promise<void> {
   // rawBody powers webhook signature verification (Paystack HMAC).
@@ -13,6 +15,14 @@ async function bootstrap(): Promise<void> {
 
   // Cookies carry the httpOnly refresh token (never readable by page JS).
   app.use(cookieParser());
+
+  // Uploaded product photos, served from the media service's own root so the
+  // route and the storage folder cannot drift. Lives OUTSIDE the api/v1 prefix
+  // on purpose: browsers request /uploads/<file> directly from <img> tags.
+  app.use(
+    '/uploads',
+    express.static(app.get(MediaService).uploadsRoot, { index: false, maxAge: '7d' }),
+  );
 
   // Security headers (CSP relaxed only for Swagger UI's inline assets).
   app.use(

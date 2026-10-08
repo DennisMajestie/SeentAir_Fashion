@@ -10,6 +10,11 @@ export class UpdateVariantDto {
   @IsString()
   colour?: string;
 
+  /** Per-colour photo. When unset, the product's primary image is shown instead. */
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  imageUrl?: string;
+
   @IsOptional()
   @IsEnum(AvailabilityStatus)
   availabilityStatus?: AvailabilityStatus;

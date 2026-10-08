@@ -87,6 +87,97 @@ describe('CatalogueService — price-change approval gate', () => {
 });
 
 /**
+ * The product image lived on variants only, so every listing showed whatever
+ * the first variant carried — or a positional stand-in. These guard the new
+ * product-level photo: it is persisted on create, replaceable on update, and
+ * clearable back to the variant/placeholder fallback by sending null.
+ */
+describe('CatalogueService — product image fields', () => {
+  let service: CatalogueService;
+  const product = { id: 'p1', name: 'Tee', basePrice: 5000, variants: [] };
+
+  const productRepo = {
+    findOne: jest.fn(async () => ({ ...product })),
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => v),
+  };
+  const variantRepo = {
+    findOne: jest.fn(async () => ({ id: 'v1', name: 'Tee S' })),
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => v),
+  };
+  const emptyRepo = { findOne: jest.fn(), find: jest.fn(), create: jest.fn(), save: jest.fn() };
+  // resolveCategory() resolves names through a query-builder lookup.
+  const categoryRepo = {
+    createQueryBuilder: jest.fn(() => ({
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn(async () => ({ name: 'Tops' })),
+    })),
+  };
+  const approvalsService = { assertApproved: jest.fn() };
+  const dataSource = {
+    transaction: jest.fn(async (fn: (m: unknown) => Promise<unknown>) =>
+      fn({ getRepository: () => emptyRepo }),
+    ),
+    query: jest.fn(async () => []),
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        CatalogueService,
+        { provide: getRepositoryToken(Product), useValue: productRepo },
+        { provide: getRepositoryToken(ProductVariant), useValue: variantRepo },
+        { provide: getRepositoryToken(Collection), useValue: emptyRepo },
+        { provide: getRepositoryToken(Category), useValue: categoryRepo },
+        { provide: getRepositoryToken(ProductBomItem), useValue: emptyRepo },
+        { provide: getRepositoryToken(TechPack), useValue: emptyRepo },
+        { provide: ApprovalsService, useValue: approvalsService },
+        { provide: getDataSourceToken(), useValue: dataSource },
+      ],
+    }).compile();
+    service = moduleRef.get(CatalogueService);
+  });
+
+  it('persists a primary image when creating a product', async () => {
+    await service.create({
+      name: 'Tee',
+      category: 'Tops',
+      basePrice: 5000,
+      primaryImageUrl: 'https://cdn.example.com/tee.jpg',
+    });
+    expect(productRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ primaryImageUrl: 'https://cdn.example.com/tee.jpg' }),
+    );
+  });
+
+  it('defaults to no image when creating a product without one', async () => {
+    await service.create({ name: 'Tee', category: 'Tops', basePrice: 5000 });
+    expect(productRepo.create).toHaveBeenCalledWith(expect.objectContaining({ primaryImageUrl: null }));
+  });
+
+  it('replaces a product primary image on update', async () => {
+    await service.update('p1', { primaryImageUrl: 'https://cdn.example.com/new.jpg' });
+    expect(productRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ primaryImageUrl: 'https://cdn.example.com/new.jpg' }),
+    );
+  });
+
+  it('clears a product primary image when null is sent (not treated as omitted)', async () => {
+    await service.update('p1', { primaryImageUrl: null });
+    expect(productRepo.save).toHaveBeenCalledWith(expect.objectContaining({ primaryImageUrl: null }));
+  });
+
+  it('persists a per-variant image on updateVariant', async () => {
+    await service.updateVariant('v1', { imageUrl: 'https://cdn.example.com/tee-s.jpg' });
+    expect(variantRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'v1', imageUrl: 'https://cdn.example.com/tee-s.jpg' }),
+    );
+  });
+});
+
+/**
  * The public "N bought" figure behind the storefront's Best Sellers rail. These
  * guard the two things that would make it a lie: counting the wrong thing
  * (units/orders) and counting orders that were never paid for.
