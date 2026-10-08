@@ -157,6 +157,31 @@ import { ProductRow, count, onSale, skuRange, stockOf, stockValue } from './cata
           <se-field label="Description" optional>
             <textarea seInput rows="3" name="pdesc" [(ngModel)]="np.description"></textarea>
           </se-field>
+          <se-field
+            label="Photo"
+            hint="JPG, PNG or WebP up to 5MB. Listings, search results and wishlists use it."
+            optional
+            [error]="photoError()"
+          >
+            <input
+              seInput
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              name="pimg"
+              (change)="pickPhoto($event)"
+            />
+          </se-field>
+          @if (photoUploading()) {
+            <p class="photo-note">Uploading the photo…</p>
+          }
+          @if (photoUrl(); as url) {
+            <div class="photo-preview">
+              <img [src]="url" alt="Photo chosen for the new product" />
+              <button seButton size="sm" type="button" (click)="clearPhoto()">
+                Remove photo
+              </button>
+            </div>
+          }
         </form>
         <ng-container seDrawerFooter>
           <button seButton type="button" (click)="adding.set(false)">Cancel</button>
@@ -221,6 +246,27 @@ import { ProductRow, count, onSale, skuRange, stockOf, stockValue } from './cata
       </se-drawer>
     </se-page>
   `,
+  styles: [
+    `
+      .photo-preview {
+        display: flex;
+        align-items: center;
+        gap: var(--se-space-3);
+        margin-top: var(--se-space-3);
+      }
+      .photo-preview img {
+        width: 72px;
+        height: 72px;
+        object-fit: cover;
+        border-radius: var(--se-radius-md);
+        border: var(--se-border-width) solid var(--se-color-border);
+      }
+      .photo-note {
+        color: var(--se-color-text-muted);
+        font: var(--se-type-caption);
+      }
+    `,
+  ],
 })
 export class CatalogueAdminPage implements OnInit {
   private readonly api = inject(ApiService);
@@ -332,6 +378,12 @@ export class CatalogueAdminPage implements OnInit {
   newCollection = '';
   newCategory = '';
 
+  // ---- product photo: uploaded as soon as a file is chosen, so the drawer can
+  //      show it; the URL is only written onto the product when it is created ----
+  readonly photoUrl = signal<string | null>(null);
+  readonly photoUploading = signal(false);
+  readonly photoError = signal('');
+
   ngOnInit(): void {
     this.load();
     this.loadFigures();
@@ -399,6 +451,9 @@ export class CatalogueAdminPage implements OnInit {
     this.nameError.set('');
     this.priceError.set('');
     this.categoryPickError.set('');
+    this.photoError.set('');
+    this.photoUrl.set(null);
+    this.photoUploading.set(false);
     this.adding.set(true);
   }
 
@@ -412,10 +467,48 @@ export class CatalogueAdminPage implements OnInit {
     this.addingCategory.set(true);
   }
 
+  /** Mirror of the API's own rules (JPG/PNG/WebP, 5MB) so a bad file fails here. */
+  pickPhoto(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    // Cleared so choosing the same file twice still fires a change event.
+    input.value = '';
+    this.photoError.set('');
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      this.photoError.set('Only JPG, PNG and WebP images are allowed.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.photoError.set('The photo must be 5MB or smaller.');
+      return;
+    }
+    this.photoUploading.set(true);
+    this.api.uploadProductImage(file).subscribe({
+      next: (res) => {
+        this.photoUploading.set(false);
+        this.photoUrl.set(res.url);
+      },
+      error: (err) => {
+        this.photoUploading.set(false);
+        this.photoError.set(err?.error?.message ?? 'The photo could not be uploaded. Try again.');
+      },
+    });
+  }
+
+  clearPhoto(): void {
+    this.photoUrl.set(null);
+    this.photoError.set('');
+  }
+
   createProduct(): void {
     const name = this.np.name.trim();
     const category = this.np.category.trim();
     const price = Number(this.np.basePrice);
+    if (this.photoUploading()) {
+      this.photoError.set('Wait for the photo to finish uploading first.');
+      return;
+    }
     this.nameError.set(name ? '' : 'Enter the product name.');
     this.priceError.set(
       this.np.basePrice !== null && price >= 0 ? '' : 'Enter the retail price, 0 or more.',
@@ -430,12 +523,14 @@ export class CatalogueAdminPage implements OnInit {
         basePrice: price,
         description: this.np.description || undefined,
         collectionId: this.np.collectionId || undefined,
+        primaryImageUrl: this.photoUrl() || undefined,
       })
       .subscribe({
         next: () => {
           this.saving.set(false);
           this.adding.set(false);
           this.np = { name: '', category: '', basePrice: null, description: '', collectionId: '' };
+          this.photoUrl.set(null);
           this.toast.show(`${name} added to the catalogue`);
           this.load();
         },

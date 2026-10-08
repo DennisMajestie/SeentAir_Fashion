@@ -370,6 +370,16 @@ export class ApiService {
   createProduct(body: Record<string, unknown>): Observable<unknown> {
     return this.http.post(`${API_BASE}/products`, body);
   }
+  /**
+   * Send a product photo to the API (multipart, field `file`). The server
+   * stores it under /uploads and answers with the public URL to write into
+   * `primaryImageUrl` — the storefront never uploads, it only reads URLs.
+   */
+  uploadProductImage(file: File): Observable<{ url: string }> {
+    const body = new FormData();
+    body.append('file', file, file.name);
+    return this.http.post<{ url: string }>(`${API_BASE}/media/images`, body);
+  }
   updateProduct(id: string, body: Record<string, unknown>): Observable<unknown> {
     return this.http.patch(`${API_BASE}/products/${id}`, body);
   }

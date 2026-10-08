@@ -137,6 +137,46 @@ type Material = { id: string; name: string; unit: string | null };
           </div>
 
           <aside class="se-detail__aside">
+            <se-card title="Photo">
+              @if (p.primaryImageUrl; as photo) {
+                <img class="product-photo" [src]="photo" [alt]="p.name" />
+              } @else {
+                <p class="product-photo-note">
+                  No photo yet. Shoppers see the storefront placeholder until one is uploaded.
+                </p>
+              }
+              @if (photoUploading()) {
+                <p class="product-photo-note">Uploading the photo…</p>
+              }
+              @if (photoError()) {
+                <p class="product-photo-error">{{ photoError() }}</p>
+              }
+              @if (canWrite()) {
+                <ng-container seCardFooter>
+                  <input
+                    type="file"
+                    hidden
+                    #photoInput
+                    accept="image/jpeg,image/png,image/webp"
+                    (change)="replacePhoto($event)"
+                  />
+                  <button
+                    seButton
+                    type="button"
+                    [disabled]="photoUploading()"
+                    (click)="photoInput.click()"
+                  >
+                    {{ p.primaryImageUrl ? 'Replace photo' : 'Upload photo' }}
+                  </button>
+                  @if (p.primaryImageUrl) {
+                    <button seButton variant="danger" type="button" (click)="removePhoto(p)">
+                      Remove
+                    </button>
+                  }
+                </ng-container>
+              }
+            </se-card>
+
             <se-card title="Prices">
               <dl seKv>
                 <div seKvItem label="Retail price" numeric>{{ p.basePrice | seMoney }}</div>
@@ -389,6 +429,23 @@ type Material = { id: string; name: string; unit: string | null };
         background: var(--se-color-surface-sunken);
         font: var(--se-type-caption);
       }
+      .product-photo {
+        display: block;
+        width: 100%;
+        max-width: 220px;
+        aspect-ratio: 4 / 5;
+        object-fit: cover;
+        border-radius: var(--se-radius-md);
+        border: var(--se-border-width) solid var(--se-color-border);
+      }
+      .product-photo-note {
+        color: var(--se-color-text-muted);
+        font: var(--se-type-caption);
+      }
+      .product-photo-error {
+        color: var(--se-color-danger-text);
+        font: var(--se-type-caption);
+      }
     `,
   ],
 })
@@ -559,6 +616,72 @@ export class CatalogueDetailPage implements OnInit {
     return override === null || override === undefined
       ? (this.product()?.basePrice ?? 0)
       : Number(override);
+  }
+
+  // ---- photo: upload the bytes first, then write the returned URL onto the
+  //      product. Remove clears the reference; the file on the server is kept. ----
+  readonly photoUploading = signal(false);
+  readonly photoError = signal('');
+
+  replacePhoto(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    // Cleared so choosing the same file twice still fires a change event.
+    input.value = '';
+    const p = this.product();
+    this.photoError.set('');
+    if (!file || !p) return;
+    // Mirror of the API's own rules (JPG/PNG/WebP, 5MB) for instant feedback.
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      this.photoError.set('Only JPG, PNG and WebP images are allowed.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.photoError.set('The photo must be 5MB or smaller.');
+      return;
+    }
+    this.photoUploading.set(true);
+    this.api.uploadProductImage(file).subscribe({
+      next: (res) => this.savePhoto(p, res.url),
+      error: (err) => {
+        this.photoUploading.set(false);
+        this.photoError.set(err?.error?.message ?? 'The photo could not be uploaded. Try again.');
+      },
+    });
+  }
+
+  private savePhoto(p: ProductRow, url: string): void {
+    this.api.updateProduct(p.id, { primaryImageUrl: url }).subscribe({
+      next: () => {
+        this.photoUploading.set(false);
+        this.toast.show(`Photo updated for ${p.name}`);
+        this.load();
+      },
+      error: (err) => {
+        this.photoUploading.set(false);
+        this.photoError.set(err?.error?.message ?? 'The photo could not be saved. Try again.');
+      },
+    });
+  }
+
+  async removePhoto(p: ProductRow): Promise<void> {
+    const ok = await this.confirm.ask({
+      title: `Remove the photo from ${p.name}?`,
+      consequence:
+        'Shoppers see the storefront placeholder until a new photo is uploaded. This cannot be undone from here.',
+      confirmLabel: 'Remove photo',
+      danger: true,
+    });
+    if (!ok) return;
+    this.photoError.set('');
+    this.api.updateProduct(p.id, { primaryImageUrl: null }).subscribe({
+      next: () => {
+        this.toast.show(`Photo removed from ${p.name}`);
+        this.load();
+      },
+      error: (err) =>
+        this.photoError.set(err?.error?.message ?? 'The photo could not be removed. Try again.'),
+    });
   }
 
   // ---- price change: request approval, then apply once management has approved ----

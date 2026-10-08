@@ -13,6 +13,8 @@ export interface ProductRow {
   name: string;
   category: string | null;
   basePrice: number;
+  /** The product's own photo. null means the storefront shows its placeholder. */
+  primaryImageUrl: string | null;
   /** Timed sale: percent off until saleEndsAt. salePrice is set only while it runs. */
   salePercent: number | null;
   saleEndsAt: string | null;

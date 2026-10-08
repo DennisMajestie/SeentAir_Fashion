@@ -13,6 +13,7 @@ const product = (over: Partial<ProductRow> = {}): ProductRow => ({
   name: 'Silk tee',
   category: 'tees',
   basePrice: 10000,
+  primaryImageUrl: null,
   salePercent: null,
   saleEndsAt: null,
   salePrice: null,
@@ -26,6 +27,8 @@ const METHODS = [
   'collections',
   'categories',
   'createCategory',
+  'createProduct',
+  'uploadProductImage',
   'tiers',
   'inventorySummary',
   'pendingApprovals',
@@ -56,6 +59,8 @@ function setUp(products: unknown, level: string, extra: unknown[] = []): void {
   api.setProductSale.and.returnValue(of({}));
   api.endProductSale.and.returnValue(of({}));
   api.updateProduct.and.returnValue(of({}));
+  api.createProduct.and.returnValue(of({}));
+  api.uploadProductImage.and.returnValue(of({ url: 'http://api.test/uploads/products/a.png' }));
   TestBed.configureTestingModule({
     providers: [provideRouter([]), { provide: ApiService, useValue: api }, ...(extra as never[])],
   });
@@ -122,6 +127,39 @@ describe('CatalogueAdminPage', () => {
     fixture.detectChanges();
     expect(pageButtons(el())).toContain('Add product');
     expect(pageButtons(el())).toContain('Add category');
+  });
+
+  it('carries an uploaded photo URL onto the product it creates', () => {
+    mount(of({ data: [], total: 0 }));
+    const page = fixture.componentInstance;
+    page.np = {
+      name: 'Silk tee',
+      category: 'tees',
+      basePrice: 5000,
+      description: '',
+      collectionId: '',
+    };
+    page.photoUrl.set('http://api.test/uploads/products/a.png');
+    page.createProduct();
+    expect(api.createProduct).toHaveBeenCalledOnceWith(
+      jasmine.objectContaining({
+        name: 'Silk tee',
+        primaryImageUrl: 'http://api.test/uploads/products/a.png',
+      }),
+    );
+    expect(page.photoUrl()).toBeNull();
+  });
+
+  it('refuses a file that is not a supported image before uploading anything', () => {
+    mount(of({ data: [], total: 0 }));
+    const page = fixture.componentInstance;
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', {
+      value: [new File(['x'], 'notes.pdf', { type: 'application/pdf' })],
+    });
+    page.pickPhoto({ target: input } as unknown as Event);
+    expect(page.photoError()).toContain('Only JPG, PNG and WebP');
+    expect(api.uploadProductImage).not.toHaveBeenCalled();
   });
 });
 
@@ -241,6 +279,40 @@ describe('CatalogueDetailPage', () => {
     ask.and.resolveTo(false);
     await page.endSale(live);
     expect(api.endProductSale).not.toHaveBeenCalled();
+  });
+
+  it('uploads a chosen photo and then writes its URL onto the product', () => {
+    mount();
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', {
+      value: [new File(['x'], 'shirt.png', { type: 'image/png' })],
+    });
+    page.replacePhoto({ target: input } as unknown as Event);
+    expect(api.uploadProductImage).toHaveBeenCalled();
+    expect(api.updateProduct).toHaveBeenCalledOnceWith('p1', {
+      primaryImageUrl: 'http://api.test/uploads/products/a.png',
+    });
+  });
+
+  it('clears the photo reference only after the removal is confirmed', async () => {
+    const photoed = product({ primaryImageUrl: 'http://api.test/uploads/products/a.png' });
+    mount(photoed);
+    ask.and.resolveTo(false);
+    await page.removePhoto(photoed);
+    expect(api.updateProduct).not.toHaveBeenCalled();
+
+    ask.and.resolveTo(true);
+    await page.removePhoto(photoed);
+    expect(api.updateProduct).toHaveBeenCalledOnceWith('p1', { primaryImageUrl: null });
+  });
+
+  it('shows a view-only role the photo but never an upload or remove control', () => {
+    mount(product({ primaryImageUrl: 'http://api.test/uploads/products/a.png' }), 'view');
+    const buttons = pageButtons(el());
+    expect(buttons).not.toContain('Replace photo');
+    expect(buttons).not.toContain('Upload photo');
+    expect(buttons).not.toContain('Remove');
+    expect(el().querySelector('.product-photo')).not.toBeNull();
   });
 
   it('leaves out every write action for a role without full access', () => {
