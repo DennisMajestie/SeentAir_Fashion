@@ -97,11 +97,11 @@ export const SWATCHES: Record<string, string> = {
         </svg>
       </button>
 
-      <!-- Info block. Fixed-content areas only, top to bottom: the price row,
-           then a 2-line clamped name, then the rating row pinned to the
-           bottom of the card. That combination is what keeps every card in a
-           row the same height and the price/text row on the same baseline,
-           whatever the name length. -->
+      <!-- Info block. Top to bottom: the price row, a fixed-height sale slot,
+           then a 2-line clamped name, then the rating row. The grid stretches
+           the row so every card is the same height; the price and the name
+           start on the same line across the row, and the rating sits directly
+           under whatever name it belongs to. -->
       <div class="product-info">
         <!-- One link covering the whole info area. Stretched over the content
              rather than wrapping it, so the cart button can be a real sibling
@@ -154,9 +154,9 @@ export const SWATCHES: Record<string, string> = {
         <!-- The sale line: the normal price struck through and the time left,
              both from the product's real sale (salePercent / saleEndsAt). The
              line is one fixed-height slot present on every card, empty when
-             there is no sale, so a card on sale and its neighbours keep their
-             names and ratings on the same baselines. When the countdown reaches
-             zero the card goes back to the normal price by itself. -->
+             there is no sale, so a card on sale and its neighbours start their
+             names on the same line. When the countdown reaches zero the card
+             goes back to the normal price by itself. -->
         <p class="sale-line">
           @if (offer(); as o) {
             @if (o.was !== null && o.endsAt) {

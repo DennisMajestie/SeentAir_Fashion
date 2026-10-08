@@ -2240,13 +2240,17 @@ app-product-card {
        and flex-basis:auto stops a long row from squeezing the photo. */
     flex: 0 0 auto;
   }
-  /* The info zone. flex:1 absorbs the leftover height so the price row below can
-     sit at the bottom of every card in the row, whatever the name length. */
+  /* The info zone. flex:1 absorbs the leftover height so the card fills its grid
+     row; the content packs to the top and any slack falls below the rating.
+     min-height reserves the tallest content (a two-line name) so a card with a
+     one-line name is just as tall: rows stay uniform, and because the content
+     packs upward the slack lands below the rating, never above it. */
   .product-info {
     position: relative;
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
+    min-height: 6.25rem;
     /* No reserved lane: the cart tile floats over the top-right corner of this
        block (see .cartbtn), clear of the left-aligned price, so every pixel
        here is width the name and the rating row can actually use. */
@@ -2264,11 +2268,11 @@ app-product-card {
     outline: 2px solid var(--primary);
     outline-offset: -2px;
   }
-  /* 2-line clamp with a 2-line min-height. The min-height is the important half:
-     it reserves the space for a short name too, which is what stops "Men
-     Underwear" from producing a shorter card than a long name next to it.
-     Set fractionally smaller than the price so the price reads first on the
-     card (the info block stacks price above name). */
+  /* 2-line clamp, no reserved second line: a short name takes one line and the
+     rating sits directly beneath it rather than hovering a blank line lower.
+     Long names still clamp to two lines with an ellipsis (see the h3's tooltip).
+     Equal card heights come from the grid stretching the row and the info block
+     absorbing the slack, not from any reserved lane here. */
   .product-name {
     margin: 0;
     font-size: 0.78rem;
@@ -2280,7 +2284,6 @@ app-product-card {
     line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    min-height: calc(0.78rem * 1.3 * 2);
   }
   /* Keyboard parity for the whole card: the photo and the info block are two
      separate links to the same product, so each needs its own visible ring
@@ -2446,8 +2449,8 @@ app-product-card {
 /* The sale line under the price: the normal price struck through and the time
    left on a real sale. A fixed one-line slot on EVERY card -- small size,
    locked line-height, no wrapping -- and simply empty when the product is not
-   on sale, so a sale card and its neighbours keep their names and ratings on
-   the same baselines. tabular-nums keeps the digit widths constant, so the
+   on sale, so a sale card and its neighbours start their names on the same
+   line. tabular-nums keeps the digit widths constant, so the
    ticking clock never changes the card's geometry. */
 .product-card .sale-line {
   display: flex;
@@ -2517,11 +2520,10 @@ app-product-card {
   align-items: center;
   gap: 0.4rem;
   margin: 0.15rem 0 0;
-  /* Sits directly under the name: the price row and the name are fixed-height
-     rows, so a rating placed right after them lands on the same baseline on
-     every card in the grid whatever the name length. No auto-margin, so the
-     leftover card height falls below the rating instead of leaving a hollow
-     gap in the middle of the content block. */
+  /* Sits directly under the name, so it moves with that name's own length
+     rather than to a shared row baseline. No auto-margin, so any leftover card
+     height falls below the rating instead of leaving a hollow gap in the middle
+     of the content block. */
   /* The rating row is a fixed one-line slot: stars plus the "(N)" count.
      Both are short alone, but at the narrowest column width the app really uses
      they can still threaten the row if one of them wraps, so neither is allowed

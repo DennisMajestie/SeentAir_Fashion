@@ -667,10 +667,15 @@ describe('ProductCardComponent', () => {
       expect(spread(cards.map((c) => c.offsetHeight))).toBeLessThanOrEqual(1);
     });
 
-    it('gives the name the same height whatever its length, so it cannot grow the card', () => {
+    it('sizes the name to its own text, not a fixed two-line lane', () => {
       const cards = mountGrid();
-      const names = cards.map((c) => c.querySelector<HTMLElement>('.product-name')!);
-      expect(spread(names.map((n) => n.offsetHeight))).toBeLessThanOrEqual(1);
+      const short = cards[0].querySelector<HTMLElement>('.product-name')!;
+      const long = cards[1].querySelector<HTMLElement>('.product-name')!;
+      // A one-line name takes one line; only a long one reaches the 2-line clamp.
+      expect(long.offsetHeight).toBeGreaterThan(short.offsetHeight);
+      // The short name is not cut off; the reserved second line is gone, so the
+      // rating below it can move up with the text.
+      expect(short.scrollHeight).toBeLessThanOrEqual(short.offsetHeight + 1);
     });
 
     it('actually clamps the long name instead of letting it wrap away', () => {
@@ -681,15 +686,14 @@ describe('ProductCardComponent', () => {
       expect(long.scrollHeight).toBeGreaterThan(long.offsetHeight);
     });
 
-    it('reserves two lines for the short name, so the rows below cannot move', () => {
+    it('sits the rating directly under the name, on short names too', () => {
       const cards = mountGrid();
       const short = cards[0].querySelector<HTMLElement>('.product-name')!;
-      const long = cards[1].querySelector<HTMLElement>('.product-name')!;
-      // Same box for a one-line name as for a truncated one...
-      expect(short.offsetHeight).toBe(long.offsetHeight);
-      // ...and the short one is not actually cut off, so the reserved space is
-      // empty rather than hiding text.
-      expect(short.scrollHeight).toBeLessThanOrEqual(short.offsetHeight);
+      const stars = cards[0].querySelector<HTMLElement>('.stars-line')!;
+      const gap = stars.getBoundingClientRect().top - short.getBoundingClientRect().bottom;
+      // The rating hugs the name -- only the .stars-line margin plus rounding --
+      // rather than hovering a blank reserved line below it.
+      expect(gap).toBeLessThanOrEqual(6);
     });
 
     it('keeps the long name readable in full via its tooltip', () => {
@@ -701,8 +705,14 @@ describe('ProductCardComponent', () => {
       expect(spread(topsOf(inOneRow(mountGrid()), '.price-row'))).toBeLessThanOrEqual(1);
     });
 
-    it('lines the rating row up across the row too', () => {
-      expect(spread(topsOf(inOneRow(mountGrid()), '.stars-line'))).toBeLessThanOrEqual(1);
+    it('lets the rating follow its own name rather than a shared row baseline', () => {
+      const row = inOneRow(mountGrid());
+      const stars = topsOf(row, '.stars-line');
+      // p1 ("Men Underwear") is one line and p2's name clamps to two, so the
+      // short card's rating sits higher -- the point of dropping the reserved
+      // second line. The names themselves still start on the same line.
+      expect(stars[0]).toBeLessThan(stars[1]);
+      expect(spread(topsOf(row, '.product-name'))).toBeLessThanOrEqual(1);
     });
 
     it('keeps the rating row one line tall whether or not there are reviews', () => {
