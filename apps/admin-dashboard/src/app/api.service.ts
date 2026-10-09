@@ -390,9 +390,15 @@ export class ApiService {
   ): Observable<unknown> {
     return this.http.put(`${API_BASE}/products/${id}/sale`, body);
   }
-  endProductSale(id: string): Observable<unknown> {
+endProductSale(id: string): Observable<unknown> {
     return this.http.delete(`${API_BASE}/products/${id}/sale`);
   }
+
+  /** Delete a product (and its variants). Fails if product has orders/reviews/inventory. */
+  deleteProduct(id: string): Observable<unknown> {
+    return this.http.delete(`${API_BASE}/products/${id}`);
+  }
+
   productVariants(productId: string): Observable<Array<Record<string, unknown>>> {
     return this.http.get<Array<Record<string, unknown>>>(
       `${API_BASE}/products/${productId}/variants`,

@@ -75,6 +75,13 @@ export class CatalogueController {
     return this.catalogueService.update(id, dto);
   }
 
+  @Delete('products/:id')
+  @ApiBearerAuth()
+  @RequireAccess(ModuleName.CATALOGUE, AccessLevel.FULL)
+  delete(@Param('id', ParseUUIDPipe) id: string) {
+    return this.catalogueService.delete(id);
+  }
+
   /** Start a timed sale. Needs an approved PRICE_CHANGE request for exactly this sale. */
   @Put('products/:id/sale')
   @ApiBearerAuth()

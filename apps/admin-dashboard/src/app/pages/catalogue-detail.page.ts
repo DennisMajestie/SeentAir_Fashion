@@ -89,6 +89,9 @@ type Material = { id: string; name: string; unit: string | null };
             <button seButton variant="primary" type="button" (click)="openAddSize()">
               Add size
             </button>
+            <button seButton variant="danger" type="button" (click)="deleteProduct()">
+              Delete product
+            </button>
           }
         </ng-container>
       }
@@ -681,6 +684,32 @@ export class CatalogueDetailPage implements OnInit {
       },
       error: (err) =>
         this.photoError.set(err?.error?.message ?? 'The photo could not be removed. Try again.'),
+    });
+  }
+
+  /** Delete the entire product (and its variants). Requires confirmation. */
+  async deleteProduct(): Promise<void> {
+    const p = this.product();
+    if (!p) return;
+    const ok = await this.confirm.ask({
+      title: `Delete "${p.name}"?`,
+      consequence:
+        'This removes the product, all its sizes/colours, and cannot be undone. ' +
+        'Fails if the product has orders, reviews, or inventory movements.',
+      confirmLabel: 'Delete product',
+      danger: true,
+    });
+    if (!ok) return;
+
+    this.api.deleteProduct(p.id).subscribe({
+      next: () => {
+        this.toast.show(`Deleted ${p.name}`);
+        window.history.back();
+      },
+      error: (err) => {
+        const msg = err?.error?.message ?? 'The product could not be deleted.';
+        this.toast.show(msg);
+      },
     });
   }
 

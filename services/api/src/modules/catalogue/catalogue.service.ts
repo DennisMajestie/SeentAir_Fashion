@@ -391,4 +391,44 @@ export class CatalogueService {
       .where('LOWER(category.name) = LOWER(:name)', { name })
       .getOne();
   }
+
+  /** Delete a product and its variants. Fails if the product has sales history. */
+  async delete(id: string): Promise<void> {
+    const product = await this.findById(id);
+
+    const orderItemCount = await this.dataSource.query(
+      `SELECT COUNT(*) FROM order_items oi
+       JOIN product_variants v ON v.id = oi.variant_id
+       WHERE v.product_id = $1`,
+      [id],
+    );
+    if (parseInt(orderItemCount[0]?.count ?? '0', 10) > 0) {
+      throw new ConflictException('Cannot delete product with existing orders');
+    }
+
+    const reviewCount = await this.dataSource.query(
+      `SELECT COUNT(*) FROM reviews r
+       JOIN product_variants v ON v.id = r.variant_id
+       WHERE v.product_id = $1`,
+      [id],
+    );
+    if (parseInt(reviewCount[0]?.count ?? '0', 10) > 0) {
+      throw new ConflictException('Cannot delete product with existing reviews');
+    }
+
+    const inventoryCount = await this.dataSource.query(
+      `SELECT COUNT(*) FROM inventory_movements im
+       WHERE im.item_id IN (SELECT id FROM product_variants WHERE product_id = $1)
+       AND im.item_type = 'variant'`,
+      [id],
+    );
+    if (parseInt(inventoryCount[0]?.count ?? '0', 10) > 0) {
+      throw new ConflictException('Cannot delete product with inventory movements');
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.getRepository(ProductVariant).delete({ product: { id } });
+      await manager.getRepository(Product).delete({ id });
+    });
+  }
 }
