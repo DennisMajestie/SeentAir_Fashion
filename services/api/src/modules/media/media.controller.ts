@@ -6,6 +6,8 @@ import { randomUUID } from 'crypto';
 import { diskStorage } from 'multer';
 import type { File } from 'multer';
 import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { MediaService } from './media.service';
@@ -15,27 +17,20 @@ const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const MAX_BYTES = 5 * 1024 * 1024;
 
-/** Set by the controller constructor; see the comment there. */
-let uploadTarget: string;
+// Temp directory for uploads (cleaned up after S3 upload)
+const tempUploadDir = path.join(os.tmpdir(), 'seentair-uploads');
+fs.mkdirSync(tempUploadDir, { recursive: true });
 
 @ApiTags('Media')
 @Controller('media')
 export class MediaController {
-  constructor(private readonly media: MediaService) {
-    // Multer's destination callback runs per request, but the arrow in the
-    // decorator below is created at module load — where `this` is void — so it
-    // must read the folder from module scope. This is assigned before the
-    // server starts listening, so every request sees it set.
-    uploadTarget = this.media.productsDir();
-  }
+  constructor(private readonly media: MediaService) {}
 
   /**
    * Upload one product photo.
    *
-   * The file is stored as `uploads/products/<uuid>.<ext>` and the response is
-   * an absolute URL the admin UI writes straight into the product. The request
-   * needs full catalogue access — only staff who can edit products may put
-   * bytes on this machine.
+   * The file is stored temporarily on disk, then uploaded to S3 (or kept locally),
+   * and the temp file is deleted. Returns an absolute URL.
    */
   @Post('images')
   @ApiBearerAuth()
@@ -44,7 +39,7 @@ export class MediaController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
-        destination: (_req, _file, cb) => cb(null, uploadTarget),
+        destination: tempUploadDir,
         filename: (_req, file, cb) => {
           const ext = path.extname(file.originalname).toLowerCase();
           cb(null, `${randomUUID()}${ext}`);
@@ -61,13 +56,19 @@ export class MediaController {
       },
     }),
   )
-  uploadImage(
+  async uploadImage(
     @Req() req: Request,
     @UploadedFile() file: File | undefined,
-  ): { url: string } {
-    if (!file?.filename) {
+  ): Promise<{ url: string }> {
+    if (!file?.path) {
       throw new BadRequestException('No file was uploaded');
     }
-    return { url: `${this.media.publicBaseUrl(req)}/uploads/products/${file.filename}` };
+    const fileBuffer = fs.readFileSync(file.path);
+    const ext = path.extname(file.originalname).toLowerCase();
+    const key = `products/${path.basename(file.path)}`;
+    const url = await this.media.uploadFile(key, fileBuffer, file.mimetype);
+    // Clean up temp file
+    fs.unlinkSync(file.path);
+    return { url };
   }
 }

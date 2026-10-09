@@ -16,7 +16,9 @@ export default () => ({
     unpaidExpiryHours: parseInt(process.env.UNPAID_ORDER_EXPIRY_HOURS ?? '24', 10),
   },
   media: {
-    /** Where uploaded product photos live. Defaults to <cwd>/uploads. */
+    /** Driver: 'local' (dev) or 's3' (Supabase/R2/S3). */
+    storageDriver: process.env.MEDIA_STORAGE_DRIVER ?? 'local',
+    /** Where uploaded product photos live (local only). Defaults to <cwd>/uploads. */
     uploadsDir: process.env.MEDIA_UPLOADS_DIR ?? '',
     /**
      * Public base the API advertises for uploaded files. Set this behind a
@@ -24,6 +26,14 @@ export default () => ({
      * origin", which is correct for local development.
      */
     publicUrl: process.env.MEDIA_PUBLIC_URL ?? '',
+    /** S3-compatible config (Supabase/R2/S3) — used when storageDriver=s3. */
+    s3: {
+      endpoint: process.env.MEDIA_S3_ENDPOINT ?? '',
+      region: process.env.MEDIA_S3_REGION ?? 'auto',
+      bucket: process.env.MEDIA_S3_BUCKET ?? '',
+      accessKeyId: process.env.MEDIA_S3_ACCESS_KEY_ID ?? '',
+      secretAccessKey: process.env.MEDIA_S3_SECRET_ACCESS_KEY ?? '',
+    },
   },
   mail: {
     smtpHost: process.env.SMTP_HOST ?? '',

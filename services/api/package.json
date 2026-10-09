@@ -18,6 +18,8 @@
     "seed:catalogue": "node -r ts-node/register/transpile-only src/database/seeds/seed-catalogue.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1148.0",
+    "@aws-sdk/s3-request-presigner": "^3.1148.0",
     "@nestjs/common": "^10.4.15",
     "@nestjs/config": "^3.3.0",
     "@nestjs/core": "^10.4.15",
@@ -47,6 +49,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
+    "@types/multer": "^2.3.0",
     "@types/node": "^22.10.5",
     "@types/nodemailer": "^8.0.2",
     "@types/supertest": "^6.0.2",
