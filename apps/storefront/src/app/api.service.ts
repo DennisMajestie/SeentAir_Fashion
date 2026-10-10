@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, of, tap } from 'rxjs';
 import { API_BASE, TokenStore } from './auth-token.store';
 
 export { API_BASE, authInterceptor } from './auth-token.store';
@@ -138,14 +138,25 @@ export class ApiService {
   private readonly store = inject(TokenStore);
 
   // --- Catalogue (public) ---
-  products(): Observable<{ data: Product[]; total: number }> {
-    return this.http.get<{ data: Product[]; total: number }>(`${API_BASE}/products?limit=50`);
+  /**
+   * Catalogue page. `limit` is explicit because the shop grid filters and sorts
+   * client-side over the whole set, so it must be able to ask for more than one
+   * page rather than silently truncating at the default.
+   */
+  products(
+    page = 1,
+    limit = 50,
+  ): Observable<{ data: Product[]; total: number }> {
+    return this.http.get<{ data: Product[]; total: number }>(
+      `${API_BASE}/products?page=${page}&limit=${limit}`,
+    );
   }
 
   product(id: string): Observable<Product> {
     return this.http.get<Product>(`${API_BASE}/products/${id}`);
   }
 
+  /** The full review list for one product — used by the product page. */
   reviews(
     productId: string,
   ): Observable<{ data: Array<{ rating: number; comment: string | null }>; total: number }> {
@@ -153,6 +164,40 @@ export class ApiService {
       data: Array<{ rating: number; comment: string | null }>;
       total: number;
     }>(`${API_BASE}/products/${productId}/reviews`);
+  }
+
+  /**
+   * Ratings for a whole page of products in one request. Replaces a per-card
+   * `reviews(id)` call, which cost one round trip per card on every grid load.
+   */
+  ratingSummaries(
+    productIds: string[],
+  ): Observable<Array<{ productId: string; avg: number; count: number }>> {
+    if (productIds.length === 0) return of([]);
+    const params = productIds
+      .map((id) => `productId=${encodeURIComponent(id)}`)
+      .join('&');
+    return this.http.get<Array<{ productId: string; avg: number; count: number }>>(
+      `${API_BASE}/reviews/summaries?${params}`,
+    );
+  }
+
+  // --- Wishlist (account-scoped; the local copy is merged in on sign-in) ---
+  wishlist(): Observable<Array<{ product: Product; addedAt: string }>> {
+    return this.http.get<Array<{ product: Product; addedAt: string }>>(`${API_BASE}/wishlist`);
+  }
+
+  addToWishlist(productId: string): Observable<unknown> {
+    return this.http.post(`${API_BASE}/wishlist/items`, { productId });
+  }
+
+  removeFromWishlist(productId: string): Observable<unknown> {
+    return this.http.delete(`${API_BASE}/wishlist/items/${productId}`);
+  }
+
+  /** Folds a guest's local wishlist into their account. Called once, on sign-in. */
+  mergeWishlist(productIds: string[]): Observable<{ merged: number }> {
+    return this.http.post<{ merged: number }>(`${API_BASE}/wishlist/merge`, { productIds });
   }
 
   // --- Auth ---

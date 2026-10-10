@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Offer, offerFor } from '../pricing';
@@ -10,6 +10,7 @@ import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
 import { SeentairTiltCardComponent } from '../tilt-card.component';
 import { NO_REVIEWS_COPY } from '../product-card.component';
+import { SeoService } from '../seo.service';
 
 /** Product detail, Stitch PDP layout: gallery left; kicker, Anton title,
     price, spec-chip size/colour selectors, qty stepper, full-width acid CTA,
@@ -188,6 +189,22 @@ export class ProductPage implements OnInit {
   readonly colour = signal<string | null>(null);
   quantity = 1;
 
+  /**
+   * Re-describe the page whenever the chosen variant changes what the shopper is
+   * looking at. Without this the tab and the shared preview would keep the first
+   * variant's price and photo after the shopper picked a different colour.
+   */
+  constructor() {
+    effect(() => {
+      const p = this.product();
+      if (!p) return;
+      // Read the signals the price and photo depend on so this re-runs on change.
+      this.size();
+      this.colour();
+      this.describe(p);
+    });
+  }
+
   readonly sizes = computed(() => [
     ...new Set((this.product()?.variants ?? []).map((v) => v.size).filter((s): s is string => !!s)),
   ]);
@@ -209,6 +226,8 @@ export class ProductPage implements OnInit {
     );
   });
 
+  private readonly seo = inject(SeoService);
+
   /**
    * The photo a shopper is looking at: the selected size/colour's own photo,
    * then the product's primary photo, then the neutral placeholder — never a
@@ -227,9 +246,45 @@ export class ProductPage implements OnInit {
         this.size.set(first?.size ?? null);
         this.colour.set(first?.colour ?? null);
       },
-      error: () => this.loadError.set(true),
+      error: () => {
+        this.loadError.set(true);
+        // A failed load must not leave the previous product's metadata behind,
+        // or a shared link to a missing product previews as something else.
+        this.seo.apply({ title: 'Product unavailable' });
+      },
     });
     this.api.reviews(id).subscribe((r) => this.reviews.set(r.data));
+  }
+
+  /**
+   * Title, preview and structured data for this product, rebuilt whenever the
+   * selected variant changes the price or the photo on show.
+   *
+   * A product link is very often the first thing a shopper sees of the brand --
+   * forwarded on WhatsApp or pasted from Instagram. Without this the tab read
+   * "Seentair: Product" for every garment and the shared preview was bare text.
+   */
+  private describe(p: Product): void {
+    const offer = this.offer();
+    const image = this.heroImage();
+    const available = !!this.selected();
+    this.seo.apply({
+      title: p.name,
+      description: p.description ?? `${p.name} from Seentair Limited.`,
+      image,
+      type: 'product',
+      price: offer.price > 0 ? offer.price : null,
+      currency: 'NGN',
+      available,
+    });
+    this.seo.productJsonLd({
+      name: p.name,
+      description: p.description,
+      image,
+      price: offer.price > 0 ? offer.price : null,
+      currency: 'NGN',
+      available,
+    });
   }
 
   currentPrice(): number {

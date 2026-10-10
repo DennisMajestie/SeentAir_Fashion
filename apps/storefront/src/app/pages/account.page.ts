@@ -2,7 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { map } from 'rxjs';
+import { offerFor } from '../pricing';
 import { ApiService, Order } from '../api.service';
+import { WishlistService, WishItem } from '../wishlist.service';
 
 /** Only the sign-in address is persisted; never the password or session token. */
 const REMEMBERED_EMAIL_KEY = 'seentair.rememberedEmail';
@@ -173,6 +176,23 @@ const REMEMBERED_EMAIL_KEY = 'seentair.rememberedEmail';
       <h1>Your account</h1>
       <button class="link" (click)="logout()">Sign out</button>
 
+      <!-- Signed in: pull the account's own saved list down so it is visible
+           here and usable on any device, not just this browser. -->
+      @if (wishlistItems().length > 0) {
+        <h2 id="saved">Saved</h2>
+        <div class="saved-grid">
+          @for (item of wishlistItems(); track item.productId) {
+            <a class="saved-row" [routerLink]="['/product', item.productId]">
+              @if (item.imageUrl) {
+                <img [src]="item.imageUrl" [alt]="item.productName" />
+              }
+              <span>{{ item.productName }}</span>
+              <span class="muted">₦{{ item.price | number: '1.0-2' }}</span>
+            </a>
+          }
+        </div>
+      }
+
       <!-- ids match the fragments the mobile shell links to: the header bell
            goes to #notifications, the Orders tab goes to #orders. -->
       @if (notifications().length > 0) {
@@ -207,6 +227,9 @@ const REMEMBERED_EMAIL_KEY = 'seentair.rememberedEmail';
 })
 export class AccountPage implements OnInit {
   readonly api = inject(ApiService);
+  private readonly wishlist = inject(WishlistService);
+  /** The account's saved products, shown alongside orders and notifications. */
+  readonly wishlistItems = signal<WishItem[]>([]);
   readonly orders = signal<Order[]>([]);
   readonly notifications = signal<
     Array<{ id: string; type: string; message: string; sentAt: string }>
@@ -266,6 +289,26 @@ export class AccountPage implements OnInit {
       this.remember = false;
     }
     if (this.api.isLoggedIn) this.loadOrders();
+    if (this.api.isLoggedIn) {
+      this.loadOrders();
+      // The account list is the authoritative one once signed in.
+      this.api
+        .wishlist()
+        .pipe(
+          map((rows) =>
+            rows.map((r) => ({
+              productId: r.product.id,
+              productName: r.product.name,
+              imageUrl: r.product.primaryImageUrl ?? r.product.variants[0]?.imageUrl ?? null,
+              price: offerFor(r.product).price,
+            })),
+          ),
+        )
+        .subscribe({
+          next: (items) => this.wishlistItems.set(items),
+          error: () => undefined,
+        });
+    }
   }
 
   submit(): void {
@@ -287,6 +330,10 @@ export class AccountPage implements OnInit {
       this.api.login(addr, this.password).subscribe({
         next: () => {
           this.persistRememberedEmail(addr);
+          // Anything saved while browsing as a guest belongs to the account now.
+          // Fired without blocking the sign-in: a wishlist is not worth failing
+          // a completed login over.
+          void this.wishlist.mergeIntoAccount();
           done();
         },
         error: (e: { status?: number }) => {

@@ -53,6 +53,29 @@ export class ReviewsController {
     );
   }
 
+  /**
+   * Public: ratings for many products at once, so a grid of cards costs one
+   * request instead of one per card. Accepts repeated `productId` params
+   * (`?productId=a&productId=b`) or a single comma-separated `productIds`.
+   *
+   * Deliberately under `reviews/` rather than `products/ratings`: the catalogue
+   * already owns `products/:id` behind a ParseUUIDPipe, and since that route is
+   * registered first, a sibling `products/ratings` would be swallowed by it and
+   * answered with 400 "uuid is expected". A separate prefix cannot collide.
+   */
+  @Public()
+  @Get('reviews/summaries')
+  @ApiQuery({ name: 'productId', required: false, isArray: true, type: String })
+  @ApiQuery({ name: 'productIds', required: false, type: String })
+  ratingSummaries(
+    @Query('productId') productId?: string | string[],
+    @Query('productIds') productIds?: string,
+  ) {
+    const repeated = Array.isArray(productId) ? productId : productId ? [productId] : [];
+    const listed = productIds ? productIds.split(',') : [];
+    return this.reviewsService.ratingSummaries([...repeated, ...listed]);
+  }
+
   /** Moderation queue + decision (Open Question #4). */
   @Get('reviews/pending')
   @ApiBearerAuth()

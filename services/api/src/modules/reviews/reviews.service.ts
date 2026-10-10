@@ -12,6 +12,10 @@ import { OrdersService } from '../orders/orders.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { Review, ReviewStatus } from './review.entity';
 
+/** Guards the `IN (:...ids)` expansion: only well-formed uuids reach the query. */
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class ReviewsService {
   constructor(
@@ -80,6 +84,45 @@ export class ReviewsService {
       where: { status: ReviewStatus.PENDING },
       order: { createdAt: 'ASC' },
     });
+  }
+
+  /**
+   * Average rating and review count per product, for a whole page of products in
+   * one round trip.
+   *
+   * The shop grid and the landing rails need a rating on every card. Fetching
+   * `products/:id/reviews` per card is an N+1 — one request per product, so a
+   * 50-product grid fired 50 extra calls before a price was visible, each a
+   * cold-start candidate on Render. This groups in the database instead.
+   *
+   * Only PUBLISHED reviews count, matching findPublishedForProduct exactly, so
+   * a card and its product page can never disagree about a score. Products with
+   * no published reviews are omitted rather than returned as zero: the caller
+   * distinguishes "unrated" (which the storefront renders differently, with the
+   * "reviews open after delivery" copy) from a genuine 0.
+   */
+  async ratingSummaries(
+    productIds: string[],
+  ): Promise<Array<{ productId: string; avg: number; count: number }>> {
+    const ids = [...new Set(productIds)].filter((id) => UUID_PATTERN.test(id));
+    if (ids.length === 0) return [];
+
+    const rows = await this.reviewRepo
+      .createQueryBuilder('review')
+      .innerJoin('review.variant', 'variant')
+      .select('variant.product_id', 'productId')
+      .addSelect('AVG(review.rating)', 'avg')
+      .addSelect('COUNT(review.id)', 'count')
+      .where('variant.product_id IN (:...ids)', { ids })
+      .andWhere('review.status = :status', { status: ReviewStatus.PUBLISHED })
+      .groupBy('variant.product_id')
+      .getRawMany<{ productId: string; avg: string; count: string }>();
+
+    return rows.map((r) => ({
+      productId: r.productId,
+      avg: Number(r.avg),
+      count: Number(r.count),
+    }));
   }
 
   async moderate(id: string, status: ReviewStatus): Promise<Review> {

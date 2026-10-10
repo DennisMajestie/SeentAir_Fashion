@@ -61,6 +61,8 @@ describe('ShopPage — filter bottom sheet', () => {
           useValue: {
             products: () => of({ data: PRODUCTS, total: PRODUCTS.length }),
             reviews: () => of({ data: [] }),
+            /** Ratings arrive as one batch for the grid; these cards are unrated. */
+            ratingSummaries: () => of([]),
           },
         },
         {

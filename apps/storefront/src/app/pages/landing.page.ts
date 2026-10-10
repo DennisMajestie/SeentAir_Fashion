@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
+import { of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
 import { ProductCardComponent } from '../product-card.component';
 import { productImage } from '../product-image';
+import { SeoService } from '../seo.service';
 
 /** Curated order for the home category rail; anything unlisted sorts last. */
 const CATEGORY_ORDER = [
@@ -143,6 +144,7 @@ interface RailCategory {
 })
 export class LandingPage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly seo = inject(SeoService);
 
   /** Full catalogue, straight from the API. Every rail below is a projection. */
   readonly all = signal<Product[]>([]);
@@ -210,6 +212,13 @@ export class LandingPage implements OnInit {
   });
 
   ngOnInit(): void {
+    this.seo.apply({
+      title: 'SEENTAIR',
+      description:
+        'Seentair Limited — Nigerian streetwear, cut and finished in our own factory.',
+      image: 'assets/walk-1.jpg',
+      type: 'website',
+    });
     this.api
       .products()
       .pipe(
@@ -227,28 +236,28 @@ export class LandingPage implements OnInit {
     return this.ratings().get(productId) ?? null;
   }
 
-  /** Average + review count per product, from the public reviews endpoint. */
+  /**
+ * Average + review count for every card on the page, in one request.
+ *
+ * The landing rails used to fan out one `products/:id/reviews` call per card.
+ * The batched endpoint does the averaging in the database, so the hero and both
+ * rails cost one request between them instead of one per product.
+ *
+ * A failed batch leaves the map empty and cards show the honest unrated state
+ * rather than a fabricated score.
+ */
   private loadRatings(products: Product[]): void {
-    if (products.length === 0) return;
-    forkJoin(
-      products.map((p) =>
-        this.api.reviews(p.id).pipe(
-          map((r) => ({ id: p.id, rows: r.data })),
-          catchError(() =>
-            of({ id: p.id, rows: [] as Array<{ rating: number; comment: string | null }> }),
-          ),
-        ),
-      ),
-    ).subscribe((results) => {
-      const map = new Map<string, Rating>();
-      for (const r of results) {
-        if (r.rows.length === 0) continue;
-        map.set(r.id, {
-          avg: r.rows.reduce((s, x) => s + x.rating, 0) / r.rows.length,
-          count: r.rows.length,
-        });
-      }
-      this.ratings.set(map);
-    });
+    if (products.length === 0) {
+      this.ratings.set(new Map());
+      return;
+    }
+    this.api
+      .ratingSummaries(products.map((p) => p.id))
+      .pipe(catchError(() => of([] as Array<{ productId: string; avg: number; count: number }>)))
+      .subscribe((rows) => {
+        this.ratings.set(
+          new Map(rows.map((r) => [r.productId, { avg: r.avg, count: r.count }] as [string, Rating])),
+        );
+      });
   }
 }

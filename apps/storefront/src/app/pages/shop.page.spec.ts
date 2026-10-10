@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { ApiService, Product } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
@@ -58,6 +58,8 @@ describe('ShopPage', () => {
           useValue: {
             products: () => of({ data: products, total: products.length }),
             reviews: () => of({ data: [], total: 0 }),
+            /** One batched call for the whole grid; no cards are rated in these tests. */
+            ratingSummaries: () => of([]),
           },
         },
         { provide: CartService, useValue: { count: 0, add: () => undefined } },
@@ -234,6 +236,162 @@ describe('ShopPage', () => {
       const before = c.filtered().map((p) => p.id);
       c.view.set('list');
       expect(c.filtered().map((p) => p.id)).toEqual(before);
+    });
+  });
+
+  /**
+   * The grid used to fetch one page and stop, silently hiding everything past
+   * 50 products. These guard the two properties that fix must keep: the shortfall
+   * is stated rather than hidden, and loading another page appends instead of
+   * replacing what the shopper is already looking at.
+   */
+  describe('paging', () => {
+    /** Serves `pages` in order; each call records the page it was asked for. */
+    const mountPaged = async (
+      pages: Array<{ data: Product[]; total: number }>,
+    ): Promise<number[]> => {
+      const asked: number[] = [];
+      let call = 0;
+      TestBed.configureTestingModule({
+        imports: [ShopPage],
+        providers: [
+          provideRouter([]),
+          {
+            provide: ApiService,
+            useValue: {
+              products: (page: number) => {
+                asked.push(page);
+                const res = pages[call] ?? { data: [], total: 0 };
+                call += 1;
+                return of(res);
+              },
+              reviews: () => of({ data: [], total: 0 }),
+              ratingSummaries: () => of([]),
+            },
+          },
+          { provide: CartService, useValue: { count: 0, add: () => undefined } },
+          { provide: BrandAlertService, useValue: { toast: () => Promise.resolve() } },
+        ],
+      });
+      fixture = TestBed.createComponent(ShopPage);
+      element = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      return asked;
+    };
+
+    it('asks for the first page on load', async () => {
+      const asked = await mountPaged([{ data: products, total: 3 }]);
+      expect(asked).toEqual([1]);
+    });
+
+    it('offers no paging control when everything is already loaded', async () => {
+      await mountPaged([{ data: products, total: 3 }]);
+      expect(element.querySelector('.shop-more')).toBeNull();
+    });
+
+    it('says how much is missing instead of hiding it', async () => {
+      await mountPaged([{ data: [products[0]], total: 12 }]);
+      const note = element.querySelector('.shop-more .muted')?.textContent ?? '';
+      expect(note).toContain('1');
+      expect(note).toContain('12');
+      expect(element.querySelector('.shop-more button')).not.toBeNull();
+    });
+
+    it('appends the next page rather than replacing the current results', async () => {
+      const page1 = [products[0]];
+      const page2 = [products[1]];
+      await mountPaged([
+        { data: page1, total: 3 },
+        { data: page2, total: 3 },
+      ]);
+      const c = fixture.componentInstance;
+
+      c.loadMore();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(c.all().map((p) => p.id)).toEqual(['a', 'b']);
+    });
+
+    it('hides the control once the last page is in', async () => {
+      await mountPaged([
+        { data: [products[0]], total: 2 },
+        { data: [products[1]], total: 2 },
+      ]);
+      const c = fixture.componentInstance;
+
+      c.loadMore();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(c.hasMore()).toBe(false);
+      expect(element.querySelector('.shop-more')).toBeNull();
+    });
+
+    it('ignores a repeated tap while a page is still in flight', async () => {
+      // A real HTTP response arrives later, so the in-flight flag is what stops a
+      // double tap from requesting the same page twice. A synchronous stub cannot
+      // exercise that window: `of()` has already resolved before the second tap.
+      const gate = new Subject<{ data: Product[]; total: number }>();
+      const asked: number[] = [];
+      TestBed.configureTestingModule({
+        imports: [ShopPage],
+        providers: [
+          provideRouter([]),
+          {
+            provide: ApiService,
+            useValue: {
+              products: (page: number) => {
+                asked.push(page);
+                return page === 1 ? of({ data: [products[0]], total: 9 }) : gate;
+              },
+              reviews: () => of({ data: [], total: 0 }),
+              ratingSummaries: () => of([]),
+            },
+          },
+          { provide: CartService, useValue: { count: 0, add: () => undefined } },
+          { provide: BrandAlertService, useValue: { toast: () => Promise.resolve() } },
+        ],
+      });
+      fixture = TestBed.createComponent(ShopPage);
+      element = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const c = fixture.componentInstance;
+      c.loadMore();
+      c.loadMore();
+      c.loadMore();
+      expect(asked).toEqual([1, 2]);
+
+      gate.next({ data: [products[1]], total: 9 });
+      gate.complete();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // And once it lands, paging continues normally from the next page.
+      expect(c.all().map((p) => p.id)).toEqual(['a', 'b']);
+      expect(c.hasMore()).toBe(true);
+    });
+
+    it('never shows the same product twice if a page overlaps the last', async () => {
+      await mountPaged([
+        { data: [products[0]], total: 3 },
+        { data: [products[0], products[1]], total: 3 }, // 'a' repeats
+      ]);
+      const c = fixture.componentInstance;
+
+      c.loadMore();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(c.all().map((p) => p.id)).toEqual(['a', 'b']);
     });
   });
 });

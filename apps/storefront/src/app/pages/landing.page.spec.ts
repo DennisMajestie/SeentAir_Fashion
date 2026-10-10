@@ -46,8 +46,25 @@ describe('LandingPage', () => {
           provide: ApiService,
           useValue: {
             products: () => of({ data: products, total: products.length }),
-            reviews: (id: string) =>
-              of({ data: reviews[id] ?? [], total: (reviews[id] ?? []).length }),
+reviews: (id: string) =>
+      of({ data: reviews[id] ?? [], total: (reviews[id] ?? []).length }),
+    /**
+     * The page now asks for every card's rating in one batched call, so the
+     * stub derives the same averages the API would return for the whole page.
+     */
+    ratingSummaries: (ids: string[]) =>
+      of(
+        ids
+          .filter((id) => (reviews[id] ?? []).length > 0)
+          .map((id) => {
+            const rows = reviews[id];
+            return {
+              productId: id,
+              avg: rows.reduce((s, r) => s + r.rating, 0) / rows.length,
+              count: rows.length,
+            };
+          }),
+      ),
           },
         },
         { provide: CartService, useValue: { count: 0, add: () => undefined } },

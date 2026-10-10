@@ -524,7 +524,7 @@ body:has(.m-header--light) main {
     }
   }
   .m-svc__label {
-    font-size: 11.5px;
+    font-size: 8.5px;
     font-weight: 600;
     color: var(--m-muted);
   }
@@ -2142,6 +2142,21 @@ body:has(.m-tabs) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Paging row under the product grid. Sits inside the same centred column as the
+   grid, aligned to its leading edge rather than centred, so the count reads as
+   a footnote on the results rather than as another call to action. */
+.shop-more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 22px;
+
+  .cta {
+    min-width: 168px;
+  }
+}
 .card {
   background: var(--card);
   border: 1px solid var(--line);
@@ -2310,11 +2325,27 @@ app-product-card {
   text-transform: uppercase;
   background: var(--primary-fill);
   color: var(--on-primary);
+  /* The wishlist heart owns the top-right corner (24px at right:1px). Cap the
+     badge so a long label can never slide underneath it; a label still too wide
+     for the card ellipsizes rather than colliding. */
+  max-width: calc(100% - 36px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   &.badge-out {
     background: var(--container-2);
     color: var(--muted);
     border: 1px solid var(--line-2);
   }
+}
+/* The three-up home rails are the narrowest cards on the site (~100px on a
+   phone). At the full type treatment "Bestseller" is wider than the space left
+   of the heart, so the badge gets a tighter, smaller label on those rails only;
+   it still reads in full and stays clear of the heart. */
+.m-row3 .badge {
+  padding-inline: 0.4rem;
+  font-size: 0.52rem;
+  letter-spacing: 0.02em;
 }
 .heart-btn {
   position: absolute;
@@ -3247,6 +3278,54 @@ textarea {
   flex-wrap: wrap;
   &:hover {
     border-color: var(--primary);
+  }
+}
+
+/* Saved items on the account page. Same card language as .order-row, so the two
+   sections read as one list rather than two unrelated widgets. */
+.saved-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.saved-row {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  grid-template-areas:
+    'thumb name'
+    'thumb price';
+  align-items: center;
+  gap: 2px 10px;
+  padding: 0.6rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: inherit;
+
+  &:hover {
+    border-color: var(--primary);
+  }
+
+  img {
+    grid-area: thumb;
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 4px;
+    background: var(--skeleton, #eee);
+  }
+
+  /* Without a photo the name must still start at the left edge, or the row
+     gains a phantom indent for products that have not been shot yet. */
+  span:first-of-type {
+    grid-area: name;
+    font-weight: 500;
+  }
+
+  .muted {
+    grid-area: price;
   }
 }
 .status {

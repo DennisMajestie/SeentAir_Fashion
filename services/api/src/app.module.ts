@@ -27,6 +27,7 @@ import { MarketingModule } from './modules/marketing/marketing.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { MediaModule } from './modules/media/media.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { CustomOrdersModule } from './modules/custom-orders/custom-orders.module';
 import { PartnersModule } from './modules/partners/partners.module';
 import { TechPacksModule } from './modules/tech-packs/tech-packs.module';
@@ -68,6 +69,7 @@ import { PublicConfigModule } from './modules/public-config/public-config.module
     AnalyticsModule,
     MediaModule,
     NotificationsModule,
+  WishlistModule,
     CustomOrdersModule,
     PartnersModule,
     TechPacksModule,

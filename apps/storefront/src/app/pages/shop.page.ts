@@ -12,12 +12,13 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
+import { of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
 import { FilterSheetComponent } from '../filter-sheet.component';
 import { offerFor } from '../pricing';
 import { PRODUCT_PLACEHOLDER, productImage } from '../product-image';
+import { SeoService } from '../seo.service';
 import { SWATCHES, ProductCardComponent } from '../product-card.component';
 import {
   EMPTY_FILTERS,
@@ -58,6 +59,13 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const COLLECTION_ORDER = ['drop04harmattan', 'studioessentials', 'ateliercommission'];
+
+/**
+ * Rows fetched per page. The grid filters and sorts client-side over everything
+ * it has loaded, so this trades a slightly slower first paint past 50 products
+ * against a catalogue that is never silently truncated.
+ */
+const PAGE_SIZE = 50;
 
 /** Normalise a collection name for deterministic ordering regardless of
     dash/space/typography variation (e.g. "Drop 04: Harmattan"). */
@@ -213,6 +221,24 @@ function collectionKey(name: string): string {
           <app-product-card [product]="product" [rating]="ratingOf(product.id)" />
         }
       </div>
+
+      <!-- Stated rather than hidden: the old single request capped the grid at
+           50 rows with no sign anything was missing. -->
+      @if (hasMore()) {
+        <div class="shop-more">
+          <p class="muted small">
+            Showing {{ all().length | number }} of {{ total() | number }} products
+          </p>
+          <button
+            type="button"
+            class="cta ghost"
+            [disabled]="loadingMore()"
+            (click)="loadMore()"
+          >
+            {{ loadingMore() ? 'Loading…' : 'Load more' }}
+          </button>
+        </div>
+      }
     }
 
     <!-- Created on first open, not on page load, so it never competes with the
@@ -232,9 +258,14 @@ export class ShopPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly seo = inject(SeoService);
   private readonly filtersBtn = viewChild<ElementRef<HTMLButtonElement>>('filtersBtn');
   readonly all = signal<Product[]>([]);
   readonly loading = signal(true);
+  /** Pages fetched so far, and the catalogue's real size, for "load more". */
+  readonly page = signal(1);
+  readonly total = signal(0);
+  readonly loadingMore = signal(false);
   readonly skCards = Array.from({ length: 8 }, (_, i) => i);
   readonly query = signal('');
   readonly category = signal<string | null>(null);
@@ -430,36 +461,96 @@ export class ShopPage implements OnInit {
     // category under a header that says "Shop".
     this.route.queryParamMap
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((params) => this.category.set(params.get('category')));
-    this.api.products().subscribe({
+      .subscribe((params) => {
+        this.category.set(params.get('category'));
+        // The category is part of what this page is "about": a filtered listing
+        // should not share a search-result title with the unfiltered one.
+        const cat = params.get('category');
+        this.seo.apply({
+          title: cat ? `${cat} — Shop` : 'Shop all',
+          description: cat
+            ? `Shop ${cat} from Seentair Limited, cut and finished in our own factory.`
+            : 'Browse the full Seentair Limited range: streetwear, underwear and kids pieces, cut and finished in our own factory.',
+          type: 'website',
+        });
+      });
+    this.loadPage(1);
+  }
+
+  /**
+   * Fetch one page of the catalogue and append it.
+   *
+   * The grid used to call `products()` once, which silently capped the catalogue
+   * at 50 rows — anything past that was unreachable with no indication that it
+   * was missing. Filtering and sorting are client-side over the loaded set, so
+   * the honest fix is to page in on demand and say how much is left, not to move
+   * filtering server-side and change what each facet means.
+   *
+   * Appended rather than replaced, and a new category starts from page 1 again.
+   */
+  private loadPage(page: number): void {
+    if (page === 1) {
+      this.loading.set(true);
+      this.page.set(1);
+    } else {
+      this.loadingMore.set(true);
+    }
+    this.api.products(page, PAGE_SIZE).subscribe({
       next: (res) => {
-        this.all.set(res.data);
+        this.total.set(res.total);
+        if (page === 1) {
+          this.all.set(res.data);
+          this.loadRatings(res.data);
+        } else {
+          this.all.update((current) => {
+            // Guard against a duplicate page if the button is double-clicked.
+            const seen = new Set(current.map((p) => p.id));
+            return [...current, ...res.data.filter((p) => !seen.has(p.id))];
+          });
+          this.page.set(page);
+        }
         this.loading.set(false);
-        this.loadRatings(res.data);
+        this.loadingMore.set(false);
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.loadingMore.set(false);
+      },
     });
   }
 
-  /** Average rating per product from the public reviews endpoint. */
+  /** True while the catalogue holds products the shopper has not loaded yet. */
+  hasMore(): boolean {
+    return this.all().length < this.total();
+  }
+
+  loadMore(): void {
+    if (this.loadingMore() || !this.hasMore()) return;
+    this.loadPage(this.page() + 1);
+  }
+
+  /**
+   * Average rating per product, for the whole grid in one request.
+   *
+   * This used to forkJoin one `products/:id/reviews` call per card, so a
+   * 50-product grid issued 50 extra requests before any price was visible.
+   * The batched endpoint groups the averages in the database instead.
+   *
+   * A failure leaves the map empty, which renders as "reviews open after
+   * delivery" — the same honest unrated state as a product with no reviews,
+   * never as a fabricated zero.
+   */
   private loadRatings(products: Product[]): void {
-    if (products.length === 0) return;
-    forkJoin(
-      products.map((p) =>
-        this.api.reviews(p.id).pipe(
-          map((r) => ({ id: p.id, rows: r.data })),
-          catchError(() => of({ id: p.id, rows: [] as Array<{ rating: number }> })),
-        ),
-      ),
-    ).subscribe((results) => {
-      const map = new Map<string, { avg: number; count: number }>();
-      for (const r of results) {
-        if (r.rows.length === 0) continue;
-        const avg = r.rows.reduce((s, x) => s + x.rating, 0) / r.rows.length;
-        map.set(r.id, { avg, count: r.rows.length });
-      }
-      this.ratings.set(map);
-    });
+    if (products.length === 0) {
+      this.ratings.set(new Map());
+      return;
+    }
+    this.api
+      .ratingSummaries(products.map((p) => p.id))
+      .pipe(catchError(() => of([] as Array<{ productId: string; avg: number; count: number }>)))
+      .subscribe((rows) => {
+        this.ratings.set(new Map(rows.map((r) => [r.productId, { avg: r.avg, count: r.count }])));
+      });
   }
 
   // ---- filter UI helper ----

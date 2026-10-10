@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, Subject } from 'rxjs';
-import { ApiService } from '../api.service';
+import { of, Subject, throwError } from 'rxjs';
+import { ApiService, Product } from '../api.service';
 import { AccountPage } from './account.page';
 
 const REMEMBERED_EMAIL_KEY = 'seentair.rememberedEmail';
@@ -37,6 +37,8 @@ describe('AccountPage sign-in', () => {
             logout: () => undefined,
             myOrders: () => of({ data: [], total: 0 }),
             notifications: () => of({ data: [] }),
+            wishlist: () => of([]),
+            mergeWishlist: () => of({ merged: 0 }),
           },
         },
       ],
@@ -244,6 +246,102 @@ describe('AccountPage sign-in', () => {
         a.getAttribute('href'),
       );
       expect(links).toEqual(['/policies', '/policies', '/policies']);
+    });
+  });
+
+  /**
+   * Saved items are read from the account, not the browser, so the list survives
+   * a new device and agrees with what staff would see.
+   */
+  describe('saved items', () => {
+    const signedIn = (rows: Array<{ product: Product; addedAt: string }>): void => {
+      TestBed.configureTestingModule({
+        imports: [AccountPage],
+        providers: [
+          provideRouter([]),
+          {
+            provide: ApiService,
+            useValue: {
+              isLoggedIn: true,
+              login: () => of({}),
+              register: () => of({}),
+              forgotPassword: () => of({ message: '' }),
+              logout: () => undefined,
+              myOrders: () => of({ data: [], total: 0 }),
+              notifications: () => of({ data: [] }),
+              wishlist: () => of(rows),
+              mergeWishlist: () => of({ merged: 0 }),
+            },
+          },
+        ],
+      });
+      fixture = TestBed.createComponent(AccountPage);
+      component = fixture.componentInstance;
+      element = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+    };
+
+    const saved = (over: Partial<Product> = {}): Product =>
+      ({
+        id: 'p1',
+        name: 'Harmattan Hoodie',
+        description: null,
+        category: 'outerwear',
+        basePrice: 52000,
+        primaryImageUrl: 'https://cdn.example.com/hoodie.png',
+        collection: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        variants: [],
+        ...over,
+      }) as Product;
+
+    it('lists what the account has saved', () => {
+      signedIn([{ product: saved(), addedAt: '2026-01-01T00:00:00.000Z' }]);
+      const rows = element.querySelectorAll('.saved-row');
+      expect(rows.length).toBe(1);
+      expect(rows[0].textContent).toContain('Harmattan Hoodie');
+    });
+
+    it('links each saved item to its product page', () => {
+      signedIn([{ product: saved(), addedAt: '2026-01-01T00:00:00.000Z' }]);
+      expect(element.querySelector('.saved-row')?.getAttribute('href')).toContain('/product/p1');
+    });
+
+    it('shows the live price, not a snapshot taken when it was saved', () => {
+      signedIn([{ product: saved({ basePrice: 38000 }), addedAt: '2026-01-01T00:00:00.000Z' }]);
+      expect(element.querySelector('.saved-row')?.textContent).toContain('38,000');
+    });
+
+    it('omits the section entirely when nothing is saved', () => {
+      signedIn([]);
+      expect(element.querySelector('.saved-grid')).toBeNull();
+    });
+
+    it('survives a failed wishlist call rather than breaking the page', () => {
+      TestBed.configureTestingModule({
+        imports: [AccountPage],
+        providers: [
+          provideRouter([]),
+          {
+            provide: ApiService,
+            useValue: {
+              isLoggedIn: true,
+              login: () => of({}),
+              register: () => of({}),
+              forgotPassword: () => of({ message: '' }),
+              logout: () => undefined,
+              myOrders: () => of({ data: [], total: 0 }),
+              notifications: () => of({ data: [] }),
+              wishlist: () => throwError(() => new Error('offline')),
+              mergeWishlist: () => of({ merged: 0 }),
+            },
+          },
+        ],
+      });
+      fixture = TestBed.createComponent(AccountPage);
+      element = fixture.nativeElement as HTMLElement;
+      expect(() => fixture.detectChanges()).not.toThrow();
+      expect(element.querySelector('h1')?.textContent).toContain('Your account');
     });
   });
 });

@@ -102,3 +102,87 @@ describe('ReviewsService.create', () => {
     expect(reviewRepo.save as jest.Mock).not.toHaveBeenCalled();
   });
 });
+
+/** Minimal stand-in for the chained query builder ratingSummaries builds. */
+function summaryHarness(rows: Array<{ productId: string; avg: string; count: string }>) {
+  const qb = {
+    innerJoin: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    groupBy: jest.fn().mockReturnThis(),
+    getRawMany: jest.fn(async () => rows),
+  };
+  const reviewRepo = {
+    createQueryBuilder: jest.fn(() => qb),
+    findOne: jest.fn(async () => null),
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v: unknown) => v),
+  };
+  const ordersService = { findById: jest.fn() };
+  const service = new ReviewsService(reviewRepo as never, ordersService as never);
+  return { service, reviewRepo, qb };
+}
+
+const uuid = (n: string): string => `${n.repeat(8)}-0000-0000-0000-000000000000`;
+
+describe('ReviewsService.ratingSummaries', () => {
+  it('returns averages for many products in a single query', async () => {
+    const { service, reviewRepo, qb } = summaryHarness([
+      { productId: uuid('a'), avg: '4.5000000000000000', count: '2' },
+      { productId: uuid('b'), avg: '5.0000000000000000', count: '7' },
+    ]);
+
+    const out = await service.ratingSummaries([uuid('a'), uuid('b')]);
+
+    expect(out).toEqual([
+      { productId: uuid('a'), avg: 4.5, count: 2 },
+      { productId: uuid('b'), avg: 5, count: 7 },
+    ]);
+    // One query for the whole page, not one per product.
+    expect(reviewRepo.createQueryBuilder).toHaveBeenCalledTimes(1);
+    expect(qb.getRawMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('counts only published reviews, so a card cannot disagree with its product page', async () => {
+    const { service, qb } = summaryHarness([]);
+
+    await service.ratingSummaries([uuid('a')]);
+
+    const statusFilter = (qb.andWhere as jest.Mock).mock.calls[0];
+    expect(statusFilter[0]).toContain('status');
+    expect(statusFilter[1]).toEqual({ status: ReviewStatus.PUBLISHED });
+  });
+
+  it('omits products with no published reviews rather than reporting a zero', async () => {
+    const { service } = summaryHarness([]);
+
+    expect(await service.ratingSummaries([uuid('a'), uuid('b')])).toEqual([]);
+  });
+
+  it('issues no query when asked for nothing', async () => {
+    const { service, reviewRepo } = summaryHarness([]);
+
+    expect(await service.ratingSummaries([])).toEqual([]);
+    expect(reviewRepo.createQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it('drops ids that are not uuids instead of building an invalid IN clause', async () => {
+    const { service, qb } = summaryHarness([]);
+
+    await service.ratingSummaries(["'; DROP TABLE products; --", uuid('a')]);
+
+    const where = (qb.where as jest.Mock).mock.calls[0][1] as { ids: string[] };
+    expect(where.ids).toEqual([uuid('a')]);
+  });
+
+  it('de-duplicates repeated ids so the IN list stays minimal', async () => {
+    const { service, qb } = summaryHarness([]);
+
+    await service.ratingSummaries([uuid('a'), uuid('a'), uuid('b')]);
+
+    const where = (qb.where as jest.Mock).mock.calls[0][1] as { ids: string[] };
+    expect(where.ids).toEqual([uuid('a'), uuid('b')]);
+  });
+});
