@@ -93,8 +93,12 @@ export class SeShellMenuItemDirective {}
       [attr.inert]="drawerHidden() ? '' : null"
     >
       <div class="se-shell__brand">
-        <span class="se-shell__brand-mark" aria-hidden="true">{{ appName().charAt(0) }}</span>
-        <span class="se-shell__brand-name">{{ appName() }}</span>
+        @if (logo(); as logoSrc) {
+          <img class="se-shell__brand-logo" [src]="logoSrc" [alt]="appName()" />
+        } @else {
+          <span class="se-shell__brand-mark" aria-hidden="true">{{ appName().charAt(0) }}</span>
+          <span class="se-shell__brand-name">{{ appName() }}</span>
+        }
       </div>
       <nav class="se-shell__nav" aria-label="Main">
         @for (group of nav(); track $index; let g = $index) {
@@ -214,6 +218,11 @@ export class SeShellComponent {
   private readonly injector = inject(Injector);
 
   readonly appName = input.required<string>();
+  /**
+   * Optional image logo for the brand block, e.g. an app passing its own asset.
+   * Without it the brand falls back to the letter mark and the app name.
+   */
+  readonly logo = input<string | undefined>(undefined);
   readonly nav = input.required<SeNavGroup[]>();
   readonly user = input<SeShellUser | null>(null);
   /** Desktop only: the sidebar shows icons without labels. */

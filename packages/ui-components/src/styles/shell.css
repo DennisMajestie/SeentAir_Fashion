@@ -89,6 +89,19 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Optional image logo (see the shell `logo` input). The lockup is monochrome
+   ink, so it follows the surface: near-black on the light sidebar and inverted
+   on the dark one, the same treatment the sign-in screens use. Height fits the
+   64px brand row and shrinks into the collapsed icon rail. */
+.se-shell__brand-logo {
+  display: block;
+  height: var(--se-space-10);
+  width: auto;
+  object-fit: contain;
+}
+:root[data-theme='dark'] .se-shell__brand-logo {
+  filter: invert(1);
+}
 .se-shell__nav {
   display: flex;
   flex: 1;
@@ -357,6 +370,9 @@ app-root > .se-shell {
   .se-shell--collapsed .se-shell__brand {
     justify-content: center;
     padding: 0;
+  }
+  .se-shell--collapsed .se-shell__brand-logo {
+    height: var(--se-space-8);
   }
   .se-shell--collapsed .se-shell__link,
   .se-shell--collapsed .se-shell__collapse {

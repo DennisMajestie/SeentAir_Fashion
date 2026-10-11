@@ -272,6 +272,7 @@ import { environment } from '../environments/environment';
     } @else {
       <se-shell
         appName="Seentair Ops"
+        logo="assets/logo.png"
         [nav]="nav()"
         [user]="shellUser()"
         [(collapsed)]="collapsed"
