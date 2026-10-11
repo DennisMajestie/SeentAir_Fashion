@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Meta, Title } from '@angular/platform-browser';
+import { Title } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { SeoService } from './seo.service';
 
@@ -12,7 +12,6 @@ import { SeoService } from './seo.service';
 describe('SeoService', () => {
   let seo: SeoService;
   let title: Title;
-  let meta: Meta;
 
   const content = (selector: string): string | null =>
     document.head.querySelector(selector)?.getAttribute('content') ?? null;
@@ -21,7 +20,6 @@ describe('SeoService', () => {
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
     seo = TestBed.inject(SeoService);
     title = TestBed.inject(Title);
-    meta = TestBed.inject(Meta);
     document.head.querySelectorAll('script[type="application/ld+json"]').forEach((n) => n.remove());
   });
 
