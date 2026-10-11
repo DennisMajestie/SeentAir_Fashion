@@ -1,10 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { LucideTruck, LucideShieldCheck, LucideShoppingBag, LucideHeadphones } from '@lucide/angular';
 import { environment } from '../environments/environment';
 import { MobileHeaderComponent } from './mobile-header.component';
 import { MobileBottomNavComponent } from './mobile-bottom-nav.component';
+import { DesktopShellComponent } from './desktop-shell.component';
+import { ViewportService } from './viewport.service';
 
 type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
 
@@ -16,13 +18,24 @@ type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
     RouterLink,
     MobileHeaderComponent,
     MobileBottomNavComponent,
+    DesktopShellComponent,
     LucideTruck,
     LucideShieldCheck,
     LucideShoppingBag,
     LucideHeadphones,
   ],
   template: `
-    <app-mobile-header />
+    <!--
+      Desktop and mobile shells are mutually exclusive, and which one renders is
+      decided in TypeScript rather than CSS. Hiding the mobile shell with a
+      media query alone would work visually but would leave its markup live, and
+      the reverse -- a CSS-hidden desktop shell -- would still download the four
+      banner images on every mobile page load.
+    -->
+    @if (!viewport.isDesktop()) {
+      <app-mobile-header />
+    }
+    <app-desktop-shell />
     <main>
       <!-- Store promises. Lives in <main> so the row scrolls with the page
            instead of riding over the sticky dark header. -->
@@ -51,7 +64,9 @@ type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
       </div>
       <router-outlet />
     </main>
-    <app-mobile-tabs />
+    @if (!viewport.isDesktop()) {
+      <app-mobile-tabs />
+    }
     <footer class="site-footer">
       <div class="wrap-col">
         <div class="footer-cols">
@@ -104,6 +119,9 @@ type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
 export class App {
   /** Exposed for the footer links to the other apps. */
   readonly environment = environment;
+
+  /** Which shell is live. See the note on the template's first element. */
+  protected readonly viewport = inject(ViewportService);
 
   /**
    * Store promises, worded as in the approved reference. The last tile reads

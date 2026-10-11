@@ -704,6 +704,51 @@ body:has(.m-tabs) {
   padding-bottom: calc(66px + env(safe-area-inset-bottom));
 }
 
+/* ---------- desktop shell ----------
+   Everything below is scoped to widths where the desktop header and hero
+   carousel render (see ViewportService, DESKTOP_MIN_WIDTH = 900px).
+
+   The mobile components are already removed from the DOM by the `@if` in
+   app.ts, so these rules do not hide them -- they undo the *global* styling
+   that was written for a mobile shell. `body` paints a dark strip behind
+   main's rounded top corners so they read against the dark sticky header;
+   with that header gone, the strip would show as a band of near-black above
+   the page, and the bottom padding reserved for the tab bar would strand
+   66px of empty space.
+
+   Nothing here alters any base rule: every override lives inside this one
+   media query, so the mobile layout is byte-identical to before. */
+@media (min-width: 900px) {
+  body {
+    background: var(--canvas);
+    padding-bottom: 0;
+  }
+
+  main {
+    /* The rounded corners existed to tuck the sheet under the dark mobile
+       header. Against the desktop header's own border there is no dark strip
+       to tuck under, so the sheet is flush. */
+    border-radius: 0;
+    padding-top: var(--space-24);
+  }
+
+  /* `body:has(.m-tabs)` no longer matches at desktop because the tab bar is
+     not rendered, so its bottom padding is gone by itself. Stated here so the
+     intent is explicit rather than incidental. */
+  body:has(.m-tabs) {
+    padding-bottom: 0;
+  }
+
+  /* The store-promises row and the service tiles are sized for the mobile
+     grid; at desktop they read as a thin strip and are better as an evenly
+     spaced row under the header. Contained here so mobile is untouched. */
+  .m-services {
+    max-width: var(--wrap-max);
+    margin-inline: auto;
+    padding-inline: var(--wrap-x);
+  }
+}
+
 /* ---------- Phase 2 home body ---------- */
 /* Reference: circular category rail, three-up New Arrivals, four-up tiles. */
 .m-sec {

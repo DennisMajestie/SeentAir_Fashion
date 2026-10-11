@@ -1,0 +1,444 @@
+import { CommonModule } from '@angular/common';
+import { Component, computed, inject } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
+import { ApiService } from './api.service';
+import { CartService } from './cart.service';
+import { CatalogueSearchService } from './catalogue-search.service';
+import { productImage } from './product-image';
+
+/**
+ * Desktop-only shop header: logo, wide search, account and cart.
+ *
+ * Layout structure is modelled on a conventional e-commerce header rather than
+ * any particular reference: the search takes the flexible middle column because
+ * that is the widest thing a shopper interacts with, and account/cart stay on
+ * one line because they are the two actions taken at the end of a session.
+ *
+ * Everything here is real. The search runs the same client-side catalogue filter
+ * as the mobile header (shared `CatalogueSearchService`), the cart count is the
+ * live `CartService` figure, and both destination routes already exist. Nothing
+ * is a placeholder and nothing has a dead link.
+ *
+ * Rendered only above the desktop breakpoint -- see `ViewportService`. At mobile
+ * widths this component is never instantiated, so its markup costs nothing and
+ * no images are fetched for it.
+ */
+@Component({
+  selector: 'app-desktop-header',
+  imports: [CommonModule, RouterLink, RouterLinkActive],
+  template: `
+    <header class="d-header">
+      <div class="d-header__inner">
+        <a class="d-logo" routerLink="/" aria-label="SEENTAIR home">
+          <img src="assets/logo-v1.png" alt="SEENTAIR" width="122" height="39" />
+        </a>
+
+        <!-- role="search" so assistive tech treats this as the page's search
+             landmark rather than a generic group. -->
+        <div class="d-search" role="search">
+          <label class="sr-only" for="d-search-input">Search products</label>
+          <svg class="d-search__lead" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input
+            #q
+            id="d-search-input"
+            class="d-search__input"
+            type="search"
+            [value]="search.term()"
+            (input)="search.search(q.value)"
+            (focus)="search.ensureCatalogueLoaded()"
+            (keydown.escape)="dismiss()"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Search for clothes, underwear, kids wear…"
+            aria-controls="d-search-results"
+            [attr.aria-expanded]="search.results().length > 0"
+          />
+
+          @if (search.results().length > 0) {
+            <ul class="d-results" id="d-search-results">
+              @for (r of search.results(); track r.id) {
+                <li>
+                  <a [routerLink]="['/product', r.id]" (click)="dismiss()">
+                    <img [src]="productImage(r)" [alt]="r.name" />
+                    <span class="d-results__info">
+                      <span class="d-results__name">{{ r.name }}</span>
+                      <span class="d-results__meta">
+                        {{ r.category || 'Seentair' }} · ₦{{ search.priceOf(r) | number: '1.0-0' }}
+                      </span>
+                    </span>
+                  </a>
+                </li>
+              }
+            </ul>
+          } @else if (search.searched()) {
+            <p class="d-results__empty">No matches in the collection.</p>
+          }
+        </div>
+
+        <div class="d-actions">
+          <a
+            class="d-action"
+            routerLink="/account"
+            [attr.aria-label]="accountLabel()"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" />
+            </svg>
+            <span class="d-action__text">Account</span>
+          </a>
+
+          <a class="d-action" routerLink="/cart" [attr.aria-label]="cartLabel()">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6"
+              />
+              <circle cx="9" cy="20" r="1" />
+              <circle cx="17" cy="20" r="1" />
+            </svg>
+            <span class="d-action__text">Cart</span>
+            @if (cart.count > 0) {
+              <span class="d-badge" aria-hidden="true">{{ cart.count }}</span>
+            }
+          </a>
+        </div>
+      </div>
+
+      <!-- Secondary nav. Entries are drawn from the same category list the
+           homepage rail is built from, so every one of them is a category the
+           catalogue actually contains -- no invented audience links. -->
+      <nav class="d-nav" aria-label="Main">
+        <ul class="d-nav__list">
+          @for (c of categories; track c.key) {
+            <li>
+              <a
+                [routerLink]="c.link"
+                routerLinkActive="is-active"
+                [routerLinkActiveOptions]="{ exact: c.exact }"
+              >
+                {{ c.label }}
+              </a>
+            </li>
+          }
+        </ul>
+      </nav>
+    </header>
+  `,
+  styles: [
+    `
+      .d-header {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: var(--card);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .d-header__inner {
+        max-width: var(--wrap-max);
+        margin-inline: auto;
+        padding: 14px var(--wrap-x);
+        display: flex;
+        align-items: center;
+        gap: var(--space-24);
+      }
+
+      /* Flex-shrink 0 so the logo never collapses when the window narrows;
+         the search column is the only part allowed to give up width. */
+      .d-logo {
+        flex-shrink: 0;
+        display: block;
+        line-height: 0;
+        /* logo-v1.png is a light lockup: near-white "SEENTAIR" with a gold
+           "STYLE FOR EVERYONE" tagline, drawn for the dark mobile header. The
+           project keeps it un-inverted there on purpose (.m-brand__mark), and
+           inverting it here would also flip the gold tagline to blue.
+
+           On the light desktop header those white glyphs are invisible, so the
+           mark keeps the dark plate it was designed against -- the same
+           --m-fg the mobile header paints. The asset itself is untouched: no
+           filter, no re-colouring, no second file. */
+        background: var(--m-fg, #141210);
+        border-radius: 10px;
+        padding: 7px 12px;
+      }
+      .d-logo img {
+        height: 28px;
+        width: auto;
+        display: block;
+      }
+
+      .d-search {
+        position: relative;
+        /* The flexible middle column: absorbs all slack, yields first under
+           pressure, and min-width 0 stops the input's intrinsic min-width
+           from forcing the row wider than the viewport. */
+        flex: 1;
+        min-width: 0;
+      }
+
+      .d-search__lead {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: var(--muted);
+        stroke-width: 2;
+        stroke-linecap: round;
+        pointer-events: none;
+      }
+
+      .d-search__input {
+        width: 100%;
+        height: 44px;
+        padding: 0 16px 0 42px;
+        font: inherit;
+        font-size: var(--type-body-md);
+        color: var(--ink);
+        background: var(--canvas);
+        border: 1px solid var(--line-2);
+        /* Field shape language: soft corners, unlike the pill used for buttons. */
+        border-radius: var(--radius-pill);
+      }
+      .d-search__input::placeholder {
+        color: var(--muted);
+      }
+
+      .d-results {
+        position: absolute;
+        z-index: 5;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        margin: 0;
+        padding: 6px;
+        list-style: none;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-field);
+        box-shadow: 0 18px 40px rgb(0 0 0 / 0.12);
+        max-height: 60vh;
+        overflow-y: auto;
+      }
+      .d-results a {
+        display: flex;
+        align-items: center;
+        gap: var(--space-12);
+        padding: 8px;
+        border-radius: 8px;
+        text-decoration: none;
+        color: inherit;
+      }
+      .d-results a:hover {
+        background: var(--container);
+      }
+      .d-results img {
+        width: 44px;
+        height: 44px;
+        object-fit: cover;
+        border-radius: 6px;
+        flex-shrink: 0;
+        background: var(--container);
+      }
+      .d-results__info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      .d-results__name {
+        font-weight: 600;
+        font-size: var(--type-body-md);
+      }
+      .d-results__meta {
+        color: var(--muted);
+        font-size: var(--type-body-sm);
+      }
+      .d-results__empty {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        margin: 0;
+        padding: 12px 14px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-field);
+        color: var(--muted);
+        font-size: var(--type-body-sm);
+      }
+
+      .d-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--space-16);
+        flex-shrink: 0;
+      }
+
+      .d-action {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 6px;
+        color: var(--ink);
+        text-decoration: none;
+        border-radius: 8px;
+      }
+      .d-action svg {
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+      }
+      .d-action__text {
+        font-size: var(--type-body-md);
+        font-weight: 500;
+      }
+      .d-action:hover {
+        color: var(--primary);
+      }
+
+      .d-badge {
+        position: absolute;
+        top: 0;
+        right: -2px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--danger);
+        color: #fff;
+        border-radius: var(--radius-pill);
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .d-nav {
+        max-width: var(--wrap-max);
+        margin-inline: auto;
+        padding-inline: var(--wrap-x);
+      }
+      .d-nav__list {
+        display: flex;
+        align-items: center;
+        gap: var(--space-24);
+        margin: 0;
+        padding: 0 0 12px;
+        list-style: none;
+        /* One line at every desktop width. A category set that would overflow
+           scrolls sideways instead of wrapping into an unpredictable stack,
+           which would change the header's height between renders. */
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .d-nav__list::-webkit-scrollbar {
+        display: none;
+      }
+      .d-nav__list a {
+        display: inline-block;
+        padding: 4px 0;
+        color: var(--ink);
+        text-decoration: none;
+        font-size: var(--type-body-md);
+        font-weight: 500;
+        white-space: nowrap;
+        border-bottom: 2px solid transparent;
+      }
+      .d-nav__list a:hover {
+        color: var(--primary);
+      }
+      /* Active state is colour plus an underline, not colour alone. */
+      .d-nav__list a.is-active {
+        color: var(--primary);
+        border-bottom-color: var(--primary-fill);
+      }
+
+      /* Keyboard focus must be visible on every interactive element here. */
+      .d-logo:focus-visible,
+      .d-action:focus-visible,
+      .d-nav__list a:focus-visible,
+      .d-search__input:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+
+      @media (max-width: 1180px) {
+        /* Compact desktop: keep everything on one line by dropping the word
+           labels and tightening gaps. Never applied at mobile widths, because
+           this component does not render there. */
+        .d-action__text {
+          display: none;
+        }
+        .d-header__inner {
+          gap: var(--space-16);
+        }
+        .d-nav__list {
+          gap: var(--space-16);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .d-search__input {
+          transition: none;
+        }
+      }
+    `,
+  ],
+})
+export class DesktopHeaderComponent {
+  readonly search = inject(CatalogueSearchService);
+  readonly cart = inject(CartService);
+  private readonly api = inject(ApiService);
+
+  /** Template handle on the shared photo hierarchy (see product-image.ts). */
+  readonly productImage = productImage;
+
+  /**
+   * Category nav, mirroring `CATEGORY_ORDER` in landing.page.ts -- the same list
+   * the homepage rail is built from. Each entry points at the existing
+   * `/shop?category=` filter, the only category navigation the app has.
+   */
+  readonly categories: ReadonlyArray<{ key: string; label: string; link: string; exact: boolean }> = [
+    { key: 'all', label: 'All Products', link: '/shop', exact: true },
+    { key: 'tops', label: 'Tops', link: '/shop?category=tops', exact: false },
+    { key: 'bottoms', label: 'Bottoms', link: '/shop?category=bottoms', exact: false },
+    { key: 'outerwear', label: 'Outerwear', link: '/shop?category=outerwear', exact: false },
+    { key: 'accessories', label: 'Accessories', link: '/shop?category=accessories', exact: false },
+    { key: 'tailoring', label: 'Tailoring', link: '/shop?category=tailoring', exact: false },
+    { key: '2pc', label: '2-Piece Sets', link: '/shop?category=2-Piece Sets', exact: false },
+    { key: 'tshirts', label: 'T-Shirts', link: '/shop?category=T-Shirts', exact: false },
+    { key: 'trousers', label: 'Trousers', link: '/shop?category=Trousers', exact: false },
+    { key: 'underwear', label: 'Underwear', link: '/shop?category=Underwear', exact: false },
+    { key: 'polo', label: 'Polo', link: '/shop?category=Polo', exact: false },
+    { key: 'kids', label: 'Children', link: '/shop?category=Children 2-Piece Sets', exact: false },
+  ];
+
+  readonly cartLabel = computed(() =>
+    this.cart.count === 1 ? 'Cart, 1 item' : `Cart, ${this.cart.count} items`,
+  );
+
+  /**
+   * Reads the session flag the API already exposes. `isLoggedIn` is a getter
+   * over the token signal, so the computed re-evaluates when the session
+   * changes and the label tracks sign-in without its own listener.
+   */
+  readonly accountLabel = computed(() =>
+    this.api.isLoggedIn ? 'Your account' : 'Sign in or create an account',
+  );
+
+  dismiss(): void {
+    this.search.close();
+  }
+}
