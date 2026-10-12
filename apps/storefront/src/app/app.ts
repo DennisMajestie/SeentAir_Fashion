@@ -7,11 +7,16 @@ import { MobileHeaderComponent } from './mobile-header.component';
 import { MobileBottomNavComponent } from './mobile-bottom-nav.component';
 import { DesktopShellComponent } from './desktop-shell.component';
 import { ViewportService } from './viewport.service';
+import { ChromeService } from './chrome.service';
 
 type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
 
 @Component({
   selector: 'app-root',
+  // A class on the host rather than a wrapper element: `body:has(.m-tabs)`
+  // and the sticky-header rules key off the DOM shape, and inserting a div
+  // would silently change both.
+  host: { '[class.is-immersive]': 'chrome.immersive()' },
   imports: [
     CommonModule,
     RouterOutlet,
@@ -31,40 +36,51 @@ type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
       media query alone would work visually but would leave its markup live, and
       the reverse -- a CSS-hidden desktop shell -- would still download the four
       banner images on every mobile page load.
+
+      Immersive routes (shop, product) drop the chrome entirely and render their
+      own compact back-link bar instead; see ChromeService. The decision is made
+      here rather than in each page so the shell stays in charge of what frames
+      the router outlet.
     -->
-    @if (!viewport.isDesktop()) {
-      <app-mobile-header />
+    @if (!chrome.immersive()) {
+      @if (!viewport.isDesktop()) {
+        <app-mobile-header />
+      }
+      <app-desktop-shell />
     }
-    <app-desktop-shell />
     <main>
       <!-- Store promises. Lives in <main> so the row scrolls with the page
-           instead of riding over the sticky dark header. -->
-      <div class="m-services" aria-label="Store promises">
-        @for (s of services; track s.label) {
-          <div class="m-svc">
-            <span class="m-svc__ic" aria-hidden="true">
-              @switch (s.icon) {
-                @case ('delivery') {
-                  <svg lucideTruck />
+           instead of riding over the sticky dark header. Suppressed on immersive
+           routes, where it pushed the products the shopper came for down the
+           page. -->
+      @if (!chrome.immersive()) {
+        <div class="m-services" aria-label="Store promises">
+          @for (s of services; track s.label) {
+            <div class="m-svc">
+              <span class="m-svc__ic" aria-hidden="true">
+                @switch (s.icon) {
+                  @case ('delivery') {
+                    <svg lucideTruck />
+                  }
+                  @case ('quality') {
+                    <svg lucideShieldCheck />
+                  }
+                  @case ('returns') {
+                    <svg lucideShoppingBag />
+                  }
+                  @case ('support') {
+                    <svg lucideHeadphones />
+                  }
                 }
-                @case ('quality') {
-                  <svg lucideShieldCheck />
-                }
-                @case ('returns') {
-                  <svg lucideShoppingBag />
-                }
-                @case ('support') {
-                  <svg lucideHeadphones />
-                }
-              }
-            </span>
-            <span class="m-svc__label">{{ s.label }}</span>
-          </div>
-        }
-      </div>
+              </span>
+              <span class="m-svc__label">{{ s.label }}</span>
+            </div>
+          }
+        </div>
+      }
       <router-outlet />
     </main>
-    @if (!viewport.isDesktop()) {
+    @if (!chrome.immersive() && !viewport.isDesktop()) {
       <app-mobile-tabs />
     }
     <footer class="site-footer">
@@ -122,6 +138,12 @@ export class App {
 
   /** Which shell is live. See the note on the template's first element. */
   protected readonly viewport = inject(ViewportService);
+
+  /**
+   * Whether this route drops the site chrome for its own back-link bar. Public
+   * because the host class binding reads it as well as the template.
+   */
+  readonly chrome = inject(ChromeService);
 
   /**
    * Store promises, worded as in the approved reference. The last tile reads

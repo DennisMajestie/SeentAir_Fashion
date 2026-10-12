@@ -2443,7 +2443,6 @@ app-product-card {
    by the card's overflow. The 44px hit area is centred on the boundary. */
 .cartbtn {
   position: absolute;
-  top: -22px;
   right: 1px;
   width: 44px;
   height: 44px;
@@ -5104,6 +5103,47 @@ editing the shared .page-kicker, which other pages also use. */
   }
 }
 
+/* ---------- immersive pages (shop, product) ----------
+   These routes render no universal header, hero carousel or promises row; they
+   carry a compact back-link bar instead. Two things the old shell assumed no
+   longer hold here and have to be undone:
+
+   - `body:has(.m-tabs)` reserved bottom padding for the mobile tab bar. That bar
+     is not rendered, so without this the page reserves ~66px of dead space at
+     the foot for navigation that is not there.
+   - `body` paints a dark strip behind `main`'s rounded top corners so they read
+     against the sticky dark mobile header. With no such header the strip shows
+     as a band of near-black above the page.
+
+   Keyed off the host class App sets from the route, so it holds on a direct
+   load of a shared product link as well as on client-side navigation. */
+:host-context(app-root.is-immersive) {
+  body:has(.m-tabs) {
+    padding-bottom: 0;
+  }
+}
+@media (min-width: 900px) {
+  :host-context(app-root.is-immersive) body {
+    background: var(--canvas);
+    padding-bottom: 0;
+  }
+  :host-context(app-root.is-immersive) main {
+    border-radius: 0;
+    padding-top: var(--space-24);
+  }
+}
+
+/* The back-link bar replaces a sticky header, so it sticks too. Kept mobile
+   only: at desktop the immersive pages are a plain column, as the shop and
+   product screens are meant to read. */
+@media (max-width: 899px) {
+  app-back-header .p-head {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+}
+
 /* ---------- product detail (mobile reference layout) ----------
    The reference was drawn as one mobile column: compact header, full-bleed
    swipeable gallery, title, price card, variant pickers, sticky buy bar. The
@@ -5198,8 +5238,8 @@ editing the shared .page-kicker, which other pages also use. */
 }
 .p-gal__pill {
   position: absolute;
-  left: 0.75rem;
-  bottom: 0.75rem;
+  left: 1.5rem;
+  bottom: 2.5rem;
   padding: 0.2rem 0.6rem;
   border-radius: var(--radius-pill);
   background: rgba(0, 0, 0, 0.62);
@@ -5210,8 +5250,8 @@ editing the shared .page-kicker, which other pages also use. */
 }
 .p-gal__fav {
   position: absolute;
-  right: 0.75rem;
-  bottom: 0.75rem;
+  right: 1.5rem;
+  bottom: 2.5rem;
   width: 2.25rem;
   height: 2.25rem;
   border-radius: 50%;

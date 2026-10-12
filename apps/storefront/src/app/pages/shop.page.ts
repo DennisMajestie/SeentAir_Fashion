@@ -20,6 +20,7 @@ import { offerFor } from '../pricing';
 import { PRODUCT_PLACEHOLDER, productImage } from '../product-image';
 import { SeoService } from '../seo.service';
 import { SWATCHES, ProductCardComponent } from '../product-card.component';
+import { BackHeaderComponent } from '../back-header.component';
 import {
   EMPTY_FILTERS,
   SheetFilters,
@@ -78,8 +79,12 @@ function collectionKey(name: string): string {
     review stars and quick-add. */
 @Component({
   selector: 'app-shop',
-  imports: [CommonModule, FormsModule, ProductCardComponent, FilterSheetComponent],
+  imports: [CommonModule, FormsModule, ProductCardComponent, FilterSheetComponent, BackHeaderComponent],
   template: `
+    <!-- Immersive route: no universal header, hero or promises row. The compact
+         bar carries back plus account/cart; search is already a field here. -->
+    <app-back-header [showSearch]="false" />
+
     <input
       class="search-bar"
       type="search"

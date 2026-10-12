@@ -13,11 +13,16 @@ export const routes: Routes = [
     path: 'shop',
     loadComponent: () => import('./pages/shop.page').then((m) => m.ShopPage),
     title: 'Seentair: Shop',
+    // Browsing surface: no universal header, hero or promises row. It gets the
+    // compact back-link bar instead. See ChromeService.
+    data: { immersive: true },
   },
   {
     path: 'product/:id',
     loadComponent: () => import('./pages/product.page').then((m) => m.ProductPage),
     title: 'Seentair: Product',
+    // Same treatment as the shop grid.
+    data: { immersive: true },
   },
   {
     path: 'cart',

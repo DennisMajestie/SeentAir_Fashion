@@ -20,6 +20,7 @@ import { CartService } from '../cart.service';
 import { NO_REVIEWS_COPY, ProductCardComponent } from '../product-card.component';
 import { SeoService } from '../seo.service';
 import { WishlistService } from '../wishlist.service';
+import { BackHeaderComponent } from '../back-header.component';
 
 /** One photo in the gallery, with the colour it belongs to. */
 interface GalleryShot {
@@ -50,44 +51,13 @@ interface GalleryShot {
     RouterLink,
     SaleCountdownComponent,
     ProductCardComponent,
+    BackHeaderComponent,
   ],
   template: `
     @if (product(); as p) {
-      <!-- Compact header. Only on the mobile PDP: the storefront already owns a
-           sticky header for the shell, and two of them stacked is a bug. -->
-      <div class="p-head">
-        <div class="p-head__in">
-          <button class="p-head__btn" type="button" (click)="goBack()" aria-label="Back">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M15 5l-7 7 7 7" />
-            </svg>
-          </button>
-          <span class="p-head__brand">
-            <img src="assets/logo.png" alt="SEENTAIR" />
-          </span>
-          <div class="p-head__acts">
-            <a class="p-head__btn" routerLink="/shop" aria-label="Search products">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-3.5-3.5" />
-              </svg>
-            </a>
-            <a class="p-head__btn" routerLink="/account" aria-label="Account">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <circle cx="12" cy="8" r="4" />
-                <path d="M4 21a8 8 0 0 1 16 0" />
-              </svg>
-            </a>
-            <a class="p-head__btn" routerLink="/cart" aria-label="Cart">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 2-1.6L21 8H6" />
-                <circle cx="9" cy="20" r="1" />
-                <circle cx="17" cy="20" r="1" />
-              </svg>
-            </a>
-          </div>
-        </div>
-      </div>
+      <!-- Compact header. Shared with the shop grid so both immersive pages get
+           the same bar; see BackHeaderComponent. -->
+      <app-back-header />
 
       <!-- Gallery. Full-bleed, one photo at a time, swiped with a finger. -->
       <div class="p-gal">
@@ -526,12 +496,6 @@ export class ProductPage implements OnInit {
     const h = document.querySelector<HTMLElement>('.p-title');
     if (!h) return;
     this.titleLong.set(h.scrollHeight > h.clientHeight + 2);
-  }
-
-  /** Back: history if we came from inside the app, otherwise the shop. */
-  goBack(): void {
-    if (window.history.length > 1) window.history.back();
-    else void this.router.navigate(['/shop']);
   }
 
   /** Keep the pill in step with the swipe. */
