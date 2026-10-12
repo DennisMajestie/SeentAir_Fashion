@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import {
   Component,
+  ElementRef,
   Injector,
   OnInit,
   afterNextRender,
@@ -8,6 +9,7 @@ import {
   effect,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -179,7 +181,7 @@ interface GalleryShot {
                   [attr.aria-checked]="colour() === shot.colour"
                   [attr.aria-label]="shot.colour!"
                   [disabled]="colourSoldOut(shot.colour!)"
-                  (click)="colour.set(shot.colour)"
+                  (click)="pickColour(shot.colour)"
                 >
                   <img [src]="shot.src" [alt]="shot.colour!" />
                 </button>
@@ -348,6 +350,13 @@ export class ProductPage implements OnInit {
   private readonly shotIndex = signal(0);
   readonly titleOpen = signal(false);
 
+  /**
+   * The scrolling track, so choosing a colour can move the gallery to that
+   * photo. Without this the photo changes underneath the selection and the
+   * shopper has to hunt for the colour they just picked.
+   */
+  private trackRef = viewChild<ElementRef<HTMLElement>>('track');
+
   constructor() {
     effect(() => {
       const p = this.product();
@@ -361,7 +370,13 @@ export class ProductPage implements OnInit {
       // title element does not exist yet at this point, so defer the measure a
       // frame. afterNextRender runs outside change detection, so it does not
       // trip the zoneless ExpressionChanged check.
-      afterNextRender(() => this.measureTitle(), { injector: this.injector });
+      afterNextRender(
+          () => {
+            this.measureTitle();
+            this.scrollToSelection();
+          },
+          { injector: this.injector },
+        );
     });
   }
 
@@ -393,14 +408,27 @@ export class ProductPage implements OnInit {
   });
 
   /**
-   * Every photo the shopper can swipe: one per colour that has its own shot,
-   * then the product's primary photo. Duplicates are dropped so a colour whose
-   * photo is also the primary image is not counted twice in "1/N".
+   * Every photo the shopper can swipe, led by the photo of the variant they have
+   * actually chosen.
+   *
+   * The lead matters: opening the page selected a colour, and showing a
+   * different colour's photo first is the mismatch this replaces. The order is
+   * then every other colour that has its own shot, then the product's primary
+   * photo. Duplicates are dropped by src, so a colour whose photo is also the
+   * primary image is not counted twice in "1/N", and the product's own photo is
+   * never lost even when it differs from every variant's.
    */
   readonly gallery = computed<GalleryShot[]>(() => {
     const p = this.product();
     if (!p) return [];
-    const shots: GalleryShot[] = [...this.colourShots()];
+    const chosen = this.selected()?.imageUrl ?? null;
+    const shots: GalleryShot[] = [];
+    if (chosen) {
+      shots.push({ src: chosen, colour: this.colour() ?? null });
+    }
+    for (const shot of this.colourShots()) {
+      if (!shots.some((s) => s.src === shot.src)) shots.push(shot);
+    }
     const primary = p.primaryImageUrl ?? null;
     if (primary && !shots.some((s) => s.src === primary)) {
       shots.push({ src: primary, colour: null });
@@ -408,6 +436,17 @@ export class ProductPage implements OnInit {
     if (shots.length === 0) shots.push({ src: PRODUCT_PLACEHOLDER, colour: null });
     return shots;
   });
+
+  /**
+   * The index the gallery should sit on when the selection changes. Null means
+   * "do not move it" -- used so a shopper who has swiped to a photo and then
+   * changes size is not yanked back to the first one.
+   */
+  private selectionAnchor(): number | null {
+    const chosen = this.selected()?.imageUrl;
+    if (!chosen) return null;
+    return this.gallery().findIndex((s) => s.src === chosen);
+  }
 
   /**
    * The overlay pill: "2/5 | Colour" while a colour shot is showing, plain
@@ -496,6 +535,28 @@ export class ProductPage implements OnInit {
     const h = document.querySelector<HTMLElement>('.p-title');
     if (!h) return;
     this.titleLong.set(h.scrollHeight > h.clientHeight + 2);
+  }
+
+  /**
+   * Choose a colour and bring the gallery to that colour's photo.
+   *
+   * The selection signal updates synchronously but the gallery is derived from
+   * it, so the target index is only known after the signal has settled. Reading
+   * it in a microtask keeps the two in step without the shopper seeing the old
+   * photo for a frame.
+   */
+  pickColour(colour: string | null): void {
+    this.colour.set(colour);
+    queueMicrotask(() => this.scrollToSelection());
+  }
+
+  /** Scroll the track to the selected variant's photo, if the gallery has it. */
+  private scrollToSelection(): void {
+    const el = this.trackRef()?.nativeElement;
+    if (!el) return;
+    const index = this.selectionAnchor();
+    if (index === null || index < 0) return;
+    el.scrollTo({ left: el.clientWidth * index, behavior: 'smooth' });
   }
 
   /** Keep the pill in step with the swipe. */
