@@ -73,11 +73,17 @@ const AUTOPLAY_MS = 6000;
  * still pin it where they want it; that is the whole reason each of those
  * interrupts exists.
  *
- * Slide height is a fixed wide ratio and each image is `contain`-fitted,
- * because the four source files are not the same shape (2.276:1 through
- * 2.960:1). Letting each image size itself would resize the section on every
- * slide change; fitting instead means all artwork is shown whole, uncropped
- * and unstretched, in a box that never moves.
+* Slide height is held by `aspect-ratio` under a `max-height` cap, and each
+ * image is `contain`-fitted, because the four source files are not the same
+ * shape (2.276:1 through 2.960:1). Letting each image size itself would resize
+ * the section on every slide change; fitting instead means all artwork is shown
+ * whole, uncropped and unstretched, in a box that never moves.
+ *
+ * The box is as wide as the header and nav content. Because those four files are
+ * all narrower than the box, `contain` leaves a gap either side of the artwork;
+ * each slide therefore carries a blurred copy of its own banner underneath to
+ * fill that gap with colour from the same photograph, so the shelf reads as full
+ * without stretching or cropping anything.
  */
 @Component({
   selector: 'app-hero-carousel',
@@ -107,9 +113,24 @@ const AUTOPLAY_MS = 6000;
               [attr.aria-hidden]="i === current() ? null : 'true'"
               [attr.inert]="i === current() ? null : ''"
             >
+              <!-- Blurred copy of the same file, filling the letterbox either
+                   side of the artwork. Decorative and hidden from assistive
+                   tech. It reuses the exact same src, so the browser fetches the
+                   banner once and serves the second element from cache -- which
+                   is also why it is a real <img> with a loading attribute rather
+                   than a CSS background-image, which would fetch eagerly and
+                   defeat the lazy loading the sharp images rely on. -->
+              <img
+                class="hero-carousel__backdrop"
+                [src]="slide.src"
+                alt=""
+                aria-hidden="true"
+                [loading]="i === 0 ? 'eager' : 'lazy'"
+              />
               @if (slide.link) {
                 <a [routerLink]="slide.link" tabindex="-1">
                   <img
+                    class="hero-carousel__art"
                     [src]="slide.src"
                     [alt]="slide.alt"
                     [width]="slide.width"
@@ -120,6 +141,7 @@ const AUTOPLAY_MS = 6000;
                 </a>
               } @else {
                 <img
+                  class="hero-carousel__art"
                   [src]="slide.src"
                   [alt]="slide.alt"
                   [width]="slide.width"
@@ -206,10 +228,15 @@ const AUTOPLAY_MS = 6000;
         /* Same ivory as the page so the letterbox bars read as intentional
            margin around the artwork rather than as a broken image. */
         background: var(--canvas);
-        /* Wider than the tallest banner (1024/450 = 2.276:1) so the section is
-           shorter and the page above the fold shows more product. Every image
-           is contain-fitted, so the extra width letterboxes the taller banners
-           a little rather than cropping them. */
+        /* The box spans the full content width, matching the header and nav
+           content edges exactly. Declaring the width is what makes the height
+           deterministic: with an auto width, the ratio and the max-height below
+           fed back into each other and the browser derived the WIDTH from the
+           clamped height, so a 306px-tall box was only 783px wide regardless of
+           how much room it had. With the width definite, the aspect-ratio supplies
+           the height and max-height only clamps it, which reproduces the
+           previous heights exactly: min(34vh, content width / 2.56). */
+        width: 100%;
         aspect-ratio: 1024 / 400;
         /* On short windows an aspect-ratio box can still be too tall; cap it so
            the hero never eats more than about a third of the viewport. */
@@ -227,6 +254,11 @@ const AUTOPLAY_MS = 6000;
       }
 
       .hero-carousel__slide {
+        /* relative so the backdrop can anchor to this slide; hidden so the
+           backdrop cannot bleed into a neighbouring slide while the track
+           slides. */
+        position: relative;
+        overflow: hidden;
         flex: 0 0 100%;
         width: 100%;
         height: 100%;
@@ -235,15 +267,37 @@ const AUTOPLAY_MS = 6000;
       .hero-carousel__slide a {
         display: block;
         height: 100%;
+        /* The link wraps the sharp image only, but it still has to sit above
+           the backdrop. */
+        position: relative;
       }
 
-      .hero-carousel__slide img {
+      /* Fills the letterbox either side of a contain-fitted banner. Blurred and
+         darkened so it reads as depth rather than as a second, competing image,
+         and scaled just past the edges so the blur's own soft border is never
+         visible as a hard line. */
+      .hero-carousel__backdrop {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: blur(24px) brightness(0.7);
+        transform: scale(1.1);
+        pointer-events: none;
+      }
+
+      .hero-carousel__art {
+        /* Above the backdrop. Position (not z-index alone) so the stacking
+           order is explicit and does not depend on DOM order. */
+        position: relative;
         display: block;
         width: 100%;
         height: 100%;
         /* contain, never cover: every banner is shown whole, with its own
            proportions intact. cover would crop the shortest of the four. */
         object-fit: contain;
+        object-position: center;
       }
 
       .hero-carousel__controls {
