@@ -111,6 +111,18 @@ main {
   padding-inline: var(--wrap-x);
   padding-bottom: 5rem;
 }
+
+/* On a wide display the 5-up grid was capped at 1280px and sat in a centred
+   band with empty canvas either side, so five cards read as a short row rather
+   than a full shelf. The cap is lifted on very wide screens -- on the token,
+   not on the grid, because header, hero, footer and content all share this
+   container and widening only the grid would hang it out past the logo and break
+   the shared left edge. */
+@media (min-width: 1500px) {
+  :root {
+    --wrap-max: 1680px;
+  }
+}
 /* A .wrap-col nested inside main must not indent a second time. */
 main .wrap-col {
   max-width: none;
