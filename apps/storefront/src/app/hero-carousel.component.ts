@@ -1,5 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  OnDestroy,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 /**
@@ -53,18 +60,24 @@ const SLIDES: readonly Slide[] = [
   },
 ] as const;
 
+/** How long a slide holds before the deck moves on, in ms. */
+const AUTOPLAY_MS = 6000;
+
 /**
  * Desktop-only hero carousel.
  *
- * No autoplay and no timers: the shop's north star is that customers can shop
- * without struggling, and a hero that moves on its own is a moving target for
- * anyone reading or reaching for a link. Movement is entirely user-driven.
+ * Autoplay advances the deck every AUTOPLAY_MS, but it is built to be stopped:
+ * hovering the carousel, focusing anything inside it, or having "reduce motion"
+ * set all pause it, and a manual arrow/dot click restarts the clock rather than
+ * fighting the timer. A moving hero is only acceptable when the shopper can
+ * still pin it where they want it; that is the whole reason each of those
+ * interrupts exists.
  *
- * Slide height is held at the tallest banner's ratio and each image is
- * `contain`-fitted, because the four source files are not the same shape
- * (2.276:1 through 2.960:1). Letting each image size itself would resize the
- * section on every slide change; fitting instead means all artwork is shown
- * whole, uncropped and unstretched, in a box that never moves.
+ * Slide height is a fixed wide ratio and each image is `contain`-fitted,
+ * because the four source files are not the same shape (2.276:1 through
+ * 2.960:1). Letting each image size itself would resize the section on every
+ * slide change; fitting instead means all artwork is shown whole, uncropped
+ * and unstretched, in a box that never moves.
  */
 @Component({
   selector: 'app-hero-carousel',
@@ -75,6 +88,10 @@ const SLIDES: readonly Slide[] = [
       aria-roledescription="carousel"
       aria-label="Promotions"
       (keydown)="onKeydown($event)"
+      (mouseenter)="pause()"
+      (mouseleave)="resume()"
+      (focusin)="pause()"
+      (focusout)="onFocusOut($event)"
     >
       <div class="hero-carousel__viewport">
         <ul
@@ -151,6 +168,27 @@ const SLIDES: readonly Slide[] = [
             <path d="m9 5 7 7-7 7" />
           </svg>
         </button>
+
+        <!-- Autoplay can be stopped for good, not just by hovering. Focusable
+             and labelled, because a moving banner a shopper cannot pin is the
+             one failure mode the north star rules out. -->
+        <button
+          type="button"
+          class="hero-carousel__toggle"
+          [attr.aria-label]="paused() ? 'Resume automatic slide' : 'Pause automatic slide'"
+          [attr.aria-pressed]="paused()"
+          (click)="togglePaused()"
+        >
+          @if (paused()) {
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M8 5l11 7-11 7z" />
+            </svg>
+          } @else {
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M9 5v14M15 5v14" />
+            </svg>
+          }
+        </button>
       </div>
     </section>
   `,
@@ -168,8 +206,14 @@ const SLIDES: readonly Slide[] = [
         /* Same ivory as the page so the letterbox bars read as intentional
            margin around the artwork rather than as a broken image. */
         background: var(--canvas);
-        /* The tallest of the four banners (1024x450) sets the box. */
-        aspect-ratio: 1024 / 450;
+        /* Wider than the tallest banner (1024/450 = 2.276:1) so the section is
+           shorter and the page above the fold shows more product. Every image
+           is contain-fitted, so the extra width letterboxes the taller banners
+           a little rather than cropping them. */
+        aspect-ratio: 1024 / 400;
+        /* On short windows an aspect-ratio box can still be too tall; cap it so
+           the hero never eats more than about a third of the viewport. */
+        max-height: 34vh;
       }
 
       .hero-carousel__track {
@@ -269,9 +313,41 @@ const SLIDES: readonly Slide[] = [
       }
 
       .hero-carousel__arrow:focus-visible,
-      .hero-carousel__dot:focus-visible {
+      .hero-carousel__dot:focus-visible,
+      .hero-carousel__toggle:focus-visible {
         outline: 2px solid var(--primary);
         outline-offset: 2px;
+      }
+
+      /* Pause/play. Quieter than the arrows on purpose: it is a preference
+         control, not the primary navigation, so it must not read as the
+         headline action in the row. */
+      .hero-carousel__toggle {
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        transition: color var(--dur-1) ease;
+      }
+      .hero-carousel__toggle svg {
+        width: 16px;
+        height: 16px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .hero-carousel__toggle:hover {
+        color: var(--primary);
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -279,20 +355,121 @@ const SLIDES: readonly Slide[] = [
           transition: none;
         }
         .hero-carousel__dot,
-        .hero-carousel__arrow {
+        .hero-carousel__arrow,
+        .hero-carousel__toggle {
           transition: none;
         }
       }
     `,
   ],
 })
-export class HeroCarouselComponent {
+export class HeroCarouselComponent implements OnDestroy {
   readonly slides = SLIDES;
 
   /** The only state the track depends on. */
   readonly current = signal(0);
 
   private readonly count = SLIDES.length;
+
+  /** True when autoplay is held: shopper-paused, hovered, focused, or reduced motion. */
+  readonly paused = signal(false);
+
+  private readonly destroyRef = inject(DestroyRef);
+
+  /**
+   * Why the clock is currently stopped, held as a set rather than one flag so
+   * hovering and "reduce motion" can both apply without one cancelling the
+   * other. The deck resumes only when every reason is gone.
+   */
+  private readonly holds = new Set<string>();
+  private timer: ReturnType<typeof setInterval> | null = null;
+
+  private readonly reduceMotion =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  constructor() {
+    if (this.reduceMotion) this.holds.add('reduce-motion');
+    this.sync();
+    this.destroyRef.onDestroy(() => this.stop());
+  }
+
+  ngOnDestroy(): void {
+    this.stop();
+  }
+
+  /** Hold autoplay for a reason and resync the clock. */
+  private hold(reason: string): void {
+    this.holds.add(reason);
+    this.sync();
+  }
+
+  /** Release a reason; autoplay resumes only if none are left. */
+  private release(reason: string): void {
+    this.holds.delete(reason);
+    this.sync();
+  }
+
+  /**
+   * Whether the carousel is currently held. Exposed so the template's control
+   * shows the correct label even when the hold came from hover, not a click.
+   */
+  private get held(): boolean {
+    return this.holds.size > 0;
+  }
+
+  /** Sync the interval to the current hold state. */
+  private sync(): void {
+    this.paused.set(this.held);
+    if (this.held) {
+      this.stop();
+    } else if (!this.timer) {
+      this.timer = setInterval(() => this.next(), AUTOPLAY_MS);
+    }
+  }
+
+  private stop(): void {
+    if (this.timer !== null) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  }
+
+  /** Hover pauses; leaving resumes. */
+  pause(): void {
+    this.hold('hover');
+  }
+  resume(): void {
+    this.release('hover');
+  }
+
+  /**
+   * Focus inside pauses. Focus moving between children of the same carousel
+   * fires focusout then focusin, so the release is deferred to the next tick and
+   * cancelled if focus came straight back -- otherwise tabbing across the
+   * arrows would stutter the deck.
+   */
+  onFocusOut(event: FocusEvent): void {
+    const next = event.relatedTarget as Node | null;
+    if (next && (event.currentTarget as HTMLElement).contains(next)) return;
+    this.hold('focus');
+    setTimeout(() => {
+      const active = document.activeElement;
+      const host = document.querySelector('app-hero-carousel');
+      if (!host || !host.contains(active)) this.release('focus');
+    });
+  }
+
+  /** The explicit pause/play control. */
+  togglePaused(): void {
+    if (this.holds.has('manual')) {
+      this.holds.delete('manual');
+    } else {
+      this.holds.add('manual');
+    }
+    this.sync();
+  }
 
   /**
    * `((i % n) + n) % n` rather than `i % n`: JavaScript's modulo keeps the sign
@@ -301,14 +478,26 @@ export class HeroCarouselComponent {
    */
   goTo(index: number): void {
     this.current.set(index);
+    // A manual pick should hold for a beat rather than be yanked away by the
+    // timer mid-read, then resume the normal rhythm.
+    this.restart();
   }
 
   next(): void {
     this.current.update((i) => this.wrap(i + 1));
+    this.restart();
   }
 
   previous(): void {
     this.current.update((i) => this.wrap(i - 1));
+    this.restart();
+  }
+
+  /** Reset the clock so the next advance is a full interval away. */
+  private restart(): void {
+    if (this.held) return;
+    this.stop();
+    this.timer = setInterval(() => this.current.update((i) => this.wrap(i + 1)), AUTOPLAY_MS);
   }
 
   private wrap(index: number): number {
