@@ -5516,6 +5516,23 @@ editing the shared .page-kicker, which other pages also use. */
   font-size: 0.78rem;
   line-height: 1.5;
 }
+/* Desktop-only review summary and the rating-row link to it. Hidden on mobile
+   so the PDP below 900px is byte-for-byte what it was before this block existed
+   -- the mobile review list already reads as a list of reviews, and a summary
+   with five bars is desktop furniture. */
+.p-rsum,
+.p-rating__link {
+  display: none;
+}
+
+/* Reviews and the related rail sit OUTSIDE .p-body now so they can run the
+   full page width at desktop. On mobile they were relying on .p-body's side
+   padding, so it is repeated here to keep the inset identical. */
+.p-reviews,
+.p-rel {
+  padding-inline: 0.875rem;
+}
+
 .p-reviews {
   margin-top: 1.6rem;
   padding-top: 1rem;
@@ -5585,11 +5602,15 @@ editing the shared .page-kicker, which other pages also use. */
   color: var(--on-primary);
 }
 
-/* Reserve room for the fixed bar so nothing hides behind it. */
-.p-body::after {
-  content: '';
-  display: block;
-  height: 4.6rem;
+/* Reserve room for the fixed bar so nothing hides behind it. It belongs on the
+   LAST thing on the page, which is now a sibling of .p-body (reviews and the
+   related rail moved out so they can span the full width at desktop) rather
+   than a trailing child of it -- as a trailing child it would have landed
+   between the buy button and the reviews and shoved them all down. The related
+   rail is normally last; p-reviews--last covers the case where it is absent. */
+.p-rel,
+.p-reviews--last {
+  padding-bottom: 4.6rem;
 }
 /* The compact PDP header is mobile-only: at desktop the shell already owns a
    sticky header, and two stacked ones is a bug. */
@@ -5600,32 +5621,298 @@ editing the shared .page-kicker, which other pages also use. */
   .p-buy {
     display: none;
   }
-  .p-body::after {
-    height: 0;
+  /* No fixed bar at desktop, so nothing needs reserving room for it. */
+  .p-rel,
+  .p-reviews--last {
+    padding-bottom: 0;
   }
 }
 
-/* Desktop: two columns, gallery left and the buy column right; the sticky bar
-   is redundant once the inline CTA is on screen. The compact header and the
-   swipe-pill are dropped -- at this width the shop's own header is sticky and
-   the gallery shows every shot at once. */
+/* ---------- desktop product detail ----------
+   The desktop PDP is the three-column reference: gallery with a thumbnail
+   rail (A), product info (B), and a sticky purchase card (C), with Customer
+   Reviews full width underneath.
+
+   Two techniques carry the whole change, and both exist so that nothing below
+   900px moves:
+
+   - `.p-body` and `.p-purchase` are `display: contents` here, so their children
+     become direct grid items of the host and can be placed in different
+     columns. Below 900px they are ordinary blocks again and lay out exactly as
+     before.
+   - The thumbnail rail and the single main image are extra elements that only
+     exist visually at desktop; the mobile swipe track below 900px is the
+     original one, untouched.
+
+   Breakpoint is the storefront's own desktop point (DESKTOP_MIN_WIDTH in
+   ViewportService); the narrow-desktop reflow is folded into the same query. */
+.p-purchase {
+  /* Transparent on mobile: its children take the parent's flow exactly as they
+     did before this wrapper existed. */
+  display: contents;
+}
+.p-gal__strip,
+.p-gal__main {
+  display: none;
+}
+
 @media (min-width: 900px) {
+  /* Gallery on the left, .p-body taking everything to its right. The info
+     column and the purchase card are split INSIDE .p-body rather than here:
+     both live inside it in the DOM, so the parent is the only element that can
+     put them in different columns without reordering the template. Two tracks
+     here plus two there still land on the reference's 40 / 34 / 26 of the full
+     width, and nothing relies on auto-placement finding a free cell -- each
+     column is a single track, so its blocks just stack. */
+  app-product {
+    display: grid;
+    grid-template-columns: 40fr 60fr;
+    column-gap: var(--space-32);
+    align-items: start;
+  }
+
+  /* Everything to the right of the gallery is .p-body; pinned rather than
+     auto-placed so it shares row 1 with the gallery. Reviews and the related
+     rail are siblings of .p-body, not children, so they span the full page. */
+  .p-body {
+    grid-column: 2;
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: 34fr 26fr;
+    column-gap: var(--space-32);
+    align-items: start;
+  }
+  /* Everything that is not the purchase card is info-column content, so it
+     lands in column 1 without naming each block. Reviews and the related rail
+     are no longer children of .p-body at all -- they sit beside it so they can
+     span the full page width at desktop. */
+  .p-body > :not(.p-purchase) {
+    grid-column: 1;
+  }
+  /* Column C: the purchase card, placed explicitly rather than left to
+     auto-placement so it always starts at the top of its track. Sticky inside
+     its own grid area, so it scrolls with the info column and then stops. */
+  .p-purchase {
+    display: block;
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    position: sticky;
+    /* The PDP is an immersive route, so no site header renders here and there
+       is nothing to clear -- just the page's own top padding. */
+    top: var(--space-16);
+  }
+  .p-reviews,
+  .p-rel {
+    /* Host-level items now, so these span the whole row under the columns.
+       The mobile side padding is dropped because they are no longer inside
+       .p-body; the desktop gutter comes from the host container instead. */
+    grid-column: 1 / -1;
+    margin-top: var(--space-40);
+    padding-inline: 0;
+  }
+
+  /* Column A: rail of thumbnails beside one large, un-cropped image. */
+  .p-gal {
+    grid-column: 1;
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-12);
+    background: none;
+  }
+  .p-gal__strip {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    /* Scrolls when there are more photos than fit; the clipped last one is the
+       affordance that there is more. */
+    max-height: 560px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .p-gal__thumb {
+    flex: 0 0 auto;
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--card);
+    cursor: pointer;
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    &.is-active {
+      border: 2px solid var(--ink);
+    }
+    &:hover {
+      border-color: var(--primary);
+    }
+  }
+  .p-gal__main {
+    display: grid;
+    place-items: center;
+    /* Explicit ratio: reserves the box before the bytes land, so nothing shifts. */
+    aspect-ratio: 1 / 1;
+    background: var(--container);
+    border-radius: var(--radius-field);
+    overflow: hidden;
+  }
+  .p-gal__main .p-gal__img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  /* The swipe track is the mobile affordance; at desktop the rail replaces it. */
+  .p-gal__track {
+    display: none;
+  }
   .p-gal__pill,
   .p-gal__fav {
     display: none;
   }
-  .p-gal__track {
-    overflow: visible;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+
+  /* Info-column typography. Placement is handled above; only the look differs
+     from mobile here (the title gets a desktop size and one extra line). */
+  .p-title {
+    -webkit-line-clamp: 3;
+    font-size: 1.5rem;
   }
-  .p-gal__cell {
-    flex: 0 0 calc(50% - 0.25rem);
-    aspect-ratio: 1 / 1;
+  .p-title.is-open {
+    -webkit-line-clamp: unset;
+  }
+  .p-rating__link {
+    display: inline;
+    color: var(--muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* The purchase card: bordered and tight. Sticky within its own grid area, so
+     it scrolls with the info column and stops rather than riding over the
+     reviews or the footer. */
+  .p-purchase {
+    padding: var(--space-16);
     border: 1px solid var(--line);
-    border-radius: 10px;
+    border-radius: var(--radius-field);
+    background: var(--card);
   }
-  .p-cta {
+  .p-purchase > .p-opt--qty {
+    padding-bottom: var(--space-12);
+    border-bottom: 1px solid var(--line);
+  }
+  .p-purchase .p-cta {
     display: block;
+    margin-top: var(--space-12);
+  }
+  .p-purchase .p-note {
+    margin-top: var(--space-8);
+  }
+
+  /* Reviews and the related rail run the full width under the columns. */
+  .p-reviews__h {
+    font-size: 1.15rem;
+    padding-bottom: var(--space-8);
+    border-bottom: 2px solid var(--ink);
+  }
+
+  /* Summary: big average beside the real 5-to-1 distribution. */
+  .p-rsum {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-32);
+    align-items: center;
+    padding: var(--space-24) 0;
+  }
+  .p-rsum__avg {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .p-rsum__num {
+    font-size: 2.75rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .p-rsum__count {
+    color: var(--muted);
+    font-size: var(--type-body-sm);
+  }
+  .p-rsum__bars {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+  .p-rbar {
+    display: grid;
+    grid-template-columns: 3.2rem 1fr 2rem;
+    align-items: center;
+    gap: var(--space-12);
+    font-size: var(--type-body-sm);
+  }
+  .p-rbar__track {
+    height: 8px;
+    border-radius: var(--radius-pill);
+    background: var(--container-2);
+    overflow: hidden;
+  }
+  .p-rbar__fill {
+    display: block;
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background: var(--primary-fill);
+  }
+  .p-rbar__count {
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .p-rel__grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/* Narrow desktop: 900-1100px cannot carry three comfortable columns at full
+   size, so the purchase card drops below the info column and spans the width
+   it would have occupied. No horizontal scroll at any width. */
+@media (min-width: 900px) and (max-width: 1100px) {
+  /* Gallery and info side by side, with the purchase card dropping to its own
+     full-width row underneath. A 26%-of-900px card would be about 230px of
+     cramped buttons; a full-width row reads better and still avoids overflow. */
+  app-product {
+    grid-template-columns: 42fr 58fr;
+    column-gap: var(--space-24);
+  }
+  .p-gal {
+    grid-column: 1;
+  }
+  .p-body {
+    grid-template-columns: 1fr;
+  }
+  .p-body > :not(.p-purchase) {
+    grid-column: 1;
+  }
+  .p-purchase {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    position: static;
+    margin-top: var(--space-24);
+  }
+  /* Below this width a 52px thumbnail rail eats a third of the gallery, so it
+     narrows with the column rather than squeezing the main image. */
+  .p-gal__thumb {
+    width: 44px;
+    height: 44px;
+  }
+  .p-rsum {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    gap: var(--space-16);
   }
 }

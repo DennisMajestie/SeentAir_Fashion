@@ -63,6 +63,40 @@ interface GalleryShot {
 
       <!-- Gallery. Full-bleed, one photo at a time, swiped with a finger. -->
       <div class="p-gal">
+        <!-- Desktop thumbnail rail. Hidden below 900px, where the same photos are
+             a horizontal swipe instead (see .p-gal__track). Rail, swipe track and
+             desktop main image all read the same shotIndex, so the photo on
+             screen is the same whichever one the shopper drives. -->
+        <div class="p-gal__strip" role="group" aria-label="Product photos">
+          @for (shot of gallery(); track $index; let i = $index) {
+            <button
+              class="p-gal__thumb"
+              type="button"
+              [class.is-active]="i === shotIndex()"
+              [attr.aria-current]="i === shotIndex() ? 'true' : null"
+              [attr.aria-label]="'Show image ' + (i + 1) + ' of ' + gallery().length"
+              (click)="showShot(i)"
+              (mouseenter)="showShot(i)"
+            >
+              <img [src]="shot.src" alt="" loading="lazy" decoding="async" />
+            </button>
+          }
+        </div>
+
+        <!-- Desktop main image: one at a time, driven by the rail. The track
+             below is the mobile affordance and is hidden at desktop. -->
+        <div class="p-gal__main">
+          @if (gallery()[shotIndex()]; as shot) {
+            <img
+              class="p-gal__img"
+              [src]="shot.src"
+              [alt]="shotIndex() === 0 ? p.name : p.name + ' photo ' + (shotIndex() + 1)"
+              decoding="async"
+              (error)="onImageError($event)"
+            />
+          }
+        </div>
+
         <div
           class="p-gal__track"
           #track
@@ -126,6 +160,9 @@ interface GalleryShot {
                 {{ starString(avgRating()) }}
               </span>
               <span class="p-rating__num">{{ avgRating() | number: '1.1-1' }}</span>
+              <a class="p-rating__link" href="#p-reviews">
+                {{ reviews().length | number }} {{ reviews().length === 1 ? 'Review' : 'Reviews' }}
+              </a>
             }
             @if (soldCount() !== null) {
               <span class="p-rating__div" aria-hidden="true"></span>
@@ -214,14 +251,17 @@ interface GalleryShot {
           </div>
         }
 
-        <div class="p-opt">
-          <p class="p-opt__label">Quantity</p>
-          <span class="p-qty">
-            <button type="button" aria-label="Decrease quantity" (click)="bump(-1)">−</button>
-            <input type="number" min="1" [(ngModel)]="quantity" aria-label="Quantity" />
-            <button type="button" aria-label="Increase quantity" (click)="bump(1)">+</button>
-          </span>
-        </div>
+<!-- Everything the desktop purchase card needs. The wrapper is display:contents
+             below 900px, so on mobile these blocks lay out exactly as before. -->
+        <div class="p-purchase">
+          <div class="p-opt p-opt--qty">
+            <p class="p-opt__label">Quantity</p>
+            <span class="p-qty">
+              <button type="button" aria-label="Decrease quantity" (click)="bump(-1)">-</button>
+              <input type="number" min="1" [(ngModel)]="quantity" aria-label="Quantity" />
+              <button type="button" aria-label="Increase quantity" (click)="bump(1)">+</button>
+            </span>
+          </div>
 
         <!-- Desktop keeps the inline CTA; the sticky bar below takes over on
              mobile, where an always-reachable buy button is the point. -->
@@ -251,39 +291,72 @@ interface GalleryShot {
           </p>
         }
         @if (added()) {
-          <p class="p-note">
-            Added: <a routerLink="/cart">view cart</a> or keep browsing.
-          </p>
-        }
-
-        <section class="p-reviews">
-          <h2 class="p-reviews__h">Reviews ({{ reviews().length }})</h2>
-          @if (reviews().length === 0) {
-            <p class="p-note">{{ noReviewsCopy }}</p>
+            <p class="p-note">
+              Added: <a routerLink="/cart">view cart</a> or keep browsing.
+            </p>
           }
-          @for (r of reviews(); track $index) {
-            <div class="p-review">
-              <span class="p-stars">{{ '★'.repeat(r.rating) }}{{ '☆'.repeat(5 - r.rating) }}</span>
-              <p>{{ r.comment }}</p>
+        </div>
+      </div>
+
+      <!-- Reviews and the related rail sit OUTSIDE .p-body so that at desktop
+           they can run the full page width under the three columns. On mobile
+           they keep .p-body's side inset via their own padding, so the result
+           is unchanged there. -->
+      <!-- p-reviews--last marks this as the final block on the page (when there is
+           no related rail below it), so the mobile bottom reserve for the
+           fixed buy bar lands on whichever section is actually last. -->
+      <section class="p-reviews" id="p-reviews" [class.p-reviews--last]="related().length === 0">
+        <h2 class="p-reviews__h">Customer Reviews ({{ reviews().length }})</h2>
+
+        <!-- Summary. Computed from the real rating values on the reviews we
+             hold, so the bars and the average can never disagree. Desktop
+             only; hidden below 900px. -->
+        @if (reviews().length > 0) {
+          <div class="p-rsum">
+            <div class="p-rsum__avg">
+              <span class="p-rsum__num">{{ avgRating() | number: '1.1-1' }}</span>
+              <span class="p-stars">{{ starString(avgRating()) }}</span>
+              <span class="p-rsum__count">{{ reviews().length }} reviews</span>
             </div>
-          }
-        </section>
-
-        <!-- Suggested for You. Real products from the catalogue, never invented
-             ones: same collection first, then anything else in stock. The exact
-             card styling is still open until the second reference arrives, so
-             this reuses the shop card, which is already correct and linked. -->
-        @if (related().length > 0) {
-          <section class="p-rel">
-            <h2 class="p-rel__h">Suggested for You</h2>
-            <div class="p-rel__grid">
-              @for (r of related(); track r.id) {
-                <app-product-card [product]="r" />
+            <div class="p-rsum__bars">
+              @for (row of ratingBreakdown(); track row.stars) {
+                <div class="p-rbar">
+                  <span class="p-rbar__label">{{ row.stars }} star</span>
+                  <span class="p-rbar__track">
+                    <span class="p-rbar__fill" [style.width.%]="row.percent"></span>
+                  </span>
+                  <span class="p-rbar__count">{{ row.count }}</span>
+                </div>
               }
             </div>
-          </section>
+          </div>
         }
-      </div>
+
+        @if (reviews().length === 0) {
+          <p class="p-note">{{ noReviewsCopy }}</p>
+        }
+        @for (r of reviews(); track $index) {
+          <div class="p-review">
+            <span class="p-stars">{{ '★'.repeat(r.rating) }}{{ '☆'.repeat(5 - r.rating) }}</span>
+            <p>{{ r.comment }}</p>
+          </div>
+        }
+      </section>
+
+      <!-- Suggested for You. Real products from the catalogue, never invented
+           ones: same collection first, then anything else in stock. The exact
+           card styling is still open until the second reference arrives, so
+           this reuses the shop card, which is already correct and linked. -->
+      @if (related().length > 0) {
+        <section class="p-rel">
+          <h2 class="p-rel__h">Suggested for You</h2>
+          <div class="p-rel__grid">
+            @for (r of related(); track r.id) {
+              <app-product-card [product]="r" />
+            }
+          </div>
+        </section>
+      }
 
       <!-- Sticky purchase bar. Fixed to the viewport on mobile; the page gets
            matching bottom padding so the last review is never trapped under it. -->
@@ -346,8 +419,11 @@ export class ProductPage implements OnInit {
   readonly colour = signal<string | null>(null);
   quantity = 1;
 
-  /** Which photo the gallery is showing; drives the "n/N" pill. */
-  private readonly shotIndex = signal(0);
+  /**
+   * Which photo is on screen. Read by the mobile swipe pill, the desktop
+   * thumbnail rail and the desktop main image, so all three always agree.
+   */
+  readonly shotIndex = signal(0);
   readonly titleOpen = signal(false);
 
   /**
@@ -373,7 +449,7 @@ export class ProductPage implements OnInit {
       afterNextRender(
           () => {
             this.measureTitle();
-            this.scrollToSelection();
+            this.showSelectedShot();
           },
           { injector: this.injector },
         );
@@ -547,16 +623,35 @@ export class ProductPage implements OnInit {
    */
   pickColour(colour: string | null): void {
     this.colour.set(colour);
-    queueMicrotask(() => this.scrollToSelection());
+    queueMicrotask(() => this.showSelectedShot());
   }
 
-  /** Scroll the track to the selected variant's photo, if the gallery has it. */
-  private scrollToSelection(): void {
-    const el = this.trackRef()?.nativeElement;
-    if (!el) return;
+  /**
+   * Move the gallery onto the chosen variant's photo.
+   *
+   * Sets `shotIndex` directly rather than only scrolling: at desktop the swipe
+   * track is hidden and the rail plus `shotIndex` are what drive the main image,
+   * so scrolling alone would leave the picture on the old colour. The scroll is
+   * then applied only when the track is actually on screen (mobile), which
+   * `offsetParent` reports -- it is null for a display:none element.
+   */
+  private showSelectedShot(): void {
     const index = this.selectionAnchor();
     if (index === null || index < 0) return;
-    el.scrollTo({ left: el.clientWidth * index, behavior: 'smooth' });
+    this.shotIndex.set(index);
+    const el = this.trackRef()?.nativeElement;
+    if (el && el.offsetParent !== null) {
+      el.scrollTo({ left: el.clientWidth * index, behavior: 'smooth' });
+    }
+  }
+
+  /**
+   * Desktop: choose a photo from the rail. One signal drives both the rail and
+   * the main image, so they cannot disagree.
+   */
+  showShot(index: number): void {
+    if (index < 0 || index >= this.gallery().length) return;
+    this.shotIndex.set(index);
   }
 
   /** Keep the pill in step with the swipe. */
@@ -624,6 +719,31 @@ export class ProductPage implements OnInit {
     const full = Math.round(avg);
     return '★'.repeat(full) + '☆'.repeat(5 - full);
   }
+
+  /**
+   * How many reviews carry each star value, 5 down to 1, as a share of the
+   * reviews actually held.
+   *
+   * Counted from the review rows themselves rather than a separate endpoint
+   * summary, so the bars and the average can never disagree -- both read the
+   * same array. A rating is clamped into 1..5 because the field is free-form
+   * and a 0 or a 6 would otherwise fall off the end of the list and quietly
+   * shrink the total the percentages are taken from.
+   */
+  readonly ratingBreakdown = computed(() => {
+    const rows = this.reviews();
+    const total = rows.length;
+    const counts = [0, 0, 0, 0, 0];
+    for (const r of rows) {
+      const s = Math.min(5, Math.max(1, Math.round(r.rating)));
+      counts[s - 1]++;
+    }
+    return [5, 4, 3, 2, 1].map((stars, i) => ({
+      stars,
+      count: counts[4 - i],
+      percent: total ? (counts[4 - i] / total) * 100 : 0,
+    }));
+  });
 
   sizeSoldOut(size: string): boolean {
     const rows = (this.product()?.variants ?? []).filter((v) => v.size === size);
