@@ -8,7 +8,15 @@ import { LandingPage } from './pages/landing.page';
  * sitting on top of its budget.
  */
 export const routes: Routes = [
-  { path: '', component: LandingPage, title: 'SEENTAIR: Streetwear' },
+  {
+    path: '',
+    component: LandingPage,
+    title: 'SEENTAIR: Streetwear',
+    // The campaign carousel belongs to the landing page only. Declaring it here
+    // rather than in the shell is what stops it appearing above the cart,
+    // checkout, account, order-tracking and policy screens.
+    data: { hero: true },
+  },
   {
     path: 'shop',
     loadComponent: () => import('./pages/shop.page').then((m) => m.ShopPage),

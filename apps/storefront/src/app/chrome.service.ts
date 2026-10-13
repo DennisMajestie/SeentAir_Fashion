@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { NavigationEnd, Router } from '@angular/router';
+import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 
 /**
@@ -26,20 +26,43 @@ export class ChromeService {
 
   readonly immersive = computed(() => this.isImmersive(this.url()));
 
+  /**
+   * Whether this route wants the campaign carousel.
+   *
+   * Opt-in per route, and today only the landing page claims it. The carousel
+   * was previously part of the shell, which put a four-slide promo band above
+   * the cart, checkout, account, order-tracking and policy screens -- pages
+   * where a shopper is part-way through something and a moving banner is noise
+   * that costs them a scroll.
+   *
+   * A getter rather than a computed on purpose: `routerState.snapshot` is not
+   * reactive, so a computed would only re-evaluate when the url signal actually
+   * changed -- and on the landing page it never does ('/' to '/'), leaving the
+   * carousel permanently switched off there.
+   */
+  hero(): boolean {
+    return this.routeFlag('hero');
+  }
+
   constructor() {
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe((e) => this.url.set(e.urlAfterRedirects));
   }
 
-  /**
-   * Reads `data.immersive` off the deepest activated route. Query strings and
-   * fragments (the shop is filtered with `?category=`) are ignored, so changing
-   * a filter never flips the page in or out of immersive.
-   */
-  private isImmersive(_url: string): boolean {
+  /** The deepest activated route. */
+  private get leaf(): ActivatedRouteSnapshot {
     let route = this.router.routerState.snapshot.root;
     while (route.firstChild) route = route.firstChild;
-    return route.data['immersive'] === true;
+    return route;
+  }
+
+  /** True when the current route declares `data[name] === true`. */
+  private routeFlag(name: string): boolean {
+    return this.leaf.data[name] === true;
+  }
+
+  private isImmersive(_url: string): boolean {
+    return this.routeFlag('immersive');
   }
 }

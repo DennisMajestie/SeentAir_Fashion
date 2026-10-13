@@ -778,6 +778,22 @@ body:has(.m-tabs) {
     letter-spacing: -0.01em;
   }
 }
+/* Desktop section headings. 14.5px was a phone-scale label sitting under a
+   desktop masthead; at desktop these are page-level headings and need to read
+   as such. The rail and the card grid stay on the shared 5-up count. */
+@media (min-width: 900px) {
+  .m-sec__head h2 {
+    font-size: clamp(1.5rem, 1.1rem + 1.2vw, 2.125rem);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+  }
+  /* "Shop by Category" duplicates the sticky category nav directly under it on
+     desktop. The mobile shell has no category row, so the rail stays there and
+     is hidden only where the nav already says the same thing. */
+.m-home .m-cats {
+    display: none;
+  }
+}
 .m-sec__more {
   display: flex;
   align-items: center;

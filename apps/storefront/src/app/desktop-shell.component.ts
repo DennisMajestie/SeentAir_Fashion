@@ -15,7 +15,9 @@ import { ChromeService } from './chrome.service';
  *
  * Immersive routes (shop, product) skip this shell entirely: on a product page
  * the header and a four-slide campaign carousel are exactly the chrome the
- * shopper does not want between them and the garment.
+ * shopper does not want between them and the garment. The carousel is opt-in
+ * per route (`data.hero`) and only the landing page claims it, so it never
+ * rides above the cart, checkout, account, order or policy screens.
  */
 @Component({
   selector: 'app-desktop-shell',
@@ -23,7 +25,9 @@ import { ChromeService } from './chrome.service';
   template: `
     @if (viewport.isDesktop() && !chrome.immersive()) {
       <app-desktop-header />
-      <app-hero-carousel />
+      @if (chrome.hero()) {
+        <app-hero-carousel />
+      }
     }
   `,
 })

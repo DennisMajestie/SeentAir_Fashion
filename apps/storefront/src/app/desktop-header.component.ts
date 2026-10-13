@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { environment } from '../environments/environment';
 import { ApiService } from './api.service';
 import { CartService } from './cart.service';
 import { CatalogueSearchService } from './catalogue-search.service';
+import { WishlistService } from './wishlist.service';
 import { productImage } from './product-image';
 
 /**
@@ -79,17 +81,78 @@ import { productImage } from './product-image';
         </div>
 
         <div class="d-actions">
+          <!-- Wishlist. Lives on the account page; the count is the real local
+               or synced list, the same figure the mobile shell shows. -->
           <a
             class="d-action"
             routerLink="/account"
-            [attr.aria-label]="accountLabel()"
+            fragment="wishlist"
+            [attr.aria-label]="wishLabel()"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <circle cx="12" cy="8" r="4" />
-              <path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" />
+              <path
+                d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.6-7 9-7 9z"
+              />
             </svg>
-            <span class="d-action__text">Account</span>
+            <span class="d-action__text">Saved</span>
+            @if (wish.count > 0) {
+              <span class="d-badge" aria-hidden="true">{{ wish.count }}</span>
+            }
           </a>
+
+          <!-- Account. The shop's own sign-in, plus the other three Seentair
+               surfaces, behind a real menu rather than three more icons. -->
+          <div class="d-acct">
+            <button
+              class="d-action d-action--btn"
+              type="button"
+              [attr.aria-expanded]="menuOpen()"
+              aria-haspopup="true"
+              aria-controls="d-acct-menu"
+              (click)="menuOpen.set(!menuOpen())"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" />
+              </svg>
+              <span class="d-action__text">Account</span>
+              <svg class="d-caret" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+
+            @if (menuOpen()) {
+              <div class="d-acct__menu" id="d-acct-menu" role="menu">
+                <a
+                  class="d-acct__item"
+                  role="menuitem"
+                  routerLink="/account"
+                  (click)="menuOpen.set(false)"
+                >
+                  <span class="d-acct__name">My account</span>
+                  <span class="d-acct__hint">Orders, wishlist, details</span>
+                </a>
+                @for (surface of surfaces; track surface.label) {
+                  <a
+                    class="d-acct__item"
+                    role="menuitem"
+                    [href]="surface.href"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    (click)="menuOpen.set(false)"
+                  >
+                    <span class="d-acct__name">
+                      {{ surface.label }}
+                      <svg class="d-acct__ext" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+                      </svg>
+                    </span>
+                    <span class="d-acct__hint">{{ surface.hint }}</span>
+                  </a>
+                }
+              </div>
+            }
+          </div>
 
           <a class="d-action" routerLink="/cart" [attr.aria-label]="cartLabel()">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -305,6 +368,71 @@ import { productImage } from './product-image';
       .d-action:hover {
         color: var(--primary);
       }
+      /* The account trigger is a button, so it needs the button reset the
+         anchor version does not: no underline, and a pointer. */
+      .d-action--btn {
+        border: 0;
+        background: none;
+        font: inherit;
+        cursor: pointer;
+      }
+      .d-action--btn:hover {
+        color: var(--primary);
+      }
+      .d-caret {
+        width: 14px !important;
+        height: 14px !important;
+      }
+
+      /* Account menu. Anchored to the trigger and right-aligned so it hangs
+         inside the viewport at the end of the header. */
+      .d-acct {
+        position: relative;
+      }
+      .d-acct__menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        z-index: 40;
+        min-width: 264px;
+        padding: 6px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-field);
+        box-shadow: 0 12px 32px rgb(0 0 0 / 0.14);
+      }
+      .d-acct__item {
+        display: block;
+        padding: 9px 10px;
+        border-radius: 8px;
+        text-decoration: none;
+        color: var(--ink);
+      }
+      .d-acct__item:hover,
+      .d-acct__item:focus-visible {
+        background: var(--container);
+      }
+      .d-acct__name {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: var(--type-body-md);
+        font-weight: 600;
+      }
+      .d-acct__ext {
+        width: 13px;
+        height: 13px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        opacity: 0.55;
+      }
+      .d-acct__hint {
+        display: block;
+        color: var(--muted);
+        font-size: var(--type-label-md);
+      }
 
       .d-badge {
         position: absolute;
@@ -400,7 +528,27 @@ import { productImage } from './product-image';
 export class DesktopHeaderComponent {
   readonly search = inject(CatalogueSearchService);
   readonly cart = inject(CartService);
+  readonly wish = inject(WishlistService);
   private readonly api = inject(ApiService);
+
+  /** Whether the account menu is open. Closed on navigation so a link that
+      moves the shopper somewhere else does not leave it hanging open. */
+  readonly menuOpen = signal(false);
+
+  /**
+   * The other three Seentair surfaces, from the same environment block the
+   * footer uses -- so the navbar and the footer can never point at different
+   * deployments.
+   */
+  readonly surfaces: ReadonlyArray<{ label: string; hint: string; href: string }> = [
+    { label: 'Wholesale portal', hint: 'Trade pricing and bulk orders', href: environment.wholesaleUrl },
+    { label: 'Partner portal', hint: 'Ownership and dividends', href: environment.partnerUrl },
+    { label: 'Admin dashboard', hint: 'Factory and operations', href: environment.adminUrl },
+  ];
+
+  readonly wishLabel = computed(() =>
+    this.wish.count === 1 ? 'Wishlist, 1 saved item' : `Wishlist, ${this.wish.count} saved items`,
+  );
 
   /** Template handle on the shared photo hierarchy (see product-image.ts). */
   readonly productImage = productImage;
