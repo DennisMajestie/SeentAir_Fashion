@@ -151,14 +151,20 @@ export class LandingPage implements OnInit {
   readonly ratings = signal<Map<string, Rating>>(new Map());
   readonly loading = signal(true);
 
-  /** New Arrivals: newest first, three across to match the reference row. */
+  /**
+   * New Arrivals: newest first, five across on desktop and three below.
+   *
+   * The count matches the row it sits in (see .m-row3). Five cards in a
+   * five-column row fills it; three would leave two dead columns and read as a
+   * broken row rather than a short one.
+   */
   readonly newArrivals = computed(() =>
-    [...this.all()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3),
+    [...this.all()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5),
   );
 
   /**
    * The Best Sellers rail: products the seller flagged `isBestseller`,
-   * three across to match New Arrivals.
+   * five across on desktop and three below, matching New Arrivals.
    *
    * Membership is the merchandising flag (products.is_bestseller), not a
    * computed sales figure -- the same label as the badge on the card. Within
@@ -177,7 +183,7 @@ export class LandingPage implements OnInit {
           reviews(b) - reviews(a) ||
           a.name.localeCompare(b.name),
       )
-      .slice(0, 3);
+      .slice(0, 5);
   });
 
   /** Orders that bought this product. Treated as unknown-but-zero when the field

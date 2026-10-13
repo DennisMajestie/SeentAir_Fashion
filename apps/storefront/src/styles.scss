@@ -120,7 +120,7 @@ main {
    the shared left edge. */
 @media (min-width: 1500px) {
   :root {
-    --wrap-max: 1680px;
+    --wrap-max: 1380px;
   }
 }
 /* A .wrap-col nested inside main must not indent a second time. */
@@ -844,11 +844,20 @@ body:has(.m-tabs) {
   white-space: nowrap;
 }
 
-/* New Arrivals and Best Sellers: three across at every width */
+/* New Arrivals and Best Sellers.
+   Five across on desktop, three below, matching the shop grid so a product
+   row is the same shape wherever it is shown. The step down sits at 899px for
+   the same reason the shop grid does: 900px is where the storefront already
+   decides it is desktop. `minmax(0, 1fr)` so five narrow cards cannot force a
+   scrollbar on a tight window. */
 .m-row3 {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 9px;
+  @media (min-width: 900px) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+  }
   > * {
     min-width: 0;
   }
