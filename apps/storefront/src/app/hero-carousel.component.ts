@@ -14,8 +14,8 @@ import { RouterLink } from '@angular/router';
  *
  * Each entry carries the image's real pixel dimensions so the browser can
  * reserve the right box before the bytes arrive. The files are used exactly as
- * they exist in `public/assets` -- not regenerated, resized, renamed, or
- * re-typeset -- and the copy baked into each image is the only copy of it.
+ * they exist in `public/assets/products` -- not regenerated, resized, renamed,
+ * or re-typeset -- and the copy baked into each image is the only copy of it.
  *
  * Alt text describes what is actually in each photograph (read from the files),
  * so a screen-reader user gets the offer rather than the filename.
@@ -31,32 +31,32 @@ interface Slide {
 
 const SLIDES: readonly Slide[] = [
   {
-    src: 'assets/ScentAir_Aba_Card_1.jpg',
-    alt: 'ScentAir premium streetwear in Aba: a black hoodie, white tee, cap, duffel and water bottle shown against an Aba street scene, with a “Shop now” call to action.',
+    src: 'assets/products/SeentAir Streetwear Redefined in Abuja-3.jpg',
+    alt: 'ScentAir “Streetwear, redefined — your everyday uniform”: a black hoodie and joggers with a cap and crossbody bag, styled on an overpass in Abuja at sunset, with a “Shop now” call to action.',
     link: '/shop',
-    width: 1024,
-    height: 450,
+    width: 2172,
+    height: 724,
   },
   {
-    src: 'assets/ScentAir_Aba_Card_2.jpg',
-    alt: 'ScentAir kids collection: a black hoodie and joggers, beige hoodie and trousers, a green varsity jacket, a white tee, sneakers and a cap, with a “Shop now” call to action.',
-    link: '/shop?category=Children 2-Piece Sets',
-    width: 1024,
-    height: 367,
+    src: 'assets/products/SeentAir Premium Streetwear Banner-4.jpg',
+    alt: 'ScentAir “Premium streetwear — everyday comfort”: a cream hoodie and joggers with a black cap and sling bag on a bench, with a “Shop now” call to action.',
+    link: '/shop',
+    width: 2191,
+    height: 718,
   },
   {
-    src: 'assets/ScentAir_Aba_Card_3.jpg',
-    alt: 'ScentAir men and women two-piece sets: a black zip jacket and joggers, a beige hoodie and trousers, sneakers and a cap, with a “Shop now” call to action.',
+    src: 'assets/products/SeentAir Two-Piece Set Lookbook-1.jpg',
+    alt: 'ScentAir “Two-piece sets — comfort, elevated”: a black zip hoodie and matching joggers laid out on a bed, with a “Shop now” call to action.',
     link: '/shop?category=2-Piece Sets',
-    width: 1024,
-    height: 355,
+    width: 2172,
+    height: 724,
   },
   {
-    src: 'assets/ScentAir_Aba_Card_4.jpg',
-    alt: 'ScentAir nightwear and loungewear: a black short-sleeve set, a white tee, grey sweatpants and a sleep mask laid out on a bed, with a “Shop now” call to action.',
-    link: '/shop?category=T-Shirts',
-    width: 1024,
-    height: 346,
+    src: 'assets/products/SeentAir Cozy Two-Piece Set-2.jpg',
+    alt: 'ScentAir “Two-piece hoodie sets — made for every day”: a grey zip hoodie and joggers styled on a bench beside a potted plant, with a “Shop now” call to action.',
+    link: '/shop?category=2-Piece Sets',
+    width: 2172,
+    height: 724,
   },
 ] as const;
 
@@ -79,11 +79,10 @@ const AUTOPLAY_MS = 6000;
  * the section on every slide change; fitting instead means all artwork is shown
  * whole, uncropped and unstretched, in a box that never moves.
  *
- * The box is as wide as the header and nav content. Because those four files are
- * all narrower than the box, `contain` leaves a gap either side of the artwork;
- * each slide therefore carries a blurred copy of its own banner underneath to
- * fill that gap with colour from the same photograph, so the shelf reads as full
- * without stretching or cropping anything.
+ * The box is as wide as the header and nav content, and the banner covers it
+ * edge to edge. Cover means a banner has to be drawn for the box's own ratio to
+ * avoid being cropped at the sides; see the note on the viewport rule for what
+ * that ratio is, because it moves with the window height.
  */
 @Component({
   selector: 'app-hero-carousel',
@@ -113,20 +112,6 @@ const AUTOPLAY_MS = 6000;
               [attr.aria-hidden]="i === current() ? null : 'true'"
               [attr.inert]="i === current() ? null : ''"
             >
-              <!-- Blurred copy of the same file, filling the letterbox either
-                   side of the artwork. Decorative and hidden from assistive
-                   tech. It reuses the exact same src, so the browser fetches the
-                   banner once and serves the second element from cache -- which
-                   is also why it is a real <img> with a loading attribute rather
-                   than a CSS background-image, which would fetch eagerly and
-                   defeat the lazy loading the sharp images rely on. -->
-              <img
-                class="hero-carousel__backdrop"
-                [src]="slide.src"
-                alt=""
-                aria-hidden="true"
-                [loading]="i === 0 ? 'eager' : 'lazy'"
-              />
               @if (slide.link) {
                 <a [routerLink]="slide.link" tabindex="-1">
                   <img
@@ -233,14 +218,16 @@ const AUTOPLAY_MS = 6000;
            deterministic: with an auto width, the ratio and the max-height below
            fed back into each other and the browser derived the WIDTH from the
            clamped height, so a 306px-tall box was only 783px wide regardless of
-           how much room it had. With the width definite, the aspect-ratio supplies
-           the height and max-height only clamps it, which reproduces the
-           previous heights exactly: min(34vh, content width / 2.56). */
+           how much room it had. */
         width: 100%;
-        aspect-ratio: 1024 / 400;
-        /* On short windows an aspect-ratio box can still be too tall; cap it so
-           the hero never eats more than about a third of the viewport. */
-        max-height: 34vh;
+        /* Locked to the banners' own 3:1 ratio, so cover never crops them and
+           every one of the four fills the box exactly. The cap that used to sit
+           here (34vh) is what made the ratio move between 2.56:1 and 4.9:1
+           depending on window height, which no single image could match; it is
+           now generous enough that it only engages on a genuinely short window,
+           as a guard rail rather than as a sizing rule. */
+        aspect-ratio: 3 / 1;
+        max-height: 50vh;
       }
 
       .hero-carousel__track {
@@ -254,9 +241,9 @@ const AUTOPLAY_MS = 6000;
       }
 
       .hero-carousel__slide {
-        /* relative so the backdrop can anchor to this slide; hidden so the
-           backdrop cannot bleed into a neighbouring slide while the track
-           slides. */
+        /* relative + hidden so a banner drawn slightly wider than the box (any
+           edge crop from cover) cannot bleed into a neighbouring slide while the
+           track slides. */
         position: relative;
         overflow: hidden;
         flex: 0 0 100%;
@@ -267,36 +254,20 @@ const AUTOPLAY_MS = 6000;
       .hero-carousel__slide a {
         display: block;
         height: 100%;
-        /* The link wraps the sharp image only, but it still has to sit above
-           the backdrop. */
-        position: relative;
-      }
-
-      /* Fills the letterbox either side of a contain-fitted banner. Blurred and
-         darkened so it reads as depth rather than as a second, competing image,
-         and scaled just past the edges so the blur's own soft border is never
-         visible as a hard line. */
-      .hero-carousel__backdrop {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        filter: blur(24px) brightness(0.7);
-        transform: scale(1.1);
-        pointer-events: none;
       }
 
       .hero-carousel__art {
-        /* Above the backdrop. Position (not z-index alone) so the stacking
-           order is explicit and does not depend on DOM order. */
+        /* Position (not z-index alone) so the stacking order is explicit and
+           does not depend on DOM order. */
         position: relative;
         display: block;
         width: 100%;
         height: 100%;
-        /* contain, never cover: every banner is shown whole, with its own
-           proportions intact. cover would crop the shortest of the four. */
-        object-fit: contain;
+        /* cover, so a banner drawn to the box's own ratio fills it edge to edge
+           with no letterbox and therefore no backdrop needed. A banner that does
+           not match the ratio exactly is cropped at the edges rather than
+           squashed; object-position is centred so that crop is symmetric. */
+        object-fit: cover;
         object-position: center;
       }
 
