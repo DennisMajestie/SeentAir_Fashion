@@ -86,9 +86,18 @@ describe('AccountPage sign-in', () => {
   });
 
   describe('brand mark', () => {
-    it('does not duplicate the logo already shown in the header', () => {
+    // This used to assert there was NO logo in the card, on the grounds that the
+    // site header already shows one. The redesign spec puts the logo back at the
+    // top of the card, so that is no longer true. Note the old assertion
+    // (`img.auth-logo` is null) would still have passed while the logo was
+    // present, purely because the class moved onto the wrapping anchor -- so it
+    // was green for the wrong reason. Asserting the real element instead.
+    it('shows the brand logo at the top of the card, linking home', () => {
       setUp();
-      expect(element.querySelector('img.auth-logo')).toBeNull();
+      const logo = element.querySelector<HTMLAnchorElement>('a.auth-logo');
+      expect(logo).toBeTruthy();
+      expect(logo!.getAttribute('href')).toBe('/');
+      expect(logo!.querySelector('img')?.getAttribute('src')).toBe('assets/logo-v1.png');
     });
   });
 
@@ -99,30 +108,31 @@ describe('AccountPage sign-in', () => {
       expect(element.querySelector('.auth-tab')).toBeNull();
     });
 
-    it('offers "Create one" instead of a tab', () => {
-      setUp();
-      expect(text()).toContain("Don't have an account?");
-      expect(text()).toContain('Create one');
-    });
+it('offers "Sign up" instead of a tab', () => {
+        setUp();
+        expect(text()).toContain("Don't have an account?");
+        expect(text()).toContain('Sign up');
+      });
 
-    it('moves to registration and back again', () => {
-      setUp();
-      const buttons = () =>
-        Array.from(element.querySelectorAll<HTMLButtonElement>('button.link-inline'));
-      buttons()
-        .find((b) => b.textContent?.trim() === 'Create one')!
-        .click();
-      fixture.detectChanges();
-      expect(component.mode()).toBe('register');
-      expect(text()).toContain('Create your account.');
+      it('moves to registration and back again', () => {
+        setUp();
+        const buttons = () =>
+          Array.from(element.querySelectorAll<HTMLButtonElement>('button.link-inline'));
+        buttons()
+          .find((b) => b.textContent?.trim() === 'Sign up')!
+          .click();
+        fixture.detectChanges();
+        expect(component.mode()).toBe('register');
+        expect(text()).toContain('Sign up');
+        expect(text()).toContain('One account for orders and returns');
 
-      buttons()
-        .find((b) => b.textContent?.trim() === 'Sign in')!
-        .click();
-      fixture.detectChanges();
-      expect(component.mode()).toBe('signin');
-      expect(text()).toContain('Welcome back.');
-    });
+        buttons()
+          .find((b) => b.textContent?.trim() === 'Sign in')!
+          .click();
+        fixture.detectChanges();
+        expect(component.mode()).toBe('signin');
+        expect(text()).toContain('Access your account');
+      });
   });
 
   describe('password visibility', () => {
@@ -231,11 +241,11 @@ describe('AccountPage sign-in', () => {
       expect(text()).toContain('Enter your email address first');
     });
 
-    it('is reachable as its own control beside the checkbox', () => {
-      setUp();
-      const forgot = element.querySelector<HTMLButtonElement>('.auth-forgot')!;
-      expect(forgot.textContent?.trim()).toBe('Forgot password');
-    });
+it('is reachable as its own control beside the checkbox', () => {
+        setUp();
+        const forgot = element.querySelector<HTMLButtonElement>('.auth-forgot')!;
+        expect(forgot.textContent?.trim()).toBe('Forgot Password?');
+      });
   });
 
   describe('fine print', () => {
