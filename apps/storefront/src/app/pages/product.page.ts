@@ -163,6 +163,16 @@ interface GalleryShot {
           </button>
         }
 
+        <!-- One line of plain description, immediately under the name: it says what
+             the piece actually is ("Men's underwear with contrast waistband"), which
+             is what a shopper looks for at this point. It used to sit below the
+             price/size block, where the shopper had to read the commercial details
+             before learning what they were looking at. Guarded because the field is
+             nullable and an empty <p> would still contribute its margins. -->
+        @if (p.description) {
+          <p class="p-desc">{{ p.description }}</p>
+        }
+
         <!-- Key details: rating, price, colour, size in one compact block under the name. -->
         <div class="p-key-details">
           <!-- Rating. Every part is conditional on data that exists. -->
@@ -262,8 +272,6 @@ interface GalleryShot {
             </div>
           }
         </div>
-
-        <p class="p-desc">{{ p.description }}</p>
         </div>
 
         <!-- Everything the desktop purchase card needs. The wrapper is display:contents

@@ -5843,8 +5843,10 @@ editing the shared .page-kicker, which other pages also use. */
     flex-direction: column;
     gap: var(--space-12);
   }
-  /* Title to rating: the only gap in the info column that .p-info itself owns.
-     Same token the other info sections use, so the rhythm reads as one scale. */
+  /* The only gap in the info column that .p-info itself owns. It now separates the
+     one-line description from the rating block rather than the title from the
+     rating, since the description was moved directly under the name. Same token
+     the other info sections use, so the rhythm still reads as one scale. */
   .p-info > .p-key-details {
     margin-top: var(--space-12);
   }
