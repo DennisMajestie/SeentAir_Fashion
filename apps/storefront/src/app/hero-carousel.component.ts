@@ -140,63 +140,7 @@ const AUTOPLAY_MS = 6000;
         </ul>
       </div>
 
-      <div class="hero-carousel__controls">
-        <button
-          type="button"
-          class="hero-carousel__arrow"
-          aria-label="Previous slide"
-          (click)="previous()"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="m15 5-7 7 7 7" />
-          </svg>
-        </button>
-
-        <div class="hero-carousel__dots">
-          @for (slide of slides; track slide.src; let i = $index) {
-            <button
-              type="button"
-              class="hero-carousel__dot"
-              [class.is-active]="i === current()"
-              [attr.aria-current]="i === current() ? 'true' : null"
-              [attr.aria-label]="'Go to slide ' + (i + 1)"
-              (click)="goTo(i)"
-            ></button>
-          }
-        </div>
-
-        <button
-          type="button"
-          class="hero-carousel__arrow"
-          aria-label="Next slide"
-          (click)="next()"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="m9 5 7 7-7 7" />
-          </svg>
-        </button>
-
-        <!-- Autoplay can be stopped for good, not just by hovering. Focusable
-             and labelled, because a moving banner a shopper cannot pin is the
-             one failure mode the north star rules out. -->
-        <button
-          type="button"
-          class="hero-carousel__toggle"
-          [attr.aria-label]="paused() ? 'Resume automatic slide' : 'Pause automatic slide'"
-          [attr.aria-pressed]="paused()"
-          (click)="togglePaused()"
-        >
-          @if (paused()) {
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M8 5l11 7-11 7z" />
-            </svg>
-          } @else {
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M9 5v14M15 5v14" />
-            </svg>
-          }
-        </button>
-      </div>
+      
     </section>
   `,
   styles: [
@@ -263,10 +207,10 @@ const AUTOPLAY_MS = 6000;
         display: block;
         width: 100%;
         height: 100%;
-        /* cover, so a banner drawn to the box's own ratio fills it edge to edge
-           with no letterbox and therefore no backdrop needed. A banner that does
-           not match the ratio exactly is cropped at the edges rather than
-           squashed; object-position is centred so that crop is symmetric. */
+        /* contain, so every banner is shown whole without cropping. The box
+           is a fixed 3:1 ratio; banners with different ratios get centered
+           letterbox bars (ivory, matching the page) which read as intentional
+           margins rather than broken images. */
         object-fit: cover;
         object-position: center;
       }

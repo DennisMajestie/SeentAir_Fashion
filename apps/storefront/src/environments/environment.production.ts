@@ -6,8 +6,8 @@
 export const environment = {
   production: true,
   apiBase: 'https://seentair-backend.onrender.com/api/v1',
-  /** Wholesale portal on Vercel, update to the actual project URL after deploy. */
-  wholesaleUrl: 'https://seentair-wholesale.vercel.app',
+  /** Distributors portal on Vercel, update to the actual project URL after deploy. */
+  distributorsUrl: 'https://seentair-wholesale.vercel.app',
   /** Admin/operations dashboard on Vercel. */
   adminUrl: 'https://admin-dashboard-chi-eight-15.vercel.app',
   /** Partner/investor portal on Vercel. */

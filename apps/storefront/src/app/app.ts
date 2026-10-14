@@ -11,6 +11,14 @@ import { ChromeService } from './chrome.service';
 
 type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
 
+interface ServiceTile {
+  label: string;
+  icon: ServiceIcon;
+  link: string;
+  external?: boolean;
+  fragment?: string;
+}
+
 @Component({
   selector: 'app-root',
   // A class on the host rather than a wrapper element: `body:has(.m-tabs)`
@@ -52,28 +60,38 @@ type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
       <!-- Store promises. Lives in <main> so the row scrolls with the page
            instead of riding over the sticky dark header. Suppressed on immersive
            routes, where it pushed the products the shopper came for down the
-           page. -->
-      @if (!chrome.immersive()) {
+           page, and on any route whose data sets promises to false -- the
+           product page keeps the header but drops the promo tiles. -->
+      @if (!chrome.immersive() && chrome.promises()) {
         <div class="m-services" aria-label="Store promises">
           @for (s of services; track s.label) {
             <div class="m-svc">
-              <span class="m-svc__ic" aria-hidden="true">
-                @switch (s.icon) {
-                  @case ('delivery') {
-                    <svg lucideTruck />
+              <a
+                class="m-svc__link"
+                [href]="s.external ? s.link : null"
+                [routerLink]="s.external ? null : s.link"
+                [fragment]="s.fragment"
+                [attr.target]="s.external ? '_blank' : null"
+                [attr.rel]="s.external ? 'noopener noreferrer' : null"
+              >
+                <span class="m-svc__ic" aria-hidden="true">
+                  @switch (s.icon) {
+                    @case ('delivery') {
+                      <svg lucideTruck />
+                    }
+                    @case ('quality') {
+                      <svg lucideShieldCheck />
+                    }
+                    @case ('returns') {
+                      <svg lucideShoppingBag />
+                    }
+                    @case ('support') {
+                      <svg lucideHeadphones />
+                    }
                   }
-                  @case ('quality') {
-                    <svg lucideShieldCheck />
-                  }
-                  @case ('returns') {
-                    <svg lucideShoppingBag />
-                  }
-                  @case ('support') {
-                    <svg lucideHeadphones />
-                  }
-                }
-              </span>
-              <span class="m-svc__label">{{ s.label }}</span>
+                </span>
+                <span class="m-svc__label">{{ s.label }}</span>
+              </a>
             </div>
           }
         </div>
@@ -98,30 +116,12 @@ type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
             <a routerLink="/shop">Drop 04: Harmattan</a>
             <a routerLink="/shop">Studio Essentials</a>
           </nav>
-          <nav class="footer-col" aria-label="Help">
+<nav class="footer-col" aria-label="Help">
             <h4>Help</h4>
-            <a routerLink="/policies" fragment="shipping">Shipping &amp; dispatch</a>
+            <a routerLink="/policies" fragment="shipping">Shipping & dispatch</a>
             <a routerLink="/policies" fragment="returns">Returns: 12h window</a>
             <a routerLink="/policies" fragment="payments">Payments</a>
             <a routerLink="/policies" fragment="contact">Contact us</a>
-          </nav>
-          <nav class="footer-col" aria-label="Account">
-            <h4>Account</h4>
-            <a routerLink="/account">Sign in / register</a>
-            <a routerLink="/account">Your orders</a>
-            <a routerLink="/cart">Cart</a>
-          </nav>
-          <nav class="footer-col" aria-label="Business">
-            <h4>Business</h4>
-            <a [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer"
-              >Wholesale portal</a
-            >
-            <a [href]="environment.adminUrl" target="_blank" rel="noopener noreferrer"
-              >Admin dashboard</a
-            >
-            <a [href]="environment.partnerUrl" target="_blank" rel="noopener noreferrer"
-              >Partner portal</a
-            >
           </nav>
         </div>
         <div class="footer-legal">
@@ -146,19 +146,18 @@ export class App {
   readonly chrome = inject(ChromeService);
 
   /**
-   * Store promises, worded as in the approved reference. The last tile reads
-   * "24/7 Support" by confirmed client decision. Note that nothing in
-   * configuration backs the hours yet: environment.supportWhatsapp and
-   * environment.supportHours are both empty, so a real support channel still
-   * has to be set up behind this label.
+   * Store promises, updated per client direction:
+   * 1. Wholesale Deals → links to distributors portal
+   * 2. Distributors → application form (for now)
+   * 3. Special Request / Pre-order → covers missing sizes + missing logistics/waybill fee
+   * 4. Contact → Live Chat, WhatsApp, Email (existing /policies#contact)
    *
-   * Icons come from Lucide (@lucide/angular), the Angular port of the same icon
-   * set lucide-react provides: Truck, ShieldCheck, ShoppingBag and Headphones.
+   * Icons come from Lucide (@lucide/angular): Truck, ShieldCheck, ShoppingBag, Headphones.
    */
-  readonly services: ReadonlyArray<{ label: string; icon: ServiceIcon }> = [
-    { label: 'Fast Delivery', icon: 'delivery' },
-    { label: 'Quality Products', icon: 'quality' },
-    { label: 'Easy Returns', icon: 'returns' },
-    { label: '24/7 Support', icon: 'support' },
+  readonly services: ReadonlyArray<ServiceTile> = [
+    { label: 'Wholesale Deals', icon: 'delivery', link: environment.distributorsUrl, external: true },
+    { label: 'Distributors', icon: 'quality', link: environment.distributorsUrl, external: true },
+    { label: 'Pre-order', icon: 'returns', link: environment.distributorsUrl + '/custom', external: true },
+    { label: 'Contact', icon: 'support', link: '/policies', fragment: 'contact' },
   ];
 }

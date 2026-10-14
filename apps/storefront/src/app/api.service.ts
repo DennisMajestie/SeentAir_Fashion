@@ -61,6 +61,12 @@ export interface Product {
   salePercent?: number | null;
   saleEndsAt?: string | null;
   salePrice?: number | null;
+  /**
+   * Audience segment for filtering. Derived from category on the API side;
+   * optional here so older API builds don't break. Consumers should treat
+   * missing as "unclassified".
+   */
+  segment?: string | null;
 }
 
 export interface Order {
@@ -412,5 +418,20 @@ export class ApiService {
       rating,
       comment: comment || undefined,
     });
+  }
+
+  createSpecialRequest(payload: {
+    type: 'size' | 'logistics' | 'preorder';
+    productName: string;
+    variant?: string;
+    desiredSize?: string;
+    destination?: string;
+    quantity: number;
+    contact: string;
+    note?: string;
+    productId?: string;
+    variantId?: string;
+  }): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${API_BASE}/special-requests`, payload);
   }
 }

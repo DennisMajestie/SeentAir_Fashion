@@ -179,7 +179,12 @@ reviews: (id: string) =>
     const headings = [...element.querySelectorAll('.m-sec__head h2')].map((n) =>
       n.textContent?.trim(),
     );
-    expect(headings).toEqual(['Shop by Category', 'New Arrivals', 'Best Sellers']);
+    expect(headings).toEqual([
+      'Shop by Category',
+      'New Arrivals',
+      'Best Sellers',
+      'Suggested for You',
+    ]);
   });
 
   it('builds the category rail from category values the catalogue really has', async () => {

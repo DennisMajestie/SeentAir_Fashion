@@ -29,8 +29,13 @@ export const routes: Routes = [
     path: 'product/:id',
     loadComponent: () => import('./pages/product.page').then((m) => m.ProductPage),
     title: 'Seentair: Product',
-    // Same treatment as the shop grid.
-    data: { immersive: true },
+    // Not immersive: the product page keeps the full site chrome (mobile or
+    // desktop header plus the promises row) so a shopper can reach the cart,
+    // account and search without going back first. It no longer renders its
+    // own app-back-header bar.
+    // ...but it opts out of the promises tiles: a shopper reading a product is
+    // already looking at what those four links advertise.
+    data: { promises: false },
   },
   {
     path: 'cart',

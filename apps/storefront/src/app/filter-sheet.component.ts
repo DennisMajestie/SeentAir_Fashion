@@ -23,7 +23,7 @@ import {
   priceBands,
 } from './shop-filters';
 
-type SectionId = 'size' | 'colour' | 'collection' | 'price';
+type SectionId = 'size' | 'colour' | 'collection' | 'price' | 'segment';
 
 /**
  * The shop's filter bottom sheet.
@@ -147,6 +147,22 @@ type SectionId = 'size' | 'colour' | 'collection' | 'price';
                     }
                   </div>
                 }
+                @case ('segment') {
+                  <div class="sheet-pills">
+                    @for (seg of segments(); track seg) {
+                      <button
+                        class="size-chip sheet-pill"
+                        type="button"
+                        [attr.aria-pressed]="pending().segment === seg"
+                        [class.active]="pending().segment === seg"
+                        (click)="toggle('segment', seg)"
+                      >
+                        {{ segmentLabel(seg) }}
+                        <span class="sheet-count">{{ countFor('segment', seg) }}</span>
+                      </button>
+                    }
+                  </div>
+                }
                 @case ('collection') {
                   <div class="sheet-pills">
                     @for (coll of collections(); track coll) {
@@ -222,6 +238,7 @@ export class FilterSheetComponent {
   readonly sections: Array<{ id: SectionId; label: string }> = [
     { id: 'size', label: 'Size' },
     { id: 'colour', label: 'Colour' },
+    { id: 'segment', label: 'Audience' },
     { id: 'collection', label: 'Collection' },
     { id: 'price', label: 'Price' },
   ];
@@ -230,6 +247,7 @@ export class FilterSheetComponent {
   private readonly open = signal<Record<SectionId, boolean>>({
     size: true,
     colour: true,
+    segment: false,
     collection: false,
     price: false,
   });
@@ -284,6 +302,20 @@ export class FilterSheetComponent {
 
   readonly bands = computed(() => priceBands(this.products()));
 
+  readonly segments = computed(() => {
+    const order = ['men', 'women', 'children', 'unisex-children', 'unisex-adult', 'newborn'];
+    const set = new Set(
+      this.products()
+        .map((p) => p.segment)
+        .filter((s): s is string => typeof s === 'string' && s.length > 0),
+    );
+    return [...set].sort((a, b) => {
+      const ia = order.indexOf(a);
+      const ib = order.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+    });
+  });
+
   /** What the footer button commits to. Same predicate the grid uses. */
   readonly count = computed(
     () => this.products().filter((p) => matchesSheetFilters(p, this.pending())).length,
@@ -299,10 +331,23 @@ export class FilterSheetComponent {
     return SWATCHES[colour.toLowerCase()] ?? '#8a8378';
   }
 
+  segmentLabel(seg: string): string {
+    const labels: Record<string, string> = {
+      'men': 'Men',
+      'women': 'Women',
+      'children': 'Children',
+      'unisex-children': 'Unisex Children',
+      'unisex-adult': 'Unisex Adult',
+      'newborn': 'New-born',
+    };
+    return labels[seg] ?? seg;
+  }
+
   summaryOf(id: SectionId): string | null {
     const f = this.pending();
     if (id === 'size') return f.size;
     if (id === 'colour') return f.colour;
+    if (id === 'segment') return f.segment ? this.segmentLabel(f.segment) : null;
     if (id === 'collection') return f.collection;
     if (f.maxPrice === null) return null;
     return this.bands().find((b) => b.max === f.maxPrice)?.label ?? null;

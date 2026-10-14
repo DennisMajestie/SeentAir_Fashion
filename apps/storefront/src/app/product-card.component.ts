@@ -283,8 +283,6 @@ export class ProductCardComponent implements OnDestroy {
     return ageDays <= 30 ? 'New' : null;
   }
   starString(avg: number): string {
-    // Clamped because a stray average must never overflow the five-glyph row:
-    // a negative or >5 figure would otherwise crash String.repeat.
     const full = Math.max(0, Math.min(5, Math.round(avg)));
     return '★'.repeat(full) + '☆'.repeat(5 - full);
   }

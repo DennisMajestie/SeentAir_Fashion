@@ -65,7 +65,12 @@ describe('Phase 1 mobile shell', () => {
       const labels = [
         ...(app.nativeElement as HTMLElement).querySelectorAll('.m-svc__label'),
       ].map((n) => n.textContent?.trim());
-      expect(labels).toEqual(['Fast Delivery', 'Quality Products', 'Easy Returns', '24/7 Support']);
+      expect(labels).toEqual([
+        'Wholesale Deals',
+        'Distributors',
+        'Pre-order',
+        'Contact',
+      ]);
     });
 
     it('uses the exact search placeholder from the reference', () => {

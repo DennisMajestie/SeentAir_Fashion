@@ -18,7 +18,11 @@ export interface Offer {
   endsAt: string | null;
 }
 
-type SaleFields = Pick<Product, 'salePercent' | 'saleEndsAt' | 'salePrice'>;
+interface SaleFields {
+  salePercent: number | null;
+  saleEndsAt: string | null;
+  salePrice: number | null;
+}
 
 /**
  * The sale in force for a product, or null.
@@ -29,7 +33,7 @@ type SaleFields = Pick<Product, 'salePercent' | 'saleEndsAt' | 'salePrice'>;
  * before it finished, without waiting for a reload.
  */
 export function activeSale(
-  p: SaleFields,
+  p: Product,
   now: number = Date.now(),
 ): { percent: number; endsAt: string } | null {
   if (p.salePrice === null || p.salePrice === undefined) return null;

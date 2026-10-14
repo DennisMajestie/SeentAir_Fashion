@@ -22,7 +22,6 @@ import { CartService } from '../cart.service';
 import { NO_REVIEWS_COPY, ProductCardComponent } from '../product-card.component';
 import { SeoService } from '../seo.service';
 import { WishlistService } from '../wishlist.service';
-import { BackHeaderComponent } from '../back-header.component';
 
 /** One photo in the gallery, with the colour it belongs to. */
 interface GalleryShot {
@@ -53,13 +52,11 @@ interface GalleryShot {
     RouterLink,
     SaleCountdownComponent,
     ProductCardComponent,
-    BackHeaderComponent,
   ],
   template: `
     @if (product(); as p) {
-      <!-- Compact header. Shared with the shop grid so both immersive pages get
-           the same bar; see BackHeaderComponent. -->
-      <app-back-header />
+      <!-- No app-back-header here: the PDP is not an immersive route any more, so
+           the site header (with its own back affordance) frames the page. -->
 
       <!-- Gallery. Full-bleed, one photo at a time, swiped with a finger. -->
       <div class="p-gal">
@@ -140,7 +137,17 @@ interface GalleryShot {
         </button>
       </div>
 
-      <div class="p-body">
+<div class="p-body">
+        <!--
+          The info column, as ONE grid cell.
+          Without this wrapper the title, key details and description are separate
+          grid items in .p-body, and the sticky purchase card is pinned to row 1 --
+          so the title shares a row with the ~180px card, that row grows to the
+          card's height, and the next auto-placed item (the rating row) is pushed
+          below the card. That was the 148px hole. As a single cell the column
+          flows on its own and never depends on the card's height or the gallery's.
+        -->
+        <div class="p-info">
         <!-- Title, clamped to two lines, expandable to the full name. -->
         <h1 class="p-title" [class.is-open]="titleOpen()">{{ p.name }}</h1>
         @if (titleLong()) {
@@ -152,106 +159,110 @@ interface GalleryShot {
           </button>
         }
 
-        <!-- Rating. Every part is conditional on data that exists. -->
-        @if (avgRating() > 0 || soldCount() !== null) {
-          <div class="p-rating">
-            @if (avgRating() > 0) {
-              <span class="p-stars" [attr.aria-label]="avgRating() + ' out of 5'">
-                {{ starString(avgRating()) }}
-              </span>
-              <span class="p-rating__num">{{ avgRating() | number: '1.1-1' }}</span>
-              <a class="p-rating__link" href="#p-reviews">
-                {{ reviews().length | number }} {{ reviews().length === 1 ? 'Review' : 'Reviews' }}
-              </a>
-            }
-            @if (soldCount() !== null) {
-              <span class="p-rating__div" aria-hidden="true"></span>
-              <span class="p-rating__sold">{{ soldCount()! | number }} sold</span>
-            }
-          </div>
-        }
-
-        <!-- Price. A plain card: this catalogue has no promo code or coin
-             discount to name, so no label is invented for one. -->
-        <div class="p-price" [class.is-sale]="offer().was !== null">
-          <div class="p-price__row">
-            <span class="p-price__now">₦{{ currentPrice() | number: '1.0-2' }}</span>
-            @if (offer(); as o) {
-              @if (o.percent !== null) {
-                <span class="p-price__off">−{{ o.percent }}%</span>
+        <!-- Key details: rating, price, colour, size in one compact block under the name. -->
+        <div class="p-key-details">
+          <!-- Rating. Every part is conditional on data that exists. -->
+          @if (avgRating() > 0 || soldCount() !== null) {
+            <div class="p-rating">
+              @if (avgRating() > 0) {
+                <span class="p-stars" [attr.aria-label]="avgRating() + ' out of 5'">
+                  {{ starString(avgRating()) }}
+                </span>
+                <span class="p-rating__num">{{ avgRating() | number: '1.1-1' }}</span>
+                <a class="p-rating__link" href="#p-reviews">
+                  {{ reviews().length | number }} {{ reviews().length === 1 ? 'Review' : 'Reviews' }}
+                </a>
               }
+              @if (soldCount() !== null) {
+                <span class="p-rating__div" aria-hidden="true"></span>
+                <span class="p-rating__sold">{{ soldCount()! | number }} sold</span>
+              }
+            </div>
+          }
+
+          <!-- Price. A plain card: this catalogue has no promo code or coin
+               discount to name, so no label is invented for one. -->
+          <div class="p-price" [class.is-sale]="offer().was !== null">
+            <div class="p-price__row">
+              <span class="p-price__now">₦{{ currentPrice() | number: '1.0-2' }}</span>
+              @if (offer(); as o) {
+                @if (o.percent !== null) {
+                  <span class="p-price__off">−{{ o.percent }}%</span>
+                }
+              }
+            </div>
+            @if (offer().was !== null) {
+              <p class="p-price__was">
+                 ₦{{ offer().was! | number: '1.0-2' }}
+              </p>
+            }
+            @if (offer().endsAt; as end) {
+              <p class="p-price__ends">
+                <span class="sale-dot" aria-hidden="true"></span>
+                <span class="sr-only">Sale ends {{ end | date: 'd MMM, HH:mm' }}.</span>
+                <span aria-hidden="true">
+                  Ends in <app-sale-countdown [endsAt]="end" (ended)="saleEnded()" />
+                </span>
+              </p>
             }
           </div>
-          @if (offer().was !== null) {
-            <p class="p-price__was">
-              <s>₦{{ offer().was! | number: '1.0-2' }}</s>
-            </p>
+
+          <!-- Colour picker. Thumbnails come from the variants' own photos, so a
+               swatch shows the actual colour rather than a word. -->
+          @if (colourShots().length > 0) {
+            <div class="p-opt">
+              <p class="p-opt__label">
+                Colour<span class="p-opt__val">: {{ colour() || '—' }}</span>
+              </p>
+              <div class="p-swatches" role="radiogroup" aria-label="Colour">
+                @for (shot of colourShots(); track shot.colour) {
+                  <button
+                    class="p-swatch"
+                    type="button"
+                    role="radio"
+                    [class.is-sel]="colour() === shot.colour"
+                    [class.is-out]="colourSoldOut(shot.colour!)"
+                    [attr.aria-checked]="colour() === shot.colour"
+                    [attr.aria-label]="shot.colour!"
+                    [disabled]="colourSoldOut(shot.colour!)"
+                    (click)="pickColour(shot.colour)"
+                  >
+                    <img [src]="shot.src" [alt]="shot.colour!" />
+                  </button>
+                }
+              </div>
+            </div>
           }
-          @if (offer().endsAt; as end) {
-            <p class="p-price__ends">
-              <span class="sale-dot" aria-hidden="true"></span>
-              <span class="sr-only">Sale ends {{ end | date: 'd MMM, HH:mm' }}.</span>
-              <span aria-hidden="true">
-                Ends in <app-sale-countdown [endsAt]="end" (ended)="saleEnded()" />
-              </span>
-            </p>
+
+          @if (sizes().length > 0) {
+            <div class="p-opt">
+              <p class="p-opt__label">
+                Size<span class="p-opt__val">: {{ size() || '—' }}</span>
+              </p>
+              <div class="p-chips" role="radiogroup" aria-label="Size">
+                @for (s of sizes(); track s) {
+                  <button
+                    class="p-chip"
+                    type="button"
+                    role="radio"
+                    [class.is-sel]="size() === s"
+                    [class.is-out]="sizeSoldOut(s)"
+                    [attr.aria-checked]="size() === s"
+                    [disabled]="sizeSoldOut(s)"
+                    (click)="size.set(s)"
+                  >
+                    {{ s }}
+                  </button>
+                }
+              </div>
+            </div>
           }
         </div>
 
         <p class="p-desc">{{ p.description }}</p>
+        </div>
 
-        <!-- Colour picker. Thumbnails come from the variants' own photos, so a
-             swatch shows the actual colour rather than a word. -->
-        @if (colourShots().length > 0) {
-          <div class="p-opt">
-            <p class="p-opt__label">
-              Colour<span class="p-opt__val">: {{ colour() || '—' }}</span>
-            </p>
-            <div class="p-swatches" role="radiogroup" aria-label="Colour">
-              @for (shot of colourShots(); track shot.colour) {
-                <button
-                  class="p-swatch"
-                  type="button"
-                  role="radio"
-                  [class.is-sel]="colour() === shot.colour"
-                  [class.is-out]="colourSoldOut(shot.colour!)"
-                  [attr.aria-checked]="colour() === shot.colour"
-                  [attr.aria-label]="shot.colour!"
-                  [disabled]="colourSoldOut(shot.colour!)"
-                  (click)="pickColour(shot.colour)"
-                >
-                  <img [src]="shot.src" [alt]="shot.colour!" />
-                </button>
-              }
-            </div>
-          </div>
-        }
-
-        @if (sizes().length > 0) {
-          <div class="p-opt">
-            <p class="p-opt__label">
-              Size<span class="p-opt__val">: {{ size() || '—' }}</span>
-            </p>
-            <div class="p-chips" role="radiogroup" aria-label="Size">
-              @for (s of sizes(); track s) {
-                <button
-                  class="p-chip"
-                  type="button"
-                  role="radio"
-                  [class.is-sel]="size() === s"
-                  [class.is-out]="sizeSoldOut(s)"
-                  [attr.aria-checked]="size() === s"
-                  [disabled]="sizeSoldOut(s)"
-                  (click)="size.set(s)"
-                >
-                  {{ s }}
-                </button>
-              }
-            </div>
-          </div>
-        }
-
-<!-- Everything the desktop purchase card needs. The wrapper is display:contents
+        <!-- Everything the desktop purchase card needs. The wrapper is display:contents
              below 900px, so on mobile these blocks lay out exactly as before. -->
         <div class="p-purchase">
           <div class="p-opt p-opt--qty">

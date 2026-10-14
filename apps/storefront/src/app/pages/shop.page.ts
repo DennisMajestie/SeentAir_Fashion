@@ -438,6 +438,7 @@ export class ShopPage implements OnInit {
         colour: f.colour ?? null,
         collection: f.collection ?? null,
         maxPrice: f.maxPrice ?? null,
+        segment: f.segment ?? null,
         category: this.category(),
       },
       queryParamsHandling: 'merge',
@@ -459,6 +460,7 @@ export class ShopPage implements OnInit {
       colour: q.get('colour') ?? null,
       collection: q.get('collection') ?? null,
       maxPrice: price === null || price === undefined ? null : Number(price),
+      segment: q.get('segment') ?? null,
     });
     // Followed, not read once: the list header takes its title from the same
     // query param, and a link to /shop while already here (menu, footer) reuses

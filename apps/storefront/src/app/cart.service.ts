@@ -112,7 +112,7 @@ export class CartService {
     return this.items().reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
   }
 
-  /** Wholesale MOQ (20 units) reached in the cart, the amber eligibility
+  /** Distributors MOQ (20 units) reached in the cart, the amber eligibility
       notice only renders while this is true. */
   get moqEligible(): boolean {
     return this.items().reduce((sum, i) => sum + i.quantity, 0) >= 20;

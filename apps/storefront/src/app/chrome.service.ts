@@ -27,6 +27,26 @@ export class ChromeService {
   readonly immersive = computed(() => this.isImmersive(this.url()));
 
   /**
+   * Whether the store-promises row (Wholesale Deals / Distributors /
+   * Pre-order / Contact) belongs on this route.
+   *
+   * It follows the chrome by default, and a route can opt out with
+   * `data: { promises: false }`. The product page does: it keeps the full header
+   * but drops the promo tiles, because a shopper reading a product is already
+   * looking at the thing the tiles advertise, and the band costs them a scroll.
+   *
+   * A computed rather than a getter, and deliberately so. `routeFlag` reads
+   * `routerState.snapshot`, which is not reactive -- `hero()` is a plain getter
+   * and gets away with it only because the shell also re-renders on
+   * `immersive()`. This flag is read next to `immersive()` in the same
+   * expression, so it has to re-evaluate on the same signal. It takes `url()` as
+   * an argument purely to register that dependency, exactly as `immersive()`
+   * does: without it the row would go stale when moving between two
+   * non-immersive routes that disagree about it (account -> product).
+   */
+  readonly promises = computed(() => this.showsPromises(this.url()));
+
+  /**
    * Whether this route wants the campaign carousel.
    *
    * Opt-in per route, and today only the landing page claims it. The carousel
@@ -64,5 +84,10 @@ export class ChromeService {
 
   private isImmersive(_url: string): boolean {
     return this.routeFlag('immersive');
+  }
+
+  /** Promises row shows unless the route opts out with `promises: false`. */
+  private showsPromises(_url: string): boolean {
+    return this.leaf.data['promises'] !== false;
   }
 }

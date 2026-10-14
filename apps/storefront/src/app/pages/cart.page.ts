@@ -64,20 +64,20 @@ import { environment } from '../../environments/environment';
             />
           </svg>
           <span>
-            <span class="notice-title">Wholesale eligibility</span>
-            {{ cart.count | number: '2.0' }} units meets the 20-unit MOQ. For tiered wholesale
+            <span class="notice-title">Distributors eligibility</span>
+            {{ cart.count | number: '2.0' }} units meets the 20-unit MOQ. For tiered distributors
             pricing and bulk dispatch, place this order from the
-            <a [href]="environment.wholesaleUrl" target="_blank" rel="noopener noreferrer"
-              >wholesale portal</a
+            <a [href]="environment.distributorsUrl" target="_blank" rel="noopener noreferrer"
+              >distributors portal</a
             >.
           </span>
         </div>
       }
       @if (cart.hasMadeToOrder) {
         <div class="notice notice-warn u-rise" role="status">
-          <svg
+<svg
             class="notice-icon"
-            viewBox="0 0 20 20"
+            viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             stroke-width="1.6"
@@ -86,13 +86,17 @@ import { environment } from '../../environments/environment';
             aria-hidden="true"
             focusable="false"
           >
-            <path d="M9 2.5 1.8 15.5A1 1 0 0 0 2.8 17h14.4a1 1 0 0 0 1-1.5L11 2.5a1 1 0 0 0-2 0Z" />
-            <path d="M10 7v4M10 13.5h.01" />
+            <path
+              d="M10 2.2 18.4 17H1.6L10 2.2Zm0 4-1.2 6h2.4L10 6.2Zm0 8.1a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z"
+            />
           </svg>
           <span>
-            <span class="notice-title">Made to order</span>
-            One or more pieces are produced on request, sample approval and a production run happen
-            before dispatch, so allow extra time.
+            <span class="notice-title">Distributors eligibility</span>
+            {{ cart.count | number: '2.0' }} units meets the 20-unit MOQ. For tiered distributors
+            pricing and bulk dispatch, place this order from the
+            <a [href]="environment.distributorsUrl" target="_blank" rel="noopener noreferrer"
+              >distributors portal</a
+            >.
           </span>
         </div>
       }

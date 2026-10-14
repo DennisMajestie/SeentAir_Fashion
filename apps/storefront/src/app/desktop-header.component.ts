@@ -169,25 +169,6 @@ import { productImage } from './product-image';
           </a>
         </div>
       </div>
-
-      <!-- Secondary nav. Entries are drawn from the same category list the
-           homepage rail is built from, so every one of them is a category the
-           catalogue actually contains -- no invented audience links. -->
-      <nav class="d-nav" aria-label="Main">
-        <ul class="d-nav__list">
-          @for (c of categories; track c.key) {
-            <li>
-              <a
-                [routerLink]="c.link"
-                routerLinkActive="is-active"
-                [routerLinkActiveOptions]="{ exact: c.exact }"
-              >
-                {{ c.label }}
-              </a>
-            </li>
-          }
-        </ul>
-      </nav>
     </header>
   `,
   styles: [
@@ -452,69 +433,12 @@ import { productImage } from './product-image';
         line-height: 1;
       }
 
-      .d-nav {
-        max-width: var(--wrap-max);
-        margin-inline: auto;
-        padding-inline: var(--wrap-x);
-      }
-      .d-nav__list {
-        display: flex;
-        align-items: center;
-        gap: var(--space-24);
-        margin: 0;
-        padding: 0 0 12px;
-        list-style: none;
-        /* One line at every desktop width. A category set that would overflow
-           scrolls sideways instead of wrapping into an unpredictable stack,
-           which would change the header's height between renders. */
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        scrollbar-width: none;
-      }
-      .d-nav__list::-webkit-scrollbar {
-        display: none;
-      }
-      .d-nav__list a {
-        display: inline-block;
-        padding: 4px 0;
-        color: var(--ink);
-        text-decoration: none;
-        font-size: var(--type-body-md);
-        font-weight: 500;
-        white-space: nowrap;
-        border-bottom: 2px solid transparent;
-      }
-      .d-nav__list a:hover {
-        color: var(--primary);
-      }
-      /* Active state is colour plus an underline, not colour alone. */
-      .d-nav__list a.is-active {
-        color: var(--primary);
-        border-bottom-color: var(--primary-fill);
-      }
-
       /* Keyboard focus must be visible on every interactive element here. */
       .d-logo:focus-visible,
       .d-action:focus-visible,
-      .d-nav__list a:focus-visible,
       .d-search__input:focus-visible {
         outline: 2px solid var(--primary);
         outline-offset: 2px;
-      }
-
-      @media (max-width: 1180px) {
-        /* Compact desktop: keep everything on one line by dropping the word
-           labels and tightening gaps. Never applied at mobile widths, because
-           this component does not render there. */
-        .d-action__text {
-          display: none;
-        }
-        .d-header__inner {
-          gap: var(--space-16);
-        }
-        .d-nav__list {
-          gap: var(--space-16);
-        }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -541,7 +465,7 @@ export class DesktopHeaderComponent {
    * deployments.
    */
   readonly surfaces: ReadonlyArray<{ label: string; hint: string; href: string }> = [
-    { label: 'Wholesale portal', hint: 'Trade pricing and bulk orders', href: environment.wholesaleUrl },
+    { label: 'Distributors portal', hint: 'Trade pricing and bulk orders', href: environment.distributorsUrl },
     { label: 'Partner portal', hint: 'Ownership and dividends', href: environment.partnerUrl },
     { label: 'Admin dashboard', hint: 'Factory and operations', href: environment.adminUrl },
   ];
@@ -552,26 +476,6 @@ export class DesktopHeaderComponent {
 
   /** Template handle on the shared photo hierarchy (see product-image.ts). */
   readonly productImage = productImage;
-
-  /**
-   * Category nav, mirroring `CATEGORY_ORDER` in landing.page.ts -- the same list
-   * the homepage rail is built from. Each entry points at the existing
-   * `/shop?category=` filter, the only category navigation the app has.
-   */
-  readonly categories: ReadonlyArray<{ key: string; label: string; link: string; exact: boolean }> = [
-    { key: 'all', label: 'All Products', link: '/shop', exact: true },
-    { key: 'tops', label: 'Tops', link: '/shop?category=tops', exact: false },
-    { key: 'bottoms', label: 'Bottoms', link: '/shop?category=bottoms', exact: false },
-    { key: 'outerwear', label: 'Outerwear', link: '/shop?category=outerwear', exact: false },
-    { key: 'accessories', label: 'Accessories', link: '/shop?category=accessories', exact: false },
-    { key: 'tailoring', label: 'Tailoring', link: '/shop?category=tailoring', exact: false },
-    { key: '2pc', label: '2-Piece Sets', link: '/shop?category=2-Piece Sets', exact: false },
-    { key: 'tshirts', label: 'T-Shirts', link: '/shop?category=T-Shirts', exact: false },
-    { key: 'trousers', label: 'Trousers', link: '/shop?category=Trousers', exact: false },
-    { key: 'underwear', label: 'Underwear', link: '/shop?category=Underwear', exact: false },
-    { key: 'polo', label: 'Polo', link: '/shop?category=Polo', exact: false },
-    { key: 'kids', label: 'Children', link: '/shop?category=Children 2-Piece Sets', exact: false },
-  ];
 
   readonly cartLabel = computed(() =>
     this.cart.count === 1 ? 'Cart, 1 item' : `Cart, ${this.cart.count} items`,

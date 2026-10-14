@@ -15,6 +15,8 @@ export interface SheetFilters {
   collection: string | null;
   /** Upper bound, inclusive. Null means no price limit. */
   maxPrice: number | null;
+  /** Audience segment: men, women, children, unisex-children, unisex-adult, newborn */
+  segment: string | null;
 }
 
 export const EMPTY_FILTERS: SheetFilters = {
@@ -22,6 +24,7 @@ export const EMPTY_FILTERS: SheetFilters = {
   colour: null,
   collection: null,
   maxPrice: null,
+  segment: null,
 };
 
 /**
@@ -33,6 +36,7 @@ export function matchesSheetFilters(p: Product, f: SheetFilters): boolean {
   if (f.collection && p.collection?.name !== f.collection) return false;
   if (f.size && !p.variants.some((v) => v.size === f.size)) return false;
   if (f.colour && !p.variants.some((v) => v.colour === f.colour)) return false;
+  if (f.segment && p.segment !== f.segment) return false;
   // The price a shopper would pay now, so a piece on sale under the band shows.
   if (f.maxPrice !== null && offerFor(p).price > f.maxPrice) return false;
   return true;
@@ -43,12 +47,13 @@ export function filtersEqual(a: SheetFilters, b: SheetFilters): boolean {
     a.size === b.size &&
     a.colour === b.colour &&
     a.collection === b.collection &&
-    a.maxPrice === b.maxPrice
+    a.maxPrice === b.maxPrice &&
+    a.segment === b.segment
   );
 }
 
 export function activeFilterCount(f: SheetFilters): number {
-  return [f.size, f.colour, f.collection, f.maxPrice].filter((v) => v !== null).length;
+  return [f.size, f.colour, f.collection, f.maxPrice, f.segment].filter((v) => v !== null).length;
 }
 
 /**

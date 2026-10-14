@@ -24,17 +24,22 @@ import { productImage } from './product-image';
   template: `
     <header class="m-header" [class.m-header--light]="isPlp()">
       <div class="m-top">
-        @if (isPlp()) {
-          <!-- Reference screen 2: light header, back arrow, category title.
-               Back leads home: this screen IS /shop, so the old link to /shop
-               went nowhere. -->
-          <a class="m-back" routerLink="/" aria-label="Back to home">
+        <!--
+          The leading slot is always the left-hand item, so back / burger stays
+          where the thumb expects it and the brand keeps the centre.
+
+          A real <button>, not a link to a guessed route: the shopper arrived
+          from the grid or the home rail, and sending them somewhere fixed
+          throws that away. Falls back to /shop when there is no history to
+          return to -- a shared product link opened cold still leads somewhere.
+        -->
+        @if (showsBack()) {
+          <button class="m-back" type="button" aria-label="Back" (click)="back()">
             <svg class="m-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M19 12H5" />
               <path d="m11 6-6 6 6 6" />
             </svg>
-          </a>
-          <h1 class="m-plp__title">{{ plpTitle() }}</h1>
+          </button>
         } @else {
           <button
             class="m-burger"
@@ -48,7 +53,12 @@ import { productImage } from './product-image';
             <span class="m-burger__bar"></span>
             <span class="m-burger__bar"></span>
           </button>
+        }
 
+        @if (isPlp()) {
+          <!-- Reference screen 2: light header with the category name centred. -->
+          <h1 class="m-plp__title">{{ plpTitle() }}</h1>
+        } @else {
           <a class="m-brand" routerLink="/" aria-label="SEENTAIR home">
             <img
               class="m-brand__mark"
@@ -260,6 +270,31 @@ export class MobileHeaderComponent implements OnDestroy {
   readonly isHome = computed(() => this.path() === '/');
   readonly isPlp = computed(() => this.path().startsWith('/shop'));
 
+  /**
+   * Screens a shopper arrives on from somewhere else, so the leading slot offers
+   * Back rather than the menu: the product grid and the product page. Home keeps
+   * the menu -- there is nothing behind it to go back to.
+   *
+   * `/shop` previously hard-linked Back to `/`, which sent a shopper who had
+   * drilled into a category out of the grid entirely. History is the honest
+   * answer for both.
+   */
+  readonly showsBack = computed(() => this.isPlp() || this.path().startsWith('/product'));
+
+  /**
+   * Back to where the shopper actually came from. `history.length > 1` is the
+   * only test available for "is there somewhere to go back to" -- it counts this
+   * document's own history entries, so a shared link opened cold falls through
+   * to the grid instead of closing the tab or doing nothing.
+   */
+  back(): void {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    void this.router.navigate(['/shop']);
+  }
+
   /** The PLP heading is the real category being browsed, not a hardcoded word. */
   readonly plpTitle = computed(() => {
     const match = /[?&]category=([^&]+)/.exec(this.url());
@@ -307,7 +342,7 @@ export class MobileHeaderComponent implements OnDestroy {
   readonly links = [
     { label: 'Shop', path: '/shop', href: '', external: false },
     { label: 'Account', path: '/account', href: '', external: false },
-    { label: 'Wholesale', path: '', href: environment.wholesaleUrl, external: true },
+    { label: 'Distributors portal', path: '', href: environment.distributorsUrl, external: true },
     { label: 'Admin', path: '', href: environment.adminUrl, external: true },
     { label: 'Partners', path: '', href: environment.partnerUrl, external: true },
   ];

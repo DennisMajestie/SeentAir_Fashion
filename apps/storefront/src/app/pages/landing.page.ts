@@ -139,6 +139,25 @@ interface RailCategory {
           </p>
         }
       </section>
+
+      <section class="m-sec">
+        <div class="m-sec__head">
+          <h2>Suggested for You</h2>
+          <a class="m-sec__more" routerLink="/shop"
+            >See All <span class="m-chev" aria-hidden="true">›</span></a
+          >
+        </div>
+
+        @if (suggestedForYou().length > 0) {
+          <div class="m-row3">
+            @for (p of suggestedForYou(); track p.id) {
+              <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
+            }
+          </div>
+        } @else {
+          <p class="m-empty">{{ loading() ? 'Loading suggestions…' : 'Nothing to suggest yet.' }}</p>
+        }
+      </section>
     </div>
   `,
 })
@@ -193,6 +212,56 @@ export class LandingPage implements OnInit {
   soldOf(product: Product): number {
     return product.soldCount ?? 0;
   }
+
+  /**
+   * "Suggested for You" — products not already featured in New Arrivals or
+   * Best Sellers, prioritized by rating and category diversity.
+   */
+  readonly suggestedForYou = computed(() => {
+    const featuredIds = new Set([
+      ...this.newArrivals().map((p) => p.id),
+      ...this.bestSellers().map((p) => p.id),
+    ]);
+    const candidates = this.all().filter((p) => !featuredIds.has(p.id));
+
+    // Group by category for diversity
+    const byCategory = new Map<string, Product[]>();
+    for (const p of candidates) {
+      const cat = p.category ?? 'other';
+      if (!byCategory.has(cat)) byCategory.set(cat, []);
+      byCategory.get(cat)!.push(p);
+    }
+
+    // Pick up to 5, one per category, preferring higher-rated
+    const result: Product[] = [];
+    const sortedCategories = [...byCategory.entries()].sort((a, b) => {
+      const aMaxRating = Math.max(...a[1].map((p) => this.ratings().get(p.id)?.avg ?? 0));
+      const bMaxRating = Math.max(...b[1].map((p) => this.ratings().get(p.id)?.avg ?? 0));
+      return bMaxRating - aMaxRating;
+    });
+
+    for (const [, products] of sortedCategories) {
+      if (result.length >= 5) break;
+      const bestInCat = products.sort((a, b) =>
+        (this.ratings().get(b.id)?.avg ?? 0) - (this.ratings().get(a.id)?.avg ?? 0)
+      )[0];
+      if (bestInCat) result.push(bestInCat);
+    }
+
+    // Fill remaining slots with highest-rated leftovers
+    if (result.length < 5) {
+      const used = new Set(result.map((p) => p.id));
+      const leftovers = candidates
+        .filter((p) => !used.has(p.id))
+        .sort((a, b) => (this.ratings().get(b.id)?.avg ?? 0) - (this.ratings().get(a.id)?.avg ?? 0));
+      for (const p of leftovers) {
+        if (result.length >= 5) break;
+        result.push(p);
+      }
+    }
+
+    return result;
+  });
 
   /** Category values actually present in the catalogue, with a real image each. */
   readonly categories = computed<RailCategory[]>(() => {
