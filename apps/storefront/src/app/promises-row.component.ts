@@ -17,9 +17,11 @@ interface ServiceTile {
  * The store promises row: Wholesale Deals, Distributors, Pre-order, Contact.
  *
  * Extracted from the app shell so it can also be rendered from inside a page's
- * own section flow. On the landing page it sits directly under the campaign
- * carousel, which is inside `LandingPage`; every other route still gets it from
- * the shell, above the router outlet. Two call sites, one definition.
+ * own section flow. It briefly was, on the landing page, when the carousel
+ * lived there too -- both are now drawn by the shell above the router outlet
+ * again, so in practice the shell is the one caller. Kept as its own component
+ * because it is self-contained and the inline version was 30 lines of template
+ * inside an already-large root component.
  *
  * Whether it appears at all is still the route's decision: `ChromeService.promises()`
  * (opt out with `promises: false`) and `immersive` are read by the caller, not

@@ -52,12 +52,12 @@ import { ChromeService } from './chrome.service';
            page, and on any route whose data sets promises to false -- the
            product page keeps the header but drops the promo tiles.
 
-           The landing page is excluded here because it renders the row itself,
-           directly under the campaign carousel (see LandingPage); that carousel
-           moved into the page's own section flow, so the row had to follow it
-           there. Landing is the only route whose data sets hero, which is what this
-           exclusion keys off. -->
-      @if (!chrome.immersive() && chrome.promises() && !chrome.hero()) {
+           The landing page renders this through this same component rather than
+           inline; it sits directly under the carousel, which the desktop shell
+           draws above the outlet. It briefly moved into LandingPage itself, back
+           when the carousel was also moved there, but both belong above the page
+           content rather than inside its section flow. -->
+      @if (!chrome.immersive() && chrome.promises()) {
         <app-promises-row />
       }
       <router-outlet />

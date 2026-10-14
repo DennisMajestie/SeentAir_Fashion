@@ -7,10 +7,6 @@ import { ApiService, Product } from '../api.service';
 import { ProductCardComponent } from '../product-card.component';
 import { productImage } from '../product-image';
 import { SeoService } from '../seo.service';
-import { HeroCarouselComponent } from '../hero-carousel.component';
-import { PromisesRowComponent } from '../promises-row.component';
-import { ViewportService } from '../viewport.service';
-import { ChromeService } from '../chrome.service';
 
 /** Curated order for the home category rail; anything unlisted sorts last. */
 const CATEGORY_ORDER = [
@@ -75,7 +71,7 @@ interface RailCategory {
  */
 @Component({
   selector: 'app-landing',
-  imports: [CommonModule, RouterLink, ProductCardComponent, HeroCarouselComponent, PromisesRowComponent],
+  imports: [CommonModule, RouterLink, ProductCardComponent],
   template: `
     <div class="m-home">
       <section class="m-sec">
@@ -99,23 +95,6 @@ interface RailCategory {
           <p class="m-empty">{{ loading() ? 'Loading categories…' : 'No categories yet.' }}</p>
         }
       </section>
-
-      <!-- Campaign carousel, between the category rail and New Arrivals. It used to
-           be rendered by the shell, above the router outlet, which meant it always
-           sat above everything on the page; owning it here puts it in the section
-           flow. Gated on the viewport so mobile never constructs it and the four
-           banner JPEGs are never requested -- hiding it with CSS instead would
-           still download them, since display:none does not stop an image fetch. -->
-      @if (viewport.isDesktop()) {
-        <app-hero-carousel />
-      }
-
-      <!-- Store promises, directly under the carousel. The shell renders these
-           everywhere else; landing draws them here because the carousel moved
-           into the page's section flow and the two belong together. -->
-      @if (chrome.promises()) {
-        <app-promises-row />
-      }
 
       <section class="m-sec">
         <div class="m-sec__head">
@@ -184,12 +163,7 @@ interface RailCategory {
 })
 export class LandingPage implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly seo = inject(SeoService);
-  /** Read by the template to gate the carousel and the promises row, so neither
-   *  can be private. */
-  protected readonly viewport = inject(ViewportService);
-  protected readonly chrome = inject(ChromeService);
-
+private readonly seo = inject(SeoService);
   /** Full catalogue, straight from the API. Every rail below is a projection. */
   readonly all = signal<Product[]>([]);
   readonly ratings = signal<Map<string, Rating>>(new Map());
