@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { provideRouter, ActivatedRoute } from '@angular/router';
+import { provideRouter, ActivatedRoute, convertToParamMap } from '@angular/router';
+import { of } from 'rxjs';
 
 import { ProductPage } from './product.page';
 import { Product } from '../api.service';
@@ -41,7 +42,15 @@ async function setup(p: Product) {
       provideRouter([]),
       provideHttpClient(),
       provideHttpClientTesting(),
-      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'p1' } } } },
+      {
+        provide: ActivatedRoute,
+        // The component loads off the param stream, so the double needs a real
+        // Observable here rather than a bare snapshot object.
+        useValue: {
+          paramMap: of(convertToParamMap({ id: 'p1' })),
+          snapshot: { paramMap: convertToParamMap({ id: 'p1' }) },
+        },
+      },
     ],
   }).compileComponents();
 

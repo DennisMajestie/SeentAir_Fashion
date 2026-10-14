@@ -45,10 +45,12 @@ interface ServiceTile {
       the reverse -- a CSS-hidden desktop shell -- would still download the four
       banner images on every mobile page load.
 
-      Immersive routes (shop, product) drop the chrome entirely and render their
-      own compact back-link bar instead; see ChromeService. The decision is made
-      here rather than in each page so the shell stays in charge of what frames
-      the router outlet.
+      Routes that opt out via the immersive flag in their route data drop the chrome
+      entirely and render their own compact back-link bar instead; see
+      ChromeService. No route does at the moment -- shop and the product page
+      both keep the real header -- but the opt-out is kept for a future
+      full-bleed surface. The decision is made here rather than in each page so
+      the shell stays in charge of what frames the router outlet.
     -->
     @if (!chrome.immersive()) {
       @if (!viewport.isDesktop()) {

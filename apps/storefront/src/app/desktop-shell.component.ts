@@ -13,11 +13,11 @@ import { ChromeService } from './chrome.service';
  * with CSS instead would still let the browser download them, because
  * `display: none` does not stop an image fetch.
  *
- * Immersive routes (shop, product) skip this shell entirely: on a product page
- * the header and a four-slide campaign carousel are exactly the chrome the
- * shopper does not want between them and the garment. The carousel is opt-in
- * per route (`data.hero`) and only the landing page claims it, so it never
- * rides above the cart, checkout, account, order or policy screens.
+ * Immersive routes skip this shell entirely: a page opting out renders its own
+ * compact back-link bar instead. No route opts out at the moment -- shop and the
+ * product page both keep the real header. The carousel is opt-in per route
+ * (`data.hero`) and only the landing page claims it, so it never rides above the
+ * shop, cart, checkout, account, order or policy screens.
  */
 @Component({
   selector: 'app-desktop-shell',

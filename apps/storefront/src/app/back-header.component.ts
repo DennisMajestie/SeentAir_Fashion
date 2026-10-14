@@ -6,6 +6,11 @@ import { CartService } from './cart.service';
 /**
  * The compact header that stands in for the universal chrome on immersive pages.
  *
+ * UNUSED right now: shop was the last route declaring `immersive: true` and it
+ * now keeps the real site header, so nothing renders this component. It is kept
+ * because it is the fallback for whichever surface next needs to opt out of the
+ * chrome -- delete it if that never happens.
+ *
  * It is deliberately not the site header: a shopper deep in a product or a
  * filtered grid is looking at something, not navigating, so the bar carries the
  * one action that gets them out (back) and the two they are most likely to want

@@ -19,8 +19,9 @@ import { FilterSheetComponent } from '../filter-sheet.component';
 import { offerFor } from '../pricing';
 import { PRODUCT_PLACEHOLDER, productImage } from '../product-image';
 import { SeoService } from '../seo.service';
+import { CatalogueSearchService } from '../catalogue-search.service';
 import { SWATCHES, ProductCardComponent } from '../product-card.component';
-import { BackHeaderComponent } from '../back-header.component';
+
 import {
   EMPTY_FILTERS,
   SheetFilters,
@@ -79,21 +80,14 @@ function collectionKey(name: string): string {
     review stars and quick-add. */
 @Component({
   selector: 'app-shop',
-  imports: [CommonModule, FormsModule, ProductCardComponent, FilterSheetComponent, BackHeaderComponent],
+  imports: [CommonModule, FormsModule, ProductCardComponent, FilterSheetComponent],
   template: `
-    <!-- Immersive route: no universal header, hero or promises row. The compact
-         bar carries back plus account/cart; search is already a field here. -->
-    <app-back-header [showSearch]="false" />
-
-    <input
-      class="search-bar"
-      type="search"
-      placeholder="Search for clothes, underwear, kids wear…"
-      [ngModel]="query()"
-      (ngModelChange)="query.set($event)"
-      aria-label="Search products"
-    />
-
+    <!-- Not an immersive route: the site header (cart/account/search) comes from
+         the shell, so this page renders neither its own compact back-header nor a
+         second search field. Those two used to sit here; with the real header in
+         place they became duplicates -- the header input drove
+         CatalogueSearchService, the page input drove this grid, and neither knew
+         about the other. The grid now reads the header's term (see query). -->
     <!-- Reference PLP: circular sub-category rail above the sort/filter toolbar.
          Every pill is a real catalogue category with a real product photo, so no
          audience or sub-type is invented. Counts come from the loaded products. -->
@@ -264,6 +258,7 @@ export class ShopPage implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly seo = inject(SeoService);
+  private readonly search = inject(CatalogueSearchService);
   private readonly filtersBtn = viewChild<ElementRef<HTMLButtonElement>>('filtersBtn');
   readonly all = signal<Product[]>([]);
   readonly loading = signal(true);
@@ -272,7 +267,12 @@ export class ShopPage implements OnInit {
   readonly total = signal(0);
   readonly loadingMore = signal(false);
   readonly skCards = Array.from({ length: 8 }, (_, i) => i);
-  readonly query = signal('');
+  /** The grid's free-text filter. Aliased to the header's search term rather than
+   *  kept as a second signal: this page used to own a search field, but once it
+   *  kept the real header that left two identical inputs filtering two different
+   *  things. One term now drives the header dropdown and the grid together, and
+   *  because the header input is always visible the term is never hidden. */
+  readonly query = this.search.term;
   readonly category = signal<string | null>(null);
   /** What the grid is showing. The sheet edits a copy and only commits on apply. */
   readonly appliedFilters = signal<SheetFilters>({ ...EMPTY_FILTERS });

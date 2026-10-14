@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import {
   Component,
+  DestroyRef,
   ElementRef,
   Injector,
   OnInit,
@@ -11,8 +12,11 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { EMPTY, Observable, forkJoin, of } from 'rxjs';
+import { catchError, distinctUntilChanged, map, switchMap, tap } from 'rxjs/operators';
 import { Offer, offerFor } from '../pricing';
 import { SaleCountdownComponent } from '../sale-countdown.component';
 import { ApiService, Product, ProductVariant } from '../api.service';
@@ -413,6 +417,7 @@ interface GalleryShot {
 })
 export class ProductPage implements OnInit {
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -600,21 +605,64 @@ export class ProductPage implements OnInit {
   }
 
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id')!;
-    this.api.product(id).subscribe({
-      next: (p) => {
+    // Driven off the param stream, not a one-shot snapshot read. Angular reuses this
+    // component instance when moving between two /product/:id URLs (e.g. clicking
+    // the related-products rail), so ngOnInit runs only once and a snapshot read
+    // would leave the previous product on screen under the new URL. Refreshing is
+    // what masked it -- the reload re-ran ngOnInit with the current id.
+    this.route.paramMap
+      .pipe(
+        map((params) => params.get('id') ?? ''),
+        distinctUntilChanged(),
+        switchMap((id) => this.loadProduct(id)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
+  }
+
+  /**
+   * Clears the previous product before fetching the next, then resolves reviews.
+   * `switchMap` upstream cancels an in-flight request, so clicking quickly through
+   * the rail cannot let a slow earlier response land after a newer one.
+   */
+  private loadProduct(id: string): Observable<void> {
+    this.product.set(null);
+    this.reviews.set([]);
+    this.related.set([]);
+    this.size.set(null);
+    this.colour.set(null);
+    this.shotIndex.set(0);
+    this.quantity = 1;
+    this.added.set(false);
+    this.loadError.set(false);
+    this.titleOpen.set(false);
+    this.titleLong.set(false);
+
+    const product$ = this.api.product(id).pipe(
+      tap((p) => {
         this.product.set(p);
         const first = p.variants[0];
         this.size.set(first?.size ?? null);
         this.colour.set(first?.colour ?? null);
         this.loadRelated(p);
-      },
-      error: () => {
+      }),
+      catchError(() => {
         this.loadError.set(true);
         this.seo.apply({ title: 'Product unavailable' });
-      },
-    });
-    this.api.reviews(id).subscribe((r) => this.reviews.set(r.data));
+        return EMPTY;
+      }),
+    );
+
+    // Reviews failing must not take the product down with them, so they are
+    // faulted independently and simply render as "none yet".
+    const reviews$ = this.api
+      .reviews(id)
+      .pipe(
+        tap((r) => this.reviews.set(r.data)),
+        catchError(() => of({ data: [], total: 0 })),
+      );
+
+    return forkJoin({ product: product$, reviews: reviews$ }).pipe(map(() => undefined));
   }
 
   /** Measure once the clamped title has a box to compare against. */

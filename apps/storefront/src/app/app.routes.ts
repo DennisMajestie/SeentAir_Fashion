@@ -21,9 +21,13 @@ export const routes: Routes = [
     path: 'shop',
     loadComponent: () => import('./pages/shop.page').then((m) => m.ShopPage),
     title: 'Seentair: Shop',
-    // Browsing surface: no universal header, hero or promises row. It gets the
-    // compact back-link bar instead. See ChromeService.
-    data: { immersive: true },
+    // Not immersive: shop keeps the full site chrome (mobile or desktop header)
+    // so a shopper can reach the cart, account and search directly from a
+    // product listing instead of backing out first. It previously opted out via
+    // `immersive: true` and showed a compact back-link bar instead.
+    // ...but it opts out of the promises tiles: the listing is already a dense
+    // filter/sort surface and those four links push the grid further down.
+    data: { promises: false },
   },
   {
     path: 'product/:id',
