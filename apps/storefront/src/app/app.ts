@@ -1,23 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterOutlet } from '@angular/router';
-import { LucideTruck, LucideShieldCheck, LucideShoppingBag, LucideHeadphones } from '@lucide/angular';
 import { environment } from '../environments/environment';
 import { MobileHeaderComponent } from './mobile-header.component';
 import { MobileBottomNavComponent } from './mobile-bottom-nav.component';
 import { DesktopShellComponent } from './desktop-shell.component';
+import { PromisesRowComponent } from './promises-row.component';
 import { ViewportService } from './viewport.service';
 import { ChromeService } from './chrome.service';
-
-type ServiceIcon = 'delivery' | 'quality' | 'returns' | 'support';
-
-interface ServiceTile {
-  label: string;
-  icon: ServiceIcon;
-  link: string;
-  external?: boolean;
-  fragment?: string;
-}
 
 @Component({
   selector: 'app-root',
@@ -32,10 +22,7 @@ interface ServiceTile {
     MobileHeaderComponent,
     MobileBottomNavComponent,
     DesktopShellComponent,
-    LucideTruck,
-    LucideShieldCheck,
-    LucideShoppingBag,
-    LucideHeadphones,
+    PromisesRowComponent,
   ],
   template: `
     <!--
@@ -58,45 +45,20 @@ interface ServiceTile {
       }
       <app-desktop-shell />
     }
-    <main>
+<main>
       <!-- Store promises. Lives in <main> so the row scrolls with the page
            instead of riding over the sticky dark header. Suppressed on immersive
            routes, where it pushed the products the shopper came for down the
            page, and on any route whose data sets promises to false -- the
-           product page keeps the header but drops the promo tiles. -->
-      @if (!chrome.immersive() && chrome.promises()) {
-        <div class="m-services" aria-label="Store promises">
-          @for (s of services; track s.label) {
-            <div class="m-svc">
-              <a
-                class="m-svc__link"
-                [href]="s.external ? s.link : null"
-                [routerLink]="s.external ? null : s.link"
-                [fragment]="s.fragment"
-                [attr.target]="s.external ? '_blank' : null"
-                [attr.rel]="s.external ? 'noopener noreferrer' : null"
-              >
-                <span class="m-svc__ic" aria-hidden="true">
-                  @switch (s.icon) {
-                    @case ('delivery') {
-                      <svg lucideTruck />
-                    }
-                    @case ('quality') {
-                      <svg lucideShieldCheck />
-                    }
-                    @case ('returns') {
-                      <svg lucideShoppingBag />
-                    }
-                    @case ('support') {
-                      <svg lucideHeadphones />
-                    }
-                  }
-                </span>
-                <span class="m-svc__label">{{ s.label }}</span>
-              </a>
-            </div>
-          }
-        </div>
+           product page keeps the header but drops the promo tiles.
+
+           The landing page is excluded here because it renders the row itself,
+           directly under the campaign carousel (see LandingPage); that carousel
+           moved into the page's own section flow, so the row had to follow it
+           there. Landing is the only route whose data sets hero, which is what this
+           exclusion keys off. -->
+      @if (!chrome.immersive() && chrome.promises() && !chrome.hero()) {
+        <app-promises-row />
       }
       <router-outlet />
     </main>
@@ -146,20 +108,4 @@ export class App {
    * because the host class binding reads it as well as the template.
    */
   readonly chrome = inject(ChromeService);
-
-  /**
-   * Store promises, updated per client direction:
-   * 1. Wholesale Deals → links to distributors portal
-   * 2. Distributors → application form (for now)
-   * 3. Special Request / Pre-order → covers missing sizes + missing logistics/waybill fee
-   * 4. Contact → Live Chat, WhatsApp, Email (existing /policies#contact)
-   *
-   * Icons come from Lucide (@lucide/angular): Truck, ShieldCheck, ShoppingBag, Headphones.
-   */
-  readonly services: ReadonlyArray<ServiceTile> = [
-    { label: 'Wholesale Deals', icon: 'delivery', link: environment.distributorsUrl, external: true },
-    { label: 'Distributors', icon: 'quality', link: environment.distributorsUrl, external: true },
-    { label: 'Pre-order', icon: 'returns', link: environment.distributorsUrl + '/custom', external: true },
-    { label: 'Contact', icon: 'support', link: '/policies', fragment: 'contact' },
-  ];
 }

@@ -1,33 +1,30 @@
 import { Component, inject } from '@angular/core';
 import { DesktopHeaderComponent } from './desktop-header.component';
-import { HeroCarouselComponent } from './hero-carousel.component';
 import { ViewportService } from './viewport.service';
 import { ChromeService } from './chrome.service';
 
 /**
- * Everything that exists only above the desktop breakpoint: the shop header and
- * the campaign carousel.
+ * Everything that exists only above the desktop breakpoint: the shop header.
  *
- * Both children sit behind one `@if`, so at mobile widths neither component is
- * constructed and the four banner JPEGs are never requested. Hiding this wrapper
- * with CSS instead would still let the browser download them, because
- * `display: none` does not stop an image fetch.
+ * The child sits behind one `@if`, so at mobile widths the component is not
+ * constructed at all.
+ *
+ * The campaign carousel used to live here too, which pinned it above the whole
+ * router outlet and made it impossible to place inside the landing page's
+ * section flow. It is now rendered by `LandingPage` itself, between the
+ * category rail and New Arrivals, and keeps its own desktop-only gate there so
+ * the four banner JPEGs are still never requested on a phone.
  *
  * Immersive routes skip this shell entirely: a page opting out renders its own
  * compact back-link bar instead. No route opts out at the moment -- shop and the
- * product page both keep the real header. The carousel is opt-in per route
- * (`data.hero`) and only the landing page claims it, so it never rides above the
- * shop, cart, checkout, account, order or policy screens.
+ * product page both keep the real header.
  */
 @Component({
   selector: 'app-desktop-shell',
-  imports: [DesktopHeaderComponent, HeroCarouselComponent],
+  imports: [DesktopHeaderComponent],
   template: `
     @if (viewport.isDesktop() && !chrome.immersive()) {
       <app-desktop-header />
-      @if (chrome.hero()) {
-        <app-hero-carousel />
-      }
     }
   `,
 })
