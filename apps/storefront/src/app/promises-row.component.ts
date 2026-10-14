@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { LucideTruck, LucideShieldCheck, LucideShoppingBag, LucideHeadphones } from '@lucide/angular';
 import { environment } from '../environments/environment';
@@ -29,37 +30,60 @@ interface ServiceTile {
  */
 @Component({
   selector: 'app-promises-row',
-  imports: [RouterLink, LucideTruck, LucideShieldCheck, LucideShoppingBag, LucideHeadphones],
+  imports: [
+    RouterLink,
+    NgTemplateOutlet,
+    LucideTruck,
+    LucideShieldCheck,
+    LucideShoppingBag,
+    LucideHeadphones,
+  ],
   template: `
+    <!--
+      The icon and label are declared once and stamped into whichever anchor is
+      rendered, because the two branches differ only in how they navigate.
+
+      Why two anchors rather than one with [href] plus a conditional [routerLink]:
+      the routerLink attribute is what instantiates Angular's RouterLink
+      directive, and it does so even when its value is null. RouterLink owns
+      [attr.href] as a host binding and writes null onto it, which wiped the
+      [href] we had just set. Wholesale Deals, Distributors and Pre-order all
+      rendered with href=null -- not dead-looking links, no href attribute at
+      all, so clicking did nothing. Selecting the branch structurally is the
+      only way to keep the directive off the external anchors.
+    -->
+    <ng-template #tile let-s>
+      <span class="m-svc__ic" aria-hidden="true">
+        @switch (s.icon) {
+          @case ('delivery') {
+            <svg lucideTruck />
+          }
+          @case ('quality') {
+            <svg lucideShieldCheck />
+          }
+          @case ('returns') {
+            <svg lucideShoppingBag />
+          }
+          @case ('support') {
+            <svg lucideHeadphones />
+          }
+        }
+      </span>
+      <span class="m-svc__label">{{ s.label }}</span>
+    </ng-template>
+
     <div class="m-services" aria-label="Store promises">
       @for (s of services; track s.label) {
         <div class="m-svc">
-          <a
-            class="m-svc__link"
-            [href]="s.external ? s.link : null"
-            [routerLink]="s.external ? null : s.link"
-            [fragment]="s.fragment"
-            [attr.target]="s.external ? '_blank' : null"
-            [attr.rel]="s.external ? 'noopener noreferrer' : null"
-          >
-            <span class="m-svc__ic" aria-hidden="true">
-              @switch (s.icon) {
-                @case ('delivery') {
-                  <svg lucideTruck />
-                }
-                @case ('quality') {
-                  <svg lucideShieldCheck />
-                }
-                @case ('returns') {
-                  <svg lucideShoppingBag />
-                }
-                @case ('support') {
-                  <svg lucideHeadphones />
-                }
-              }
-            </span>
-            <span class="m-svc__label">{{ s.label }}</span>
-          </a>
+          @if (s.external) {
+            <a class="m-svc__link" [href]="s.link" target="_blank" rel="noopener noreferrer">
+              <ng-container [ngTemplateOutlet]="tile" [ngTemplateOutletContext]="{ $implicit: s }" />
+            </a>
+          } @else {
+            <a class="m-svc__link" [routerLink]="s.link" [fragment]="s.fragment">
+              <ng-container [ngTemplateOutlet]="tile" [ngTemplateOutletContext]="{ $implicit: s }" />
+            </a>
+          }
         </div>
       }
     </div>
