@@ -34,29 +34,29 @@ const SLIDES: readonly Slide[] = [
     src: 'assets/products/SeentAir Streetwear Redefined in Abuja-3.jpg',
     alt: 'ScentAir “Streetwear, redefined — your everyday uniform”: a black hoodie and joggers with a cap and crossbody bag, styled on an overpass in Abuja at sunset, with a “Shop now” call to action.',
     link: '/shop',
-    width: 2172,
-    height: 724,
+    width: 1280,
+    height: 317,
   },
   {
     src: 'assets/products/SeentAir Premium Streetwear Banner-4.jpg',
     alt: 'ScentAir “Premium streetwear — everyday comfort”: a cream hoodie and joggers with a black cap and sling bag on a bench, with a “Shop now” call to action.',
     link: '/shop',
     width: 2191,
-    height: 718,
+    height: 530,
   },
   {
     src: 'assets/products/SeentAir Two-Piece Set Lookbook-1.jpg',
     alt: 'ScentAir “Two-piece sets — comfort, elevated”: a black zip hoodie and matching joggers laid out on a bed, with a “Shop now” call to action.',
     link: '/shop?category=2-Piece Sets',
     width: 2172,
-    height: 724,
+    height: 509,
   },
   {
     src: 'assets/products/SeentAir Cozy Two-Piece Set-2.jpg',
     alt: 'ScentAir “Two-piece hoodie sets — made for every day”: a grey zip hoodie and joggers styled on a bench beside a potted plant, with a “Shop now” call to action.',
     link: '/shop?category=2-Piece Sets',
     width: 2172,
-    height: 724,
+    height: 529,
   },
 ] as const;
 
@@ -74,10 +74,10 @@ const AUTOPLAY_MS = 6000;
  * interrupts exists.
  *
 * Slide height is held by `aspect-ratio` under a `max-height` cap, and each
- * image is `contain`-fitted, because the four source files are not the same
- * shape (2.276:1 through 2.960:1). Letting each image size itself would resize
- * the section on every slide change; fitting instead means all artwork is shown
- * whole, uncropped and unstretched, in a box that never moves.
+ * image is `cover`-fitted, because the four source files are not quite the same
+ * shape (4.04:1 through 4.27:1). Letting each image size itself would resize the
+ * section on every slide change; a shared ratio the artwork mostly matches means
+ * the box never moves and the crop that does happen stays under 2%.
  *
  * The box is as wide as the header and nav content, and the banner covers it
  * edge to edge. Cover means a banner has to be drawn for the box's own ratio to
@@ -164,13 +164,17 @@ const AUTOPLAY_MS = 6000;
            clamped height, so a 306px-tall box was only 783px wide regardless of
            how much room it had. */
         width: 100%;
-        /* Locked to the banners' own 3:1 ratio, so cover never crops them and
-           every one of the four fills the box exactly. The cap that used to sit
-           here (34vh) is what made the ratio move between 2.56:1 and 4.9:1
-           depending on window height, which no single image could match; it is
-           now generous enough that it only engages on a genuinely short window,
-           as a guard rail rather than as a sizing rule. */
-        aspect-ratio: 3 / 1;
+        /* Matched to the banners themselves (4.04:1, 4.13:1, 4.27:1, 4.11:1 as they
+           exist in the folder today), so cover has essentially nothing to
+           crop. The box used to be a hard 3:1, which matched the previous
+           versions of these files exactly; the recompression that shrank them
+           rescaled width and height by different factors, so the artwork is now
+           ~4.1:1 and a 3:1 box with cover was throwing away 13-15% off each
+           side -- which reads as a zoomed-in, cropped banner rather than a
+           full-bleed one. 4.1 is the middle of the four, leaving under 2% of
+           crop on the worst of them. If the banners are ever re-encoded again,
+           re-check these two numbers together or the zoom comes straight back. */
+        aspect-ratio: 4.1 / 1;
         max-height: 50vh;
       }
 
@@ -207,10 +211,14 @@ const AUTOPLAY_MS = 6000;
         display: block;
         width: 100%;
         height: 100%;
-        /* contain, so every banner is shown whole without cropping. The box
-           is a fixed 3:1 ratio; banners with different ratios get centered
-           letterbox bars (ivory, matching the page) which read as intentional
-           margins rather than broken images. */
+        /* cover, so each banner fills the box edge to edge with no letterbox and so
+           no backdrop is needed behind it. The box is a 4.1:1 ratio sitting
+           between the four source files (4.04:1 to 4.27:1), so the crop this
+           causes is under 2% of the width -- invisible, and the reason the
+           banner does not look zoomed. object-position is centred so what little
+           is trimmed is symmetric rather than lopsided. If the box and the
+           artwork ever drift apart again, cover will magnify the banner to hide
+           the gap; that is the zoom, and it means the two need re-matching. */
         object-fit: cover;
         object-position: center;
       }
