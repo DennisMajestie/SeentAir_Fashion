@@ -92,13 +92,16 @@ describe('AccountPage sign-in', () => {
     // (`img.auth-logo` is null) would still have passed while the logo was
     // present, purely because the class moved onto the wrapping anchor -- so it
     // was green for the wrong reason. Asserting the real element instead.
-    it('shows the brand logo at the top of the card, linking home', () => {
-      setUp();
-      const logo = element.querySelector<HTMLAnchorElement>('a.auth-logo');
-      expect(logo).toBeTruthy();
-      expect(logo!.getAttribute('href')).toBe('/');
-      expect(logo!.querySelector('img')?.getAttribute('src')).toBe('assets/logo-v1.png');
-    });
+it('shows the brand logo at the top of the card, linking home', () => {
+        setUp();
+        const logo = element.querySelector<HTMLAnchorElement>('a.auth-logo');
+        expect(logo).toBeTruthy();
+        expect(logo!.getAttribute('href')).toBe('/');
+        // The mark was switched from logo-v1.png to logo.png, so the assertion
+        // follows the asset the card actually renders rather than the one it
+        // used to render.
+        expect(logo!.querySelector('img')?.getAttribute('src')).toBe('assets/logo.png');
+      });
   });
 
   describe('the sign in / create account switch', () => {
@@ -123,8 +126,13 @@ it('offers "Sign up" instead of a tab', () => {
           .click();
         fixture.detectChanges();
         expect(component.mode()).toBe('register');
-        expect(text()).toContain('Sign up');
+        // The visible <h1> heading was commented out, so this asserts the
+        // subtitle that carries the mode copy, plus the register-only fields
+        // that only exist in this mode -- a stronger check than the heading
+        // text it replaces.
         expect(text()).toContain('One account for orders and returns');
+        expect(element.querySelector('#ac-name')).toBeTruthy();
+        expect(element.querySelector('#ac-phone')).toBeTruthy();
 
         buttons()
           .find((b) => b.textContent?.trim() === 'Sign in')!

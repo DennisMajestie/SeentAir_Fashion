@@ -71,10 +71,10 @@ const REMEMBERED_EMAIL_KEY = 'seentair.rememberedEmail';
 
           <div class="auth-panel">
             <a class="auth-logo" routerLink="/" aria-label="SEENTAIR home">
-              <img src="assets/logo-v1.png" alt="SEENTAIR" width="196" height="63" />
+              <img src="assets/logo.png" alt="SEENTAIR" width="196" height="63" />
             </a>
 
-            <h1 class="auth-heading">{{ mode() === 'signin' ? 'Sign in' : 'Sign up' }}</h1>
+            <!-- <h1 class="auth-heading">{{ mode() === 'signin' ? 'Sign in' : 'Sign up' }}</h1> -->
             <p class="auth-sub">
               {{ mode() === 'signin' ? 'Access your account' : 'One account for orders and returns' }}
             </p>
@@ -412,8 +412,8 @@ const REMEMBERED_EMAIL_KEY = 'seentair.rememberedEmail';
       .auth-brand__photo--seam {
         width: 152px;
         height: 152px;
-        right: -76px;
-        top: 40%;
+        right: 27px;
+        top: 18%;
         transform: translateY(-50%);
         border: 3px solid rgb(255 255 255 / 0.85);
       }
@@ -450,7 +450,7 @@ const REMEMBERED_EMAIL_KEY = 'seentair.rememberedEmail';
         line-height: 0;
       }
       .auth-logo img {
-        height: 60px;
+        height: 80px;
         width: auto;
       }
       .auth-heading {
