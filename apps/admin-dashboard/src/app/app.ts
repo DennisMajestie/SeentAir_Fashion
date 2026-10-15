@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterOutlet } from '@angular/router';
+import { RouterLink, RouterOutlet } from '@angular/router';
 import {
   SeBannerComponent,
   SeButtonDirective,
@@ -25,6 +25,7 @@ import { environment } from '../environments/environment';
   imports: [
     CommonModule,
     FormsModule,
+    RouterLink,
     RouterOutlet,
     AppSearchComponent,
     AppOpsbarComponent,
@@ -40,9 +41,9 @@ import { environment } from '../environments/environment';
       <div class="auth-screen">
         <header class="auth-head" [class.scrolled]="scrolled()">
           <div class="auth-head-inner">
-            <span class="logo">
-              <img class="auth-logo" src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
-            </span>
+<a class="logo strip-logo" routerLink="/" aria-label="SEENTAIR home">
+                <img class="auth-logo" src="assets/logo.png" alt="SEENTAIR" width="204" height="50" />
+              </a>
             <div class="header-actions">
               <button
                 class="theme-toggle login-theme-toggle"

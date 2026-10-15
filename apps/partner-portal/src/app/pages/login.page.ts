@@ -106,9 +106,9 @@ import { ThemeService } from '../theme.service';
               <img src="assets/logo.png" alt="SEENTAIR" height="60" />
             </span>
 
-            <h1 class="auth-heading">Partner sign-in</h1>
+           
             <p class="auth-sub">Access the institutional investor terminal</p>
-
+ <!-- <h1 class="auth-heading">Partners Portal</h1> -->
             <div class="auth-forms">
               <form class="phase" (ngSubmit)="signIn()" [class.dimmed]="phase() === 2">
                 <label class="auth-field">
@@ -301,10 +301,16 @@ import { ThemeService } from '../theme.service';
         color: var(--ink);
       }
 
-      /* The sign-in bar is a copy of the storefront's site header: sticky, a
-         theme-following surface, a hairline underneath, the wordmark leading and
-         the controls trailing. It used to be a frosted strip over the
-         photograph, which is what the split card replaced. */
+      /* The sign-in bar is a copy of the storefront's site header: full-bleed, sticky,
+         a theme-following surface, a hairline underneath, the wordmark leading
+         and the controls trailing.
+
+         It used to carry max-width + margin-inline:auto, which shrink-wrapped it
+         to its content -- it measured 431px wide and centred at 1440, so the bar
+         did not span the page at all. The storefront solves this the same way
+         its own container does: no cap on the bar itself, and a gutter that
+         grows past the content measure on wide screens, so the wordmark still
+         lands on the same line as the storefront's. */
       .auth-topstrip {
         position: sticky;
         top: 0;
@@ -312,9 +318,11 @@ import { ThemeService } from '../theme.service';
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        max-width: var(--wrap-max, 1280px);
-        margin-inline: auto;
+        width: 100%;
         padding: 14px clamp(20px, 4vw, 56px);
+        /* Same measure as the storefront's .wrap-col: content capped at
+           --wrap-max, gutter of --wrap-x outside it. */
+        padding-inline: calc(max(0px, (100vw - 1150px) / 2) + clamp(20px, 4vw, 56px));
         padding-top: calc(14px + env(safe-area-inset-top, 0px));
         background: var(--panel);
         border-bottom: 1px solid var(--hairline);
@@ -329,7 +337,8 @@ import { ThemeService } from '../theme.service';
         flex: none;
         img {
           display: block;
-          height: 30px;
+          /* 50px, aligned across all four apps. */
+          height: 50px;
           width: auto;
         }
       }

@@ -240,6 +240,16 @@ describe('ops login', () => {
       expect(styleOf('.auth-logo').filter).not.toContain('invert');
     });
 
+    it('carries the wordmark at the suite-wide 50px, linking home', () => {
+      build('light');
+      // Locked so the four sign-in bars cannot drift apart again: the storefront,
+      // partner portal and wholesale portal all sit at 50px.
+      expect(styleOf('.auth-logo').height).toBe('50px');
+      const logo = el('.logo');
+      expect(logo.getAttribute('href')).toBe('/');
+      expect(logo.getAttribute('aria-label')).toMatch(/home/i);
+    });
+
     it('hosts the theme toggle, and not the form column', () => {
       build('light');
       const toggle = el<HTMLButtonElement>('.login-theme-toggle');

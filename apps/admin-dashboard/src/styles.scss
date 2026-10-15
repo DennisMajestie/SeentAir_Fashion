@@ -658,7 +658,9 @@ $ops-gold-ink: var(--acid-ink);
     color: var(--ink);
     img {
       display: block;
-      height: 60px;
+      /* 50px, aligned across all four apps. Was 60px, which made the ops bar
+         24px taller than every other sign-in bar in the suite. */
+      height: 50px;
       width: auto;
       object-fit: contain;
     }

@@ -205,15 +205,24 @@ import { productImage } from './product-image';
            mark keeps the dark plate it was designed against -- the same
            --m-fg the mobile header paints. The asset itself is untouched: no
            filter, no re-colouring, no second file. */
-        background: var(--m-fg, #141210);
-        border-radius: 10px;
-        padding: 7px 12px;
-      }
-      .d-logo img {
-        height: 28px;
-        width: auto;
-        display: block;
-      }
+background: var(--m-fg, #141210);
+          border-radius: 10px;
+          /* Horizontal padding only. The vertical padding was 7px, which made
+             this bar 93px where every other app's bar is 79px -- a 14px jump
+             visible to anyone moving between the storefront and the wholesale
+             or partner portals. The plate itself stays: the glyphs are
+             near-white and need the dark backing to be readable at all. */
+          padding: 0 12px;
+        }
+.d-logo img {
+          /* 50px, aligned across all four apps. The plate above adds 7px of
+             padding each side, so this bar is still taller than the portals',
+             which have no plate -- that is the cost of this asset's light
+             lockup, not an inconsistency in the bar's own metrics. */
+          height: 50px;
+          width: auto;
+          display: block;
+        }
 
       .d-search {
         position: relative;

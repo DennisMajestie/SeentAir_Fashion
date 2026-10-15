@@ -488,18 +488,33 @@ import { ThemeService } from './theme.service';
         -webkit-backdrop-filter: none;
         border-bottom: 1px solid var(--surface-dim);
         transition: none;
-        /* The global rule pads the bar itself; .wordmark-row carries the
-           measure now, so the bar's own padding would double the top gap. */
+        /* The global rule pads the bar itself; the row carries the measure
+           now, so the bar's own padding would double the top gap. */
         padding: 0;
+        /* This bar lives inside .auth-main, which is capped at 1060px, so
+           without escaping it the bar measured 1028px instead of spanning the
+           window. Same escape the storefront uses on its full-bleed surfaces;
+           width:auto with negative inline margins rather than 100vw, so a
+           scrollbar cannot open a horizontal scrollbar. */
+        width: auto;
+        margin-inline: calc(50% - 50vw);
+        padding-inline: calc(max(0px, (100vw - 1280px) / 2) + clamp(20px, 4vw, 56px));
+        padding-top: calc(14px + env(safe-area-inset-top, 0px));
+        padding-bottom: 14px;
       }
       :host .ws-header.scrolled {
         border-bottom-color: var(--surface-dim);
       }
+      /* The bar now owns the measure, so the row is a plain flex line. */
       :host .ws-header .wordmark-row {
-        max-width: 1280px;
-        margin-inline: auto;
-        padding: 14px clamp(20px, 4vw, 56px);
-        padding-top: calc(14px + env(safe-area-inset-top, 0px));
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 0;
+        max-width: none;
+        margin: 0;
       }
       :host .ws-header .strip-logo {
         display: block;
@@ -508,7 +523,8 @@ import { ThemeService } from './theme.service';
       }
       :host .ws-header .strip-logo img {
         display: block;
-        height: 30px;
+        /* 50px, aligned across all four apps. */
+        height: 50px;
         width: auto;
       }
 
@@ -563,7 +579,13 @@ import { ThemeService } from './theme.service';
         width: 100%;
         max-width: 1060px;
         margin: 0 auto;
-        padding: clamp(1.2rem, 4vw, 2.4rem) 1rem 2rem;
+        /* No top padding: it pushed the bar down to y=38, so the header did not
+           sit flush at the viewport top the way the other three do. The card
+           below carries its own spacing instead. */
+        padding: 0 1rem 2rem;
+      }
+      :host .auth-split {
+        margin-top: clamp(1.2rem, 4vw, 2.4rem);
       }
 
       /* ---------- branded half ---------- */
