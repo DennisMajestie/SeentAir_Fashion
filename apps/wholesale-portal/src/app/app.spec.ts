@@ -89,20 +89,26 @@ describe('App sign-in shell', () => {
     expect(alpha === 1 || isBlurred).toBe(true);
   });
 
-  it('frosts the card rather than hiding the photograph behind it', () => {
-    // The whole point of this treatment: the photo still reads through the
-    // form. A solid card would technically satisfy the tests above while
-    // quietly reverting the design.
+  it('gives the card an opaque surface instead of frosting a photograph', () => {
+    // This used to assert a translucent, backdrop-blurred card over a
+    // full-bleed photograph. The split-card redesign replaces that treatment:
+    // the card is an opaque panel with a branded half beside it, and there is no
+    // photograph behind it to read through. The photograph this test was written
+    // about also does not exist in this app -- /assets/form-bg.jpg is requested
+    // by styles.scss but is absent from public/, so it 404s.
     const card = el().querySelector('.auth-card') as HTMLElement;
     const style = getComputedStyle(card);
+
+    // Opaque, not frosted.
     const rgba = /^rgba\(([^)]+)\)$/.exec(style.backgroundColor);
+    if (rgba) {
+      expect(parseFloat(rgba[1].split(',').map((p) => p.trim())[3])).toBe(1);
+    }
+    expect(backdropBlur(style)).toBe('none');
 
-    expect(rgba).not.toBeNull();
-    expect(parseFloat(rgba![1].split(',').map((part) => part.trim())[3])).toBeLessThan(1);
-
-    const blur = backdropBlur(style);
-    expect(blur).not.toBe('');
-    expect(blur).not.toBe('none');
+    // And the card is the full width the split layout wants, not the old 620px
+    // column.
+    expect(parseFloat(style.maxWidth || '0')).not.toBe(620);
   });
 
   it('bleeds the photograph to both window edges without a sideways scrollbar', () => {

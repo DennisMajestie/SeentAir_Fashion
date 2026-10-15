@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterOutlet } from '@angular/router';
+import { RouterLink, RouterOutlet } from '@angular/router';
 import {
   SeButtonDirective,
   SeConfirmService,
@@ -21,7 +21,7 @@ import { ThemeService } from './theme.service';
  */
 @Component({
   selector: 'app-root',
-  imports: [FormsModule, RouterOutlet, SeButtonDirective, SeIconComponent, SeShellComponent],
+  imports: [FormsModule, RouterLink, RouterOutlet, SeButtonDirective, SeIconComponent, SeShellComponent],
   template: `
     @if (api.isLoggedIn) {
       <se-shell
@@ -51,9 +51,13 @@ import { ThemeService } from './theme.service';
         <section class="auth-screen">
           <header class="ws-header" [class.scrolled]="scrolled()">
             <div class="wordmark-row">
-              <div class="wordmark">
-                <img src="assets/logo.png" alt="SEENTAIR" width="160" height="32" />
-              </div>
+              <!-- Copied from the storefront's site header: sticky bar, solid
+                   theme-following surface, hairline underneath, wordmark
+                   leading, controls trailing. Each app keeps its own controls
+                   and its own logo asset. -->
+              <a class="strip-logo" routerLink="/" aria-label="SEENTAIR home">
+                <img src="assets/logo.png" alt="SEENTAIR" width="122" height="39" />
+              </a>
               <!-- The site header is hidden while logged out, so the theme
                    toggle has to live here too or a dark-mode visitor has no
                    way to switch before signing in. -->
@@ -107,13 +111,45 @@ import { ThemeService } from './theme.service';
           </header>
 
           <div class="auth-card">
-            <div class="auth-tagbar"><span>Wholesale buyers</span></div>
+            <!--
+              Branded half. Gated on a signal rather than a media query: nothing
+              in it is an image (this app has no sign-in photograph at all), but
+              the gate keeps the DOM honest about which layout is live. Both
+              circles are brand-tinted discs for the same reason -- there is no
+              product photography to crop in this app, and none may be generated.
+            -->
+            @if (isDesktop()) {
+              <aside class="auth-brand" aria-hidden="true">
+                <span class="auth-brand__cloud auth-brand__cloud--a"></span>
+                <span class="auth-brand__cloud auth-brand__cloud--b"></span>
+                <span class="auth-brand__cloud auth-brand__cloud--c"></span>
 
-            @if (mode() === 'signin') {
-              <h1 class="auth-title">Welcome back.</h1>
-            } @else {
-              <h1 class="auth-title">Apply for wholesale access.</h1>
+                <div class="auth-brand__copy">
+                  <p class="auth-brand__hello">WELCOME</p>
+                  <p class="auth-brand__name">SEENTAIR</p>
+                  <p class="auth-brand__lede">Sign in to your wholesale account.</p>
+                </div>
+
+                <span class="auth-brand__photo auth-brand__photo--seam"></span>
+                <span class="auth-brand__photo auth-brand__photo--corner"></span>
+                <span class="auth-brand__dot"></span>
+              </aside>
             }
+
+            <div class="auth-panel">
+              <span class="auth-logo">
+                <img src="assets/logo.png" alt="SEENTAIR" width="188" height="38" />
+              </span>
+
+              <div class="auth-tagbar"><span>Wholesale buyers</span></div>
+
+              @if (mode() === 'signin') {
+                <h1 class="auth-title">Sign in</h1>
+                <p class="auth-sub">Access the bulk order terminal</p>
+              } @else {
+                <h1 class="auth-title">Apply for wholesale access.</h1>
+                <p class="auth-sub">Tell us about your business</p>
+              }
 
             @if (mode() === 'signin') {
               <form class="auth-form" (ngSubmit)="signIn()" novalidate>
@@ -344,6 +380,7 @@ import { ThemeService } from './theme.service';
                 </form>
               }
             }
+            </div>
           </div>
 
           @if (mode() === 'signin') {
@@ -426,6 +463,374 @@ import { ThemeService } from './theme.service';
       </main>
     }
   `,
+  styles: [
+    `
+      /*
+       * Split-card sign-in. On the component rather than in styles.scss because it
+       * belongs to the logged-out shell only, and because :host-scoped selectors
+       * outrank the global .auth-card rules that described the previous
+       * frosted-over-photo treatment.
+       */
+
+      /* ---------- sign-in bar ----------
+         Copied from the storefront's site header: sticky, a theme-following
+         surface rather than a frosted wash over a photograph, a hairline
+         underneath, the wordmark leading and the controls trailing. z-index 30
+         is the storefront's value, and it must stay different from the card's,
+         which app.spec.ts asserts. */
+      :host .ws-header {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        display: block;
+        background: var(--surface-lowest);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-bottom: 1px solid var(--surface-dim);
+        transition: none;
+        /* The global rule pads the bar itself; .wordmark-row carries the
+           measure now, so the bar's own padding would double the top gap. */
+        padding: 0;
+      }
+      :host .ws-header.scrolled {
+        border-bottom-color: var(--surface-dim);
+      }
+      :host .ws-header .wordmark-row {
+        max-width: 1280px;
+        margin-inline: auto;
+        padding: 14px clamp(20px, 4vw, 56px);
+        padding-top: calc(14px + env(safe-area-inset-top, 0px));
+      }
+      :host .ws-header .strip-logo {
+        display: block;
+        line-height: 0;
+        flex: none;
+      }
+      :host .ws-header .strip-logo img {
+        display: block;
+        height: 30px;
+        width: auto;
+      }
+
+      /* The old layout was a 620px flex column over a full-bleed photograph: the
+         photo is requested by the global rule's ::before, and there is no such
+         asset in this app's public folder at all -- styles.scss still asks for
+         /assets/form-bg.jpg and gets a 404. The cap and the pseudo-element both
+         go, so the card can be the full width the split design wants. */
+      :host .auth-screen {
+        /* The global .auth-screen rule exists to sit text on a photograph, so it
+           reassigns --ink / --muted / --surface-low / --surface-lowest to
+           translucent on-photo values inside this subtree. With the photograph
+           gone those overrides are actively harmful: --ink becomes near-white
+           (invisible on the panel) and --surface-lowest becomes 42% opaque.
+           They are restored here to the palette they name at :root. */
+        --ink: #1b1c19;
+        --muted: #5f5e5e;
+        --muted-faint: #c8c6c5;
+        --hairline: #e4e2dd;
+        --surface-low: #f6f3ee;
+        --surface-lowest: #ffffff;
+
+        max-width: none;
+        width: 100%;
+        display: block;
+        min-height: 0;
+        margin: 0;
+        padding-block: 0;
+        isolation: auto;
+        color: var(--ink);
+        background-image: none;
+        background-color: var(--surface);
+      }
+      :host .auth-screen::before {
+        display: none;
+      }
+      :host .auth-card {
+        background: var(--surface-lowest);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: 1fr;
+        border-radius: 28px;
+        overflow: hidden;
+        box-shadow:
+          0 30px 70px -22px rgb(0 0 0 / 0.26),
+          0 8px 24px -14px rgb(0 0 0 / 0.16);
+      }
+      :host .auth-main {
+        width: 100%;
+        max-width: 1060px;
+        margin: 0 auto;
+        padding: clamp(1.2rem, 4vw, 2.4rem) 1rem 2rem;
+      }
+
+      /* ---------- branded half ---------- */
+      /* No overflow:hidden: the seam disc overhangs onto the form half, and the
+         card is what clips at its rounded edge. */
+      :host .auth-brand {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 36px;
+        background: linear-gradient(160deg, #1f1a14 0%, #14110e 55%, #100d0b 100%);
+        color: #fff;
+      }
+      :host .auth-brand__cloud {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(26px);
+        pointer-events: none;
+      }
+      :host .auth-brand__cloud--a {
+        width: 210px;
+        height: 150px;
+        top: -46px;
+        left: -34px;
+        background: rgb(255 255 255 / 0.07);
+      }
+      :host .auth-brand__cloud--b {
+        width: 180px;
+        height: 130px;
+        top: 26px;
+        right: -56px;
+        background: rgb(201 162 75 / 0.12);
+      }
+      :host .auth-brand__cloud--c {
+        width: 200px;
+        height: 140px;
+        top: 118px;
+        left: 52px;
+        background: rgb(255 255 255 / 0.045);
+      }
+      :host .auth-brand__copy {
+        position: relative;
+        z-index: 2;
+      }
+      :host .auth-brand__hello {
+        margin: 0;
+        font-size: clamp(2.4rem, 5.2vw, 3.5rem);
+        font-weight: 800;
+        line-height: 0.9;
+        color: #fff;
+        text-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+      }
+      :host .auth-brand__name {
+        margin: 0.6rem 0 0;
+        font-size: 1.125rem;
+        font-weight: 700;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        color: #c9a24b;
+      }
+      /* Narrower than the copy block so the sentence can never run under the
+         seam disc, whatever the panel width does. */
+      :host .auth-brand__lede {
+        margin: 0.85rem 0 0;
+        max-width: 240px;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: rgb(255 255 255 / 0.78);
+      }
+      /* Brand-tinted discs: this app ships no photography and the brief forbids
+         generating any, so these stand in for the catalogue photos the other
+         two sign-ins use. */
+      :host .auth-brand__photo {
+        position: absolute;
+        z-index: 3;
+        border-radius: 50%;
+        box-shadow: 0 18px 44px -12px rgb(0 0 0 / 0.6);
+      }
+      :host .auth-brand__photo--seam {
+        width: 152px;
+        height: 152px;
+        right: -76px;
+        top: 40%;
+        transform: translateY(-50%);
+        border: 3px solid rgb(255 255 255 / 0.85);
+        background:
+          radial-gradient(circle at 32% 28%, rgb(240 220 174 / 0.9), rgb(201 162 75 / 0.25) 60%),
+          linear-gradient(150deg, #2e2718, #14110e);
+      }
+      :host .auth-brand__photo--corner {
+        width: 198px;
+        height: 198px;
+        left: -66px;
+        bottom: -74px;
+        border: 3px solid rgb(255 255 255 / 0.22);
+        background:
+          radial-gradient(circle at 38% 32%, rgb(255 255 255 / 0.16), transparent 58%),
+          linear-gradient(150deg, #2a2419, #14110e);
+      }
+      :host .auth-brand__dot {
+        position: absolute;
+        z-index: 1;
+        left: 44%;
+        bottom: 28px;
+        width: 106px;
+        height: 106px;
+        border-radius: 50%;
+        background: rgb(255 255 255 / 0.12);
+      }
+
+      /* ---------- form half ---------- */
+      :host .auth-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 36px 44px 30px;
+        background: var(--surface-lowest);
+      }
+      :host .auth-logo {
+        display: block;
+        line-height: 0;
+      }
+      :host .auth-logo img {
+        display: block;
+        height: 38px;
+        width: auto;
+      }
+      :host .auth-tagbar {
+        margin: 14px 0 0;
+      }
+      :host .auth-title {
+        margin: 0.7rem 0 0;
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        color: var(--ink);
+      }
+      :host .auth-sub {
+        margin: 0.35rem 0 0;
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+
+      :host .auth-form {
+        width: 100%;
+        max-width: 380px;
+        margin-top: 1.4rem;
+        text-align: left;
+      }
+      :host .auth-card input,
+      :host .auth-card select {
+        height: 48px;
+        border-radius: 14px;
+        background: var(--surface-low);
+        border: 1px solid transparent;
+        padding-inline: 44px 16px;
+      }
+      :host .auth-card select {
+        padding-inline: 16px;
+      }
+      :host .auth-card input:focus-visible,
+      :host .auth-card select:focus-visible {
+        outline: 2px solid var(--gold-ink);
+        outline-offset: 1px;
+      }
+      :host .auth-card input[aria-invalid='true'] {
+        border-color: #ba1a1a;
+      }
+      :host .auth-card label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      :host .auth-card .field,
+      :host .auth-card .field-pair {
+        margin-bottom: 16px;
+      }
+      :host .auth-card .field-pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 12px;
+      }
+      :host .auth-card .field-hint,
+      :host .auth-card .field-error {
+        margin: 6px 0 0;
+        font-size: 0.75rem;
+      }
+      :host .auth-card .input-affix input {
+        padding-right: 48px;
+      }
+      :host .auth-card .affix-btn {
+        min-width: 36px;
+        min-height: 36px;
+        padding: 0;
+        border: 0;
+        border-radius: 10px;
+        background: none;
+        color: var(--muted);
+        cursor: pointer;
+      }
+      :host .auth-card .affix-btn:focus-visible {
+        outline: 2px solid var(--gold-ink);
+        outline-offset: 1px;
+      }
+
+      :host .auth-card .auth-submit {
+        width: 100%;
+        min-height: 48px;
+        border-radius: 12px;
+        border: 0;
+        font-weight: 700;
+        /* Gold fill carries the app's ink, not white: white on #c9a24b is about
+           2.1:1 and fails AA, while ink on gold measures 6.9:1. */
+        background: var(--gold);
+        color: var(--ink);
+      }
+      :host .auth-card .auth-submit:disabled {
+        background: color-mix(in srgb, var(--gold) 42%, var(--surface-low));
+        color: var(--muted);
+        cursor: not-allowed;
+      }
+
+      @media (min-width: 900px) {
+        :host .auth-card {
+          grid-template-columns: 46% 54%;
+        }
+      }
+      @media (max-width: 1100px) {
+        :host .auth-brand {
+          padding: 30px;
+        }
+        :host .auth-brand__photo--seam {
+          width: 124px;
+          height: 124px;
+          right: -62px;
+        }
+        :host .auth-brand__photo--corner {
+          width: 160px;
+          height: 160px;
+          left: -54px;
+          bottom: -60px;
+        }
+        :host .auth-brand__dot {
+          width: 88px;
+          height: 88px;
+        }
+        :host .auth-panel {
+          padding: 32px 30px 26px;
+        }
+      }
+      @media (max-width: 899px) {
+        :host .auth-panel {
+          padding: 24px;
+        }
+        :host .auth-card .field-pair {
+          grid-template-columns: 1fr;
+        }
+      }
+    `,
+  ],
 })
 export class App implements OnInit {
   readonly api = inject(ApiService);
@@ -436,9 +841,11 @@ export class App implements OnInit {
   private readonly onScroll = () => {
     this.scrolled.set((window.scrollY ?? 0) > 10);
   };
-  /** The sign-in header tightens once the page has scrolled. */
-  readonly scrolled = signal(false);
-  readonly collapsed = signal(false);
+/** The sign-in header tightens once the page has scrolled. */
+    readonly scrolled = signal(false);
+    readonly collapsed = signal(false);
+    /** Desktop gate for the sign-in card's branded half. */
+    readonly isDesktop = signal(false);
   readonly buyerName = signal<string | null>(null);
 
   readonly nav = computed<SeNavGroup[]>(() => [
@@ -462,6 +869,12 @@ export class App implements OnInit {
     if (typeof window !== 'undefined') {
       this.onScroll();
       window.addEventListener('scroll', this.onScroll, { passive: true });
+      // Desktop-only gate for the branded half of the sign-in card. Declared
+      // here because this app has no shared ViewportService, and the three
+      // frontends have independent node_modules.
+      const mql = window.matchMedia('(min-width: 900px)');
+      this.isDesktop.set(mql.matches);
+      mql.addEventListener('change', (e) => this.isDesktop.set(e.matches));
     }
   }
 
