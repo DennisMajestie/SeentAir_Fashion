@@ -87,7 +87,31 @@ import { environment } from '../environments/environment';
             </div>
           </div>
         </header>
-        <section class="auth-col">
+        <!--
+          Split card, matching the storefront and the two portals: a branded
+          half beside the form half. Named .auth-split rather than .auth-card
+          because .auth-card is the form inside it.
+          All three modes -- reset, sign-in and the 2FA challenge -- are
+          untouched and simply sit inside the form half.
+        -->
+        <div class="auth-split">
+          @if (isDesktop()) {
+            <aside class="auth-brand" aria-hidden="true">
+              <span class="auth-brand__cloud auth-brand__cloud--a"></span>
+              <span class="auth-brand__cloud auth-brand__cloud--b"></span>
+              <span class="auth-brand__cloud auth-brand__cloud--c"></span>
+              <div class="auth-brand__copy">
+                <p class="auth-brand__hello">WELCOME</p>
+                <p class="auth-brand__name">SEENTAIR</p>
+                <p class="auth-brand__lede">Staff access to the ops terminal.</p>
+              </div>
+              <!-- Brand-tinted discs: this app ships no product photography. -->
+              <span class="auth-brand__photo auth-brand__photo--seam"></span>
+              <span class="auth-brand__photo auth-brand__photo--corner"></span>
+              <span class="auth-brand__dot"></span>
+            </aside>
+          }
+          <section class="auth-panel">
           @if (!challengeToken() && resetMode()) {
             <div class="auth-wrap">
               <form
@@ -267,7 +291,8 @@ import { environment } from '../environments/environment';
               </form>
             </div>
           }
-        </section>
+          </section>
+        </div>
       </div>
     } @else {
       <se-shell
@@ -323,6 +348,283 @@ import { environment } from '../environments/environment';
       </se-shell>
     }
   `,
+  styles: [
+    `
+      /*
+       * Split-card sign-in, matching the storefront and the two portals.
+       *
+       * On the component rather than in styles.scss because :host-scoped
+       * selectors outrank the global .auth-screen / .auth-head rules that
+       * described the old photo-overlay layout, and because none of this applies
+       * to the signed-in ops shell.
+       */
+
+      /* The old screen sat on a full-bleed photograph behind a three-layer
+         scrim. The surface is now the canvas. */
+      :host .auth-screen {
+        display: block;
+        min-height: 0;
+        padding: 0;
+        background-image: none;
+        background-color: var(--obsidian);
+        color: var(--ink, #1b1c19);
+      }
+      :host .auth-screen::before {
+        display: none;
+      }
+
+      /* ---------- the bar: a copy of the storefront's site header ---------- */
+      :host .auth-head {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: var(--panel);
+        border-bottom: 1px solid var(--hairline-2);
+        transition: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+      :host .auth-head.scrolled {
+        border-bottom-color: var(--hairline-2);
+      }
+      :host .auth-head-inner {
+        max-width: 1280px;
+        margin-inline: auto;
+        padding: 14px clamp(20px, 4vw, 56px);
+        padding-top: calc(14px + env(safe-area-inset-top, 0px));
+      }
+
+      /* ---------- the card ---------- */
+      :host .auth-split {
+        display: grid;
+        grid-template-columns: 1fr;
+        /* Explicit width: app-root is display:inline, so without it the grid is
+           shrink-to-fit sized rather than filling and capped at max-width. */
+        width: 100%;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: clamp(1.2rem, 4vw, 2.4rem) clamp(16px, 4vw, 24px) 3rem;
+        /* stretch, not start: the two halves must be the same height. */
+        align-items: stretch;
+        /* Clips the corner disc at the card's edge, the way the storefront and
+           the portals do. */
+        overflow: hidden;
+        border-radius: 28px;
+      }
+      :host .auth-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: var(--panel);
+        border-radius: 28px;
+        padding: 40px 44px 34px;
+        box-shadow:
+          0 30px 70px -22px rgb(0 0 0 / 0.24),
+          0 8px 24px -14px rgb(0 0 0 / 0.14);
+      }
+
+      /* ---------- branded half ---------- */
+      /* No overflow:hidden: the seam disc overhangs onto the form half, and the
+         card is what clips at its rounded edge. */
+      :host .auth-brand {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 36px;
+        background: linear-gradient(160deg, #1f1a14 0%, #14110e 55%, #100d0b 100%);
+        color: #fff;
+        border-radius: 28px 0 0 28px;
+      }
+      :host .auth-brand__cloud {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(26px);
+        pointer-events: none;
+      }
+      :host .auth-brand__cloud--a {
+        width: 210px;
+        height: 150px;
+        top: -46px;
+        left: -34px;
+        background: rgb(255 255 255 / 0.07);
+      }
+      :host .auth-brand__cloud--b {
+        width: 180px;
+        height: 130px;
+        top: 26px;
+        right: -56px;
+        background: rgb(201 162 75 / 0.12);
+      }
+      :host .auth-brand__cloud--c {
+        width: 200px;
+        height: 140px;
+        top: 118px;
+        left: 52px;
+        background: rgb(255 255 255 / 0.045);
+      }
+      :host .auth-brand__copy {
+        position: relative;
+        z-index: 2;
+      }
+      :host .auth-brand__hello {
+        margin: 0;
+        font-size: clamp(2.4rem, 5.2vw, 3.5rem);
+        font-weight: 800;
+        line-height: 0.9;
+        color: #fff;
+        text-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+      }
+      :host .auth-brand__name {
+        margin: 0.6rem 0 0;
+        font-size: 1.125rem;
+        font-weight: 700;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        color: #c9a24b;
+      }
+      /* Narrower than the copy block so the sentence can never run under the
+         seam disc, whatever the panel width does. */
+      :host .auth-brand__lede {
+        margin: 0.85rem 0 0;
+        max-width: 240px;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: rgb(255 255 255 / 0.78);
+      }
+      /* Brand-tinted discs: the ops app ships no product photography, and none
+         may be generated. */
+      :host .auth-brand__photo {
+        position: absolute;
+        z-index: 3;
+        border-radius: 50%;
+        box-shadow: 0 18px 44px -12px rgb(0 0 0 / 0.6);
+      }
+      :host .auth-brand__photo--seam {
+        width: 152px;
+        height: 152px;
+        right: -76px;
+        top: 40%;
+        transform: translateY(-50%);
+        border: 3px solid rgb(255 255 255 / 0.85);
+        background:
+          radial-gradient(circle at 32% 28%, rgb(240 220 174 / 0.9), rgb(201 162 75 / 0.25) 60%),
+          linear-gradient(150deg, #2e2718, #14110e);
+      }
+      :host .auth-brand__photo--corner {
+        width: 198px;
+        height: 198px;
+        left: -66px;
+        bottom: -74px;
+        border: 3px solid rgb(255 255 255 / 0.22);
+        background:
+          radial-gradient(circle at 38% 32%, rgb(255 255 255 / 0.16), transparent 58%),
+          linear-gradient(150deg, #2a2419, #14110e);
+      }
+      :host .auth-brand__dot {
+        position: absolute;
+        z-index: 1;
+        left: 44%;
+        bottom: 28px;
+        width: 106px;
+        height: 106px;
+        border-radius: 50%;
+        background: rgb(255 255 255 / 0.12);
+      }
+
+      /* ---------- the forms inside the form half ---------- */
+      :host .auth-panel .auth-wrap {
+        width: 100%;
+        max-width: 360px;
+      }
+      :host .auth-panel .auth-card {
+        background: none;
+        border: 0;
+        padding: 0;
+        text-align: center;
+      }
+      :host .auth-panel .auth-card input {
+        height: 48px;
+        border-radius: 14px;
+        background: var(--panel-2);
+        border: 1px solid transparent;
+        padding-inline: 44px 16px;
+      }
+      :host .auth-panel .auth-card input:focus-visible {
+        outline: 2px solid var(--acid-ink);
+        outline-offset: 1px;
+      }
+      :host .auth-panel .auth-card .pw-wrap input {
+        padding-right: 48px;
+      }
+      :host .auth-panel .auth-card .pw-toggle {
+        min-width: 36px;
+        min-height: 36px;
+        padding: 0;
+        border: 0;
+        border-radius: 10px;
+        background: none;
+        cursor: pointer;
+      }
+      :host .auth-panel .auth-card .pw-toggle:focus-visible {
+        outline: 2px solid var(--acid-ink);
+        outline-offset: 1px;
+      }
+      :host .auth-panel .auth-card .cta.signin {
+        width: 100%;
+        min-height: 48px;
+        border-radius: 12px;
+        border: 0;
+        font-weight: 700;
+/* Gold fill with --on-acid, not --ink: --ink flips to near-white in dark mode,
+             which would put light ink on gold at about 1.9:1. --on-acid is the
+             palette's own "ink on gold" and stays dark in both themes. */
+          background: var(--gold);
+          color: var(--on-acid);
+      }
+
+      /* ---------- breakpoints ---------- */
+      /* The split only happens where the branded half is actually rendered, so
+         the CSS and the signal that gates the markup agree on the same 900px. */
+      @media (min-width: 900px) {
+        :host .auth-split {
+          grid-template-columns: 46% 54%;
+        }
+        :host .auth-panel {
+          border-radius: 0 28px 28px 0;
+        }
+      }
+      @media (max-width: 1100px) {
+        :host .auth-brand {
+          padding: 30px;
+        }
+        :host .auth-brand__photo--seam {
+          width: 124px;
+          height: 124px;
+          right: -62px;
+        }
+        :host .auth-brand__photo--corner {
+          width: 160px;
+          height: 160px;
+          left: -54px;
+          bottom: -60px;
+        }
+        :host .auth-brand__dot {
+          width: 88px;
+          height: 88px;
+        }
+        :host .auth-panel {
+          padding: 34px 30px 28px;
+        }
+      }
+      @media (max-width: 899px) {
+        :host .auth-panel {
+          padding: 24px;
+          border-radius: 28px;
+        }
+      }
+    `,
+  ],
 })
 export class App implements OnInit, OnDestroy {
   readonly api = inject(ApiService);
@@ -332,6 +634,10 @@ export class App implements OnInit, OnDestroy {
     this.scrolled.set((window.scrollY ?? 0) > 10);
   };
   readonly scrolled = signal(false);
+  /** Desktop-only gate for the branded half of the sign-in split card. Declared
+   *  here because this app has no shared ViewportService, and the four frontends
+   *  have independent node_modules. */
+  readonly isDesktop = signal(false);
   private readonly confirm = inject(SeConfirmService);
   private readonly toast = inject(SeToastService);
   private readonly accessService = inject(AccessService);
@@ -377,6 +683,9 @@ export class App implements OnInit, OnDestroy {
     if (typeof window !== 'undefined') {
       this.onScroll();
       window.addEventListener('scroll', this.onScroll, { passive: true });
+      const mql = window.matchMedia('(min-width: 900px)');
+      this.isDesktop.set(mql.matches);
+      mql.addEventListener('change', (e) => this.isDesktop.set(e.matches));
     }
     if (this.api.isLoggedIn) this.loadMe();
   }

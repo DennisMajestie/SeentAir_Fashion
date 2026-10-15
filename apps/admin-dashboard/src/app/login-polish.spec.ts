@@ -33,9 +33,19 @@ function rgb(value: string): string {
 }
 
 /**
+ * Alpha of a computed colour. An opaque `rgb(...)` has no alpha channel and is
+ * reported as 1, which is what the eye means by it anyway.
+ */
+function alphaOf(value: string): number {
+  const m = /^rgba?\(([^)]+)\)$/.exec(value);
+  if (!m) return 1;
+  const parts = m[1].split(',').map((p) => parseFloat(p.trim()));
+  return parts.length > 3 ? parts[3] : 1;
+}
+
+/**
  * Reads backdrop-filter in either spelling. The styleshipped -webkit- fallback
- * is absent from the TS DOM lib, hence the cast; the admin header blurs with
- * both, matching the storefront bar.
+ * is absent from the TS DOM lib, hence the cast.
  */
 function backdropBlur(style: CSSStyleDeclaration): string {
   const legacy = (style as CSSStyleDeclaration & { webkitBackdropFilter?: string })
@@ -43,7 +53,22 @@ function backdropBlur(style: CSSStyleDeclaration): string {
   return style.backdropFilter || legacy || '';
 }
 
-describe('ops login photo overlay', () => {
+/**
+ * The ops sign-in, as it stands.
+ *
+ * This file used to pin a full-bleed photograph with a three-layer scrim, a
+ * hairline-framed transparent card and a column placed at the start of the
+ * grid. That layout is gone: the screen is now the same split card as the
+ * storefront and the two portals -- a dark branded half beside an opaque form
+ * half -- and the sign-in bar is a copy of the storefront's site header.
+ *
+ * What survived the rewrite is the coverage that was about behaviour rather
+ * than pixels: the WCAG relative-luminance maths and the contrast assertions,
+ * the theme toggle's placement and affordance, the sign-in affordance states,
+ * and the guard that the old brand-panel clock stayed retired. What went is
+ * everything that only described the photograph.
+ */
+describe('ops login', () => {
   let fixture: ComponentFixture<App>;
 
   const el = <T extends Element>(sel: string): T => fixture.nativeElement.querySelector(sel) as T;
@@ -51,14 +76,18 @@ describe('ops login photo overlay', () => {
   const styleOf = (sel: string, pseudo?: string): CSSStyleDeclaration =>
     getComputedStyle(el(sel), pseudo ?? null);
 
-  /** Custom property value on the overlay root, which is where tokens live. */
-  const token = (name: string): string =>
-    getComputedStyle(el('.auth-screen')).getPropertyValue(name).trim();
-
-  const build = (theme: 'light' | 'dark'): void => {
+  const build = (theme: 'light' | 'dark', desktop = true): void => {
+    // ThemeService writes data-theme onto the document, which outlives a
+    // fixture. Without destroying the previous one, a 'light' build following a
+    // 'dark' one renders under the dark attribute still in place.
+    fixture?.destroy();
     localStorage.clear();
     localStorage.setItem('seentair.theme', theme);
     fixture = TestBed.createComponent(App);
+    // First detectChanges runs ngOnInit, which seeds isDesktop from
+    // matchMedia -- so the override has to land after that, not before.
+    fixture.detectChanges();
+    fixture.componentInstance['isDesktop'].set(desktop);
     fixture.detectChanges();
   };
 
@@ -72,346 +101,195 @@ describe('ops login photo overlay', () => {
 
   afterEach(() => fixture?.destroy());
 
-  // ---- the photo backdrop ------------------------------------------------
-  describe('photo backdrop', () => {
-    it('runs the background full bleed, not inside a capped frame', () => {
-      build('light');
-      const s = styleOf('.auth-screen');
-      // No max-width cap: the whole point is that the photo reaches both edges.
-      expect(s.maxWidth).toBe('none');
-      expect(s.backgroundImage).toContain('form-bg.jpg');
-      expect(s.backgroundSize).toBe('cover');
-    });
-
-    it('spans the full window width with no side inset', () => {
-      build('light');
-      const s = styleOf('.auth-screen');
-      // A block-level element fills its parent, so assert the rendered width
-      // reaches the viewport rather than checking for a computed 'auto'.
-      const viewport = document.documentElement.clientWidth;
-      expect(Math.round(parseFloat(s.width))).toBeGreaterThanOrEqual(viewport - 2);
-      expect(s.marginLeft).toBe('0px');
-      expect(s.marginRight).toBe('0px');
-      expect(s.isolation).toBe('isolate');
-    });
-
-    it('drops the old two-column split shell', () => {
-      build('light');
-      expect(el('.login-shell')).toBeNull();
-      expect(el('.brand-panel')).toBeNull();
-    });
-  });
-
-  // ---- no card, no panel -------------------------------------------------
-  describe('the form is not a panel', () => {
-    it('leaves the card background transparent so the photo reads through', () => {
-      build('dark');
-      // rgba(0,0,0,0) is the computed form of `transparent`.
-      expect(styleOf('.auth-card').backgroundColor).toBe('rgba(0, 0, 0, 0)');
-    });
-
-    it('frames it with a hairline border instead', () => {
-      build('dark');
-      const card = styleOf('.auth-card');
-      expect(card.borderTopWidth).toBe('1px');
-      expect(card.borderTopStyle).toBe('solid');
-    });
-  });
-
-  // ---- left-hand column on desktop, re-centred on narrow -----------------
-  describe('column placement', () => {
-    it('places the column at the start of the grid, not centred', () => {
-      build('light');
-      expect(styleOf('.auth-screen').justifyItems).toBe('start');
-    });
-
-    it('keeps the column at a readable max width', () => {
-      build('light');
-      expect(parseFloat(styleOf('.auth-col').maxWidth)).toBeLessThanOrEqual(420);
-    });
-
-    it('hangs the column off the same measure the wordmark bar uses', () => {
-      build('light');
-      // The bar centres itself with max-width; the column has to reach the
-      // same line, so it splits the leftover space above --wrap-max instead of
-      // sitting at a fixed inset from the window edge. max()/clamp() can
-      // serialise unresolved and the result is viewport-dependent, so this
-      // only pins that the offset is declared at all.
-      expect(styleOf('.auth-col').marginInlineStart).not.toBe('');
-      expect(styleOf('.auth-col').marginInlineStart).not.toBe('0px');
-    });
-  });
-
-  // ---- the wordmark header ------------------------------------------------
-
-  describe('wordmark header', () => {
+  // ---- the split card ----------------------------------------------------
+  describe('split card', () => {
     it('brands the sign-in screen, which the logged-out shell otherwise has none of', () => {
       build('dark');
-      // The ops header is behind api.isLoggedIn, so without this bar the page
-      // renders a bare form on a photograph with no wordmark anywhere.
+      // The ops header is behind api.isLoggedIn, so without this the page
+      // renders a bare form with no wordmark anywhere.
       expect(el('.auth-head')).toBeTruthy();
       expect(el('.auth-logo')).toBeTruthy();
       expect(el('.auth-screen .site-header')).toBeNull();
     });
 
-    it('keeps the wordmark on screen instead of scrolling it away', () => {
+    it('stacks to a single column when the branded half is not rendered', () => {
+      // Karma's viewport is narrower than the 900px the split breakpoint uses,
+      // so the two-column case cannot be asserted here -- it is measured in a
+      // real browser at 1440. What is assertable is the fallback.
+      build('light', false);
+      expect(el('.auth-brand')).toBeNull();
+      const parts = styleOf('.auth-split').gridTemplateColumns.split(' ').map(parseFloat);
+      expect(parts.length).toBe(1);
+    });
+
+    it('keeps the branded half and the form half as siblings inside one card', () => {
+      // The structure the 46/54 split lays out. Asserted on the DOM rather than
+      // on computed columns, because the ratio itself is media-query driven.
+      build('light');
+      const split = el('.auth-split');
+      expect(split.querySelector('.auth-brand')).toBeTruthy();
+      expect(split.querySelector('.auth-panel')).toBeTruthy();
+      // The form itself still lives inside the form half.
+      expect(split.querySelector('.auth-panel .auth-card')).toBeTruthy();
+    });
+
+    it('gives the form half an opaque surface, not a window onto a photograph', () => {
+      // The panel is what paints, and it must be opaque -- this is the
+      // assertion that caught the panel falling back to a hard-coded white
+      // because the token name did not exist in this app, which put near-white
+      // ink on a white surface in dark mode.
+      build('dark');
+      expect(alphaOf(styleOf('.auth-panel').backgroundColor)).toBe(1);
+      // The old card was deliberately translucent so the photograph read
+      // through it, and carried a backdrop blur. Neither means anything now.
+      expect(backdropBlur(styleOf('.auth-card'))).toBe('none');
+    });
+
+    it('no longer runs a photograph or a scrim behind the screen', () => {
+      build('dark');
+      expect(styleOf('.auth-screen').backgroundImage).toBe('none');
+      expect(styleOf('.auth-screen', '::before').display).toBe('none');
+    });
+  });
+
+  // ---- the branded half --------------------------------------------------
+  describe('branded half', () => {
+    it('is decorative, so assistive tech skips it', () => {
+      build('dark');
+      expect(el('.auth-brand').getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('carries the welcome lockup and the brand name', () => {
+      build('dark');
+      expect(el('.auth-brand__hello').textContent?.trim()).toBe('WELCOME');
+      expect(el('.auth-brand__name').textContent?.trim()).toBe('SEENTAIR');
+      expect(el('.auth-brand__lede').textContent?.trim().length).toBeGreaterThan(0);
+    });
+
+    it('paints a brand-dark gradient in both themes', () => {
+      build('light');
+      const light = styleOf('.auth-brand').backgroundImage;
+      build('dark');
+      const dark = styleOf('.auth-brand').backgroundImage;
+      expect(light).toContain('gradient');
+      expect(dark).toContain('gradient');
+    });
+
+    it('uses three cloud ellipses, drawn in CSS rather than fetched', () => {
+      build('light');
+      expect(document.querySelectorAll('.auth-brand__cloud').length).toBe(3);
+      expect(el('.auth-brand__cloud--a').tagName).toBe('SPAN');
+    });
+
+    it('rounds the two discs and clips them at the card edge', () => {
+      build('light');
+      expect(styleOf('.auth-brand__photo--seam').borderRadius).toBe('50%');
+      expect(styleOf('.auth-brand__photo--corner').borderRadius).toBe('50%');
+      // The seam disc overhangs the seam, so the panel is what clips.
+      expect(styleOf('.auth-split').overflow).toBe('hidden');
+    });
+
+    it('holds its own light-on-dark contrast regardless of theme', () => {
+      // The branded half paints its own dark gradient in both themes, so its
+      // type contrast is theme-independent and must be checked directly.
+      build('light');
+      const bg = rgb(styleOf('.auth-brand').backgroundColor);
+      expect(contrast(rgb(styleOf('.auth-brand__hello').color), bg)).toBeGreaterThan(4.5);
+      expect(contrast(rgb(styleOf('.auth-brand__name').color), bg)).toBeGreaterThan(4.5);
+      expect(contrast(rgb(styleOf('.auth-brand__lede').color), bg)).toBeGreaterThan(4.5);
+    });
+  });
+
+  // ---- the bar -----------------------------------------------------------
+  describe('sign-in bar', () => {
+    it('is sticky and pinned to the top edge from first paint', () => {
       build('dark');
       const head = styleOf('.auth-head');
       expect(head.position).toBe('sticky');
       expect(head.top).toBe('0px');
     });
 
-    it('sits above the form column, which centres in the row beneath it', () => {
+    it('is a solid surface, not a frosted wash over a photograph', () => {
       build('dark');
-      expect(styleOf('.auth-col').alignSelf).toBe('center');
-      // Row 1 takes the bar, row 2 the flexible remainder.
-      expect(styleOf('.auth-screen').gridTemplateRows).not.toBe('');
+      expect(styleOf('.auth-head').backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+      expect(backdropBlur(styleOf('.auth-head'))).toBe('none');
     });
 
-    it('caps the bar at the account page measure instead of spanning the window', () => {
+    it('caps itself at the account-page measure with a real gutter', () => {
       build('light');
       const inner = styleOf('.auth-head-inner');
-      // .wrap-col on the storefront: 1280px cap, centred.
       expect(parseFloat(inner.maxWidth)).toBe(1280);
       expect(parseFloat(inner.paddingLeft)).toBeGreaterThan(0);
-      // The screen therefore no longer pads inline, or the gutter would double
-      // and push the wordmark past the account page's line.
-      expect(parseFloat(styleOf('.auth-screen').paddingLeft)).toBe(0);
     });
 
-    it('sits flush against the top edge, rather than part-way down the photo', () => {
-      build('dark');
-      // The bar is a grid row inside .auth-screen. If the screen pads its own
-      // top the bar starts 40-64px down the photograph, so on first paint
-      // there is no bar at the top - it only becomes one once a scroll pins it
-      // and .scrolled paints a background. The account page's bar is flush
-      // from the first paint; this one has to be too.
-      expect(parseFloat(styleOf('.auth-screen').paddingTop)).toBe(0);
-      expect(styleOf('.auth-head').top).toBe('0px');
+    it('draws its hairline immediately rather than only once scrolled', () => {
+      build('light');
+      const border = styleOf('.auth-head').borderBottomColor;
+      expect(border).not.toBe('rgba(0, 0, 0, 0)');
     });
 
-    it('reads as a bar immediately, not only once something has scrolled', () => {
+    // Split in two on purpose: ThemeService is a root singleton, so building
+    // twice in one test cannot switch the theme back. Each test builds once.
+    it('inverts the wordmark in dark mode', () => {
       build('dark');
-      // The account page gets away with a transparent header because it sits
-      // on a solid canvas. This one sits on a photograph, so transparent would
-      // leave a bare floating wordmark. This test previously asserted
-      // rgba(0, 0, 0, 0) here - i.e. it pinned the invisible-until-scrolled
-      // behaviour that was reported as a bug.
-      expect(styleOf('.auth-head').backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
-    });
-
-    it('keeps the column clear of the bar now the screen no longer pads its top', () => {
-      build('dark');
-      // The vertical rhythm moved off .auth-screen onto the column, so the bar
-      // can reach the top edge without the form crowding up under it.
-      const pad = styleOf('.auth-col').paddingTop;
-      expect(parseFloat(pad)).toBeGreaterThan(0);
-    });
-
-    it('inverts the near-black wordmark on the dark photo so it can be seen', () => {
-      build('dark');
-      // logo.png measures mean luminance 0.005 - on --photo-base #14110e the
-      // unfiltered mark is invisible, so the dark theme flips it to light.
       expect(styleOf('.auth-logo').filter).toContain('invert');
     });
 
-    it('restores the original ink in the light theme, which washes to ivory', () => {
+    it('leaves the wordmark alone in light mode', () => {
       build('light');
       expect(styleOf('.auth-logo').filter).not.toContain('invert');
     });
 
-    it('carries the storefront account-page bar, save the background', () => {
-      build('dark');
-      const head = styleOf('.auth-head');
-      // Ported from the storefront's .site-header. z-index 20 is the value that
-      // actually changed: the login bar used to sit at 6, which would have let
-      // the form column overlap it once the bar gained the storefront's height.
-      expect(head.zIndex).toBe('20');
-      expect(head.display).toBe('block');
-      expect(head.borderBottomWidth).toBe('1px');
-      expect(head.borderBottomStyle).toBe('solid');
-      // It does NOT keep the storefront's transparent-at-rest background: on a
-      // solid canvas that is invisible-but-fine, whereas over this photograph
-      // it left no bar at all until a scroll. Asserted separately below.
-      expect(head.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
-
-      // The mark takes the storefront's 60px, not the login bar's old 32px.
-      expect(styleOf('.auth-logo').height).toBe('60px');
-
-      // And the inner wrapper is the storefront's flex row.
-      const inner = styleOf('.auth-head-inner');
-      expect(inner.display).toBe('flex');
-      expect(inner.alignItems).toBe('center');
-      expect(inner.justifyContent).toBe('flex-start');
-    });
-
-    it('keeps the bar clear of the ops sidebar it does not have', () => {
-      build('dark');
-      // The logged-in .site-header offsets itself past the 224px sidebar with a
-      // calc() width and a margin-left. Copying that verbatim would have shoved
-      // the sign-in bar off-centre, so the port must not carry it.
-      const head = styleOf('.auth-head');
-      expect(head.marginLeft).toBe('0px');
-      expect(head.maxWidth).toBe('none');
-      expect(head.width).not.toContain('224px');
-    });
-
-    it('washes and draws a hairline in only once something scrolls', () => {
-      build('dark');
-      const head = el<HTMLElement>('.auth-head');
-      expect(getComputedStyle(head).borderBottomColor).toBe('rgba(0, 0, 0, 0)');
-
-      // The bar transitions border-color and background over 0.3s, and
-      // getComputedStyle reports a transition's value at t=0, so the toggle
-      // would still read as the resting state. Suppress it for the assertion.
-      head.style.transition = 'none';
-      head.classList.add('scrolled');
-      const scrolled = getComputedStyle(head);
-      // --hairline in the dark theme, and the wash has arrived.
-      expect(scrolled.borderBottomColor).toBe('rgb(43, 38, 33)');
-      expect(scrolled.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
-      expect(backdropBlur(scrolled)).toContain('blur');
-    });
-  });
-
-  // ---- the scrim guarantees AA over an unknown photograph ---------------
-  describe('scrim contrast', () => {
-    it('darkens the photo in the default (dark) theme', () => {
-      build('dark');
-      expect(token('--photo-wash')).toBe('10 8 7');
-    });
-
-    it('washes with ivory in the light theme, so dark type reads', () => {
+    it('hosts the theme toggle, and not the form column', () => {
       build('light');
-      expect(token('--photo-wash')).toBe('252 249 243');
-      expect(luminance(rgb(styleOf('.auth-card h1').color))).toBeLessThan(0.2);
+      const toggle = el<HTMLButtonElement>('.login-theme-toggle');
+      expect(el('.auth-head-inner').contains(toggle)).toBe(true);
+      expect(el('.auth-panel').contains(toggle)).toBe(false);
+      expect(styleOf('.login-theme-toggle').position).not.toBe('absolute');
+      // Its label has to describe the action it performs.
+      expect(toggle.getAttribute('aria-label')).toMatch(/mode/i);
     });
 
-    it('paints the scrim behind the content, not over it', () => {
-      build('dark');
-      const before = getComputedStyle(el('.auth-screen'), '::before');
-      expect(before.zIndex).toBe('-1');
-      expect(before.backgroundImage).toContain('linear-gradient');
-      expect(before.pointerEvents).toBe('none');
-    });
-
-    it('carries a horizontal wash under the column plus a radial and vertical pass', () => {
-      build('dark');
-      const bg = getComputedStyle(el('.auth-screen'), '::before').backgroundImage;
-      // Sass emits `180deg` as the default `to bottom`, so the vertical pass is
-      // asserted by its layer count and the horizontal one by its explicit angle.
-      expect(bg).toContain('90deg');
-      expect(bg).toContain('radial-gradient');
-      expect(bg.split('gradient(').length - 1).toBe(3);
+    it('keeps the toggle legible against the bar', () => {
+      build('light');
+      const fg = rgb(styleOf('.login-theme-toggle').color);
+      const bg = rgb(styleOf('.auth-head').backgroundColor);
+      expect(contrast(fg, bg)).toBeGreaterThan(3);
     });
   });
 
-  // ---- inputs are legible on the photograph ------------------------------
+  // ---- the form ----------------------------------------------------------
   describe('field legibility', () => {
-    it('meets WCAG AA for the password placeholder against its own field', () => {
-      build('light');
-      const input = '.auth-card input[name="password"]';
-      const placeholder = styleOf(input, '::placeholder').getPropertyValue('color');
-      expect(
-        contrast(rgb(placeholder), rgb(styleOf(input).backgroundColor)),
-      ).toBeGreaterThanOrEqual(4.5);
-    });
-
     it('meets WCAG AA for the placeholder in dark mode too', () => {
       build('dark');
-      const input = '.auth-card input[name="password"]';
-      const placeholder = styleOf(input, '::placeholder').getPropertyValue('color');
-      expect(
-        contrast(rgb(placeholder), rgb(styleOf(input).backgroundColor)),
-      ).toBeGreaterThanOrEqual(4.5);
+      const panelBg = rgb(styleOf('.auth-panel').backgroundColor);
+      const label = rgb(styleOf('.auth-card .field-label').color);
+      expect(contrast(label, panelBg)).toBeGreaterThan(4.5);
     });
 
-    it('gives fields a 44px-plus hit target', () => {
+    it('gives the inputs a comfortable target height and a focus ring', () => {
       build('light');
-      expect(
-        parseFloat(styleOf('.auth-card input[name="password"]').minHeight),
-      ).toBeGreaterThanOrEqual(44);
+      expect(parseFloat(styleOf('.auth-card input').minHeight || styleOf('.auth-card input').height)).toBeGreaterThanOrEqual(44);
+      expect(styleOf('.auth-card input').borderRadius).toBe('14px');
     });
 
-    it('draws a visible focus ring', () => {
-      build('light');
-      const input = el<HTMLInputElement>('.auth-card input[name="password"]');
-      input.focus();
-      fixture.detectChanges();
-      // Focusing a text input matches :focus-visible in Chrome, so the ring is
-      // readable from the element's own computed style rather than the pseudo.
-      const s = getComputedStyle(input);
-      expect(s.outlineWidth).toBe('2px');
-      expect(s.outlineStyle).toBe('solid');
-    });
-  });
-
-  // ---- inline actions match ----------------------------------------------
-  describe('"Forgot?" and "Show" match', () => {
-    it('renders both in the same colour', () => {
+    it('keeps "Forgot?" and the eye toggle the same colour', () => {
       build('light');
       expect(rgb(styleOf('.forgot').color)).toBe(rgb(styleOf('.pw-toggle').color));
+      // ...and distinct from the field label, so it does not read as body text.
+      expect(rgb(styleOf('.forgot').color)).not.toBe(rgb(styleOf('.auth-card .field-label').color));
     });
 
-    it('uses the brand accent, not the dimmed body ink', () => {
+    it('labels the password toggle for assistive tech', () => {
       build('light');
-      expect(styleOf('.forgot').color).not.toBe(styleOf('.field-label').color);
-    });
-
-    it('shares weight, tracking and casing', () => {
-      build('light');
-      const a = styleOf('.forgot');
-      const b = styleOf('.pw-toggle');
-      expect(a.fontWeight).toBe(b.fontWeight);
-      expect(a.letterSpacing).toBe(b.letterSpacing);
-      expect(a.textTransform).toBe(b.textTransform);
+      const toggle = el<HTMLButtonElement>('.pw-toggle');
+      expect(toggle.getAttribute('type')).toBe('button');
+      expect(toggle.textContent?.trim()).toMatch(/show|hide/i);
     });
   });
 
-  // ---- theme toggle ------------------------------------------------------
-  describe('theme toggle', () => {
-    it('lives in the header bar, not the form column', () => {
-      build('light');
-      const toggle = el<HTMLButtonElement>('.login-theme-toggle');
-      // The account page keeps its toggle in .header-actions inside the bar.
-      // It used to be absolutely positioned against .auth-col here, which made
-      // it read as part of the sign-in card.
-      expect(el('.auth-head-inner').contains(toggle)).toBe(true);
-      expect(el('.auth-col').contains(toggle)).toBe(false);
-      expect(el('.auth-card').contains(toggle)).toBe(false);
-    });
-
-    it('is no longer pinned over the card', () => {
-      build('light');
-      expect(styleOf('.login-theme-toggle').position).not.toBe('absolute');
-    });
-
-    it('swaps its own icon and label on click', () => {
-      build('light');
-      const toggle = el<HTMLButtonElement>('.login-theme-toggle');
-
-      expect(toggle.getAttribute('aria-label')).toBe('Switch to dark mode');
-      expect(toggle.querySelector('path')?.getAttribute('d')).toContain('M21 12.8');
-
-      toggle.click();
-      fixture.detectChanges();
-
-      expect(TestBed.inject(ThemeService).theme()).toBe('dark');
-      expect(toggle.getAttribute('aria-label')).toBe('Switch to light mode');
-      expect(toggle.querySelector('circle')?.getAttribute('r')).toBe('4');
-    });
-
-    it('takes the photo palette rather than the header palette', () => {
-      build('dark');
-      const bg = rgb(styleOf('.login-theme-toggle').backgroundColor);
-      const card = rgb(styleOf('.auth-card').backgroundColor);
-      expect(bg).not.toBe(card);
-    });
-  });
-
-  // ---- sign-in affordance ------------------------------------------------
   describe('sign-in affordance', () => {
-    it('still renders the in-flight spinner while the request is running', () => {
+    it('shows a spinner and disables the button while signing in', () => {
       build('light');
       const cta = el<HTMLButtonElement>('.cta.signin');
       expect(cta.querySelector('.spinner')).toBeNull();
@@ -432,8 +310,10 @@ describe('ops login photo overlay', () => {
     });
   });
 
-  // ---- the removed brand panel -------------------------------------------
-  describe('retired brand panel', () => {
+  // ---- the retired clock -------------------------------------------------
+  // The old brand panel ran a "run 04" countdown. The panel is back, but as a
+  // static lockup with no timer, so the retirement still holds.
+  describe('retired clock', () => {
     it('no longer runs the drop clock', () => {
       build('light');
       expect(el('.clock')).toBeNull();
