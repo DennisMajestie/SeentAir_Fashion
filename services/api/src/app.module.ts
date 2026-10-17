@@ -32,6 +32,8 @@ import { CustomOrdersModule } from './modules/custom-orders/custom-orders.module
 import { PartnersModule } from './modules/partners/partners.module';
 import { TechPacksModule } from './modules/tech-packs/tech-packs.module';
 import { PublicConfigModule } from './modules/public-config/public-config.module';
+import { PlatformSettingsModule } from './modules/platform-settings/platform-settings.module';
+import { CheckoutShippingModule } from './modules/checkout-shipping/checkout-shipping.module';
 
 @Module({
   imports: [
@@ -74,6 +76,8 @@ import { PublicConfigModule } from './modules/public-config/public-config.module
     PartnersModule,
     TechPacksModule,
     PublicConfigModule,
+    PlatformSettingsModule,
+    CheckoutShippingModule,
   ],
   providers: [
     // Order matters: rate-limit, then authenticate, then authorize, then audit.

@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { numericTransformer } from '../../../common/numeric.transformer';
+import { ProductSizeClass } from '../../checkout-shipping/shipping-size-class';
 import { Collection } from './collection.entity';
 import { ProductVariant } from './product-variant.entity';
 
@@ -74,6 +75,15 @@ export class Product {
    */
   @Column({ name: 'primary_image_url', type: 'varchar', nullable: true })
   primaryImageUrl: string | null;
+
+  /**
+   * How big this product ships, which selects the delivery rate. Defaults to
+   * 'medium' so every product is priceable without anyone having to classify
+   * it first, and stays nullable so "not classified yet" is still expressible
+   * (the quote treats null as medium rather than refusing to ship).
+   */
+  @Column({ name: 'size_class', type: 'enum', enum: ProductSizeClass, nullable: true, default: ProductSizeClass.MEDIUM })
+  sizeClass: ProductSizeClass | null;
 
   @ManyToOne(() => Collection, (collection) => collection.products, { nullable: true, eager: true })
   @JoinColumn({ name: 'collection_id' })
