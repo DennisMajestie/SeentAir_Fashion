@@ -26,7 +26,7 @@
   --danger: #ba1a1a;
   --header-h: 3.6rem;
   --wrap-max: 1280px;
-  --wrap-x: clamp(20px, 4vw, 56px);
+  --wrap-x: clamp(0px, 2vw, 56px);
   --radius: 16px;
   /* One shape language for controls: anything you press is a pill,
      anything you type into is a soft-cornered field. */
@@ -198,7 +198,6 @@ main {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 14px;
 }
 .m-burger {
   display: grid;
@@ -562,7 +561,7 @@ body:has(.m-header--light) main {
     }
   }
   .m-svc__label {
-    font-size: 13px;
+    font-size: 9px;
     font-weight: 600;
     color: var(--m-muted);
   }
@@ -888,7 +887,7 @@ body:has(.m-tabs) {
    scrollbar on a tight window. */
 .m-row3 {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
   @media (min-width: 900px) {
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -2431,8 +2430,8 @@ app-product-card {
 }
 .badge {
   position: absolute;
-  top: 4px;
-  left: 3px;
+  top: 18px;
+  left: 10px;
   padding: 0.28rem 0.6rem;
   border-radius: var(--radius-pill);
   font-family: 'Inter', sans-serif;
@@ -2466,14 +2465,14 @@ app-product-card {
 }
 .heart-btn {
   position: absolute;
-  top: 4px;
-  right: 1px;
+  top: 16px;
+  right: 16px;
   z-index: 2;
   /* 26px target: smaller than the WCAG 2.5.5 minimum, but that is the design
      brief; the heart sits on the photo and must not dwarf it. The glyph stays
      17px. */
-  width: 24px;
-  height: 24px;
+  width: 29px;
+  height: 29px;
   border-radius: var(--radius-pill);
   cursor: pointer;
   display: inline-flex;
@@ -2516,6 +2515,7 @@ app-product-card {
 .cartbtn {
   position: absolute;
   right: 1px;
+  bottom: 2px;
   width: 44px;
   height: 44px;
   display: grid;
@@ -5124,10 +5124,10 @@ editing the shared .page-kicker, which other pages also use. */
 /* Reviews and the related rail sit OUTSIDE .p-body now so they can run the
    full page width at desktop. On mobile they were relying on .p-body's side
    padding, so it is repeated here to keep the inset identical. */
-.p-reviews,
-.p-rel {
-  padding-inline: 0.875rem;
-}
+// .p-reviews,
+// .p-rel {
+//   padding-inline: 0.875rem;
+// }
 
 .p-reviews {
   margin-top: 1.6rem;
