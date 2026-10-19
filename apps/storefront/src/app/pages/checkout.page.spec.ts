@@ -25,6 +25,7 @@ describe('CheckoutPage — split steps', () => {
   let element: HTMLElement;
   let page: CheckoutPage;
   let createOrder: jasmine.Spy;
+  let deliveryQuote: jasmine.Spy;
   let payWithPaystack: jasmine.Spy;
   let loggedIn: boolean;
   /** Set before build() when a spec needs a differently-shaped order response. */
@@ -54,6 +55,10 @@ describe('CheckoutPage — split steps', () => {
   const text = () => element.textContent ?? '';
 
   const build = () => {
+    // Delivery pricing asks for a figure before ordering. These tests are about
+    // the order flow, so the quote resolves to null - the API treats that as
+    // 'no delivery pricing switched on' and the order is sent without a quoteId.
+    deliveryQuote = jasmine.createSpy('deliveryQuote').and.returnValue(of(null));
     createOrder = jasmine.createSpy('createOrder').and.returnValue(of(order(orderOverride)));
     payWithPaystack = jasmine
       .createSpy('payWithPaystack')
@@ -69,6 +74,7 @@ describe('CheckoutPage — split steps', () => {
               return loggedIn;
             },
             login: () => of({ accessToken: 'a', refreshToken: 'r' }),
+            deliveryQuote: (r: unknown) => deliveryQuote(r),
             me: () => of({ id: 'u1', email: 'ada@example.com', name: 'Ada', role: 'customer' }),
             createOrder,
             payWithPaystack,

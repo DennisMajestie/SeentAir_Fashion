@@ -3,6 +3,8 @@ import { Component, ElementRef, computed, inject, signal, viewChild } from '@ang
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService, ShippingAddress } from '../api.service';
+import type { DeliveryMethod, DeliveryQuote, Order } from '../api.service';
+import { catchError, Observable, of, tap } from 'rxjs';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
 
@@ -324,11 +326,27 @@ const NIGERIAN_STATES = [
               <div class="auth-box checkout-auth">
               <label
                 >State
-                <select [(ngModel)]="shipState" name="shipState" required>
+                <select
+                  [(ngModel)]="shipState"
+                  name="shipState"
+                  required
+                  (ngModelChange)="refreshDeliveryQuote()"
+                >
                   <option value="" disabled>Select a state</option>
                   @for (s of NIGERIAN_STATES; track s) {
                     <option [value]="s">{{ s }}</option>
                   }
+                </select>
+              </label>
+              <label
+                >How to collect
+                <select
+                  [(ngModel)]="deliveryMethod"
+                  name="deliveryMethod"
+                  (ngModelChange)="refreshDeliveryQuote()"
+                >
+                  <option value="freight">Deliver to me</option>
+                  <option value="pickup">Collect from the factory</option>
                 </select>
               </label>
               <label
@@ -406,7 +424,18 @@ const NIGERIAN_STATES = [
             <span>Subtotal</span><span>₦{{ cart.total | number: '1.0-2' }}</span>
           </div>
           <div class="matrix-row"><span>Payment policy</span><span>full &amp; upfront</span></div>
-          <div class="matrix-row"><span>Delivery</span><span>quoted at dispatch</span></div>
+          <div class="matrix-row">
+          <span>Delivery</span>
+          @if (deliveryQuote(); as d) {
+            @if (d.status === 'quoted') {
+              <span>{{ d.freeDeliveryApplied ? 'Free' : (d.feeKobo / 100 | number: '1.0-2') }}</span>
+            } @else {
+              <span class="muted">{{ d.estimate }}</span>
+            }
+          } @else {
+            <span class="muted">Choose a state to see delivery</span>
+          }
+        </div>
           <div class="matrix-divider"></div>
           <div class="matrix-total">
             <span class="label">Total due</span>
@@ -518,6 +547,15 @@ export class CheckoutPage {
   password = '';
 
   shipState = '';
+
+  /**
+   * How this order is getting to the customer. Pickup is never delivered, so
+   * it is never charged; the default matches what the order has always been.
+   */
+  readonly deliveryMethod = signal<DeliveryMethod>('freight');
+
+  /** The last delivery figure the API returned, for the summary line. */
+  readonly deliveryQuote = signal<DeliveryQuote | null>(null);
   shipCity = '';
   shipLine = '';
   shipPhone = '';
@@ -654,29 +692,113 @@ export class CheckoutPage {
     const guest = this.api.isLoggedIn
       ? undefined
       : { name: this.name.trim(), email: this.email.trim().toLowerCase() };
-    this.api.createOrder(items, 'storefront', this.shippingAddress(), guest).subscribe({
-      next: (order) => {
-        this.orderId.set(order.id);
-        // The only time the raw token exists. Kept so the confirmation page
-        // still opens the order after the Paystack round-trip; the same link
-        // is emailed, so losing this is inconvenient, not fatal.
-        if (order.trackingToken) {
-          try {
-            localStorage.setItem(`seentair.order.${order.id}`, order.trackingToken);
-          } catch {
-            /* private mode: the emailed link remains the route in */
-          }
-        }
-        this.paidTotal.set(order.totalAmount);
-        this.cart.clear();
-        void this.alerts.toast(`Order placed: ref ${order.id.slice(0, 8).toUpperCase()}`);
-        this.startPayment();
-      },
-      error: (err) => {
-        this.placing.set(false);
-        this.error.set(err?.error?.message ?? 'Could not place the order.');
-      },
+
+    // A delivery quote is asked for at the moment of ordering, so the fee shown
+    // and the fee charged come from the same request. If the API still rejects
+    // it as stale - a sale ended, a price moved, the window closed - the order is
+    // retried once against a fresh quote rather than failing the shopper.
+    this.submitWithQuote(items, guest, 0);
+  }
+
+  /** At most one re-quote, so a permanently invalid quote cannot loop. */
+  private submitWithQuote(
+    items: Array<{ variantId: string; quantity: number }>,
+    guest: { name: string; email: string } | undefined,
+    attempt: number,
+  ): void {
+    this.refreshDeliveryQuote().subscribe((quote) => {
+      this.api
+        .createOrder(
+          items,
+          'storefront',
+          this.shippingAddress(),
+          guest,
+          this.deliveryMethod(),
+          quote?.quoteId,
+        )
+        .subscribe({
+          next: (order) => this.onOrderPlaced(order),
+          error: (err) => {
+            const code = (err as { error?: { code?: string } } | undefined)?.error?.code;
+            if (
+              attempt === 0 &&
+              (code === 'QUOTE_STALE' ||
+                code === 'QUOTE_EXPIRED' ||
+                code === 'QUOTE_REQUIRED' ||
+                code === 'QUOTE_MISMATCH')
+            ) {
+              this.submitWithQuote(items, guest, attempt + 1);
+              return;
+            }
+            this.placing.set(false);
+            this.error.set(
+              this.deliveryProblem(err) ?? 'We could not place that order. Please try again.',
+            );
+          },
+        });
     });
+  }
+
+  /** The rejection reasons a shopper can do something about. */
+  private deliveryProblem(err: unknown): string | null {
+    const code = (err as { error?: { code?: string } } | undefined)?.error?.code;
+    switch (code) {
+      case 'QUOTE_STALE':
+      case 'QUOTE_MISMATCH':
+      case 'QUOTE_EXPIRED':
+        return 'Prices or delivery changed just now. Please try again.';
+      case 'QUOTE_REQUIRED':
+        return 'We could not confirm delivery for that address. Please check it and try again.';
+      case 'DESTINATION_NOT_SERVICEABLE':
+        return 'We do not deliver to that state yet. Choose a different state or contact us.';
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Asks for a delivery figure for the address entered. Returns null when there
+   * is nothing to quote (no address yet, or delivery pricing is switched off),
+   * which is exactly what order creation wants in that case.
+   */
+  /** Public because the template re-asks for a figure when the state or the
+   * collection method changes. */
+  refreshDeliveryQuote(): Observable<DeliveryQuote | null> {
+    this.deliveryQuote.set(null);
+    if (!this.shipState.trim()) {
+      return of<DeliveryQuote | null>(null);
+    }
+    return this.api
+      .deliveryQuote({
+        state: this.shipState.trim(),
+        method: this.deliveryMethod(),
+        subtotal: this.cart.total,
+        lines: this.cart.items().map((i) => ({
+          variantId: i.variantId,
+          // No size class is sent: the API treats an unknown band as medium,
+          // so a hint is not worth a lookup that could go stale.
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+        })),
+      })
+      .pipe(
+        catchError(() => of<DeliveryQuote | null>(null)),
+        tap((q) => this.deliveryQuote.set(q)),
+      );
+  }
+
+  private onOrderPlaced(order: Order): void {
+    this.orderId.set(order.id);
+    if (order.trackingToken) {
+      try {
+        localStorage.setItem(`seentair.order.${order.id}`, order.trackingToken);
+      } catch {
+        /* private mode: the emailed link remains the route in */
+      }
+    }
+    this.paidTotal.set(order.totalAmount);
+    this.cart.clear();
+    this.startPayment();
   }
 
   /**

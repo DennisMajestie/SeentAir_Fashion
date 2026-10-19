@@ -93,6 +93,32 @@ export interface Order {
   items: Array<{ variant: ProductVariant; quantity: number; unitPrice: number }>;
 }
 
+/**
+ * How the order is getting to the customer. Mirrors the API's own enum rather
+ * than inventing a third spelling: `pickup` is never delivered, so it is never
+ * charged.
+ */
+export type DeliveryMethod = 'freight' | 'pickup';
+
+/**
+ * What the API says delivery costs for a basket and destination. The fee is for
+ * DISPLAY only - order creation re-reads prices and re-verifies the quote, so
+ * a tampered response cannot change what is charged.
+ */
+export interface DeliveryQuote {
+  status: 'quoted' | 'not_applicable' | 'unserviceable_state' | 'no_rate' | 'empty';
+  method: DeliveryMethod;
+  sizeClass: string | null;
+  zoneName: string | null;
+  stateName: string | null;
+  /** Kobo, so no float arithmetic happens on the client. */
+  feeKobo: number;
+  estimate: string;
+  freeDeliveryApplied: boolean;
+  quoteId?: string;
+  expiresAt?: string;
+}
+
 /** Delivery destination captured at checkout. The API stores this as free-form
     jsonb on the order, so the shape is ours to keep stable. */
 export interface ShippingAddress {
@@ -264,13 +290,36 @@ export class ApiService {
     source?: string,
     shippingAddress?: ShippingAddress,
     guest?: { name: string; email: string },
+    deliveryMethod?: DeliveryMethod,
+    quoteId?: string,
   ): Observable<Order> {
     return this.http.post<Order>(`${API_BASE}/orders`, {
       items,
       source,
       ...(shippingAddress ? { shippingAddress } : {}),
       ...(guest ? { guest } : {}),
+      ...(deliveryMethod ? { deliveryMethod } : {}),
+      // Sent only when the quote endpoint produced one. The API ignores it while
+      // delivery pricing is off, and requires it while it is on.
+      ...(quoteId ? { quoteId } : {}),
     });
+  }
+
+  /**
+   * Asks the API what delivery costs for this basket and destination.
+   *
+   * Public and unauthenticated, because a guest must be able to see a delivery
+   * figure before deciding to sign in. The returned quoteId is what order
+   * creation is checked against; the fee is never trusted from the response,
+   * only displayed.
+   */
+  deliveryQuote(request: {
+    state: string;
+    lines: Array<{ variantId: string; sizeClass?: string; quantity: number; unitPrice: number }>;
+    method: DeliveryMethod;
+    subtotal: number;
+  }): Observable<DeliveryQuote> {
+    return this.http.post<DeliveryQuote>(`${API_BASE}/checkout-shipping/quote`, request);
   }
 
   verifyEmail(token: string): Observable<{ message: string; ordersClaimed: number }> {
