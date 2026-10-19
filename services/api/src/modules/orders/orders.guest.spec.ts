@@ -265,6 +265,31 @@ describe('OrdersService — guest checkout', () => {
       expect(accessTokenRepo.save).not.toHaveBeenCalled();
     });
 
+    // Regression: found by placing a real guest order with delivery pricing on.
+    // saveWithDelivery runs inside a transaction, so the order row is still
+    // uncommitted when the token is minted. Writing the token through the
+    // default repository put the insert on a different connection, where the
+    // order was invisible, and every guest order failed with an FK violation.
+    // 511 tests missed it because this spec's DataSource stub never actually
+    // runs a transaction.
+    it('writes the token through the transaction manager, not the default repo', async () => {
+      const managerSave = jest.fn(async () => undefined);
+      const manager = {
+        getRepository: jest.fn(() => ({
+          create: (value: unknown) => value,
+          save: managerSave,
+        })),
+      };
+
+      const raw = await service.issueTrackingToken('order-1', manager as never);
+
+      expect(raw).toMatch(/^[0-9a-f]{64}$/);
+      expect(manager.getRepository).toHaveBeenCalledWith(OrderAccessToken);
+      expect(managerSave).toHaveBeenCalled();
+      // The default repo is bound to a different connection and must stay unused.
+      expect(accessTokenRepo.save).not.toHaveBeenCalled();
+    });
+
     it('opens the order for a valid token, in the customer shape', async () => {
       accessTokenRepo.findOne.mockResolvedValueOnce(tokenRow('o1', 'good-token'));
       orderRepo.findOne.mockResolvedValueOnce({

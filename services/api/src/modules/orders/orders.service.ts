@@ -546,7 +546,7 @@ export class OrdersService {
         },
       });
       await this.quoteVerification.consume(manager, quote, saved.id, now);
-      if (guest) saved.trackingToken = await this.issueTrackingToken(saved.id);
+      if (guest) saved.trackingToken = await this.issueTrackingToken(saved.id, manager);
       void user;
       return saved;
     });
@@ -582,11 +582,18 @@ export class OrdersService {
    * caller and never stored — only its SHA-256 hash goes to the database, so a
    * leak of the table opens nothing.
    */
-  async issueTrackingToken(orderId: string): Promise<string> {
+  async issueTrackingToken(orderId: string, manager?: EntityManager): Promise<string> {
     const rawToken = randomBytes(32).toString('hex');
     const ttlDays = this.config.get<number>('mail.orderTokenTtlDays') ?? 90;
-    await this.accessTokenRepo.save(
-      this.accessTokenRepo.create({
+    // Inside a transaction the order row is still uncommitted, so the insert
+    // MUST ride the same connection or the FK cannot see it. This repo is bound
+    // to the default one and would fail every guest order placed with delivery
+    // pricing on.
+    const repo = manager
+      ? manager.getRepository(OrderAccessToken)
+      : this.accessTokenRepo;
+    await repo.save(
+      repo.create({
         orderId,
         tokenHash: createHash('sha256').update(rawToken).digest('hex'),
         expiresAt: new Date(Date.now() + ttlDays * 86_400_000),
