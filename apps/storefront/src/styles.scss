@@ -86,18 +86,10 @@
 body {
   margin: 0;
   font-family: 'Inter', 'Helvetica Neue', sans-serif;
-  /* The light sheet's 20px top corners only read against a dark backing:
-     on the plain canvas (#fcf9f8 light / near-black dark) a 20px corner
-     cut-out is invisible next to the white card. Paint the page background
-     behind the sheet's top strip with the same dark as .m-header (--m-fg,
-     declared below in the mobile-shell palette) so the rounded top is
-     visible in both themes. The opaque header covers the strip while at
-     rest; main covers everything except the corner notches themselves. */
-  background: linear-gradient(
-    var(--m-fg, #141210) 0,
-    var(--m-fg, #141210) calc(env(safe-area-inset-top) + 11rem),
-    var(--canvas) calc(env(safe-area-inset-top) + 11rem)
-  );
+  /* No painted strip behind the header. It existed only to show off main's
+     20px top corners, which no longer exist; with a light header it just read
+     as a dark band between the header and the page. */
+  background: var(--canvas);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
@@ -174,14 +166,12 @@ code {
   --m-card: #fff;
 }
 
-/* The routed pages live in a light sheet that is rounded at the top so it sits
-   under the dark sticky header like the reference's services sheet. Rounded
-   top only, and no z-index, so while scrolling the sheet slides UNDER the
-   header instead of riding over it -- the reason the services row moved out of
-   the header component into <main>. The corners read against the dark strip
-   painted on body (see the body rule above). */
+/* The routed pages sit on a light sheet directly under the header. This used
+   to be rounded at the top with a dark strip painted on body behind it, so the
+   corner notches would read against something. The header is light on every
+   screen now, so both the corners and the strip they needed are gone: what
+   remained was a dark band showing between the header and the page. */
 main {
-  border-radius: 20px 20px 0 0;
   background: var(--card);
 }
 
@@ -373,7 +363,7 @@ main {
    upper-cases and sets Oswald; the reference title is plain sentence case. */
 .m-plp__title {
   position: absolute;
-  left: 50%;
+  left: 36%;
   transform: translateX(-50%);
   max-width: calc(100% - 200px);
   margin: 0;
@@ -381,19 +371,14 @@ main {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: 'Inter', sans-serif;
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
 }
-/* With a white header there is no dark bar for the sheet to round against, so
-   the product list drops the dark backing strip and the 20px corners. */
-body:has(.m-header--light) {
-  background: var(--canvas);
-}
-body:has(.m-header--light) main {
-  border-radius: 0;
-}
+/* The header is light on every screen now, so there is no longer a dark bar or
+   a rounded sheet for the shop route to opt out of. The body and main rules
+   above cover every route without a :has() override. */
 
 .m-search {
   position: relative;
