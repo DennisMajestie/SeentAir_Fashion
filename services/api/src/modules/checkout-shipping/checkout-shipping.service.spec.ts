@@ -27,11 +27,13 @@ class FakeProvider implements ZoneRateProvider {
 function harness(settings: Record<string, unknown>) {
   const provider = new FakeProvider();
   const config = { get: (key: string) => (key === 'auth.secret' ? 'test-secret' : undefined) };
-  const service = new CheckoutShippingService(
-    provider as ZoneRateProvider,
-    { get: async () => settings } as never,
-    config as ConfigService,
-  );
+    const service = new CheckoutShippingService(
+      provider as ZoneRateProvider,
+      { get: async () => settings } as never,
+      config as ConfigService,
+      // Quotes are persisted so an order can consume one exactly once.
+      { create: (v: unknown) => v, save: async (v: unknown) => ({ id: 'q1', ...(v as object) }) } as never,
+    );
   return { provider, service };
 }
 

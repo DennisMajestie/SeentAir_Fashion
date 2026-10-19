@@ -9,6 +9,9 @@ import { CheckoutShippingService, ZONE_RATE_PROVIDER } from './checkout-shipping
 import { CheckoutShippingRate } from './entities/checkout-shipping-rate.entity';
 import { CheckoutShippingZoneState } from './entities/checkout-shipping-zone-state.entity';
 import { CheckoutShippingZone } from './entities/checkout-shipping-zone.entity';
+import { CheckoutShippingQuote } from './entities/checkout-shipping-quote.entity';
+import { OrderCheckoutShipping } from './entities/order-checkout-shipping.entity';
+import { QuoteVerificationService } from './quote-verification.service';
 import { DatabaseZoneRateProvider } from './zone-rate.provider';
 
 /**
@@ -22,6 +25,8 @@ import { DatabaseZoneRateProvider } from './zone-rate.provider';
       CheckoutShippingZone,
       CheckoutShippingZoneState,
       CheckoutShippingRate,
+      CheckoutShippingQuote,
+      OrderCheckoutShipping,
     ]),
     PlatformSettingsModule,
     AuditModule,
@@ -30,8 +35,9 @@ import { DatabaseZoneRateProvider } from './zone-rate.provider';
   providers: [
     CheckoutShippingService,
     CheckoutShippingAdminService,
+    QuoteVerificationService,
     { provide: ZONE_RATE_PROVIDER, useClass: DatabaseZoneRateProvider },
   ],
-  exports: [CheckoutShippingService],
+  exports: [CheckoutShippingService, QuoteVerificationService, TypeOrmModule],
 })
 export class CheckoutShippingModule {}

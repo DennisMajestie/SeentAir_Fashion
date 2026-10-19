@@ -11,6 +11,11 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 import { ACCESS_RANK, AccessLevel, ModuleName, RoleName } from '../../common/enums';
+import { OrderCheckoutShipping } from '../checkout-shipping/entities/order-checkout-shipping.entity';
+import { matchState } from '../checkout-shipping/nigerian-states';
+import { QuoteVerificationService } from '../checkout-shipping/quote-verification.service';
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
+import { computeTotals } from './order-totals';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { CatalogueService } from '../catalogue/catalogue.service';
 import { AvailabilityStatus } from '../catalogue/entities/product-variant.entity';
@@ -36,7 +41,7 @@ import { RecordPaymentDto } from './dto/record-payment.dto';
 import { OrderAccessToken } from './entities/order-access-token.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
-import { Order, OrderChannel, OrderStatus, PaymentStatus } from './entities/order.entity';
+import { DeliveryMethod, Order, OrderChannel, OrderStatus, PaymentStatus } from './entities/order.entity';
 import { Payment, PaymentMethod, PaymentRecordStatus } from './entities/payment.entity';
 import { ProcessedWebhookEvent } from './entities/processed-webhook-event.entity';
 import { OrderStatusBus } from './order-status.bus';
@@ -288,6 +293,8 @@ export class OrdersService {
     @InjectRepository(OrderAccessToken)
     private readonly accessTokenRepo: Repository<OrderAccessToken>,
     private readonly catalogueService: CatalogueService,
+    private readonly platformSettings: PlatformSettingsService,
+    private readonly quoteVerification: QuoteVerificationService,
     private readonly inventoryService: InventoryService,
     private readonly permissionsService: PermissionsService,
     private readonly usersService: UsersService,
@@ -445,12 +452,104 @@ export class OrdersService {
       totalAmount: Math.round(total * 100) / 100,
       items,
     });
-    const saved = await this.orderRepo.save(order);
-    // A guest has no account to look the order up from, so the tracking token is
-    // minted here and handed back exactly once. It is also emailed on payment;
-    // this copy is what lets the storefront show the confirmation immediately.
-    if (guest) saved.trackingToken = await this.issueTrackingToken(saved.id);
-    return saved;
+
+    // Delivery pricing is opt-in. When the flag is off the order above is
+    // written exactly as it always was - same inline sum, same rounding at
+    // L445, same columns - so nothing about an existing checkout changes. When
+    // it is on, the order, its pricing snapshot and the quote's single use all
+    // commit together, or none of them do.
+    if (!(await this.deliveryPricingOn())) {
+      const saved = await this.orderRepo.save(order);
+      if (guest) saved.trackingToken = await this.issueTrackingToken(saved.id);
+      return saved;
+    }
+
+    return this.saveWithDelivery(order, dto, items, total, guest, user);
+  }
+
+  /** The delivery feature switch, honouring the env kill-switch on top. */
+  private async deliveryPricingOn(): Promise<boolean> {
+    return (await this.platformSettings.get()).shippingEnabled;
+  }
+
+  /**
+   * The flag-on order path: verify the quote, price through computeTotals, and
+   * write the order, its snapshot and the quote's consumption in one
+   * transaction.
+   */
+  private async saveWithDelivery(
+    order: Order,
+    dto: CreateOrderDto,
+    items: OrderItem[],
+    legacyTotal: number,
+    guest: { name: string; email: string } | null | undefined,
+    user: AuthenticatedUser | undefined,
+  ): Promise<Order> {
+    const now = new Date();
+    const settings = await this.platformSettings.get();
+
+    const stateKey = matchState(dto.shippingAddress?.state ?? null);
+    const quote = await this.quoteVerification.verify({
+      quoteId: dto.quoteId,
+      method: dto.deliveryMethod ?? DeliveryMethod.FREIGHT,
+      stateKey,
+      now,
+      // Prices have just been re-read from the catalogue above, so this is the
+      // live subtotal rather than anything the client sent.
+      subtotalKobo: Math.round(legacyTotal * 100),
+      lines: items.map((i) => ({
+        variantId: i.variant.id,
+        quantity: i.quantity,
+        unitPriceKobo: Math.round(i.unitPrice * 100),
+      })),
+    });
+
+    // Pickup is not delivered, so it is never charged.
+    const deliveryFee = quote.method === DeliveryMethod.PICKUP ? 0 : Number(quote.fee);
+
+    const totals = computeTotals({
+      lines: items.map((i) => ({ unitPrice: i.unitPrice, quantity: i.quantity })),
+      deliveryFee,
+      settings: {
+        vatEnabled: settings.vatEnabled,
+        vatRatePercent: settings.vatRatePercent,
+        pricesIncludeVat: settings.pricesIncludeVat,
+        deliveryTaxable: settings.deliveryTaxable,
+        deliveryEnabled: settings.shippingEnabled,
+        freeDeliveryThreshold: settings.freeDeliveryThreshold,
+      },
+    });
+
+    order.totalAmount = totals.total;
+
+    return this.dataSource.transaction(async (manager) => {
+      const saved = await manager.getRepository(Order).save(order);
+      await manager.getRepository(OrderCheckoutShipping).save({
+        orderId: saved.id,
+        quoteId: quote.id,
+        zoneName: quote.zoneName,
+        stateKey: quote.stateKey,
+        method: quote.method,
+        sizeClass: quote.sizeClass,
+        subtotal: totals.subtotal,
+        deliveryFee: totals.deliveryFee,
+        vatAmount: totals.vat,
+        vatRatePercent: settings.vatEnabled ? settings.vatRatePercent : null,
+        total: totals.total,
+        snapshot: {
+          quoteId: quote.id,
+          fee: totals.deliveryFee,
+          freeDeliveryApplied: totals.deliveryWaived > 0,
+          vatInclusive: settings.pricesIncludeVat,
+          deliveryTaxable: settings.deliveryTaxable,
+          settings: quote.settingsVersion,
+        },
+      });
+      await this.quoteVerification.consume(manager, quote, saved.id, now);
+      if (guest) saved.trackingToken = await this.issueTrackingToken(saved.id);
+      void user;
+      return saved;
+    });
   }
 
   /**

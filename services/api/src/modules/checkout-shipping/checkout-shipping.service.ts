@@ -1,9 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { computeTotals, toKobo } from '../orders/order-totals';
 import { DeliveryMethod } from '../orders/entities/order.entity';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
+import { CheckoutShippingQuote } from './entities/checkout-shipping-quote.entity';
 import { matchState, stateNameFor } from './nigerian-states';
 import { signQuoteToken } from './quote-token';
 import { DEFAULT_SIZE_CLASS, ProductSizeClass, toSizeClass } from './shipping-size-class';
@@ -34,7 +37,12 @@ export interface QuoteRequest {
   /** Canonical state key or free text; matched tolerantly. */
   state: string;
   /** One entry per cart line. Quantities only - prices are not trusted. */
-  lines: { sizeClass?: string | null; quantity: number }[];
+  lines: {
+    variantId?: string;
+    sizeClass?: string | null;
+    quantity: number;
+    unitPrice?: number;
+  }[];
   method: DeliveryMethod;
   /** The storefront's own subtotal, used only for the free-delivery threshold. */
   subtotal: number;
@@ -53,6 +61,8 @@ export interface QuoteOption {
   freeDeliveryApplied: boolean;
   /** Present only when status is QUOTED. */
   quoteToken?: string;
+  /** Stored quote id. Present only when status is QUOTED. */
+  quoteId?: string;
   expiresAt?: Date;
 }
 
@@ -71,6 +81,8 @@ export class CheckoutShippingService {
     @Inject(ZONE_RATE_PROVIDER) private readonly provider: ZoneRateProvider,
     private readonly settings: PlatformSettingsService,
     private readonly config: ConfigService,
+    @InjectRepository(CheckoutShippingQuote)
+    private readonly quoteRepo: Repository<CheckoutShippingQuote>,
   ) {}
 
   private get signingSecret(): string {
@@ -158,8 +170,42 @@ export class CheckoutShippingService {
       this.signingSecret,
     );
 
+    // The stored row is what makes the quote single-use: an order consumes it
+    // by writing its own id, and the unique constraint then refuses a second
+    // use. The signed token is still returned for clients that only need to
+    // display the figure.
+    const quote = await this.quoteRepo.save(
+      this.quoteRepo.create({
+        customerId: _actor?.id ?? null,
+        stateKey,
+        zoneId: zone.id,
+        zoneName: zone.name,
+        method: request.method,
+        sizeClass,
+        fee: payableKobo / 100,
+        subtotal: request.subtotal,
+        total: totals.total,
+        cart: (request.lines ?? []).map((l) => ({
+          variantId: l.variantId ?? '',
+          quantity: Math.max(0, Math.trunc(l.quantity ?? 0)),
+          unitPriceKobo: toKobo(l.unitPrice ?? 0),
+        })),
+        settingsVersion: {
+          vatEnabled: settings.vatEnabled,
+          vatRatePercent: settings.vatRatePercent,
+          pricesIncludeVat: settings.pricesIncludeVat,
+          deliveryTaxable: settings.deliveryTaxable,
+          freeDeliveryThreshold: settings.freeDeliveryThreshold,
+        },
+        expiresAt,
+        orderId: null,
+        consumedAt: null,
+      }),
+    );
+
     return {
       status: QuoteStatus.QUOTED,
+      quoteId: quote.id,
       method: request.method,
       sizeClass,
       zoneName: zone.name,

@@ -52,7 +52,7 @@ export class CheckoutShippingAdminService {
     return this.zoneRepo.find({ relations: { states: true }, order: { name: 'ASC' } });
   }
 
-  async createZone(input: ZoneInput, actor: AuthenticatedUser): Promise<CheckoutShippingZone> {
+  async createZone(input: ZoneInput, actor: AuthenticatedUser, reason: string): Promise<CheckoutShippingZone> {
     if (!input.states?.length) {
       throw new BadRequestException('A zone needs at least one state.');
     }
@@ -77,7 +77,7 @@ export class CheckoutShippingAdminService {
     await this.audit.record({
       actorId: actor.id,
       action: 'checkout_shipping.zone_create',
-      beforeState: { reason: 'created zone', zone: null },
+      beforeState: { reason, zone: null },
       afterState: { zone: { id: zone.id, name: zone.name, states: keys } },
     });
     return zone;
@@ -87,6 +87,7 @@ export class CheckoutShippingAdminService {
     id: string,
     patch: Partial<ZoneInput>,
     actor: AuthenticatedUser,
+    reason: string,
   ): Promise<CheckoutShippingZone> {
     const zone = await this.zoneRepo.findOne({ where: { id } });
     if (!zone) throw new NotFoundException('Zone not found.');
@@ -121,7 +122,7 @@ export class CheckoutShippingAdminService {
     await this.audit.record({
       actorId: actor.id,
       action: 'checkout_shipping.zone_update',
-      beforeState: { reason: 'edited zone', zone: before },
+      beforeState: { reason, zone: before },
       afterState: { zone: { id: saved.id, name: saved.name, isActive: saved.isActive } },
     });
     return saved;
@@ -131,7 +132,11 @@ export class CheckoutShippingAdminService {
    * Removes a zone. Its states and rates go with it (both cascade in the
    * database), so this is destructive by design and always audited.
    */
-  async removeZone(id: string, actor: AuthenticatedUser): Promise<{ id: string; removed: true }> {
+  async removeZone(
+    id: string,
+    actor: AuthenticatedUser,
+    reason: string,
+  ): Promise<{ id: string; removed: true }> {
     const zone = await this.zoneRepo.findOne({ where: { id }, relations: { states: true } });
     if (!zone) throw new NotFoundException('Zone not found.');
     await this.zoneRepo.remove(zone);
@@ -139,7 +144,7 @@ export class CheckoutShippingAdminService {
       actorId: actor.id,
       action: 'checkout_shipping.zone_delete',
       beforeState: {
-        reason: 'deleted zone',
+        reason,
         zone: { id: zone.id, name: zone.name, states: zone.states?.map((s) => s.stateKey) },
       },
       afterState: { zone: null },
@@ -155,7 +160,11 @@ export class CheckoutShippingAdminService {
     });
   }
 
-  async createRate(input: RateInput, actor: AuthenticatedUser): Promise<CheckoutShippingRate> {
+  async createRate(
+    input: RateInput,
+    actor: AuthenticatedUser,
+    reason: string,
+  ): Promise<CheckoutShippingRate> {
     if (input.fee < 0) throw new BadRequestException('A rate cannot be negative.');
     const zone = await this.zoneRepo.findOne({ where: { id: input.zoneId } });
     if (!zone) throw new NotFoundException('Zone not found.');
@@ -182,7 +191,7 @@ export class CheckoutShippingAdminService {
     await this.audit.record({
       actorId: actor.id,
       action: 'checkout_shipping.rate_create',
-      beforeState: { reason: 'created rate', rate: null },
+      beforeState: { reason, rate: null },
       afterState: { rate: { id: rate.id, zoneId: input.zoneId, sizeClass: input.sizeClass, fee: input.fee } },
     });
     return rate;

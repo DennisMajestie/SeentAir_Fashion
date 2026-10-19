@@ -78,6 +78,15 @@ export class CreateOrderDto {
   deliveryMethod?: DeliveryMethod;
 
   /**
+   * A delivery quote this order is priced against. Optional and IGNORED while the
+   * delivery feature is off, so adding it cannot change an existing client.
+   * When the feature is on it is required, and the quote must still stand up.
+   */
+  @IsOptional()
+  @IsUUID()
+  quoteId?: string;
+
+  /**
    * Wholesale checkout: the buyer's free-text note for the factory desk.
    * Separate from deliveryNote, which staff write at pack-out.
    */

@@ -17,6 +17,20 @@ import {
 import { DeliveryMethod } from '../../orders/entities/order.entity';
 import { ProductSizeClass } from '../shipping-size-class';
 
+/**
+ * Required on every admin write that changes a price or a zone.
+ *
+ * The global ValidationPipe runs with `forbidNonWhitelisted`, so a DTO that
+ * omits this field rejects the request outright rather than ignoring it - which
+ * is why it has to be declared here and not merely accepted by the service.
+ * It is stored with the audit entry, so an operator has to say why a price moved.
+ */
+class ReasonField {
+  @IsString()
+  @MaxLength(500)
+  reason: string;
+}
+
 export class ZoneStateDto {
   /** Stable key from the canonical state list, e.g. 'lag'. */
   @IsString()
@@ -29,7 +43,7 @@ export class ZoneStateDto {
   state: string;
 }
 
-export class CreateZoneDto {
+export class CreateZoneDto extends ReasonField {
   @IsString()
   @MaxLength(120)
   name: string;
@@ -46,7 +60,7 @@ export class CreateZoneDto {
   states: ZoneStateDto[];
 }
 
-export class UpdateZoneDto {
+export class UpdateZoneDto extends ReasonField {
   @IsOptional()
   @IsString()
   @MaxLength(120)
@@ -64,7 +78,9 @@ export class UpdateZoneDto {
   states?: ZoneStateDto[];
 }
 
-export class CreateRateDto {
+export class RemoveZoneDto extends ReasonField {}
+
+export class CreateRateDto extends ReasonField {
   @IsUUID()
   zoneId: string;
 

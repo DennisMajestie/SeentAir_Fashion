@@ -1,3 +1,5 @@
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
+import { QuoteVerificationService } from '../checkout-shipping/quote-verification.service';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
@@ -115,7 +117,9 @@ describe('OrdersService — guest checkout', () => {
           useValue: { find: jest.fn(async (): Promise<unknown[]> => []) },
         },
         { provide: getRepositoryToken(OrderAccessToken), useValue: accessTokenRepo },
-        { provide: CatalogueService, useValue: catalogueService },
+        { provide: PlatformSettingsService, useValue: { get: async () => ({ shippingEnabled: false, freeDeliveryThreshold: null, quoteExpiryMinutes: 1440, vatEnabled: false, vatRatePercent: 0, pricesIncludeVat: false, deliveryTaxable: false }) } },
+      { provide: QuoteVerificationService, useValue: { verify: jest.fn(), consume: jest.fn() } },
+      { provide: CatalogueService, useValue: catalogueService },
         { provide: InventoryService, useValue: inventoryService },
         { provide: PermissionsService, useValue: permissionsService },
         { provide: UsersService, useValue: usersService },

@@ -110,6 +110,15 @@ export function matchState(input: string | null | undefined): string | null {
   return null;
 }
 
+/**
+ * Whether a string is a canonical state KEY. Distinct from matchState(), which
+ * takes free text from a shopper and returns a key - running it on a key would
+ * look for a state literally called 'lag' and find nothing.
+ */
+export function isKnownStateKey(key: string | null | undefined): boolean {
+  return NIGERIAN_STATES.some((s) => s.key === key);
+}
+
 /** The display name for a key, or null if the key is unknown. */
 export function stateNameFor(key: string): string | null {
   return NIGERIAN_STATES.find((s) => s.key === key)?.name ?? null;

@@ -13,7 +13,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { CheckoutShippingAdminService } from './checkout-shipping-admin.service';
-import { CreateRateDto, CreateZoneDto, UpdateZoneDto } from './dto/checkout-shipping-admin.dto';
+import { CreateRateDto, CreateZoneDto, RemoveZoneDto, UpdateZoneDto } from './dto/checkout-shipping-admin.dto';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { UpdatePlatformSettingsDto } from '../platform-settings/dto/update-platform-settings.dto';
 
@@ -55,7 +55,7 @@ export class CheckoutShippingAdminController {
 
   @Post('zones')
   createZone(@Body() dto: CreateZoneDto, @CurrentUser() actor: AuthenticatedUser) {
-    return this.admin.createZone(dto, actor);
+    return this.admin.createZone(dto, actor, dto.reason);
   }
 
   @Patch('zones/:id')
@@ -64,12 +64,12 @@ export class CheckoutShippingAdminController {
     @Body() dto: UpdateZoneDto,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.admin.updateZone(id, dto, actor);
+    return this.admin.updateZone(id, dto, actor, dto.reason);
   }
 
   @Delete('zones/:id')
-  removeZone(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) {
-    return this.admin.removeZone(id, actor);
+  removeZone(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser, @Body() dto: RemoveZoneDto) {
+    return this.admin.removeZone(id, actor, dto.reason);
   }
 
   @Get('rates')
@@ -91,6 +91,7 @@ export class CheckoutShippingAdminController {
         isActive: dto.isActive,
       },
       actor,
+      dto.reason,
     );
   }
 }
