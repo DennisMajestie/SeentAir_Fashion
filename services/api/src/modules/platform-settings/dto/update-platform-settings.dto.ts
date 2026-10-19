@@ -49,6 +49,11 @@ export class UpdatePlatformSettingsDto {
   @IsBoolean()
   deliveryTaxable?: boolean;
 
+  /** Master coupon switch. Requires the logistics FULL level to change. */
+  @IsOptional()
+  @IsBoolean()
+  couponsEnabled?: boolean;
+
   @IsString()
   @MaxLength(500)
   reason: string;

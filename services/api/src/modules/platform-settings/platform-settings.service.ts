@@ -19,6 +19,8 @@ export interface EffectiveSettings {
   vatRatePercent: number;
   pricesIncludeVat: boolean;
   deliveryTaxable: boolean;
+  /** Master coupon switch. Off until an operator turns it on. */
+  couponsEnabled: boolean;
 }
 
 const SETTINGS_ROW_ID = 1;
@@ -59,6 +61,7 @@ export class PlatformSettingsService {
       vatRatePercent: row.vatRatePercent,
       pricesIncludeVat: row.pricesIncludeVat,
       deliveryTaxable: row.deliveryTaxable,
+      couponsEnabled: row.couponsEnabled && !this.killSwitched('COUPONS_KILL_SWITCH'),
     };
   }
 
@@ -100,6 +103,7 @@ export class PlatformSettingsService {
     if (dto.vatRatePercent !== undefined) row.vatRatePercent = dto.vatRatePercent;
     if (dto.pricesIncludeVat !== undefined) row.pricesIncludeVat = dto.pricesIncludeVat;
     if (dto.deliveryTaxable !== undefined) row.deliveryTaxable = dto.deliveryTaxable;
+    if (dto.couponsEnabled !== undefined) row.couponsEnabled = dto.couponsEnabled;
     row.updatedBy = actor.id;
 
     const saved = await this.repo.save(row);

@@ -8,6 +8,12 @@ export interface PublicConfig {
   currencyCode: string;
   currencySymbol: string;
   locale: string;
+  /**
+   * The server's clock, so a client with a wrong device clock can still time
+   * a campaign correctly: it measures the offset from this, never from its own
+   * date. Public and harmless, and it is the only clock the countdown trusts.
+   */
+  serverNow: string;
 }
 
 /**
@@ -32,6 +38,7 @@ export class PublicConfigController {
       currencyCode: this.config.getOrThrow<string>('business.currencyCode'),
       currencySymbol: this.config.getOrThrow<string>('business.currencySymbol'),
       locale: this.config.getOrThrow<string>('business.locale'),
+      serverNow: new Date().toISOString(),
     };
   }
 }

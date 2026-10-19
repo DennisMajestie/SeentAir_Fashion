@@ -34,6 +34,7 @@ import { TechPacksModule } from './modules/tech-packs/tech-packs.module';
 import { PublicConfigModule } from './modules/public-config/public-config.module';
 import { PlatformSettingsModule } from './modules/platform-settings/platform-settings.module';
 import { CheckoutShippingModule } from './modules/checkout-shipping/checkout-shipping.module';
+import { CouponsModule } from './modules/coupons/coupons.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { CheckoutShippingModule } from './modules/checkout-shipping/checkout-shi
     PublicConfigModule,
     PlatformSettingsModule,
     CheckoutShippingModule,
+  CouponsModule,
   ],
   providers: [
     // Order matters: rate-limit, then authenticate, then authorize, then audit.

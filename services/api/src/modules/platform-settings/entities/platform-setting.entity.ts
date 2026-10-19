@@ -52,6 +52,10 @@ export class PlatformSetting {
   @Column({ name: 'delivery_taxable', type: 'boolean', default: false })
   deliveryTaxable: boolean;
 
+  /** Master coupon switch. Requires the logistics FULL level to change. */
+  @Column({ name: 'coupons_enabled', type: 'boolean', default: false })
+  couponsEnabled: boolean;
+
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
