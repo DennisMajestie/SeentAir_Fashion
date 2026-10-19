@@ -14,6 +14,18 @@ import { MobileHeaderComponent } from './mobile-header.component';
  * search rather than becoming a decorative pill.
  */
 describe('Phase 1 mobile shell', () => {
+  /**
+   * The field is no longer inline on any screen: it is revealed by the
+   * magnifier everywhere, so a test that wants to inspect it has to open it
+   * first, exactly as a shopper would.
+   */
+  const openSearch = (f: ComponentFixture<MobileHeaderComponent>): void => {
+    const magnifier = (f.nativeElement as HTMLElement).querySelector(
+      '.m-iconbtn--btn',
+    ) as HTMLButtonElement;
+    magnifier.click();
+    f.detectChanges();
+  };
   describe('MobileHeaderComponent', () => {
     let fixture: ComponentFixture<MobileHeaderComponent>;
     let element: HTMLElement;
@@ -42,10 +54,10 @@ describe('Phase 1 mobile shell', () => {
           { provide: CartService, useValue: { count: 0 } },
         ],
       });
-      fixture = TestBed.createComponent(MobileHeaderComponent);
-      element = fixture.nativeElement as HTMLElement;
-      fixture.detectChanges();
-    });
+fixture = TestBed.createComponent(MobileHeaderComponent);
+    element = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+  });
 
     it('renders the service copy, with no unverifiable support-hours claim', () => {
       // The store promises render at the top of <main> (one shared row above
@@ -74,11 +86,13 @@ describe('Phase 1 mobile shell', () => {
     });
 
     it('uses the exact search placeholder from the reference', () => {
+    openSearch(fixture);
       const input = element.querySelector('.m-search__input') as HTMLInputElement;
       expect(input.placeholder).toBe('Search for clothes, underwear, kids wear…');
     });
 
     it('keeps the search a pill, not a full-screen block', () => {
+    openSearch(fixture);
       // Regression: the lead glyph is the <svg> itself while the camera glyph
       // is a <span> wrapping one. Sizing only the nested svg left the lead at
       // the browser's default replaced-element size, which grew the pill to
@@ -97,18 +111,19 @@ describe('Phase 1 mobile shell', () => {
       expect(input.getBoundingClientRect().width).toBeGreaterThan(100);
     });
 
-    it('uses the client logo asset, un-inverted on the dark header', () => {
-      // Regression: logo-v1.png is a light-on-dark lockup (opaque #0e0e0e plate
-      // with near-white glyphs), so inverting it rendered a near-white block over
-      // the dark header. `screen` dissolves the black plate instead.
+    it('uses the light-header logo asset, with no blend mode', () => {
+      // logo-light.jpeg is a dark wordmark on an opaque white plate, which
+      // suits the white bar directly. The `screen` blend the old dark-header
+      // asset required would make those dark glyphs vanish, so it must be gone
+      // rather than merely harmless.
       const mark = element.querySelector('.m-brand__mark') as HTMLImageElement;
-      expect(mark.getAttribute('src')).toBe('assets/logo-v1.png');
+      expect(mark.getAttribute('src')).toBe('assets/logo-light.jpeg');
 
       const headerStyle = getComputedStyle(mark);
       expect(headerStyle.filter).not.toContain('invert');
-      expect(headerStyle.mixBlendMode).toBe('screen');
+      expect(headerStyle.mixBlendMode).toBe('normal');
 
-      // Same asset on the white drawer needs the opposite treatment.
+      // The drawer is still a dark sheet, so it keeps the old asset inverted.
       const drawerMark = element.querySelector('.m-drawer__mark') as HTMLImageElement;
       expect(drawerMark.getAttribute('src')).toBe('assets/logo-v1.png');
       expect(getComputedStyle(drawerMark).filter).toContain('invert');
@@ -183,6 +198,7 @@ describe('Phase 1 mobile shell', () => {
     });
 
     it('searches the real catalogue, client-side', () => {
+    openSearch(fixture);
       const input = element.querySelector('.m-search__input') as HTMLInputElement;
       input.value = 'aba';
       input.dispatchEvent(new Event('input'));
@@ -207,12 +223,13 @@ describe('Phase 1 mobile shell', () => {
           { provide: CartService, useValue: { count: 0 } },
         ],
       });
-      const f2 = TestBed.createComponent(MobileHeaderComponent);
-      f2.detectChanges();
-      (f2.nativeElement as HTMLElement)
-        .querySelector('.m-search__input')!
-        .dispatchEvent(new Event('focus'));
-      f2.detectChanges();
+const f2 = TestBed.createComponent(MobileHeaderComponent);
+    f2.detectChanges();
+    openSearch(f2);
+    (f2.nativeElement as HTMLElement)
+      .querySelector('.m-search__input')!
+      .dispatchEvent(new Event('focus'));
+    f2.detectChanges();
       f2.componentInstance.searchTerm.set('match');
       f2.detectChanges();
       expect(f2.componentInstance.searchResults().length).toBe(8);
@@ -313,19 +330,21 @@ describe('Phase 1 mobile shell', () => {
       fixture.detectChanges();
     };
 
-    it('shows the search pill inline on Home, with no magnifier', async () => {
-      await mount('/');
-      expect(element.querySelector('.m-search')).not.toBeNull();
-      expect(element.querySelector('.m-iconbtn--btn')).toBeNull();
-    });
+it('offers the magnifier on Home too, with the field hidden until it is tapped', async () => {
+    await mount('/');
+    expect(element.querySelector('.m-iconbtn--btn')).not.toBeNull();
+    expect(element.querySelector('.m-search')).toBeNull();
+    openSearch(fixture);
+    expect(element.querySelector('.m-search')).not.toBeNull();
+  });
 
-    it('replaces the pill with a magnifier on other screens', async () => {
-      await mount('/cart');
-      expect(element.querySelector('.m-search')).toBeNull();
-      const magnifier = element.querySelector('.m-iconbtn--btn') as HTMLButtonElement;
-      expect(magnifier).not.toBeNull();
-      expect(magnifier.getAttribute('aria-controls')).toBe('m-search-region');
-    });
+  it('offers the same magnifier on other screens', async () => {
+    await mount('/cart');
+    expect(element.querySelector('.m-search')).toBeNull();
+    const magnifier = element.querySelector('.m-iconbtn--btn') as HTMLButtonElement;
+    expect(magnifier).not.toBeNull();
+    expect(magnifier.getAttribute('aria-controls')).toBe('m-search-region');
+  });
 
     it('reveals the same real search field when the magnifier is tapped', async () => {
       await mount('/cart');

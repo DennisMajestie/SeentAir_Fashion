@@ -1,9 +1,20 @@
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  OnDestroy,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map } from 'rxjs/operators';
 import { ApiService, Product } from './api.service';
+import { PageTitleService } from './page-title.service';
 import { CartService } from './cart.service';
 import { WishlistService } from './wishlist.service';
 import { environment } from '../environments/environment';
@@ -55,30 +66,29 @@ import { productImage } from './product-image';
           </button>
         }
 
-        @if (isPlp()) {
-          <!-- Reference screen 2: light header with the category name centred. -->
-          <h1 class="m-plp__title">{{ plpTitle() }}</h1>
+        @if (headerTitle(); as title) {
+          <!-- The bar names the screen instead of the brand, the same way the
+               grid does with its category title. One title per screen: the
+               page below does not repeat it. -->
+          <h1 class="m-plp__title">{{ title }}</h1>
         } @else {
           <a class="m-brand" routerLink="/" aria-label="SEENTAIR home">
             <img
               class="m-brand__mark"
-              src="assets/logo-v1.png"
+              src="assets/logo-light.jpeg"
               alt="SEENTAIR"
-              width="122"
-              height="39"
+              width="95"
+              height="34"
             />
           </a>
         }
 
         <div class="m-icons">
           <!--
-            The reference gives Home the full pill and every other screen a
-            compact magnifier, so the field is only inline on Home and is
-            revealed by this button elsewhere. The behaviour is identical either
-            way: one catalogue fetch, filtered client-side.
+            One magnifier on every screen reveals the same field. The behaviour
+            is identical either way: one catalogue fetch, filtered client-side.
           -->
-          @if (!isHome()) {
-            <button
+          <button
               class="m-iconbtn m-iconbtn--btn"
               type="button"
               (click)="toggleSearch()"
@@ -86,12 +96,11 @@ import { productImage } from './product-image';
               aria-controls="m-search-region"
               aria-label="Search"
             >
-              <svg class="m-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-3.5-3.5" />
-              </svg>
-            </button>
-          }
+            <svg class="m-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </button>
 
           @if (!isPlp()) {
             <a
@@ -252,9 +261,18 @@ export class MobileHeaderComponent implements OnDestroy {
   /** Off-Home screens reveal the same field from the magnifier button. */
   readonly searchOpen = signal(false);
 
+  /** The search field, so the magnifier can focus it once it has rendered. */
+  @ViewChild('q') private searchInput?: ElementRef<HTMLInputElement>;
+
+  /** afterNextRender needs an injector when it is called from an event handler.
+   */
+  private readonly injector = inject(Injector);
+
   /** Current URL, tracked so the header can vary by screen the way it does in
       the reference: full search pill on Home, compact magnifier elsewhere. */
   private readonly router = inject(Router);
+  /** Lets a page name itself in the bar; see PageTitleService. */
+  readonly pageTitles = inject(PageTitleService);
   private readonly url = toSignal(
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),
@@ -272,14 +290,37 @@ export class MobileHeaderComponent implements OnDestroy {
 
   /**
    * Screens a shopper arrives on from somewhere else, so the leading slot offers
-   * Back rather than the menu: the product grid and the product page. Home keeps
-   * the menu -- there is nothing behind it to go back to.
+   * Back rather than the menu: the product grid, the product page, the cart, the
+   * checkout and order tracking. Home keeps the menu -- there is nothing behind
+   * it to go back to.
    *
    * `/shop` previously hard-linked Back to `/`, which sent a shopper who had
    * drilled into a category out of the grid entirely. History is the honest
    * answer for both.
    */
-  readonly showsBack = computed(() => this.isPlp() || this.path().startsWith('/product'));
+  readonly showsBack = computed(
+    () =>
+      this.isPlp() ||
+      this.path().startsWith('/product') ||
+      this.path().startsWith('/cart') ||
+      this.path().startsWith('/checkout') ||
+      this.path().startsWith('/orders'),
+  );
+
+  /**
+   * The title shown in the bar instead of the logo, on the screens a shopper
+   * arrived at from somewhere else. Falls back to a per-route label so the bar
+   * is never blank while a page is still loading its own title.
+   */
+  readonly headerTitle = computed<string | null>(() => {
+    if (this.isPlp()) return this.plpTitle();
+    const path = this.path();
+    if (path.startsWith('/product')) return this.pageTitles.pageTitle() ?? 'Product';
+    if (path.startsWith('/cart')) return 'Cart';
+    if (path.startsWith('/checkout')) return 'Checkout';
+    if (path.startsWith('/orders')) return 'Order tracking';
+    return null;
+  });
 
   /**
    * Back to where the shopper actually came from. `history.length > 1` is the
@@ -302,10 +343,28 @@ export class MobileHeaderComponent implements OnDestroy {
     return decodeURIComponent(match[1]).replace(/^\w/, (ch) => ch.toUpperCase());
   });
 
-  readonly showPill = computed(() => this.isHome() || this.searchOpen());
+  /**
+   * The field is revealed by the magnifier on EVERY screen, not shown inline on
+   * Home alone. One rule everywhere means a shopper who learns the magnifier on
+   * one screen finds it on the next, and it keeps the bar a predictable height
+   * instead of jumping as the field appears.
+   */
+  readonly showPill = computed(() => this.searchOpen());
 
+  /**
+   * Opens or closes the field and moves focus into it when opening. Without the
+   * focus a single tap revealed the pill and a second tap was needed to type,
+   * which is the whole reason a search icon exists.
+   *
+   * The focus has to wait for the RENDER, not just for the signal: the field
+   * lives inside an `@if`, so a plain `setTimeout(0)` runs before change
+   * detection has created the element and the ViewChild is still undefined.
+   */
   toggleSearch(): void {
     this.searchOpen.update((open) => !open);
+    if (this.searchOpen()) {
+      afterNextRender(() => this.searchInput?.nativeElement.focus(), { injector: this.injector });
+    }
   }
 
   readonly searchResults = computed(() => {

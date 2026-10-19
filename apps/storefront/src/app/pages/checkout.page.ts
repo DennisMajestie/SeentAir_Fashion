@@ -77,8 +77,6 @@ const NIGERIAN_STATES = [
         ><span class="seg" [class.on]="currentStep() >= 5"></span>
       </div>
     </div>
-    <h1 class="page-title">Cart & checkout</h1>
-
     @if (orderId()) {
       <section class="success-box u-rise box-narrow">
         <h2>Order placed</h2>

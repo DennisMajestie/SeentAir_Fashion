@@ -15,6 +15,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { PageTitleService } from '../page-title.service';
 import { EMPTY, Observable, forkJoin, of } from 'rxjs';
 import { catchError, distinctUntilChanged, map, switchMap, tap } from 'rxjs/operators';
 import { Offer, offerFor } from '../pricing';
@@ -428,6 +429,13 @@ export class ProductPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly pageTitles = inject(PageTitleService);
+
+  /** Clears the bar title on the way out, so a product whose load fails next
+   * cannot leave the previous product's name sitting in the header. */
+  ngOnDestroy(): void {
+    this.pageTitles.set(null);
+  }
   private readonly router = inject(Router);
   private readonly saleOver = signal(0);
   private readonly cart = inject(CartService);
@@ -649,6 +657,9 @@ export class ProductPage implements OnInit {
     const product$ = this.api.product(id).pipe(
       tap((p) => {
         this.product.set(p);
+        // Hand the product name to the mobile header so the bar can name the
+        // screen instead of showing the brand mark.
+        this.pageTitles.set(p.name);
         const first = p.variants[0];
         this.size.set(first?.size ?? null);
         this.colour.set(first?.colour ?? null);

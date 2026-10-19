@@ -12,8 +12,6 @@ import { environment } from '../../environments/environment';
   selector: 'app-cart',
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <h1 class="page-title">Cart & checkout</h1>
-
     @if (cart.items().length === 0) {
       <div class="empty-state u-rise">
         <span class="empty-state-icon" aria-hidden="true"

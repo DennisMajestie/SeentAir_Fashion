@@ -86,8 +86,21 @@ export class ChromeService {
     return this.routeFlag('immersive');
   }
 
-  /** Promises row shows unless the route opts out with `promises: false`. */
-  private showsPromises(_url: string): boolean {
-    return this.leaf.data['promises'] !== false;
+  /**
+   * Promises row: the landing page only.
+   *
+   * This was originally opt-out, so every route showed the four links unless it
+   * remembered to declare `promises: false`. Only the grid and the product page
+   * did. That put Wholesale / Distributors / Pre-order / Contact above the cart,
+   * the checkout, the account and every policy screen, pushing the thing the
+   * shopper actually came for further down the page.
+   *
+   * It is an allow-list now, so a route has to opt IN rather than remember to
+   * opt out. A new page therefore starts without promo tiles, which is the
+   * safe default.
+   */
+  private showsPromises(url: string): boolean {
+    const path = url.split('#')[0].split('?')[0];
+    return path === '/' || path === '';
   }
 }

@@ -190,8 +190,12 @@ main {
   top: 0;
   z-index: 30;
   padding: calc(14px + env(safe-area-inset-top)) 16px 25px;
-  background: var(--m-fg);
-  color: #fff;
+  /* Light bar on every mobile screen, not just the shop grid: a white field
+     would have vanished on the old near-black, so the bar is a surface and the
+     search pill takes the sheet tint plus a hairline instead. */
+  background: var(--m-card);
+  color: var(--m-fg);
+  border-bottom: 1px solid var(--m-line);
 }
 .m-top {
   display: flex;
@@ -211,13 +215,14 @@ main {
   cursor: pointer;
   gap: 4px;
   grid-auto-rows: 2px;
-  .m-burger__bar {
-    display: block;
-    width: 19px;
-    height: 2px;
-    background: #ffffff;
-    border-radius: 1px;
-  }
+.m-burger__bar {
+  display: block;
+  width: 19px;
+  height: 2px;
+  /* Ink on the light bar; white bars on a white header are invisible. */
+  background: var(--m-fg);
+  border-radius: 1px;
+}
   &:focus-visible {
     outline: 2px solid var(--m-gold);
     outline-offset: 2px;
@@ -233,11 +238,11 @@ main {
     height: 50px;
     width: auto;
     object-fit: contain;
-    /* logo-v1.png is a light-on-dark lockup: an opaque #0e0e0e plate with
-       near-white #e7e7e5 glyphs. It already suits the dark header, so it must
-       NOT be inverted (that renders a near-white block). `screen` dissolves the
-       black plate into the header instead of showing it as a rectangle. */
-    mix-blend-mode: screen;
+    /* logo-light.jpeg is a dark wordmark on an opaque white plate. That suits
+       the light header directly, so the `screen` blend the old dark-header
+       logo needed is gone: `screen` would make the dark glyphs vanish against
+       a white bar. JPEG carries no alpha, so the plate is baked in - which is
+       invisible here precisely because the bar is white too. */
   }
   &:focus-visible {
     outline: 2px solid var(--m-gold);
@@ -258,15 +263,16 @@ main {
   margin-right: -10px;
   text-decoration: none;
   color: inherit;
-  .m-ic {
-    width: 21px;
-    height: 21px;
-    stroke: var(--m-gold);
-    fill: none;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
+.m-ic {
+  width: 21px;
+  height: 21px;
+  /* Ink on the light bar. Gold only reached 2.1:1 against white. */
+  stroke: var(--m-fg);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
   /* Bell and cart only, not the magnifier or the PLP back chevron: those two
      are the primary destinations in the header, and at 21px they read as
      secondary to the search button beside them. 26px still leaves 9px of clear
@@ -395,9 +401,11 @@ body:has(.m-header--light) main {
   align-items: center;
   gap: 8px;
   padding: 5px 14px;
-  border-radius: 999px;
-  background: #fff;
-  color: #8a8378;
+border-radius: 999px;
+    /* Sheet tint rather than white: a white field on a white bar disappears. */
+    background: var(--m-bg);
+    border: 1px solid var(--m-line);
+    color: var(--m-muted);
   /* Two different shapes: the lead glyph IS the svg, the camera glyph is a
      span wrapping one. Both the wrapper and any nested svg must be sized --
      an unsized svg falls back to the 300x150 replaced-element default and
@@ -430,11 +438,13 @@ body:has(.m-header--light) main {
     &:focus {
       outline: none;
     }
-    &:focus-visible {
-      outline: 2px solid var(--m-gold);
-      outline-offset: 3px;
-      border-radius: 4px;
-    }
+&:focus-visible {
+     /* A 2px gold ring on a light field is too faint to read as focus, so the
+        ring takes ink and stays clearly visible. */
+     outline: 2px solid var(--m-fg);
+     outline-offset: 3px;
+     border-radius: 4px;
+   }
   }
 }
 /* Results panel is absolutely positioned so it does not push the services row
@@ -1033,7 +1043,7 @@ body:has(.m-tabs) {
   font-family: 'Oswald', sans-serif;
   font-weight: 600;
   text-transform: uppercase;
-  font-size: clamp(2rem, 6vw, 3.6rem);
+  font-size: clamp(1rem, 6vw, 3.6rem);
   line-height: 1;
   margin: 0 0 1.4rem;
   border: none;

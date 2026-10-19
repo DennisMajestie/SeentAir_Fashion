@@ -146,7 +146,6 @@ const STREAM_RETRY_MS = 30_000;
     <div class="ot">
       <header class="ot-head">
         <p class="ot-eyebrow">Order // {{ shortId() }}</p>
-        <h1 class="ot-title">Order tracking</h1>
       </header>
 
       @if (loadError()) {
