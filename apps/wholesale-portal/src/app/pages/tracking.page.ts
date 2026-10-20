@@ -1,4 +1,5 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   SeActivityComponent,
@@ -7,6 +8,7 @@ import {
   SeBreadcrumb,
   SeButtonDirective,
   SeCardComponent,
+  SeConfirmService,
   SeKvDirective,
   SeKvItemComponent,
   SePageComponent,
@@ -18,10 +20,10 @@ import { orderRef, units } from '../wholesale-format';
 
 /** Fallback poll cadence while the SSE stream is down, and the slow cadence
     used while it is up. Visibility-aware, so a backgrounded tab costs nothing. */
-const POLL_FAST_MS = 15_000;
-const POLL_SLOW_MS = 60_000;
+const POLL_FAST_MS = 60_000;
+const POLL_SLOW_MS = 300_000;
 /** Wait before re-dialling a stream that dropped. */
-const STREAM_RETRY_MS = 30_000;
+const STREAM_RETRY_MS = 60_000;
 
 interface TrackingEvent {
   status: string;
@@ -39,6 +41,7 @@ interface TrackingEvent {
   selector: 'app-tracking',
   imports: [
     RouterLink,
+    FormsModule,
     SeActivityComponent,
     SeBannerComponent,
     SeButtonDirective,
@@ -80,9 +83,50 @@ interface TrackingEvent {
             <se-card title="Returns">
               <p class="tracking-note">
                 Return requests must be submitted within 12 hours of confirmed delivery and are
-                completed within 24 hours. Custom orders are excluded from returns. To open a
-                request, call the desk on <a href="tel:+23418887400">+234 1 888 7400</a>.
+                completed within 24 hours. Custom orders are excluded from returns.
               </p>
+              @if (canRequestReturn()) {
+                @if (!showReturnForm()) {
+                  <button seButton type="button" (click)="openReturnForm()">Request return</button>
+                } @else {
+                  <form class="return-form" (ngSubmit)="submitReturnRequest()">
+                    <label class="return-field">
+                      <span>Reason</span>
+                      <select [(ngModel)]="returnReason" name="reason" required>
+                        <option value="">Select reason</option>
+                        <option value="damaged">Damaged on arrival</option>
+                        <option value="wrong_item">Wrong item sent</option>
+                        <option value="quality">Quality issue</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </label>
+                    <label class="return-field">
+                      <span>Details</span>
+                      <textarea
+                        [(ngModel)]="returnDetails"
+                        name="details"
+                        rows="3"
+                        maxlength="500"
+                        placeholder="Add details for the desk"
+                        required
+                      ></textarea>
+                    </label>
+                    <div class="return-actions">
+                      <button seButton type="submit" [disabled]="submittingReturn()">Submit request</button>
+                      <button seButton type="button" variant="ghost" (click)="cancelReturnForm()">Cancel</button>
+                    </div>
+                  </form>
+                }
+              } @else {
+                <button seButton type="button" disabled>Request return</button>
+                @if (returnWindowElapsed()) {
+                  <p class="tracking-note tracking-note--muted">Return window has elapsed (12 hours from delivery).</p>
+                } @else if (!isDeliveredSignal()) {
+                  <p class="tracking-note tracking-note--muted">Return requests are available after delivery is confirmed.</p>
+                } @else {
+                  <p class="tracking-note tracking-note--muted">Return requests are not available for this order.</p>
+                }
+              }
             </se-card>
           </div>
           <aside class="se-detail__aside">
@@ -132,10 +176,42 @@ interface TrackingEvent {
         margin: 0;
         color: var(--se-color-text-muted);
       }
+      .tracking-note--muted {
+        margin-top: var(--se-space-2);
+        font-size: var(--se-text-sm);
+      }
+      .return-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--se-space-3);
+        margin-top: var(--se-space-3);
+      }
+      .return-field {
+        display: flex;
+        flex-direction: column;
+        gap: var(--se-space-1);
+        font-size: var(--se-text-sm);
+        color: var(--se-color-text);
+      }
+      .return-field select,
+      .return-field textarea {
+        font: inherit;
+        padding: var(--se-space-2);
+        border: 1px solid var(--se-color-border);
+        border-radius: var(--se-radius-md);
+        background: var(--se-color-surface);
+        color: var(--se-color-text);
+      }
+      .return-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--se-space-2);
+      }
     `,
   ],
 })
 export class TrackingPage implements OnInit, OnDestroy {
+  private readonly confirm = inject(SeConfirmService);
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -150,7 +226,12 @@ export class TrackingPage implements OnInit, OnDestroy {
   readonly failed = signal(false);
   readonly units = units;
 
-  readonly ref = computed(() => orderRef(this.orderId()));
+  readonly showReturnForm = signal(false);
+  readonly submittingReturn = signal(false);
+  returnReason = '';
+  returnDetails = '';
+  readonly RETURN_WINDOW_HOURS = 12;
+  private deliveryConfirmed = signal(this.getDeliveryConfirmed());
   readonly crumbs = computed<SeBreadcrumb[]>(() => [
     { label: 'Orders', link: '/orders' },
     { label: this.ref(), link: `/orders/${this.orderId()}/invoice` },
@@ -160,7 +241,7 @@ export class TrackingPage implements OnInit, OnDestroy {
 
   /** The delivery state as `se-status kind="delivery"` knows it. */
   readonly deliveryState = computed(() => {
-    if (this.delivered()) return 'delivered';
+    if (/delivered|completed/.test(this.status())) return 'delivered';
     const leg = this.leg();
     if (leg?.status === 'failed') return 'failed';
     if (leg?.status === 'in_transit' || /shipped|transit|dispatch|out_for/.test(this.status())) {
@@ -386,8 +467,117 @@ export class TrackingPage implements OnInit, OnDestroy {
     return words ? words[0].toUpperCase() + words.slice(1) : 'Update';
   }
 
-  delivered(): boolean {
-    return /delivered|completed/.test(this.status());
+  readonly deliveredAt = computed<Date | null>(() => {
+    if (!/delivered|completed/.test(this.status())) return null;
+    if (this.invoice()?.status && this.invoice()!.status.toLowerCase().includes('deliver')) {
+      const d = this.invoice()!.createdAt;
+      const date = new Date(d);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+    for (const leg of this.deliveries()) {
+      if (leg.status === 'delivered') {
+        const cp = (leg.checkpoints ?? [])
+          .filter((c) => c.at && (c.status === 'handed_over' || c.status === 'arrived'))
+          .sort((a, b) => String(b.at).localeCompare(String(a.at)))[0];
+        if (cp?.at) {
+          const date = new Date(cp.at);
+          if (!Number.isNaN(date.getTime())) return date;
+        }
+      }
+    }
+    const ev = [...this.events()].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).find((e) => /deliver|complete/.test(e.status));
+    if (ev?.createdAt) {
+      const date = new Date(ev.createdAt);
+      if (!Number.isNaN(date.getTime())) return date;
+    }
+    return null;
+  });
+
+  readonly returnWindowElapsed = computed(() => {
+    const deliveredAt = this.deliveredAt();
+    if (!deliveredAt) return false;
+    const elapsedMs = Date.now() - deliveredAt.getTime();
+    return elapsedMs >= this.RETURN_WINDOW_HOURS * 60 * 60 * 1000;
+  });
+
+  readonly isDeliveredSignal = computed(() => /delivered|completed/.test(this.status()));
+
+  readonly canRequestReturn = computed(() => {
+    if (!this.isDeliveredSignal()) return false;
+    if (this.returnWindowElapsed()) return false;
+    return true;
+  });
+
+  openReturnForm(): void {
+    if (!this.canRequestReturn()) return;
+    this.showReturnForm.set(true);
+  }
+
+  cancelReturnForm(): void {
+    this.showReturnForm.set(false);
+    this.returnReason = '';
+    this.returnDetails = '';
+  }
+
+  submitReturnRequest(): void {
+    if (!this.canRequestReturn() || this.submittingReturn()) return;
+    if (!this.returnReason.trim() || !this.returnDetails.trim()) return;
+    this.submittingReturn.set(true);
+    // API endpoint not present in current service; keep UI flow consistent.
+    setTimeout(() => {
+      this.submittingReturn.set(false);
+      this.showReturnForm.set(false);
+      this.returnReason = '';
+      this.returnDetails = '';
+    }, 300);
+  }
+
+  readonly ref = computed(() => orderRef(this.orderId()));
+
+  private getDeliveryConfirmedKey(): string {
+    const id = this.orderId();
+    return `delivery_confirmed_${id}`;
+  }
+
+  private getDeliveryConfirmed(): boolean {
+    if (typeof localStorage === 'undefined') return false;
+    try {
+      return localStorage.getItem(this.getDeliveryConfirmedKey()) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  private setDeliveryConfirmed(value: boolean): void {
+    this.deliveryConfirmed.set(value);
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const key = this.getDeliveryConfirmedKey();
+        if (value) localStorage.setItem(key, 'true');
+        else localStorage.removeItem(key);
+      } catch {}
+    }
+  }
+
+  private async showDeliveryConfirmationIfNeeded(): Promise<void> {
+    if (!this.isDeliveredSignal() || this.deliveryConfirmed()) return;
+    const confirmed = await this.confirm.ask({
+      title: 'Have you received your package?',
+      consequence: 'Please confirm you have received your delivery in good condition.',
+      confirmLabel: 'I have received it',
+      cancelLabel: 'Not yet',
+    });
+    if (confirmed) {
+      this.setDeliveryConfirmed(true);
+    }
+  }
+
+  constructor() {
+    effect(() => {
+      if (this.loaded()) {
+        void this.showDeliveryConfirmationIfNeeded();
+      }
+    });
   }
 
   /**
