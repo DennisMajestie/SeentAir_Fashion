@@ -61,7 +61,9 @@ function managerFor(overrides: {
     }),
     create: (v: Record<string, unknown>) => ({ ...v, __kind: kind }),
     find: async (opts?: unknown) =>
-      kind === 'redemption' ? findRedemptions(opts as any) : [],
+      kind === 'redemption'
+        ? findRedemptions(opts as { where?: Record<string, unknown> } | undefined)
+        : [],
     count: async () => overrides.confirmedCount ?? 0,
     findOne: async () =>
       overrides.coupon ? { id: 'c1', isActive: true, ...overrides.coupon } : null,
@@ -105,7 +107,7 @@ function managerFor(overrides: {
     },
   };
 
-  return { manager, writes };
+  return { manager, writes, redemption: () => ({ ...redemptionState }) };
 }
 
 function serviceFor(enabled = true) {
@@ -318,12 +320,19 @@ describe('CouponsService — reservation lifecycle', () => {
 
     it('is idempotent, because a webhook can legitimately arrive twice', async () => {
       const svc = serviceFor(true);
-      const { manager, writes } = managerFor({});
+      const { manager, writes, redemption } = managerFor({});
 
       await svc.confirm(manager as never, 'order-1');
+      const afterFirst = writes.wallet.length;
       await svc.confirm(manager as never, 'order-1');
 
-      expect(writes.wallet.filter((w) => w.status === CustomerCouponStatus.USED)).toHaveLength(2);
+      // The replay must be a NO-OP, not a second spend. The redemption left
+      // RESERVED on the first call and is CONFIRMED after it, so the second
+      // call finds nothing to move and writes nothing at all. One write of the
+      // wallet row, one transition, one coupon burnt.
+      expect(writes.wallet.filter((w) => w.status === CustomerCouponStatus.USED)).toHaveLength(1);
+      expect(writes.wallet).toHaveLength(afterFirst);
+      expect(redemption().status).toBe(CouponRedemptionStatus.CONFIRMED);
       // Critically, confirm never decrements: a replayed webhook must not hand
       // a spent coupon back.
       expect(writes.couponDecrements).toBe(0);

@@ -86,22 +86,15 @@ describe('AccountPage sign-in', () => {
   });
 
   describe('brand mark', () => {
-    // This used to assert there was NO logo in the card, on the grounds that the
-    // site header already shows one. The redesign spec puts the logo back at the
-    // top of the card, so that is no longer true. Note the old assertion
-    // (`img.auth-logo` is null) would still have passed while the logo was
-    // present, purely because the class moved onto the wrapping anchor -- so it
-    // was green for the wrong reason. Asserting the real element instead.
-it('shows the brand logo at the top of the card, linking home', () => {
-        setUp();
-        const logo = element.querySelector<HTMLAnchorElement>('a.auth-logo');
-        expect(logo).toBeTruthy();
-        expect(logo!.getAttribute('href')).toBe('/');
-        // The mark was switched from logo-v1.png to logo.png, so the assertion
-        // follows the asset the card actually renders rather than the one it
-        // used to render.
-        expect(logo!.querySelector('img')?.getAttribute('src')).toBe('assets/logo.png');
-      });
+    // The logo was deliberately removed from the card (the site header already
+    // carries the wordmark), so the card now leads with a plain form title.
+    // Pin both halves: no logo element left behind, and a real heading present.
+    it('has no logo in the card and leads with the form title', () => {
+      setUp();
+      expect(element.querySelector('a.auth-logo')).toBeNull();
+      expect(element.querySelector('.auth-panel img[src*="logo"]')).toBeNull();
+      expect(element.querySelector('h1.auth-heading')?.textContent).toContain('Sign in');
+    });
   });
 
   describe('the sign in / create account switch', () => {
