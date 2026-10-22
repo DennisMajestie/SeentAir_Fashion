@@ -22,9 +22,6 @@ import { ThemeService } from '../theme.service';
   template: `
     <div class="auth-shell">
       <header class="auth-topstrip">
-        <a class="strip-logo" routerLink="/" aria-label="SEENTAIR home">
-          <img src="assets/logo.png" alt="SEENTAIR" width="122" height="39" />
-        </a>
         <span class="term-chip"><span class="dot ok"></span> Secured connection</span>
         <button
           class="theme-toggle"
@@ -102,9 +99,7 @@ import { ThemeService } from '../theme.service';
           }
 
           <div class="auth-panel">
-            <span class="auth-logo">
-              <img src="assets/logo.png" alt="SEENTAIR" height="60" />
-            </span>
+            <h1 class="auth-heading">Partner Portal Login</h1>
 
            
             <p class="auth-sub">Access the institutional investor terminal</p>

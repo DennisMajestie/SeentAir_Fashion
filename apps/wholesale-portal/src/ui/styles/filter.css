@@ -1,0 +1,59 @@
+/* The filter bar: controls, then what is applied as removable chips. */
+.se-filter-bar {
+  display: grid;
+  flex: 1;
+  gap: var(--se-space-2);
+  min-width: 0;
+}
+.se-filter-bar__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--se-space-2);
+}
+.se-filter-bar .se-search {
+  flex: 1 1 calc(var(--se-space-16) * 3);
+  max-width: var(--se-size-aside);
+}
+.se-filter-bar__select {
+  width: auto;
+  flex: none;
+}
+.se-filter-bar__summary {
+  margin-left: auto;
+  color: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+  font-variant-numeric: var(--se-font-numeric);
+  white-space: nowrap;
+}
+.se-filter-bar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--se-space-2);
+}
+.se-filter-bar__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--se-space-1);
+  min-height: var(--se-size-control-sm);
+  margin: 0;
+  padding: 0 var(--se-space-2) 0 var(--se-space-3);
+  border: var(--se-border-width) solid var(--se-color-border-strong);
+  border-radius: var(--se-radius-pill);
+  background: var(--se-color-accent-subtle);
+  color: var(--se-color-text);
+  font: var(--se-type-caption);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+.se-filter-bar__chip:hover {
+  border-color: var(--se-color-text);
+}
+.se-filter-bar__chip .se-icon {
+  width: var(--se-space-4);
+  height: var(--se-space-4);
+  color: var(--se-color-text-muted);
+}

@@ -1,6 +1,8 @@
 import { ConfigService } from '@nestjs/config';
+import { CouponsService } from '../coupons/coupons.service';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { getDataSourceToken } from '@nestjs/typeorm';
 import { OrderExpiryService } from './order-expiry.service';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
@@ -27,6 +29,19 @@ describe('OrderExpiryService — the unpaid-order sweep', () => {
         { provide: getRepositoryToken(Order), useValue: orderRepo },
         { provide: getRepositoryToken(OrderStatusEvent), useValue: eventRepo },
         { provide: ConfigService, useValue: { get: jest.fn(() => 24) } },
+            { provide: CouponsService, useValue: { release: jest.fn(async () => undefined) } },
+            {
+              provide: getDataSourceToken(),
+              useValue: {
+                transaction: async (fn: (m: unknown) => Promise<unknown>) =>
+                  fn({
+                    // Dispatches to the same repo doubles the spec asserts on,
+                    // so the sweep stays observable now that it is transactional.
+                    getRepository: (entity: unknown) =>
+                      entity === OrderStatusEvent ? eventRepo : orderRepo,
+                  }),
+              },
+            },
       ],
     }).compile();
     service = moduleRef.get(OrderExpiryService);

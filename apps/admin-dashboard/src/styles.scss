@@ -510,7 +510,7 @@ $ops-gold-ink: var(--acid-ink);
      so declaring them here is what lets the sign-in screen line up with it
      instead of guessing its own. */
   --wrap-max: 1280px;
-  --wrap-x: clamp(20px, 4vw, 56px);
+  --wrap-x: clamp(0px, 2vw, 56px);
 
   grid-template-rows: auto 1fr;
   justify-items: start; /* No inline padding on the screen itself. The bar has to span the full

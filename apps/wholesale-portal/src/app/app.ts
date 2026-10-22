@@ -55,9 +55,7 @@ import { ThemeService } from './theme.service';
                    theme-following surface, hairline underneath, wordmark
                    leading, controls trailing. Each app keeps its own controls
                    and its own logo asset. -->
-              <a class="strip-logo" routerLink="/" aria-label="SEENTAIR home">
-                <img src="assets/logo.png" alt="SEENTAIR" width="122" height="39" />
-              </a>
+              <!-- Logo removed -->
               <!-- The site header is hidden while logged out, so the theme
                    toggle has to live here too or a dark-mode visitor has no
                    way to switch before signing in. -->
@@ -137,9 +135,7 @@ import { ThemeService } from './theme.service';
             }
 
             <div class="auth-panel">
-              <span class="auth-logo">
-                <img src="assets/logo.png" alt="SEENTAIR" width="188" height="38" />
-              </span>
+              <!-- Logo removed -->
 
               <div class="auth-tagbar"><span>Wholesale buyers</span></div>
 
@@ -498,7 +494,7 @@ import { ThemeService } from './theme.service';
            scrollbar cannot open a horizontal scrollbar. */
         width: auto;
         margin-inline: calc(50% - 50vw);
-        padding-inline: calc(max(0px, (100vw - 1280px) / 2) + clamp(20px, 4vw, 56px));
+        padding-inline: calc(max(0px, (100vw - 1150px) / 2) + clamp(20px, 4vw, 56px));
         padding-top: calc(14px + env(safe-area-inset-top, 0px));
         padding-bottom: 14px;
       }
@@ -712,7 +708,7 @@ import { ThemeService } from './theme.service';
       }
       :host .auth-logo img {
         display: block;
-        height: 38px;
+        height: 60px;
         width: auto;
       }
       :host .auth-tagbar {

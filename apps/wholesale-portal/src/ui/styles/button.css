@@ -1,0 +1,124 @@
+/* Buttons. Applied by the seButton directive to a native <button> or <a>. */
+.se-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--se-space-2);
+  min-height: var(--se-size-control);
+  margin: 0;
+  padding: 0 var(--se-space-4);
+  border: var(--se-border-width) solid transparent;
+  border-radius: var(--se-radius-md);
+  background: transparent;
+  color: var(--se-color-text);
+  font: var(--se-type-body-strong);
+  letter-spacing: var(--se-type-body-strong-tracking);
+  text-decoration: none;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--se-motion-duration-fast) var(--se-motion-ease-standard),
+    border-color var(--se-motion-duration-fast) var(--se-motion-ease-standard),
+    color var(--se-motion-duration-fast) var(--se-motion-ease-standard);
+}
+
+.se-btn--primary {
+  background: var(--se-color-accent);
+  color: var(--se-color-on-accent);
+}
+.se-btn--primary:hover {
+  background: var(--se-color-accent-hover);
+}
+.se-btn--primary:active {
+  background: var(--se-color-accent-active);
+}
+
+.se-btn--secondary {
+  background: var(--se-color-surface);
+  border-color: var(--se-color-border-strong);
+}
+.se-btn--secondary:hover,
+.se-btn--ghost:hover {
+  background: var(--se-color-surface-hover);
+}
+.se-btn--secondary:active,
+.se-btn--ghost:active {
+  background: var(--se-color-border);
+}
+
+.se-btn--danger {
+  background: var(--se-color-danger-solid);
+  color: var(--se-color-on-danger);
+}
+.se-btn--danger:hover,
+.se-btn--danger:active {
+  background: var(--se-color-danger-solid-hover);
+}
+
+.se-btn--sm {
+  min-height: var(--se-size-control-sm);
+  padding: 0 var(--se-space-3);
+}
+.se-btn--icon {
+  width: var(--se-size-control);
+  padding: 0;
+}
+.se-btn--icon.se-btn--sm {
+  width: var(--se-size-control-sm);
+}
+
+/* Disabled: natively, or aria-disabled for links and loading buttons. */
+.se-btn:disabled,
+.se-btn[aria-disabled='true']:not([aria-busy='true']) {
+  background: var(--se-color-surface-sunken);
+  border-color: var(--se-color-border);
+  color: var(--se-color-text-disabled);
+  cursor: not-allowed;
+}
+.se-btn--primary:disabled,
+.se-btn--primary[aria-disabled='true']:not([aria-busy='true']) {
+  background: var(--se-color-accent-disabled);
+  border-color: transparent;
+  color: var(--se-color-on-accent-disabled);
+}
+.se-btn--ghost:disabled {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Loading: the label keeps its space, so the button does not change width. */
+.se-btn[aria-busy='true'] {
+  cursor: progress;
+}
+.se-btn[aria-busy='true'] > * {
+  visibility: hidden;
+}
+.se-btn[aria-busy='true'] {
+  color: transparent;
+}
+.se-btn[aria-busy='true']::after {
+  content: '';
+  position: absolute;
+  width: var(--se-space-4);
+  height: var(--se-space-4);
+  border: var(--se-border-width-strong) solid var(--se-color-text-muted);
+  border-right-color: transparent;
+  border-radius: var(--se-radius-pill);
+  animation: se-spin 0.7s linear infinite;
+}
+.se-btn--primary[aria-busy='true']::after {
+  border-color: var(--se-color-on-accent);
+  border-right-color: transparent;
+}
+.se-btn--danger[aria-busy='true']::after {
+  border-color: var(--se-color-on-danger);
+  border-right-color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .se-btn[aria-busy='true']::after {
+    animation-duration: 2s;
+  }
+}

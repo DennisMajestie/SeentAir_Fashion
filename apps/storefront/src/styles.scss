@@ -179,7 +179,7 @@ main {
   position: sticky;
   top: 0;
   z-index: 30;
-  padding: calc(14px + env(safe-area-inset-top)) 16px 25px;
+  padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
   /* Light bar on every mobile screen, not just the shop grid: a white field
      would have vanished on the old near-black, so the bar is a surface and the
      search pill takes the sheet tint plus a hairline instead. */

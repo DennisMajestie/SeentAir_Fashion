@@ -14,6 +14,8 @@ import { ACCESS_RANK, AccessLevel, ModuleName, RoleName } from '../../common/enu
 import { OrderCheckoutShipping } from '../checkout-shipping/entities/order-checkout-shipping.entity';
 import { matchState } from '../checkout-shipping/nigerian-states';
 import { QuoteVerificationService } from '../checkout-shipping/quote-verification.service';
+import { CouponsService } from '../coupons/coupons.service';
+import { CouponType } from '../coupons/entities/coupon.entity';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { computeTotals } from './order-totals';
 import { AuthenticatedUser } from '../../common/interfaces';
@@ -295,6 +297,7 @@ export class OrdersService {
     private readonly catalogueService: CatalogueService,
     private readonly platformSettings: PlatformSettingsService,
     private readonly quoteVerification: QuoteVerificationService,
+    private readonly coupons: CouponsService,
     private readonly inventoryService: InventoryService,
     private readonly permissionsService: PermissionsService,
     private readonly usersService: UsersService,
@@ -453,18 +456,19 @@ export class OrdersService {
       items,
     });
 
-    // Delivery pricing is opt-in. When the flag is off the order above is
-    // written exactly as it always was - same inline sum, same rounding at
-    // L445, same columns - so nothing about an existing checkout changes. When
-    // it is on, the order, its pricing snapshot and the quote's single use all
-    // commit together, or none of them do.
-    if (!(await this.deliveryPricingOn())) {
+    // Delivery pricing and coupons are independent switches. The legacy inline
+    // sum is only bypassed when one of them is actually in play, so a customer
+    // who names no coupon and has delivery off is priced exactly as before.
+    const deliveryOn = await this.deliveryPricingOn();
+    const wantsCoupon = !!customerId && !!dto.customerCouponId && (await this.coupons.isEnabled());
+
+    if (!deliveryOn && !wantsCoupon) {
       const saved = await this.orderRepo.save(order);
       if (guest) saved.trackingToken = await this.issueTrackingToken(saved.id);
       return saved;
     }
 
-    return this.saveWithDelivery(order, dto, items, total, guest, user);
+    return this.saveWithDelivery(order, dto, items, total, guest, user, deliveryOn);
   }
 
   /** The delivery feature switch, honouring the env kill-switch on top. */
@@ -473,9 +477,12 @@ export class OrdersService {
   }
 
   /**
-   * The flag-on order path: verify the quote, price through computeTotals, and
-   * write the order, its snapshot and the quote's consumption in one
-   * transaction.
+   * The order path used when delivery pricing or coupons are in play: verify
+   * the quote, price through computeTotals, and write the order, its snapshot,
+   * the quote's single use and any coupon reservation in one transaction.
+   *
+   * Delivery is optional - `deliveryOn` false means no quote and no fee, which
+   * is how a coupon discount can apply while delivery pricing is still off.
    */
   private async saveWithDelivery(
     order: Order,
@@ -484,68 +491,126 @@ export class OrdersService {
     legacyTotal: number,
     guest: { name: string; email: string } | null | undefined,
     user: AuthenticatedUser | undefined,
+    deliveryOn: boolean,
   ): Promise<Order> {
     const now = new Date();
     const settings = await this.platformSettings.get();
 
     const stateKey = matchState(dto.shippingAddress?.state ?? null);
-    const quote = await this.quoteVerification.verify({
-      quoteId: dto.quoteId,
-      method: dto.deliveryMethod ?? DeliveryMethod.FREIGHT,
-      stateKey,
-      now,
-      // Prices have just been re-read from the catalogue above, so this is the
-      // live subtotal rather than anything the client sent.
-      subtotalKobo: Math.round(legacyTotal * 100),
-      lines: items.map((i) => ({
-        variantId: i.variant.id,
-        quantity: i.quantity,
-        unitPriceKobo: Math.round(i.unitPrice * 100),
-      })),
-    });
+    // A coupon can be in play with delivery pricing off (a discount still
+    // applies to items) or on. Delivery itself stays optional: with the flag
+    // off there is no quote to verify and no fee to charge, but the discount
+    // and its rounding still have to come from computeTotals.
+    const quote = deliveryOn
+      ? await this.quoteVerification.verify({
+          quoteId: dto.quoteId,
+          method: dto.deliveryMethod ?? DeliveryMethod.FREIGHT,
+          stateKey,
+          now,
+          // Prices have just been re-read from the catalogue above, so this is
+          // the live subtotal rather than anything the client sent.
+          subtotalKobo: Math.round(legacyTotal * 100),
+          lines: items.map((i) => ({
+            variantId: i.variant.id,
+            quantity: i.quantity,
+            unitPriceKobo: Math.round(i.unitPrice * 100),
+          })),
+        })
+      : null;
 
     // Pickup is not delivered, so it is never charged.
-    const deliveryFee = quote.method === DeliveryMethod.PICKUP ? 0 : Number(quote.fee);
+    const deliveryFee = !quote
+      ? 0
+      : quote.method === DeliveryMethod.PICKUP
+        ? 0
+        : Number(quote.fee);
 
-    const totals = computeTotals({
-      lines: items.map((i) => ({ unitPrice: i.unitPrice, quantity: i.quantity })),
-      deliveryFee,
-      settings: {
-        vatEnabled: settings.vatEnabled,
-        vatRatePercent: settings.vatRatePercent,
-        pricesIncludeVat: settings.pricesIncludeVat,
-        deliveryTaxable: settings.deliveryTaxable,
-        deliveryEnabled: settings.shippingEnabled,
-        freeDeliveryThreshold: settings.freeDeliveryThreshold,
-      },
-    });
-
-    order.totalAmount = totals.total;
+    // The coupon has to be reserved before the total is known, but reserving
+    // needs the order id. So the order is written with its pre-discount figure,
+    // the coupon is reserved against it, and the total is then corrected in the
+    // same transaction. A crash anywhere in here leaves neither behind.
+    order.totalAmount = Math.round(legacyTotal * 100) / 100;
 
     return this.dataSource.transaction(async (manager) => {
       const saved = await manager.getRepository(Order).save(order);
-      await manager.getRepository(OrderCheckoutShipping).save({
-        orderId: saved.id,
-        quoteId: quote.id,
-        zoneName: quote.zoneName,
-        stateKey: quote.stateKey,
-        method: quote.method,
-        sizeClass: quote.sizeClass,
-        subtotal: totals.subtotal,
-        deliveryFee: totals.deliveryFee,
-        vatAmount: totals.vat,
-        vatRatePercent: settings.vatEnabled ? settings.vatRatePercent : null,
-        total: totals.total,
-        snapshot: {
-          quoteId: quote.id,
-          fee: totals.deliveryFee,
-          freeDeliveryApplied: totals.deliveryWaived > 0,
-          vatInclusive: settings.pricesIncludeVat,
+
+      // create() already resolved the buyer to set order.customer, so reuse it
+      // rather than paying for the lookup twice.
+      const buyer = order.customer ?? null;
+      const reserved = buyer
+        ? await this.coupons.reserve(manager, {
+            customerId: buyer.id,
+            customerCouponId: dto.customerCouponId ?? '',
+            orderId: saved.id,
+            lines: items.map((i) => ({
+              unitPrice: i.unitPrice,
+              quantity: i.quantity,
+              isOnSale: false,
+            })),
+            deliveryFee,
+            isNewCustomer: await this.coupons.isNewCustomer(
+              buyer.id,
+              buyer.email ?? null,
+              buyer.phone ?? null,
+            ),
+            now,
+          })
+        : null;
+
+      // A free-delivery coupon waives the fee; an item coupon comes off the
+      // goods. computeTotals keeps the two apart so the VAT base is right.
+      const itemDiscount = reserved && reserved.type !== CouponType.FREE_DELIVERY
+        ? reserved.discountKobo / 100
+        : 0;
+      const deliveryDiscount = reserved && reserved.type === CouponType.FREE_DELIVERY
+        ? reserved.discountKobo / 100
+        : 0;
+
+      const totals = computeTotals({
+        lines: items.map((i) => ({ unitPrice: i.unitPrice, quantity: i.quantity })),
+        deliveryFee,
+        itemDiscount,
+        deliveryDiscount,
+        settings: {
+          vatEnabled: settings.vatEnabled,
+          vatRatePercent: settings.vatRatePercent,
+          pricesIncludeVat: settings.pricesIncludeVat,
           deliveryTaxable: settings.deliveryTaxable,
-          settings: quote.settingsVersion,
+          deliveryEnabled: settings.shippingEnabled,
+          freeDeliveryThreshold: settings.freeDeliveryThreshold,
         },
       });
-      await this.quoteVerification.consume(manager, quote, saved.id, now);
+
+      saved.totalAmount = totals.total;
+      await manager.getRepository(Order).save(saved);
+
+      if (quote) {
+        await manager.getRepository(OrderCheckoutShipping).save({
+          orderId: saved.id,
+          quoteId: quote.id,
+          zoneName: quote.zoneName,
+          stateKey: quote.stateKey,
+          method: quote.method,
+          sizeClass: quote.sizeClass,
+          subtotal: totals.subtotal,
+          deliveryFee: totals.deliveryFee,
+          vatAmount: totals.vat,
+          vatRatePercent: settings.vatEnabled ? settings.vatRatePercent : null,
+          total: totals.total,
+          snapshot: {
+            quoteId: quote.id,
+            fee: totals.deliveryFee,
+            freeDeliveryApplied: totals.deliveryWaived > 0,
+            vatInclusive: settings.pricesIncludeVat,
+            deliveryTaxable: settings.deliveryTaxable,
+            settings: quote.settingsVersion,
+            coupon: reserved
+              ? { code: reserved.code, type: reserved.type, discountKobo: reserved.discountKobo }
+              : null,
+          },
+        });
+        await this.quoteVerification.consume(manager, quote, saved.id, now);
+      }
       if (guest) saved.trackingToken = await this.issueTrackingToken(saved.id, manager);
       void user;
       return saved;
@@ -1387,6 +1452,10 @@ export class OrdersService {
 
     order.paymentStatus = PaymentStatus.PAID;
     order.status = OrderStatus.ORDER_RECEIVED;
+    // Money has arrived, so the coupon is genuinely spent. Same transaction as
+    // the payment itself: a confirmed payment must never leave a reservation
+    // hanging, and an abandoned reservation must never outlive the payment.
+    await this.coupons.confirm(manager, orderId);
     const actorId = recordedBy ?? order.customer?.id ?? null;
     // Lock every line's item up front, in the ledger's sorted order, so two
     // multi-line orders sharing items cannot deadlock (see InventoryService.lockItems).

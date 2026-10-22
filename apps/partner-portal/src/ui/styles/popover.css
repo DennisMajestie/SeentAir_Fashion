@@ -1,0 +1,94 @@
+/* A popover panel: a short list or menu that opens from a control, such as the
+   attention list or search results in the top bar. The control that opens it
+   carries aria-expanded; the panel is positioned by its container.
+     <div class="se-popover"> <a class="se-popover__item">...</a> </div>      */
+.se-popover {
+  position: absolute;
+  z-index: var(--se-z-dropdown);
+  display: grid;
+  gap: var(--se-space-half);
+  min-width: var(--se-size-sidebar);
+  max-width: calc(100vw - var(--se-space-8));
+  max-height: calc(100vh - var(--se-space-16) * 2);
+  padding: var(--se-space-2);
+  overflow-y: auto;
+  border: var(--se-border-width) solid var(--se-color-border);
+  border-radius: var(--se-radius-lg);
+  background: var(--se-color-surface);
+  color: var(--se-color-text);
+  font: var(--se-type-body);
+  box-shadow: var(--se-elevation-2);
+}
+.se-popover--end {
+  right: 0;
+}
+.se-popover__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--se-space-3);
+  min-height: var(--se-size-control);
+  margin: 0;
+  padding: var(--se-space-2) var(--se-space-3);
+  border: 0;
+  border-radius: var(--se-radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: 0;
+  text-align: left;
+  text-decoration: none;
+  text-transform: none;
+  cursor: pointer;
+}
+.se-popover__item:hover,
+.se-popover__item--active {
+  background: var(--se-color-surface-hover);
+}
+.se-popover__item > .se-icon {
+  margin-top: var(--se-space-half);
+  color: var(--se-color-text-muted);
+}
+.se-popover__main {
+  display: grid;
+  flex: 1;
+  gap: var(--se-space-half);
+  min-width: 0;
+}
+.se-popover__title {
+  font: var(--se-type-body-strong);
+}
+.se-popover__text,
+.se-popover__note {
+  color: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+}
+.se-popover__note {
+  margin: 0;
+  padding: var(--se-space-2) var(--se-space-3);
+}
+.se-popover__heading {
+  margin: 0;
+  padding: var(--se-space-2) var(--se-space-3) var(--se-space-1);
+  color: var(--se-color-text-muted);
+  font: var(--se-type-overline);
+  letter-spacing: var(--se-type-overline-tracking);
+  text-transform: uppercase;
+}
+/* A coloured mark at the start of an item, for a tone. */
+.se-popover__mark {
+  flex: none;
+  width: var(--se-space-2);
+  height: var(--se-space-2);
+  margin-top: var(--se-space-2);
+  border-radius: var(--se-radius-pill);
+  background: var(--se-color-border-strong);
+}
+.se-popover__mark--danger {
+  background: var(--se-color-danger-border);
+}
+.se-popover__mark--warning {
+  background: var(--se-color-warning-border);
+}
+.se-popover__mark--info {
+  background: var(--se-color-info-border);
+}

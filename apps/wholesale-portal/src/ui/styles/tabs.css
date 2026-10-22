@@ -1,0 +1,74 @@
+/* Tabs: a tab list (se-tabs) and its panels ([seTabPanel]). */
+.se-tabs {
+  display: block;
+}
+.se-tabs__list {
+  display: flex;
+  gap: var(--se-space-1);
+  margin: 0;
+  padding: 0;
+  border-bottom: var(--se-border-width) solid var(--se-color-border);
+  overflow-x: auto; /* many tabs on a phone scroll sideways instead of wrapping */
+}
+.se-tabs__tab {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--se-space-2);
+  min-height: var(--se-size-control);
+  margin: 0;
+  padding: 0 var(--se-space-3);
+  border: 0;
+  border-bottom: var(--se-border-width-strong) solid transparent;
+  border-radius: var(--se-radius-sm) var(--se-radius-sm) 0 0;
+  background: transparent;
+  color: var(--se-color-text-muted);
+  font: var(--se-type-body-strong);
+  letter-spacing: var(--se-type-body-strong-tracking);
+  text-decoration: none;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--se-motion-duration-fast) var(--se-motion-ease-standard),
+    border-color var(--se-motion-duration-fast) var(--se-motion-ease-standard),
+    color var(--se-motion-duration-fast) var(--se-motion-ease-standard);
+}
+.se-tabs__tab:hover {
+  background: var(--se-color-surface-hover);
+  color: var(--se-color-text);
+}
+.se-tabs__tab--active,
+.se-tabs__tab--active:hover {
+  border-bottom-color: var(--se-color-accent);
+  color: var(--se-color-accent-text);
+}
+/* The list scrolls, so a ring outside the tab would be clipped. */
+.se-tabs__tab:focus-visible {
+  outline-offset: calc(-1 * var(--se-border-width-strong));
+}
+.se-tabs__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--se-space-5);
+  height: var(--se-space-5);
+  padding: 0 var(--se-space-1);
+  border-radius: var(--se-radius-pill);
+  background: var(--se-color-surface-sunken);
+  color: var(--se-color-text-muted);
+  font: var(--se-type-caption);
+  font-variant-numeric: var(--se-font-numeric);
+  letter-spacing: var(--se-type-caption-tracking);
+}
+.se-tabs__tab--active .se-tabs__count {
+  background: var(--se-color-accent-subtle);
+  color: var(--se-color-accent-text);
+}
+.se-tabs__panel {
+  padding: var(--se-space-4) 0;
+  border-radius: var(--se-radius-sm);
+}
+.se-tabs__panel[hidden] {
+  display: none;
+}

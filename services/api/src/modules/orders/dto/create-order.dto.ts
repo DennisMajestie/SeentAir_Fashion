@@ -87,6 +87,18 @@ export class CreateOrderDto {
   quoteId?: string;
 
   /**
+   * A coupon the shopper is spending, named by its wallet row rather than the
+   * coupon id - a coupon is only theirs once they hold it.
+   *
+   * Optional and IGNORED unless the coupon feature is on, so an order placed
+   * while it is off is priced exactly as before. Ignored for guests: a coupon
+   * is tied to an account, and claiming one is a separate signed-in act.
+   */
+  @IsOptional()
+  @IsUUID()
+  customerCouponId?: string;
+
+  /**
    * Wholesale checkout: the buyer's free-text note for the factory desk.
    * Separate from deliveryNote, which staff write at pack-out.
    */

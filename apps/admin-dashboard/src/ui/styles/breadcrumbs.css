@@ -1,0 +1,61 @@
+/* Breadcrumbs: the path to this page. The last item is the page itself. */
+se-breadcrumbs {
+  display: block;
+}
+.se-breadcrumbs {
+  margin: 0;
+  padding: 0;
+}
+.se-breadcrumbs__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--se-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.se-breadcrumbs__item {
+  display: flex;
+  align-items: center;
+  gap: var(--se-space-1);
+  min-width: 0;
+  min-height: var(--se-size-control);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.se-breadcrumbs__link,
+.se-breadcrumbs__text {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: var(--se-type-body);
+  letter-spacing: var(--se-type-body-tracking);
+  text-transform: none;
+}
+.se-breadcrumbs__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--se-size-control);
+  border-radius: var(--se-radius-sm);
+  color: var(--se-color-text-muted);
+  text-decoration: none;
+  transition: color var(--se-motion-duration-fast) var(--se-motion-ease-standard);
+}
+.se-breadcrumbs__link:hover {
+  color: var(--se-color-accent-text);
+  text-decoration: underline;
+}
+.se-breadcrumbs__text {
+  color: var(--se-color-text-muted);
+}
+.se-breadcrumbs__text[aria-current] {
+  color: var(--se-color-text);
+  font: var(--se-type-body-strong);
+  letter-spacing: var(--se-type-body-strong-tracking);
+}
+.se-breadcrumbs__separator {
+  color: var(--se-color-text-muted);
+}

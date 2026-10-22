@@ -12,6 +12,8 @@ import { CouponsAdminController } from './coupons-admin.controller';
 import { CouponsAdminService } from './coupons-admin.service';
 import { CouponsController } from './coupons.controller';
 import { CouponsService } from './coupons.service';
+import { NewCustomerService } from './new-customer.service';
+import { Order } from '../orders/entities/order.entity';
 
 /**
  * Coupons live under their own `coupons/*` routes and never widen `logistics/*`.
@@ -29,13 +31,17 @@ import { CouponsService } from './coupons.service';
       CustomerCoupon,
       CouponRedemption,
       CouponCampaign,
+      // Only to answer "is this a new customer" for NEW_CUSTOMERS_ONLY. It is
+      // a read of the orders table, not a dependency on the orders module, so
+      // there is no cycle.
+      Order,
     ]),
     PlatformSettingsModule,
     AuditModule,
     CheckoutShippingModule,
   ],
   controllers: [CouponsController, CouponCampaignsController, CouponsAdminController],
-  providers: [CouponsService, CouponsAdminService],
+  providers: [CouponsService, CouponsAdminService, NewCustomerService],
   exports: [CouponsService],
 })
 export class CouponsModule {}

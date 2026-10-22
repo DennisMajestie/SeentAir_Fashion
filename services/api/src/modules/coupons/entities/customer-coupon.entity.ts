@@ -13,6 +13,12 @@ import { Coupon } from './coupon.entity';
 
 export enum CustomerCouponStatus {
   AVAILABLE = 'available',
+  /**
+   * Held by an order that has not been paid. The coupon cannot be spent
+   * elsewhere while it sits here, and payment failure returns it to
+   * AVAILABLE rather than burning it.
+   */
+  RESERVED = 'reserved',
   USED = 'used',
   EXPIRED = 'expired',
   REVOKED = 'revoked',

@@ -14,6 +14,7 @@ import { OrderAccessToken } from './entities/order-access-token.entity';
 import { Payment } from './entities/payment.entity';
 import { ProcessedWebhookEvent } from './entities/processed-webhook-event.entity';
 import { CheckoutShippingModule } from '../checkout-shipping/checkout-shipping.module';
+import { CouponsModule } from '../coupons/coupons.module';
 import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
 import { OrderStatusBusModule } from './order-status.bus.module';
 import { OrderExpiryService } from './order-expiry.service';
@@ -42,6 +43,7 @@ import { PaystackService } from './paystack.service';
     NotificationsModule,
     OrderStatusBusModule,
     CheckoutShippingModule,
+    CouponsModule,
     PlatformSettingsModule,
   ],
   controllers: [OrdersController],

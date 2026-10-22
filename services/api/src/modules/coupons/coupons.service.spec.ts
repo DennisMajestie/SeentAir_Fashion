@@ -115,6 +115,7 @@ function harness(options: { enabled?: boolean; wallet?: CustomerCoupon[] } = {})
     { find: async () => [] } as never,
     { find: async () => [] } as never,
     { get: async () => ({ couponsEnabled: options.enabled ?? true }) } as never,
+    { isNewCustomer: async () => false } as never,
     {
       quote: async () => ({ status: 'not_applicable', feeKobo: 0, estimate: '' }),
     } as never,
@@ -250,6 +251,7 @@ describe('coupons service', () => {
         { find: async () => [] } as never,
         repo as never,
         { get: async () => ({ couponsEnabled: true }) } as never,
+        { isNewCustomer: async () => false } as never,
         { quote: async () => null } as never,
       );
       await expect(svc.claimCampaign('camp-1', ACTOR, NOW)).rejects.toBeInstanceOf(ForbiddenException);
@@ -262,6 +264,7 @@ describe('coupons service', () => {
         { find: async () => [] } as never,
         repo as never,
         { get: async () => ({ couponsEnabled: true }) } as never,
+        { isNewCustomer: async () => false } as never,
         { quote: async () => null } as never,
       );
       await expect(svc.claimCampaign('camp-1', ACTOR, NOW)).rejects.toBeInstanceOf(ForbiddenException);
@@ -276,6 +279,7 @@ describe('coupons service', () => {
         { find: async () => [] } as never,
         repo as never,
         { get: async () => ({ couponsEnabled: true }) } as never,
+        { isNewCustomer: async () => false } as never,
         { quote: async () => null } as never,
       );
       await expect(svc.claimCampaign('camp-1', ACTOR, NOW)).rejects.toThrow(/ended/i);
@@ -293,6 +297,7 @@ describe('coupons service', () => {
         { find: async () => [] } as never,
         repo as never,
         { get: async () => ({ couponsEnabled: true }) } as never,
+        { isNewCustomer: async () => false } as never,
         { quote: async () => null } as never,
       );
       await expect(svc.claimCampaign('camp-1', ACTOR, NOW)).resolves.toMatchObject({
@@ -314,6 +319,7 @@ describe('coupons service', () => {
         { find: async () => [] } as never,
         repo as never,
         { get: async () => ({ couponsEnabled: true }) } as never,
+        { isNewCustomer: async () => false } as never,
         { quote: async () => null } as never,
       );
       const result = await svc.claimCampaign('camp-1', ACTOR, NOW);
@@ -381,6 +387,7 @@ it('returns the server time alongside the window', async () => {
         { find: async () => [] } as never,
         repo as never,
         { get: async () => ({ couponsEnabled: true }) } as never,
+        { isNewCustomer: async () => false } as never,
         { quote: async () => null } as never,
       );
       const live = await svc.activeCampaign('home_top', NOW);

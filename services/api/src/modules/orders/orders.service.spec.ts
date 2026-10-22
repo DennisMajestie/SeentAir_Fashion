@@ -1,5 +1,6 @@
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { QuoteVerificationService } from '../checkout-shipping/quote-verification.service';
+import { CouponsService } from '../coupons/coupons.service';
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
@@ -264,6 +265,7 @@ describe('OrdersService — payment rules', () => {
         { provide: OrderStatusBus, useValue: new OrderStatusBus() },
         { provide: PlatformSettingsService, useValue: { get: async () => ({ shippingEnabled: false, freeDeliveryThreshold: null, quoteExpiryMinutes: 1440, vatEnabled: false, vatRatePercent: 0, pricesIncludeVat: false, deliveryTaxable: false }) } },
       { provide: QuoteVerificationService, useValue: { verify: jest.fn(), consume: jest.fn() } },
+      { provide: CouponsService, useValue: { isEnabled: async () => false, isNewCustomer: async () => false, reserve: async () => null, confirm: async () => undefined, release: async () => undefined } },
       { provide: CatalogueService, useValue: {} },
         { provide: InventoryService, useValue: inventoryService },
         { provide: PermissionsService, useValue: permissionsService },
