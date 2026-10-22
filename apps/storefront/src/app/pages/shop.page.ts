@@ -15,19 +15,14 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
-import { FilterSheetComponent } from '../filter-sheet.component';
+
 import { offerFor } from '../pricing';
 import { PRODUCT_PLACEHOLDER, productImage } from '../product-image';
 import { SeoService } from '../seo.service';
 import { CatalogueSearchService } from '../catalogue-search.service';
 import { SWATCHES, ProductCardComponent } from '../product-card.component';
 
-import {
-  EMPTY_FILTERS,
-  SheetFilters,
-  activeFilterCount,
-  matchesSheetFilters,
-} from '../shop-filters';
+import { matchesSheetFilters } from '../shop-filters';
 
 type SortKey = 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'best-selling';
 
@@ -80,7 +75,7 @@ function collectionKey(name: string): string {
     review stars and quick-add. */
 @Component({
   selector: 'app-shop',
-  imports: [CommonModule, FormsModule, ProductCardComponent, FilterSheetComponent],
+  imports: [CommonModule, FormsModule, ProductCardComponent],
   template: `
     <!-- Not an immersive route: the site header (cart/account/search) comes from
          the shell, so this page renders neither its own compact back-header nor a
@@ -124,85 +119,8 @@ function collectionKey(name: string): string {
       }
     </div>
 
-    <div class="shop-toolbar">
-      <!-- Native select, styled as a toolbar button: a custom sort sheet would
-           cost keyboard and screen-reader support for no visual gain. -->
-      <label class="tbtn">
-        <span>Sort by</span>
-        <select [ngModel]="sort()" (ngModelChange)="sort.set($event)" aria-label="Sort products">
-          <option value="featured">Featured</option>
-          <option value="newest">Newest</option>
-          <option value="price-asc">Price: low → high</option>
-          <option value="price-desc">Price: high → low</option>
-          <option value="best-selling">Best selling</option>
-        </select>
-        <svg class="tbtn__chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </label>
-
-      <button
-        class="tbtn"
-        type="button"
-        #filtersBtn
-        [attr.aria-expanded]="sheetOpen()"
-        aria-haspopup="dialog"
-        (click)="openSheet()"
-      >
-        <!-- Funnel, drawn rather than typed: the old glyph had no face in most
-             system fonts and fell back to a box or an arrow. -->
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="M4 5h16l-6.2 7.4V18l-3.6 1.8v-7.4z" />
-        </svg>
-        <span>Filter</span>
-        @if (activeFilters() > 0) {
-          <span class="filters-badge">{{ activeFilters() }}</span>
-        }
-        <svg class="tbtn__chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </button>
-
-      <div class="viewtoggle" role="group" aria-label="Result layout">
-        <button
-          type="button"
-          class="vt-btn"
-          [class.on]="view() === 'grid'"
-          [attr.aria-pressed]="view() === 'grid'"
-          (click)="view.set('grid')"
-          aria-label="Two column grid"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <rect x="4" y="4" width="7" height="7" rx="1.5" />
-            <rect x="13" y="4" width="7" height="7" rx="1.5" />
-            <rect x="4" y="13" width="7" height="7" rx="1.5" />
-            <rect x="13" y="13" width="7" height="7" rx="1.5" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          class="vt-btn"
-          [class.on]="view() === 'list'"
-          [attr.aria-pressed]="view() === 'list'"
-          (click)="view.set('list')"
-          aria-label="List view"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M5 7h14M5 12h14M5 17h14" />
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <div class="shop-toolbar shop-toolbar--meta">
-      @if (hasFilters()) {
-        <button class="link" (click)="clearFilters()">Clear filters</button>
-      }
-      <span class="result-count">{{ filtered().length }} piece(s)</span>
-    </div>
-
     @if (loading()) {
-      <div class="grid" [class.grid--list]="view() === 'list'" aria-hidden="true">
+      <div class="grid" aria-hidden="true">
         @for (g of skCards; track g) {
           <div class="sk-card">
             <div class="skeleton sk-img"></div>
@@ -215,7 +133,7 @@ function collectionKey(name: string): string {
     } @else if (filtered().length === 0) {
       <p class="muted">Nothing matches: clear the search or filters.</p>
     } @else {
-      <div class="grid" [class.grid--list]="view() === 'list'">
+      <div class="grid">
         @for (product of filtered(); track product.id) {
           <app-product-card [product]="product" [rating]="ratingOf(product.id)" />
         }
@@ -240,16 +158,7 @@ function collectionKey(name: string): string {
       }
     }
 
-    <!-- Created on first open, not on page load, so it never competes with the
-         product grid's first paint. -->
-    @if (sheetOpen()) {
-      <app-filter-sheet
-        [products]="all()"
-        [applied]="appliedFilters()"
-        (apply)="applyFilters($event)"
-        (dismiss)="closeSheet()"
-      />
-    }
+
   `,
 })
 export class ShopPage implements OnInit {
@@ -274,16 +183,7 @@ export class ShopPage implements OnInit {
    *  because the header input is always visible the term is never hidden. */
   readonly query = this.search.term;
   readonly category = signal<string | null>(null);
-  /** What the grid is showing. The sheet edits a copy and only commits on apply. */
-  readonly appliedFilters = signal<SheetFilters>({ ...EMPTY_FILTERS });
-  /** Mounted on first open only, so the sheet never competes with the grid's first paint. */
-  readonly sheetOpen = signal(false);
-  readonly collection = computed(() => this.appliedFilters().collection);
-  readonly size = computed(() => this.appliedFilters().size);
-  readonly colour = computed(() => this.appliedFilters().colour);
   readonly sort = signal<SortKey>('featured');
-  /** Grid density. Grid is the reference default; list gives one piece per row. */
-  readonly view = signal<'grid' | 'list'>('grid');
   /** productId → average rating + review count (public reviews endpoint). */
   readonly ratings = signal<Map<string, { avg: number; count: number }>>(new Map());
 
@@ -347,9 +247,6 @@ export class ShopPage implements OnInit {
     const cat = this.category();
     const rows = this.all().filter((p) => {
       if (cat && (p.category ?? 'other') !== cat) return false;
-      // One predicate shared with the sheet's count, so the number on
-      // "Show N pieces" and what the grid renders cannot drift apart.
-      if (!matchesSheetFilters(p, this.appliedFilters())) return false;
       if (!q) return true;
       const haystack = [
         p.name,
@@ -378,10 +275,7 @@ export class ShopPage implements OnInit {
     return rows;
   });
 
-  readonly activeFilters = computed(() => activeFilterCount(this.appliedFilters()));
-  readonly hasFilters = computed(
-    () => this.activeFilters() > 0 || !!this.category() || !!this.query(),
-  );
+  readonly hasFilters = computed(() => !!this.category() || !!this.query());
 
   /**
    * Circle image for a sub-category pill. The first real product in that
@@ -395,73 +289,22 @@ export class ShopPage implements OnInit {
     return found ? productImage(found) : PRODUCT_PLACEHOLDER;
   }
 
-  openSheet(): void {
-    this.sheetOpen.set(true);
-  }
-
   /**
-   * Picks a category from the rail and records it in the URL. The header title
-   * on this screen is read from that query param, so without this the bar kept
-   * naming the category the shopper arrived on, not the one they are viewing.
+   * Picks a category from the rail and records it in the URL.
    */
   selectCategory(name: string | null): void {
     this.category.set(name);
-    this.syncUrl();
-  }
-
-  /** Dismiss discards pending changes: the applied set is never touched here. */
-  closeSheet(): void {
-    this.sheetOpen.set(false);
-    this.filtersBtn()?.nativeElement.focus();
-  }
-
-  /**
-   * Commit the sheet's pending selection: the grid moves, the URL records it,
-   * and the customer is put back at the top of the results they just asked for.
-   */
-  applyFilters(next: SheetFilters): void {
-    this.appliedFilters.set(next);
-    this.syncUrl();
-    this.closeSheet();
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: this.reducedMotion() ? 'auto' : 'smooth' });
-    }
-  }
-
-  /** Applied filters are shareable, so they live in the query string. Pending never does. */
-  private syncUrl(): void {
-    const f = this.appliedFilters();
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: {
-        size: f.size ?? null,
-        colour: f.colour ?? null,
-        collection: f.collection ?? null,
-        maxPrice: f.maxPrice ?? null,
-        segment: f.segment ?? null,
-        category: this.category(),
+        category: name,
       },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
   }
 
-  private reducedMotion(): boolean {
-    return (
-      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    );
-  }
-
   ngOnInit(): void {
-    const q = this.route.snapshot.queryParamMap;
-    const price = q.get('maxPrice');
-    this.appliedFilters.set({
-      size: q.get('size') ?? null,
-      colour: q.get('colour') ?? null,
-      collection: q.get('collection') ?? null,
-      maxPrice: price === null || price === undefined ? null : Number(price),
-      segment: q.get('segment') ?? null,
-    });
     // Followed, not read once: the list header takes its title from the same
     // query param, and a link to /shop while already here (menu, footer) reuses
     // this component, so a one-off snapshot would leave the grid on the old
@@ -567,11 +410,15 @@ export class ShopPage implements OnInit {
   ratingOf(productId: string): { avg: number; count: number } | null {
     return this.ratings().get(productId) ?? null;
   }
-  /** The toolbar's own reset: clears the applied set, the category and the search. */
+  /** Clears the category and the search. */
   clearFilters(): void {
     this.category.set(null);
     this.query.set('');
-    this.appliedFilters.set({ ...EMPTY_FILTERS });
-    this.syncUrl();
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { category: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 }
