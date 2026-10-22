@@ -86,6 +86,8 @@ describe('HomePage', () => {
       'returns',
       'deliveries',
       'products',
+      'materialsValuation',
+      'campaigns',
     ]);
     api.dashboard.and.returnValue(dashboard as never);
     api.lowStock.and.returnValue(
@@ -127,6 +129,8 @@ describe('HomePage', () => {
     api.returns.and.returnValue(of({ data: [], total: 0 }));
     api.deliveries.and.returnValue(of({ data: [], total: 0 }));
     api.products.and.returnValue(of({ data: [], total: 0 }));
+    api.materialsValuation.and.returnValue(of([]));
+    api.campaigns.and.returnValue(of([]));
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: ApiService, useValue: api }],
     });
@@ -151,16 +155,26 @@ describe('HomePage', () => {
     it('answers the five questions, in order, each as one linked card', () => {
       mount(OWNER);
       expect(labels()).toEqual([
+        'Items in stock',
+        'Low stock',
+        'Materials stock value',
         'Sales today',
         'Profit and loss',
-        'Low stock',
         'In production',
         'Awaiting approval',
       ]);
-      const links = [...el().querySelectorAll<HTMLAnchorElement>('a.se-metric-link')].map((a) =>
+      const links = [...el().querySelectorAll<HTMLAnchorElement>('a.sd-kpi')].map((a) =>
         a.getAttribute('href'),
       );
-      expect(links).toEqual(['/orders', '/accounting', '/inventory', '/production', '/approvals']);
+      expect(links).toEqual([
+        '/inventory',
+        '/inventory',
+        '/materials',
+        '/orders',
+        '/accounting',
+        '/production',
+        '/approvals',
+      ]);
     });
 
     it('shows sales against the day before', () => {
@@ -198,7 +212,13 @@ describe('HomePage', () => {
   describe('for the Inventory role', () => {
     it('shows stock and production, and no money at all', () => {
       mount(INVENTORY);
-      expect(labels()).toEqual(['Open orders', 'Low stock', 'In production', 'Returns waiting']);
+      expect(labels()).toEqual([
+        'Items in stock',
+        'Low stock',
+        'Open orders',
+        'In production',
+        'Returns waiting',
+      ]);
       expect(el().textContent).not.toContain('Profit and loss');
       expect(el().textContent).not.toContain('₦');
       expect(el().querySelector('se-line-chart')).toBeNull();
