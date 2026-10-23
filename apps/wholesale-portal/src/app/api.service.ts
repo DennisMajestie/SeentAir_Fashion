@@ -153,8 +153,12 @@ export class ApiService {
     }>(`${API_BASE}/notifications`);
   }
 
-  pricing(): Observable<Pricing> {
-    return this.http.get<Pricing>(`${API_BASE}/wholesale/pricing?limit=50`);
+  /**
+   * Tier-priced catalogue, one page at a time. The response carries the
+   * catalogue's `total`, so the page knows when to stop paging in.
+   */
+  pricing(page = 1, limit = 50): Observable<Pricing> {
+    return this.http.get<Pricing>(`${API_BASE}/wholesale/pricing?page=${page}&limit=${limit}`);
   }
 
   /**

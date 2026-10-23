@@ -19,6 +19,7 @@ import {
 import { AvailabilityStatus, Pricing, PricingProduct } from '../api.service';
 import { ApiService } from '../api.service';
 import { CartService } from '../cart.service';
+import { InfiniteScrollDirective } from '../infinite-scroll.directive';
 
 /**
  * Wholesale catalogue: one card per product with the account's wholesale
@@ -48,6 +49,7 @@ import { CartService } from '../cart.service';
     SePageComponent,
     SeSkeletonComponent,
     SeStatusComponent,
+    InfiniteScrollDirective,
   ],
   template: `
     <se-page title="Wholesale catalogue" [description]="description()">
@@ -162,6 +164,25 @@ import { CartService } from '../cart.service';
               </se-card>
             }
           </div>
+
+          <!-- Endless scroll: when the buyer reaches the end of what has loaded,
+               the next page is already on its way. The count stays stated so
+               paging in is never mistaken for the catalogue being complete. -->
+          @if (hasMore()) {
+            @if (loadingMore()) {
+              <p class="catalogue__more" role="status" aria-live="polite">Loading more…</p>
+            } @else {
+              <div
+                class="catalogue__sentinel"
+                appInfiniteScroll
+                (nearEnd)="loadMore()"
+                aria-hidden="true"
+              ></div>
+            }
+            <p class="catalogue__count">
+              Showing {{ all().length }} of {{ total() }} products
+            </p>
+          }
         }
       }
     </se-page>
@@ -212,6 +233,25 @@ import { CartService } from '../cart.service';
     .product__cta {
       justify-self: start;
     }
+
+    /* Endless scroll: a real box the observer can intersect; the shout-out of
+       what is loaded sits under it, not inside the grid. */
+    .catalogue__sentinel {
+      height: 1px;
+      width: 100%;
+      grid-column: 1 / -1;
+    }
+    .catalogue__more,
+    .catalogue__count {
+      margin: 0;
+      text-align: center;
+      color: var(--se-color-text-muted);
+      font: var(--se-type-caption);
+      letter-spacing: var(--se-type-caption-tracking);
+    }
+    .catalogue__count {
+      margin-top: var(--se-space-2);
+    }
   `,
 })
 export class CataloguePage implements OnInit {
@@ -225,6 +265,12 @@ export class CataloguePage implements OnInit {
   readonly needsAccount = signal(false);
   readonly applied = signal(false);
   readonly applying = signal(false);
+
+  /** Paged-in rows, the pages fetched so far and the catalogue's real size. */
+  readonly all = signal<PricingProduct[]>([]);
+  readonly page = signal(1);
+  readonly total = signal(0);
+  readonly loadingMore = signal(false);
 
   readonly query = signal('');
   readonly filterValue = signal<SeFilterValue>({});
@@ -248,7 +294,7 @@ export class CataloguePage implements OnInit {
 
   readonly categories = computed(() => {
     const counts = new Map<string, number>();
-    for (const product of this.pricing()?.data ?? []) {
+    for (const product of this.all()) {
       const c = product.category ?? 'other';
       counts.set(c, (counts.get(c) ?? 0) + 1);
     }
@@ -269,7 +315,7 @@ export class CataloguePage implements OnInit {
   readonly filtered = computed<PricingProduct[]>(() => {
     const q = this.query().trim().toLowerCase();
     const category = this.category();
-    return (this.pricing()?.data ?? []).filter((product) => {
+    return this.all().filter((product) => {
       if (category && (product.category ?? 'other') !== category) return false;
       if (!q) return true;
       return (
@@ -279,6 +325,27 @@ export class CataloguePage implements OnInit {
       );
     });
   });
+
+  /** True while the catalogue holds products not yet loaded. */
+  hasMore(): boolean {
+    return this.all().length < this.total();
+  }
+
+  /** Appends the next page; a lagging page can never duplicate a row. */
+  loadMore(): void {
+    if (this.loadingMore() || !this.hasMore()) return;
+    this.loadingMore.set(true);
+    this.api.pricing(this.page() + 1).subscribe({
+      next: (p) => {
+        const seen = new Set(this.all().map((x) => x.id));
+        this.all.update((rows) => [...rows, ...p.data.filter((x) => !seen.has(x.id))]);
+        this.page.set(this.page() + 1);
+        this.total.set(p.total);
+        this.loadingMore.set(false);
+      },
+      error: () => this.loadingMore.set(false),
+    });
+  }
 
   ngOnInit(): void {
     this.load();
@@ -290,6 +357,9 @@ export class CataloguePage implements OnInit {
     this.api.pricing().subscribe({
       next: (p) => {
         this.pricing.set(p);
+        this.all.set(p.data);
+        this.total.set(p.total);
+        this.page.set(1);
         this.loading.set(false);
       },
       error: (err) => {
