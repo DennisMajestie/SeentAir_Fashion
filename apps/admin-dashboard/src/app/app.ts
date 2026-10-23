@@ -586,14 +586,13 @@ import { environment } from '../environments/environment';
 
       /* ---------- breakpoints ---------- */
       /* The split only happens where the branded half is actually rendered, so
-         the CSS and the signal that gates the markup agree on the same 900px. */
-      @media (min-width: 900px) {
-        :host .auth-split {
-          grid-template-columns: 46% 54%;
-        }
-        :host .auth-panel {
-          border-radius: 0 28px 28px 0;
-        }
+         the CSS tracks the markup itself rather than just the viewport: the
+         two columns appear only when .auth-brand is in the DOM. */
+      :host .auth-split:has(.auth-brand) {
+        grid-template-columns: 46% 54%;
+      }
+      :host .auth-split:has(.auth-brand) .auth-panel {
+        border-radius: 0 28px 28px 0;
       }
       @media (max-width: 1100px) {
         :host .auth-brand {

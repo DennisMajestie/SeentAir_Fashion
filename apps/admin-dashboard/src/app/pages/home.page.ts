@@ -963,8 +963,6 @@ export class HomePage implements OnDestroy {
   private readonly returnsWaiting = signal(0);
   private readonly deliveryData = signal<Array<Record<string, unknown>>>([]);
   private readonly productsTotal = signal(0);
-  private readonly materialsValue = signal<number | null>(null);
-  private readonly materialsCount = signal(0);
   private readonly campaigns = signal<Campaign[]>([]);
   readonly bestSellers = signal<SellerRow[]>([]);
   readonly slowMovers = signal<SellerRow[]>([]);
@@ -1174,18 +1172,6 @@ export class HomePage implements OnDestroy {
         ...quiet,
       });
     }
-    // Material value is money and lives on the raw-materials module, so only
-    // roles that see money ask for it. A role without raw_materials simply
-    // gets a quiet failure and no value card.
-    if (this.seesMoney()) {
-      this.api.materialsValuation().subscribe({
-        next: (rows) => {
-          this.materialsCount.set(rows.length);
-          this.materialsValue.set(rows.reduce((sum, r) => sum + (r.currentValue || 0), 0));
-        },
-        ...quiet,
-      });
-    }
     if (this.access.can('marketing')) {
       this.api.campaigns().subscribe({
         next: (rows) =>
@@ -1299,16 +1285,6 @@ export class HomePage implements OnDestroy {
         link: '/inventory',
         icon: 'alert',
         goodDirection: 'down',
-      });
-    }
-    if (this.seesMoney() && this.materialsValue() !== null) {
-      card({
-        key: 'value',
-        label: 'Materials stock value',
-        value: this.money(this.materialsValue() ?? 0),
-        hint: `${plural(this.materialsCount(), 'material')} at last purchase cost`,
-        link: '/materials',
-        icon: 'bank',
       });
     }
     if (this.seesMoney()) {

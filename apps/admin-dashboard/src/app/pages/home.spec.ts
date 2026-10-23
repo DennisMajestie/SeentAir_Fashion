@@ -86,7 +86,6 @@ describe('HomePage', () => {
       'returns',
       'deliveries',
       'products',
-      'materialsValuation',
       'campaigns',
     ]);
     api.dashboard.and.returnValue(dashboard as never);
@@ -129,7 +128,6 @@ describe('HomePage', () => {
     api.returns.and.returnValue(of({ data: [], total: 0 }));
     api.deliveries.and.returnValue(of({ data: [], total: 0 }));
     api.products.and.returnValue(of({ data: [], total: 0 }));
-    api.materialsValuation.and.returnValue(of([]));
     api.campaigns.and.returnValue(of([]));
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: ApiService, useValue: api }],
@@ -157,7 +155,6 @@ describe('HomePage', () => {
       expect(labels()).toEqual([
         'Items in stock',
         'Low stock',
-        'Materials stock value',
         'Sales today',
         'Profit and loss',
         'In production',
@@ -169,7 +166,6 @@ describe('HomePage', () => {
       expect(links).toEqual([
         '/inventory',
         '/inventory',
-        '/materials',
         '/orders',
         '/accounting',
         '/production',
