@@ -84,7 +84,7 @@ type Material = { id: string; name: string; unit: string | null };
       }
       @if (product()) {
         <ng-container sePageActions>
-          <a seButton routerLink="/tech-pack">Open tech packs</a>
+          <a seButton routerLink="/tech-pack">Open specs</a>
           @if (canWrite()) {
             <button seButton variant="primary" type="button" (click)="openAddSize()">
               Add size

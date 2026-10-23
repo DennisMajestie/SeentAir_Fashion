@@ -114,7 +114,7 @@ const COST_LINES = [
               [loading]="busy() === 'approve'"
               (click)="approve()"
             >
-              Approve tech pack
+              Approve spec
             </button>
           }
           @if (!pack() && canEdit()) {
@@ -125,7 +125,7 @@ const COST_LINES = [
               [loading]="busy() === 'create'"
               (click)="create()"
             >
-              Create tech pack
+              Create spec
             </button>
           }
         </ng-container>
@@ -143,7 +143,7 @@ const COST_LINES = [
       } @else if (loadError()) {
         <se-banner
           tone="danger"
-          title="The tech pack could not be loaded"
+          title="The spec could not be loaded"
           actionLabel="Try again"
           (action)="load()"
         >
@@ -154,7 +154,7 @@ const COST_LINES = [
           <se-empty-state
             heading="This variant does not exist"
             text="It may have been removed from the catalogue, or the link may be wrong."
-            actionLabel="Back to tech packs"
+            actionLabel="Back to specs"
             (action)="back()"
           />
         </se-card>
@@ -191,7 +191,7 @@ const COST_LINES = [
             } @else {
               <se-card>
                 <se-empty-state
-                  heading="No tech pack for this variant yet"
+                  heading="No spec for this variant yet"
                   [text]="
                     canEdit()
                       ? 'Create one to record its measurements, protocols and pattern file.'
@@ -220,11 +220,11 @@ const COST_LINES = [
                 @if (pack(); as tp) {
                   <div seKvItem label="Silhouette">{{ text(tp, 'silhouette') }}</div>
                   <div seKvItem label="Target yield" numeric>
-                    {{ tp['targetYieldUnits'] != null ? tp['targetYieldUnits'] + ' units' : '–' }}
+                    {{ tp['targetYieldUnits'] !== null && tp['targetYieldUnits'] !== undefined ? tp['targetYieldUnits'] + ' units' : '–' }}
                   </div>
                   <div seKvItem label="Cutting efficiency" numeric>
                     {{
-                      tp['cuttingEfficiencyPct'] != null ? tp['cuttingEfficiencyPct'] + '%' : '–'
+                      tp['cuttingEfficiencyPct'] !== null && tp['cuttingEfficiencyPct'] !== undefined ? tp['cuttingEfficiencyPct'] + '%' : '–'
                     }}
                   </div>
                   <div seKvItem label="Pattern file">
@@ -405,10 +405,10 @@ export class TechPackDetailPage {
     const v = this.variant();
     return v ? variantLabel(v) : '';
   });
-  readonly title = computed(() => (this.sku() ? `Tech pack ${this.sku()}` : 'Tech pack'));
+  readonly title = computed(() => (this.sku() ? `Spec ${this.sku()}` : 'Spec'));
   readonly crumbs = computed(() => [
-    { label: 'Tech packs', link: '/tech-pack' },
-    { label: this.sku() || 'Tech pack' },
+    { label: 'Specs', link: '/tech-pack' },
+    { label: this.sku() || 'Spec' },
   ]);
   readonly state = computed(() => packState(this.pack()));
   readonly stateLabel = computed(() => PACK_STATES[this.state()] ?? this.state());
@@ -541,9 +541,9 @@ export class TechPackDetailPage {
         this.busy.set('');
         this.pack.set(pack);
         this.revisions.set([]);
-        this.toast.show(`Tech pack created for ${this.sku()} as draft revision 1`);
+        this.toast.show(`Spec created for ${this.sku()} as draft revision 1`);
       },
-      error: (err) => this.failed(err, 'The tech pack could not be created', () => this.create()),
+      error: (err) => this.failed(err, 'The spec could not be created', () => this.create()),
     });
   }
 
@@ -551,9 +551,9 @@ export class TechPackDetailPage {
     const pack = this.pack();
     if (!pack) return;
     const ok = await this.confirm.ask({
-      title: `Approve tech pack for ${this.sku()}?`,
+      title: `Approve spec for ${this.sku()}?`,
       consequence: `Revision ${this.revision()} becomes the shop-floor reference for this variant. The approval is recorded in the audit log. Saving a later revision returns the pack to draft.`,
-      confirmLabel: 'Approve tech pack',
+      confirmLabel: 'Approve spec',
     });
     if (!ok) return;
     this.busy.set('approve');
@@ -562,10 +562,10 @@ export class TechPackDetailPage {
         this.busy.set('');
         this.pack.set(updated);
         this.loadRevisions();
-        this.toast.show(`Tech pack for ${this.sku()} approved`);
+        this.toast.show(`Spec for ${this.sku()} approved`);
       },
       error: (err) =>
-        this.failed(err, 'The tech pack could not be approved', () => void this.approve()),
+        this.failed(err, 'The spec could not be approved', () => void this.approve()),
     });
   }
 
@@ -678,7 +678,7 @@ export class TechPackDetailPage {
     if (!pack) return;
     if (this.state() === 'approved') {
       const ok = await this.confirm.ask({
-        title: `Save a new revision of the approved tech pack for ${this.sku()}?`,
+        title: `Save a new revision of the approved spec for ${this.sku()}?`,
         consequence: `The pack returns to draft, so revision ${this.revision()} stops being the shop-floor reference until the new revision is approved. Revision ${this.revision()} stays in the history.`,
         confirmLabel: 'Save revision',
       });

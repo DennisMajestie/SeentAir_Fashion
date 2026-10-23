@@ -113,12 +113,12 @@ export const routes: Routes = [
   {
     path: 'tech-pack',
     loadComponent: () => import('./pages/tech-pack.page').then((m) => m.TechPackPage),
-    title: 'Seentair Ops: Tech pack',
+    title: 'Seentair Ops: Specs',
   },
   {
     path: 'tech-pack/:id',
     loadComponent: () => import('./pages/tech-pack-detail.page').then((m) => m.TechPackDetailPage),
-    title: 'Seentair Ops: Tech pack',
+    title: 'Seentair Ops: Specs',
   },
   {
     path: 'vendors',

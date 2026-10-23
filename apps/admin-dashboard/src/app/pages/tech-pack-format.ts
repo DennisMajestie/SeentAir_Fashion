@@ -28,7 +28,7 @@ export function variantLabel(v: Pick<VariantRow, 'size' | 'colour'>): string {
 
 /** A pack is a draft until it is approved; a variant may have no pack at all. */
 export const PACK_STATES: Record<string, string> = {
-  none: 'No tech pack',
+  none: 'No spec',
   draft: 'Draft',
   approved: 'Approved',
 };

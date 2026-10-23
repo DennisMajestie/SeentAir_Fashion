@@ -84,14 +84,14 @@ describe('TechPackPage', () => {
     expect(rows.length).toBe(2);
     expect(rows[0].textContent).toContain('TEE-BLK-M');
     expect(rows[0].textContent).toContain('Approved');
-    expect(rows[1].textContent).toContain('No tech pack');
-    expect(el().querySelector('h1')!.textContent).toBe('Tech packs');
+    expect(rows[1].textContent).toContain('No spec');
+    expect(el().querySelector('h1')!.textContent).toBe('Specs');
   });
 
   it('shows a failed load as an error with a retry, never as an empty list', () => {
     mount(throwError(() => ({ error: { message: 'Database is unreachable.' } })));
     const banner = el().querySelector('.se-banner--danger')!;
-    expect(banner.textContent).toContain('Tech packs could not be loaded');
+    expect(banner.textContent).toContain('Specs could not be loaded');
     expect(banner.textContent).toContain('Database is unreachable.');
     expect(el().textContent).not.toContain('No variants yet');
   });
@@ -156,14 +156,14 @@ describe('TechPackDetailPage', () => {
 
   it('shows the pack with its status, measurements and revisions, and one primary action', () => {
     mount(of([pack()]));
-    expect(el().querySelector('h1')!.textContent).toBe('Tech pack TEE-BLK-M');
+    expect(el().querySelector('h1')!.textContent).toBe('Spec TEE-BLK-M');
     expect(el().querySelector('.se-page__heading .se-badge')!.textContent!.trim()).toBe('Draft');
     expect(el().querySelector('se-table')!.textContent).toContain('body_length');
     expect(el().querySelector('.se-detail__aside')!.textContent).toContain('1 revision');
     expect(el().querySelector('.se-detail__aside')!.textContent).toContain('₦9,000');
     const primary = el().querySelectorAll('.se-page__actions .se-btn--primary');
     expect(primary.length).toBe(1);
-    expect(primary[0].textContent!.trim()).toBe('Approve tech pack');
+    expect(primary[0].textContent!.trim()).toBe('Approve spec');
   });
 
   it('asks before approving, and does nothing when declined', async () => {
@@ -171,10 +171,10 @@ describe('TechPackDetailPage', () => {
     const ask = spyOn(TestBed.inject(SeConfirmService), 'ask').and.resolveTo(false);
     await fixture.componentInstance.approve();
     const asked = ask.calls.mostRecent().args[0];
-    expect(asked.title).toBe('Approve tech pack for TEE-BLK-M?');
+    expect(asked.title).toBe('Approve spec for TEE-BLK-M?');
     expect(asked.consequence).toContain('shop-floor reference');
     expect(asked.consequence).toContain('audit log');
-    expect(asked.confirmLabel).toBe('Approve tech pack');
+    expect(asked.confirmLabel).toBe('Approve spec');
     expect(api.approveTechPack).not.toHaveBeenCalled();
   });
 
@@ -206,21 +206,21 @@ describe('TechPackDetailPage', () => {
 
   it('offers approval but not editing to a role with approve access', () => {
     mount(of([pack()]), 'approve');
-    expect(actions()).toEqual(['Approve tech pack']);
+    expect(actions()).toEqual(['Approve spec']);
   });
 
   it('offers to create the pack when the variant has none', () => {
     mount(of([]));
     expect(el().querySelector('.se-empty__heading')!.textContent).toBe(
-      'No tech pack for this variant yet',
+      'No spec for this variant yet',
     );
-    expect(actions()).toEqual(['Create tech pack']);
+    expect(actions()).toEqual(['Create spec']);
   });
 
   it('shows a load failure as an error with a retry', () => {
     mount(throwError(() => ({ status: 500, error: { message: 'Database is unreachable.' } })));
     expect(el().querySelector('.se-banner--danger')!.textContent).toContain(
-      'The tech pack could not be loaded',
+      'The spec could not be loaded',
     );
   });
 });

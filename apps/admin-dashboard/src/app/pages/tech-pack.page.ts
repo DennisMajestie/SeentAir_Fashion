@@ -56,9 +56,9 @@ export interface TechPackListRow {
     SeTableComponent,
   ],
   template: `
-    <se-page title="Tech packs">
+    <se-page title="Specs">
       <se-table
-        caption="Tech packs"
+        caption="Specs"
         [columns]="columns"
         [rows]="rows()"
         [loading]="loading()"
@@ -71,14 +71,14 @@ export interface TechPackListRow {
         [emptyText]="
           filtering()
             ? 'Remove a filter, or clear them all to see every variant.'
-            : 'A tech pack belongs to a product variant. Add products in the catalogue first.'
+            : 'A spec belongs to a product variant. Add products in the catalogue first.'
         "
         [emptyActionLabel]="filtering() ? 'Clear all filters' : ''"
         (emptyAction)="clearFilters()"
       >
         <se-filter-bar
           seTableToolbar
-          searchLabel="Search tech packs"
+          searchLabel="Search specs"
           searchPlaceholder="SKU or product"
           [(query)]="query"
           [filters]="filters()"

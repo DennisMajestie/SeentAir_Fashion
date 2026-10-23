@@ -60,7 +60,7 @@ const GROUPS: { title?: string; items: NavEntry[] }[] = [
       { label: 'Inventory', icon: 'box', link: '/inventory', modules: ['inventory'] },
       { label: 'Materials', icon: 'layers', link: '/materials', modules: ['raw_materials'] },
       { label: 'Production', icon: 'factory', link: '/production', modules: ['manufacturing'] },
-      { label: 'Tech pack', icon: 'file', link: '/tech-pack', modules: ['catalogue'] },
+      { label: 'Specs', icon: 'file', link: '/tech-pack', modules: ['catalogue'] },
       { label: 'Floor kiosk', icon: 'monitor', link: '/floor-kiosk', modules: ['manufacturing'] },
     ],
   },
