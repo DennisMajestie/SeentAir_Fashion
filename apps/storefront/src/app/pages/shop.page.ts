@@ -2,15 +2,12 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   DestroyRef,
-  ElementRef,
   OnInit,
   computed,
   inject,
   signal,
-  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -20,9 +17,8 @@ import { offerFor } from '../pricing';
 import { PRODUCT_PLACEHOLDER, productImage } from '../product-image';
 import { SeoService } from '../seo.service';
 import { CatalogueSearchService } from '../catalogue-search.service';
+import { InfiniteScrollDirective } from '../infinite-scroll.directive';
 import { SWATCHES, ProductCardComponent } from '../product-card.component';
-
-import { matchesSheetFilters } from '../shop-filters';
 
 type SortKey = 'featured' | 'newest' | 'price-asc' | 'price-desc' | 'best-selling';
 
@@ -75,7 +71,7 @@ function collectionKey(name: string): string {
     review stars and quick-add. */
 @Component({
   selector: 'app-shop',
-  imports: [CommonModule, FormsModule, ProductCardComponent],
+  imports: [CommonModule, ProductCardComponent, InfiniteScrollDirective],
   template: `
     <!-- Not an immersive route: the site header (cart/account/search) comes from
          the shell, so this page renders neither its own compact back-header nor a
@@ -131,7 +127,12 @@ function collectionKey(name: string): string {
         }
       </div>
     } @else if (filtered().length === 0) {
-      <p class="muted">Nothing matches: clear the search or filters.</p>
+      <div class="shop-empty">
+        <p class="muted">Nothing matches what you are looking for.</p>
+        @if (category() || query()) {
+          <button type="button" class="link" (click)="clearFilters()">Clear search</button>
+        }
+      </div>
     } @else {
       <div class="grid">
         @for (product of filtered(); track product.id) {
@@ -139,21 +140,25 @@ function collectionKey(name: string): string {
         }
       </div>
 
-      <!-- Stated rather than hidden: the old single request capped the grid at
-           50 rows with no sign anything was missing. -->
+      <!-- Endless scroll: the sentinel below loads the next page as it comes
+           into reach, so the row count stays stated but the paging control
+           itself disappears. It is held back while a page is in flight and
+           mounted again when it lands, which re-arms the fetch automatically. -->
       @if (hasMore()) {
         <div class="shop-more">
           <p class="muted small">
             Showing {{ all().length | number }} of {{ total() | number }} products
           </p>
-          <button
-            type="button"
-            class="cta ghost"
-            [disabled]="loadingMore()"
-            (click)="loadMore()"
-          >
-            {{ loadingMore() ? 'Loading…' : 'Load more' }}
-          </button>
+          @if (loadingMore()) {
+            <p class="muted small" role="status" aria-live="polite">Loading more…</p>
+          } @else {
+            <div
+              class="shop-sentinel"
+              appInfiniteScroll
+              (nearEnd)="loadMore()"
+              aria-hidden="true"
+            ></div>
+          }
         </div>
       }
     }
@@ -168,7 +173,6 @@ export class ShopPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly seo = inject(SeoService);
   private readonly search = inject(CatalogueSearchService);
-  private readonly filtersBtn = viewChild<ElementRef<HTMLButtonElement>>('filtersBtn');
   readonly all = signal<Product[]>([]);
   readonly loading = signal(true);
   /** Pages fetched so far, and the catalogue's real size, for "load more". */
@@ -274,8 +278,6 @@ export class ShopPage implements OnInit {
     }
     return rows;
   });
-
-  readonly hasFilters = computed(() => !!this.category() || !!this.query());
 
   /**
    * Circle image for a sub-category pill. The first real product in that

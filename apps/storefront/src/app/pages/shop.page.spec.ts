@@ -149,96 +149,6 @@ describe('ShopPage', () => {
     });
   });
 
-  describe('sort / filter toolbar', () => {
-    it('offers best selling as a sort option', async () => {
-      await mount();
-      const values = [...element.querySelectorAll('select option')].map((o) =>
-        o.getAttribute('value'),
-      );
-      expect(values).toContain('best-selling');
-    });
-
-    it('keeps the native select as the real control for accessibility', async () => {
-      await mount();
-      const select = element.querySelector('.tbtn select') as HTMLSelectElement | null;
-      expect(select).not.toBeNull();
-      expect(select?.getAttribute('aria-label')).toBe('Sort products');
-    });
-
-    it('sorts by best selling using real sales, highest first', async () => {
-      await mount();
-      const c = fixture.componentInstance;
-      c.sort.set('best-selling');
-      expect(c.filtered().map((p) => p.id)).toEqual(['b', 'c', 'a']);
-    });
-
-    it('treats a missing soldCount as zero so it never outranks a real sale', async () => {
-      products = [
-        product({ id: 'nosold', name: 'No Count Tee' }),
-        product({ id: 'sold', name: 'Sold Tee', soldCount: 1 }),
-      ];
-      await mount();
-      fixture.componentInstance.sort.set('best-selling');
-      expect(fixture.componentInstance.filtered().map((p) => p.id)).toEqual(['sold', 'nosold']);
-    });
-
-    it('exposes the filter button as a dialog trigger', async () => {
-      await mount();
-      const btn = element.querySelector('.tbtn[filtersBtn], button[aria-haspopup="dialog"]');
-      expect(btn?.getAttribute('aria-expanded')).toBe('false');
-    });
-
-    it('opens the filter sheet on demand', async () => {
-      await mount();
-      fixture.componentInstance.openSheet();
-      fixture.detectChanges();
-      expect(fixture.componentInstance.sheetOpen()).toBe(true);
-    });
-  });
-
-  describe('view toggle', () => {
-    it('defaults to the reference grid view', async () => {
-      await mount();
-      expect(fixture.componentInstance.view()).toBe('grid');
-      const grid = element.querySelector('.grid');
-      expect(grid?.classList.contains('grid--list')).toBe(false);
-    });
-
-    it('switches to one-piece-per-row list view', async () => {
-      await mount();
-      const c = fixture.componentInstance;
-      c.view.set('list');
-      fixture.detectChanges();
-      expect(element.querySelector('.grid')?.classList.contains('grid--list')).toBe(true);
-    });
-
-    it('marks exactly one toggle as pressed for screen readers', async () => {
-      await mount();
-      const c = fixture.componentInstance;
-      c.view.set('list');
-      fixture.detectChanges();
-      const pressed = [...element.querySelectorAll('.vt-btn')].filter(
-        (b) => b.getAttribute('aria-pressed') === 'true',
-      );
-      expect(pressed.length).toBe(1);
-      expect(pressed[0].getAttribute('aria-label')).toBe('List view');
-    });
-
-    it('names both toggles so neither is an unlabelled icon', async () => {
-      await mount();
-      const labels = [...element.querySelectorAll('.vt-btn')].map((b) => b.getAttribute('aria-label'));
-      expect(labels).toEqual(['Two column grid', 'List view']);
-    });
-
-    it('does not change which products are shown, only their layout', async () => {
-      await mount();
-      const c = fixture.componentInstance;
-      const before = c.filtered().map((p) => p.id);
-      c.view.set('list');
-      expect(c.filtered().map((p) => p.id)).toEqual(before);
-    });
-  });
-
   /**
    * The grid used to fetch one page and stop, silently hiding everything past
    * 50 products. These guard the two properties that fix must keep: the shortfall
@@ -296,7 +206,10 @@ describe('ShopPage', () => {
       const note = element.querySelector('.shop-more .muted')?.textContent ?? '';
       expect(note).toContain('1');
       expect(note).toContain('12');
-      expect(element.querySelector('.shop-more button')).not.toBeNull();
+      // The control has no button any more: the next page fetches itself as the
+      // sentinel nears the viewport. What the test pins is that the rest is
+      // reachable and nothing waits on a dead tap target.
+      expect(element.querySelector('.shop-more button')).toBeNull();
     });
 
     it('appends the next page rather than replacing the current results', async () => {

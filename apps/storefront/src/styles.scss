@@ -2268,6 +2268,22 @@ body:has(.m-tabs) {
     min-width: 168px;
   }
 }
+
+/* Endless scroll: the next page fetches as this nears the viewport, so it only
+   has to exist — a real box the observer can intersect, not a button. */
+.shop-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+/* Nothing matched: the reset stays one click away instead of a dead sentence. */
+.shop-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 22px;
+}
 .card {
   background: var(--card);
   border: 1px solid var(--line);
@@ -2509,8 +2525,11 @@ app-product-card {
    by the card's overflow. The 44px hit area is centred on the boundary. */
 .cartbtn {
   position: absolute;
+  /* Top edge of .product-info = the image/body boundary: the tile's centre
+     rides that line on every card, whatever its name length. bottom:-x or
+     bottom:-14px here is the regression the layout spec guards against. */
+  top: -22px;
   right: 1px;
-  bottom: 2px;
   width: 44px;
   height: 44px;
   display: grid;
