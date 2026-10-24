@@ -74,6 +74,8 @@ export interface Order {
   status: string;
   paymentStatus: string;
   totalAmount: number;
+  /** Final delivery fee as saved when the order was created. Null when not priced. */
+  deliveryFee?: number | null;
   createdAt: string;
   /**
    * Shipping address as captured at checkout. The API has sent this since the

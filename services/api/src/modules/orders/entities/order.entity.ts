@@ -129,6 +129,10 @@ export class Order {
   })
   totalAmount: number;
 
+  /** Delivery fee captured at quote time. Not a persisted DB column: it is
+      projected from the frozen order_checkout_shipping snapshot for the client. */
+  deliveryFee?: number | null;
+
   /** Delivery destination captured at creation for outbound fulfilment. */
   @Column({ name: 'shipping_address', type: 'jsonb', nullable: true })
   shippingAddress: OrderShippingAddress | null;

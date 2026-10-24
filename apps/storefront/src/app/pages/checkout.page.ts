@@ -439,7 +439,7 @@ const NIGERIAN_STATES = [
           <div class="matrix-divider"></div>
           <div class="matrix-total">
             <span class="label">Total due</span>
-            <span class="value">₦{{ cart.total | number: '1.0-0' }}</span>
+            <span class="value">₦{{ totalDue() | number: '1.0-0' }}</span>
           </div>
           <div class="settlement-box">
             Paystack (card/bank)- or pay offline by <strong>bank transfer / cash / POS</strong>,
@@ -531,6 +531,15 @@ export class CheckoutPage {
   readonly ctaTrust = computed(() =>
     this.stage() === 2 ? 'Step 2 of 4 · no account needed' : 'Final payment · secured by Paystack',
   );
+
+  readonly deliveryFee = computed(() => {
+    const quote = this.deliveryQuote();
+    if (!quote || quote.status !== 'quoted' || quote.method !== 'freight') return 0;
+    if (quote.freeDeliveryApplied) return 0;
+    return Math.max(0, Math.round(quote.feeKobo / 100));
+  });
+
+  readonly totalDue = computed(() => this.cart.total + this.deliveryFee());
 
   /** One button, two jobs: the details step advances, the delivery step places. */
   primaryAction(): void {

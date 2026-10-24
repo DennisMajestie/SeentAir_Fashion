@@ -16,6 +16,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PermissionsService } from '../users/permissions.service';
 import { UsersService } from '../users/users.service';
 import { WholesaleService } from '../wholesale/wholesale.service';
+import { OrderCheckoutShipping } from '../checkout-shipping/entities/order-checkout-shipping.entity';
 import { OrderAccessToken } from './entities/order-access-token.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
@@ -261,6 +262,10 @@ describe('OrdersService — payment rules', () => {
             save: jest.fn(async (v) => v),
             findOne: jest.fn(),
           },
+        },
+        {
+          provide: getRepositoryToken(OrderCheckoutShipping),
+          useValue: { findOne: jest.fn(async () => null) },
         },
         { provide: OrderStatusBus, useValue: new OrderStatusBus() },
         { provide: PlatformSettingsService, useValue: { get: async () => ({ shippingEnabled: false, freeDeliveryThreshold: null, quoteExpiryMinutes: 1440, vatEnabled: false, vatRatePercent: 0, pricesIncludeVat: false, deliveryTaxable: false }) } },

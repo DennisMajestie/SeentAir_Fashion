@@ -13,6 +13,7 @@ import { InventoryService } from '../inventory/inventory.service';
 import { PermissionsService } from '../users/permissions.service';
 import { UsersService } from '../users/users.service';
 import { WholesaleService } from '../wholesale/wholesale.service';
+import { OrderCheckoutShipping } from '../checkout-shipping/entities/order-checkout-shipping.entity';
 import { AccountingService } from '../accounting/accounting.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { OrderAccessToken } from './entities/order-access-token.entity';
@@ -81,6 +82,10 @@ describe('OrdersService — wholesale rules', () => {
         { provide: getRepositoryToken(OrderStatusEvent), useValue: {} },
         { provide: getRepositoryToken(DeliveryLeg), useValue: {} },
         { provide: getRepositoryToken(OrderAccessToken), useValue: {} },
+        {
+          provide: getRepositoryToken(OrderCheckoutShipping),
+          useValue: { findOne: jest.fn(async () => null) },
+        },
         { provide: OrderStatusBus, useValue: new OrderStatusBus() },
         { provide: PlatformSettingsService, useValue: { get: async () => ({ shippingEnabled: false, freeDeliveryThreshold: null, quoteExpiryMinutes: 1440, vatEnabled: false, vatRatePercent: 0, pricesIncludeVat: false, deliveryTaxable: false }) } },
       { provide: QuoteVerificationService, useValue: { verify: jest.fn(), consume: jest.fn() } },

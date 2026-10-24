@@ -18,6 +18,7 @@ import { PermissionsService } from '../users/permissions.service';
 import { UsersService } from '../users/users.service';
 import { WholesaleService } from '../wholesale/wholesale.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { OrderCheckoutShipping } from '../checkout-shipping/entities/order-checkout-shipping.entity';
 import { OrderAccessToken } from './entities/order-access-token.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
 import { Order, OrderChannel, OrderStatus } from './entities/order.entity';
@@ -84,6 +85,9 @@ describe('OrdersService — guest checkout', () => {
     save: jest.fn(async (v) => ({ id: 'tok-1', ...v })),
     findOne: jest.fn(),
   };
+  const orderCheckoutShippingRepo = {
+    findOne: jest.fn(async (): Promise<{ deliveryFee: number } | null> => null),
+  };
 
   const paymentRepo = {
     findOne: jest.fn(),
@@ -118,6 +122,10 @@ describe('OrdersService — guest checkout', () => {
           useValue: { find: jest.fn(async (): Promise<unknown[]> => []) },
         },
         { provide: getRepositoryToken(OrderAccessToken), useValue: accessTokenRepo },
+        {
+          provide: getRepositoryToken(OrderCheckoutShipping),
+          useValue: orderCheckoutShippingRepo,
+        },
         { provide: PlatformSettingsService, useValue: { get: async () => ({ shippingEnabled: false, freeDeliveryThreshold: null, quoteExpiryMinutes: 1440, vatEnabled: false, vatRatePercent: 0, pricesIncludeVat: false, deliveryTaxable: false }) } },
       { provide: QuoteVerificationService, useValue: { verify: jest.fn(), consume: jest.fn() } },
       { provide: CouponsService, useValue: { isEnabled: async () => false, isNewCustomer: async () => false, reserve: async () => null, confirm: async () => undefined, release: async () => undefined } },
@@ -307,6 +315,16 @@ describe('OrdersService — guest checkout', () => {
       expect(result.status).toBe(CUSTOMER_AWAITING_STOCK);
       expect(result.status).not.toBe(OrderStatus.STOCK_EXCEPTION);
       expect(result.events).toEqual([]);
+    });
+
+    it('includes the saved delivery fee when opening an order with a guest token', async () => {
+      accessTokenRepo.findOne.mockResolvedValueOnce(tokenRow('o1', 'good-token'));
+      orderRepo.findOne.mockResolvedValueOnce({ id: 'o1', items: [] });
+      orderCheckoutShippingRepo.findOne.mockResolvedValueOnce({ deliveryFee: 2500 });
+
+      const result = await service.findById('o1', undefined, 'good-token');
+
+      expect(result.deliveryFee).toBe(2500);
     });
 
     it('a token for another order is a 404, not a 403', async () => {

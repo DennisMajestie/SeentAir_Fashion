@@ -395,6 +395,10 @@ const STREAM_RETRY_MS = 30_000;
           }
 
           <div class="ot-row ot-row-total">
+            <span class="ot-row-label">Delivery</span>
+            <span class="ot-row-value">{{ deliveryLabel() }}</span>
+          </div>
+          <div class="ot-row ot-row-total">
             <span class="ot-row-label">Total</span>
             <span class="ot-row-value">₦{{ order()!.totalAmount | number: '1.0-0' }}</span>
           </div>
@@ -403,10 +407,6 @@ const STREAM_RETRY_MS = 30_000;
             <span class="ot-row-value" [class.ot-paid]="order()!.paymentStatus === 'paid'">
               {{ paymentLabel() }}
             </span>
-          </div>
-          <div class="ot-row">
-            <span class="ot-row-label">Delivery</span>
-            <span class="ot-row-value">{{ deliveryLabel() }}</span>
           </div>
         </section>
 
@@ -636,6 +636,10 @@ export class OrderPage implements OnInit, OnDestroy {
   deliveryLabel(): string {
     const o = this.order();
     if (!o) return '-';
+    if (o.deliveryFee !== undefined && o.deliveryFee !== null) {
+      if (o.deliveryFee > 0) return `₦${o.deliveryFee.toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
+      return 'Free';
+    }
     if (o.deliveryNote) return o.deliveryNote;
     if (o.status === 'shipped' || o.status === 'delivered') return 'Handed to courier';
     return 'Quoted at dispatch';

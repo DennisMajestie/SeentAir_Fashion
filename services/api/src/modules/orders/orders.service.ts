@@ -294,6 +294,8 @@ export class OrdersService {
     @InjectRepository(DeliveryLeg) private readonly legRepo: Repository<DeliveryLeg>,
     @InjectRepository(OrderAccessToken)
     private readonly accessTokenRepo: Repository<OrderAccessToken>,
+    @InjectRepository(OrderCheckoutShipping)
+    private readonly orderCheckoutShippingRepo: Repository<OrderCheckoutShipping>,
     private readonly catalogueService: CatalogueService,
     private readonly platformSettings: PlatformSettingsService,
     private readonly quoteVerification: QuoteVerificationService,
@@ -683,6 +685,15 @@ export class OrdersService {
       relations: { items: { variant: { product: true } } },
     });
     if (!order) throw new NotFoundException(`Order ${orderId} not found`);
+    return this.withDeliveryFee(order);
+  }
+
+  private async withDeliveryFee(order: Order): Promise<Order> {
+    const shipping = await this.orderCheckoutShippingRepo.findOne({
+      where: { orderId: order.id },
+      select: { deliveryFee: true },
+    });
+    order.deliveryFee = shipping?.deliveryFee ?? null;
     return order;
   }
 
@@ -758,7 +769,7 @@ export class OrdersService {
     if (ACCESS_RANK[access] < ACCESS_RANK[AccessLevel.OWN]) {
       throw new ForbiddenException('No order access');
     }
-    return order;
+    return this.withDeliveryFee(order);
   }
 
   /**
