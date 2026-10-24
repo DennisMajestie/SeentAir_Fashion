@@ -52,6 +52,10 @@ describe('Nigerian state matching', () => {
 
     it('accepts a qualified FCT string', () => {
       expect(matchState('FCT, Abuja')).toBe('abja');
+      // The exact label the storefront state dropdown uses.
+      expect(matchState('FCT: Abuja')).toBe('abja');
+      expect(matchState('fct:abuja')).toBe('abja');
+      expect(matchState('Abuja : FCT')).toBe('abja');
     });
 
     it('returns null rather than guessing', () => {

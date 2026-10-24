@@ -100,9 +100,14 @@ export function matchState(input: string | null | undefined): string | null {
   // or a trailing qualifier; fall back to a token match only when every token
   // is a recognised word for that one state. A partial city or street name can
   // never match, because it must match a state name or a known alias.
+  // A colon joins as well ("FCT: Abuja" is how the storefront labels the FCT),
+  // and each token is trimmed so the separator itself cannot spoil the lookups.
   for (const state of NIGERIAN_STATES) {
     const words = [state.name, ...state.aliases].map(normalizeState);
-    const tokens = normalized.split(/[,\-()]+/);
+    const tokens = normalized
+      .split(/[,\-():]+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
     if (tokens.length > 1 && tokens.every((t) => words.some((w) => w.includes(t) || t.includes(w)))) {
       return state.key;
     }
