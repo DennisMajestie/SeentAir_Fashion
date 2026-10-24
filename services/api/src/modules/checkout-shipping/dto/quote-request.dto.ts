@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsEnum, IsInt, IsNumber, IsString, IsUUID, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { DeliveryMethod } from '../../orders/entities/order.entity';
 
 export class QuoteLineDto {
@@ -16,9 +16,10 @@ export class QuoteLineDto {
    * hint for picking a rate; an unknown value is treated as medium, never as an
    * error that would block a checkout.
    */
+  @IsOptional()
   @IsString()
   @MaxLength(20)
-  sizeClass: string;
+  sizeClass?: string;
 
   @IsInt()
   @Min(1)
@@ -38,9 +39,9 @@ export class QuoteLineDto {
 }
 
 /**
- * A quote request. It carries quantities and bands only - no prices - because
- * the fee comes from the rate tables. `subtotal` exists solely to evaluate the
- * free-delivery threshold and cannot create a discount on its own.
+ * A quote request. Size class is only a hint; known variants are classified by
+ * the catalogue. `subtotal` exists solely to evaluate the free-delivery
+ * threshold and cannot create a discount on its own.
  */
 export class QuoteRequestDto {
   @IsString()
