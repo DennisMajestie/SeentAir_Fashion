@@ -9,6 +9,7 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { ApprovalActionType } from '../../common/enums';
 import { ApprovalsService } from '../approvals/approvals.service';
+import { toSizeClass } from '../checkout-shipping/shipping-size-class';
 import { TechPack } from '../tech-packs/tech-pack.entity';
 import { ReplaceBomDto } from './dto/bom.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -137,6 +138,7 @@ export class CatalogueService {
       basePrice: dto.basePrice,
       collection: dto.collectionId ? await this.getCollection(dto.collectionId) : null,
       primaryImageUrl: dto.primaryImageUrl ?? null,
+      sizeClass: toSizeClass(dto.sizeClass),
     });
     const saved = await this.productRepo.save(product);
     return this.findById(saved.id);
@@ -167,6 +169,7 @@ export class CatalogueService {
     if (dto.name !== undefined) product.name = dto.name;
     if (dto.description !== undefined) product.description = dto.description;
     if (dto.category !== undefined) product.category = await this.resolveCategory(dto.category);
+    if (dto.sizeClass !== undefined) product.sizeClass = toSizeClass(dto.sizeClass);
     if (dto.collectionId !== undefined) {
       product.collection = await this.getCollection(dto.collectionId);
     }
@@ -394,7 +397,8 @@ export class CatalogueService {
 
   /** Delete a product and its variants. Fails if the product has sales history. */
   async delete(id: string): Promise<void> {
-    const product = await this.findById(id);
+    // findById throws when the product does not exist.
+    await this.findById(id);
 
     const orderItemCount = await this.dataSource.query(
       `SELECT COUNT(*) FROM order_items oi

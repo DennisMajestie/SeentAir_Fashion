@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Min } from 'class-validator';
+﻿import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Min } from 'class-validator';
 
 export class CreateProductDto {
   @IsString()
@@ -21,6 +21,15 @@ export class CreateProductDto {
   @IsOptional()
   @IsUUID()
   collectionId?: string;
+
+  /**
+   * How big the product ships, which selects its delivery rate (light,
+   * medium or heavy). Omitted lands on the column default, medium. The service
+   * writes through the shared coercion, so junk degrades safely.
+   */
+  @IsOptional()
+  @IsIn(['light', 'medium', 'heavy'])
+  sizeClass?: string;
 
   /**
    * The product's own photograph (URL or resolvable path). Shown on listings,

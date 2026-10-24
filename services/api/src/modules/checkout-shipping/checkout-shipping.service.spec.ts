@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { DeliveryMethod } from '../orders/entities/order.entity';
 import { CheckoutShippingService, QuoteStatus } from './checkout-shipping.service';
+import { hintFallbackResolver } from './basket-size-class-resolver';
 import { ProductSizeClass } from './shipping-size-class';
 import { ZoneRateProvider } from './zone-rate.provider';
 
@@ -33,6 +34,7 @@ function harness(settings: Record<string, unknown>) {
       config as ConfigService,
       // Quotes are persisted so an order can consume one exactly once.
       { create: (v: unknown) => v, save: async (v: unknown) => ({ id: 'q1', ...(v as object) }) } as never,
+      hintFallbackResolver(),
     );
   return { provider, service };
 }

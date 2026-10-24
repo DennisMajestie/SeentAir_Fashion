@@ -29,10 +29,17 @@ function quote(over: Partial<CheckoutShippingQuote> = {}): CheckoutShippingQuote
 }
 
 /** A verification service over one stored quote, or none at all. */
-function harness(stored: CheckoutShippingQuote | null = quote()) {
-  const svc = new QuoteVerificationService({
-    findOne: async () => Promise.resolve(stored),
-  } as never);
+function harness(
+  stored: CheckoutShippingQuote | null = quote(),
+  bands: ProductSizeClass[] = [ProductSizeClass.MEDIUM],
+) {
+  const svc = new QuoteVerificationService(
+    {
+      findOne: async () => Promise.resolve(stored),
+    } as never,
+    // Catalogue ground truth is faked; the last entry is the resolved band.
+    { heaviest: async () => bands[bands.length - 1] } as never,
+  );
   const input = {
     quoteId: 'q1',
     method: DeliveryMethod.FREIGHT,
@@ -102,6 +109,16 @@ describe('quote verification', () => {
       expect(
         await codeOf(svc.verify({ ...input, lines: [{ variantId: 'v2', quantity: 1, unitPriceKobo: 5 }] })),
       ).toBe(QuoteErrorCode.MISMATCH);
+    });
+
+    it('QUOTE_STALE when the catalogue re-classifies the basket to a heavier band', async () => {
+      const { svc, input } = harness(quote(), [ProductSizeClass.HEAVY]);
+      expect(await codeOf(svc.verify(input))).toBe(QuoteErrorCode.STALE);
+    });
+
+    it('accepts when the resolved band still matches the priced band', async () => {
+      const { svc, input } = harness(quote(), [ProductSizeClass.MEDIUM]);
+      await expect(svc.verify(input)).resolves.toBeDefined();
     });
 
     it('QUOTE_MISMATCH for the same basket in a different quantity', async () => {

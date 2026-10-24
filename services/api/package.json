@@ -15,7 +15,8 @@
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
     "seed": "node -r ts-node/register/transpile-only src/database/seeds/seed.ts",
-    "seed:catalogue": "node -r ts-node/register/transpile-only src/database/seeds/seed-catalogue.ts"
+    "seed:catalogue": "node -r ts-node/register/transpile-only src/database/seeds/seed-catalogue.ts",
+    "seed:shipping": "node -r ts-node/register/transpile-only src/database/seeds/seed-shipping.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1148.0",

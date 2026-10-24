@@ -13,6 +13,11 @@ import { CheckoutShippingQuote } from './entities/checkout-shipping-quote.entity
 import { OrderCheckoutShipping } from './entities/order-checkout-shipping.entity';
 import { QuoteVerificationService } from './quote-verification.service';
 import { DatabaseZoneRateProvider } from './zone-rate.provider';
+import {
+  BASKET_SIZE_CLASS_RESOLVER,
+  ProductCatalogueSizeClassResolver,
+} from './basket-size-class-resolver';
+import { ProductVariant } from '../catalogue/entities/product-variant.entity';
 
 /**
  * Customer-facing delivery pricing, kept separate from the internal logistics
@@ -27,6 +32,7 @@ import { DatabaseZoneRateProvider } from './zone-rate.provider';
       CheckoutShippingRate,
       CheckoutShippingQuote,
       OrderCheckoutShipping,
+      ProductVariant,
     ]),
     PlatformSettingsModule,
     AuditModule,
@@ -37,6 +43,7 @@ import { DatabaseZoneRateProvider } from './zone-rate.provider';
     CheckoutShippingAdminService,
     QuoteVerificationService,
     { provide: ZONE_RATE_PROVIDER, useClass: DatabaseZoneRateProvider },
+    { provide: BASKET_SIZE_CLASS_RESOLVER, useClass: ProductCatalogueSizeClassResolver },
   ],
   exports: [CheckoutShippingService, QuoteVerificationService, TypeOrmModule],
 })

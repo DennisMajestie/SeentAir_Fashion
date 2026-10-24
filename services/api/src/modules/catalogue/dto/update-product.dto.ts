@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Min, ValidateIf } from 'class-validator';
+import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Min, ValidateIf } from 'class-validator';
 
 export class UpdateProductDto {
   @IsOptional()
@@ -24,6 +24,11 @@ export class UpdateProductDto {
   @IsOptional()
   @IsUUID()
   collectionId?: string;
+
+  /** Change the delivery band (light/medium/heavy). Not approval-gated: it does not move the price. */
+  @IsOptional()
+  @IsIn(['light', 'medium', 'heavy'])
+  sizeClass?: string;
 
   /**
    * Change or clear the product photo. Send `null` to remove it (surfaces drop

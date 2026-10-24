@@ -9,7 +9,8 @@ import { PlatformSettingsService } from '../platform-settings/platform-settings.
 import { CheckoutShippingQuote } from './entities/checkout-shipping-quote.entity';
 import { matchState, stateNameFor } from './nigerian-states';
 import { signQuoteToken } from './quote-token';
-import { DEFAULT_SIZE_CLASS, ProductSizeClass, toSizeClass } from './shipping-size-class';
+import { BASKET_SIZE_CLASS_RESOLVER, BasketSizeClassResolver } from './basket-size-class-resolver';
+import { ProductSizeClass } from './shipping-size-class';
 import { ZoneRateProvider } from './zone-rate.provider';
 
 export const ZONE_RATE_PROVIDER = 'ZONE_RATE_PROVIDER';
@@ -83,6 +84,8 @@ export class CheckoutShippingService {
     private readonly config: ConfigService,
     @InjectRepository(CheckoutShippingQuote)
     private readonly quoteRepo: Repository<CheckoutShippingQuote>,
+    @Inject(BASKET_SIZE_CLASS_RESOLVER)
+    private readonly resolver: BasketSizeClassResolver,
   ) {}
 
   private get signingSecret(): string {
@@ -119,7 +122,7 @@ export class CheckoutShippingService {
     }
 
     // One basket may hold several size classes; the heaviest sets the rate.
-    const sizeClass = this.heaviestSizeClass(request.lines);
+    const sizeClass = await this.resolver.heaviest(request.lines ?? []);
     const zone = await this.provider.findZoneForState(stateKey, now);
     if (!zone) {
       return {
@@ -219,26 +222,6 @@ export class CheckoutShippingService {
       quoteToken,
       expiresAt,
     };
-  }
-
-  /**
-   * The heaviest band in the basket decides the rate. Unknown counts as medium.
-   * Starts from nothing rather than from medium, so a basket made entirely of
-   * light items is priced as light and not quietly bumped to the middle band.
-   */
-  private heaviestSizeClass(lines: QuoteRequest['lines']): ProductSizeClass {
-    const order: Record<string, number> = { light: 1, medium: 2, heavy: 3 };
-    let heaviest: ProductSizeClass | null = null;
-    let topRank = 0;
-    for (const line of lines ?? []) {
-      const candidate = toSizeClass(line?.sizeClass);
-      const rank = order[candidate];
-      if (rank > topRank) {
-        topRank = rank;
-        heaviest = candidate;
-      }
-    }
-    return heaviest ?? DEFAULT_SIZE_CLASS;
   }
 
   private blank(request: QuoteRequest): Omit<QuoteOption, 'status' | 'estimate'> {

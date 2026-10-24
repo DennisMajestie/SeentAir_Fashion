@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { toKobo } from '../orders/order-totals';
 import { DeliveryMethod } from '../orders/entities/order.entity';
 import { CheckoutShippingQuote } from './entities/checkout-shipping-quote.entity';
 import { isKnownStateKey } from './nigerian-states';
+import { BASKET_SIZE_CLASS_RESOLVER, BasketSizeClassResolver } from './basket-size-class-resolver';
 
 /**
  * Stable reasons an order cannot be created against a quote.
@@ -66,6 +67,8 @@ export class QuoteVerificationService {
   constructor(
     @InjectRepository(CheckoutShippingQuote)
     private readonly quotes: Repository<CheckoutShippingQuote>,
+    @Inject(BASKET_SIZE_CLASS_RESOLVER)
+    private readonly resolver: BasketSizeClassResolver,
   ) {}
 
   async verify(input: VerifyInput): Promise<CheckoutShippingQuote> {
@@ -134,6 +137,17 @@ export class QuoteVerificationService {
       throw new QuoteRejected(
         QuoteErrorCode.STALE,
         'Prices changed since that quote. Please request a new one.',
+      );
+    }
+
+    // Same caveat as the price check: the band the quote priced must still be the band the
+    // catalogue resolves now, so re-classifying a product between quote and
+    // checkout cannot ride the old fee in either direction.
+    const sizeClass = await this.resolver.heaviest(input.lines ?? []);
+    if (quote.sizeClass !== sizeClass) {
+      throw new QuoteRejected(
+        QuoteErrorCode.STALE,
+        'Delivery classification changed since that quote. Please request a new one.',
       );
     }
 
