@@ -138,6 +138,7 @@ describe('CatalogueAdminPage', () => {
       basePrice: 5000,
       description: '',
       collectionId: '',
+      sizeClass: 'medium',
     };
     page.photoUrl.set('http://api.test/uploads/products/a.png');
     page.createProduct();

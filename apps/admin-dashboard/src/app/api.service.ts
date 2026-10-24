@@ -75,6 +75,30 @@ export interface Batch {
   plannedDate: string | null;
 }
 
+/** What checkout charges for delivery and tax. Mirrors the API's EffectiveSettings. */
+export interface ShippingSettings {
+  shippingEnabled: boolean;
+  freeDeliveryThreshold: number | null;
+  quoteExpiryMinutes: number;
+  vatEnabled: boolean;
+  vatRatePercent: number;
+  pricesIncludeVat: boolean;
+  deliveryTaxable: boolean;
+  couponsEnabled: boolean;
+}
+
+/** A settings edit. Every field is optional; the API requires the reason. Sending null clears freeDeliveryThreshold. */
+export interface ShippingSettingsUpdate {
+  shippingEnabled?: boolean;
+  freeDeliveryThreshold?: number | null;
+  vatEnabled?: boolean;
+  vatRatePercent?: number;
+  pricesIncludeVat?: boolean;
+  deliveryTaxable?: boolean;
+  couponsEnabled?: boolean;
+  reason: string;
+}
+
 /** Routable delivery destination. Matches ShippingAddressDto on the API. */
 export interface ShippingAddress {
   state: string;
@@ -631,6 +655,12 @@ endProductSale(id: string): Observable<unknown> {
     return this.http.get<{ cost: number }>(
       `${API_BASE}/logistics/quote?weightKg=${weightKg}&zone=${encodeURIComponent(zone)}`,
     );
+  }
+  shippingSettings(): Observable<ShippingSettings> {
+    return this.http.get<ShippingSettings>(`${API_BASE}/checkout-shipping/admin/settings`);
+  }
+  updateShippingSettings(body: ShippingSettingsUpdate): Observable<ShippingSettings> {
+    return this.http.patch<ShippingSettings>(`${API_BASE}/checkout-shipping/admin/settings`, body);
   }
 
   // --- Production (create/cost/QC) ---

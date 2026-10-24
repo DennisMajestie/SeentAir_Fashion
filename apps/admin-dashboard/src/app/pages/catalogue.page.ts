@@ -146,6 +146,16 @@ import { ProductRow, count, onSale, skuRange, stockOf, stockValue } from './cata
               <input seInput type="number" min="0" name="pprice" [(ngModel)]="np.basePrice" />
             </se-field>
           </div>
+          <se-field
+            label="Delivery size class"
+            hint="How this product ships. The heaviest item in a shopper's basket sets its delivery fee."
+          >
+            <select seInput name="psize" [(ngModel)]="np.sizeClass">
+              <option value="light">Light — tees, socks, caps</option>
+              <option value="medium">Medium — hoodies, joggers, cargos</option>
+              <option value="heavy">Heavy — two-piece sets, bulk buys</option>
+            </select>
+          </se-field>
           <se-field label="Collection" optional>
             <select seInput name="pcoll" [(ngModel)]="np.collectionId">
               <option value="">No collection</option>
@@ -374,6 +384,7 @@ export class CatalogueAdminPage implements OnInit {
     basePrice: null as number | null,
     description: '',
     collectionId: '',
+    sizeClass: 'medium' as 'light' | 'medium' | 'heavy',
   };
   newCollection = '';
   newCategory = '';
@@ -524,12 +535,20 @@ export class CatalogueAdminPage implements OnInit {
         description: this.np.description || undefined,
         collectionId: this.np.collectionId || undefined,
         primaryImageUrl: this.photoUrl() || undefined,
+        sizeClass: this.np.sizeClass || 'medium',
       })
       .subscribe({
         next: () => {
           this.saving.set(false);
           this.adding.set(false);
-          this.np = { name: '', category: '', basePrice: null, description: '', collectionId: '' };
+          this.np = {
+            name: '',
+            category: '',
+            basePrice: null,
+            description: '',
+            collectionId: '',
+            sizeClass: 'medium',
+          };
           this.photoUrl.set(null);
           this.toast.show(`${name} added to the catalogue`);
           this.load();

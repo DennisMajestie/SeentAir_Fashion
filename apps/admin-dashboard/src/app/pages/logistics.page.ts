@@ -27,7 +27,7 @@ import {
   SeToastService,
 } from '@seentair/ui';
 import { AccessService } from '../access.service';
-import { ApiService } from '../api.service';
+import { ApiService, ShippingSettings, ShippingSettingsUpdate } from '../api.service';
 import { urlFilters } from '../url-filters';
 import {
   CARRIER_OPTIONS,
@@ -165,6 +165,55 @@ export interface ZoneRow {
           emptyHeading="No zone prices yet"
           emptyText="Add a zone to quote deliveries by weight and location."
         />
+      </se-card>
+
+      <se-card title="Checkout delivery & payment settings">
+        @if (settings(); as s) {
+          <dl seKv>
+            <div seKvItem label="Delivery pricing">
+              <se-badge [tone]="s.shippingEnabled ? 'success' : 'neutral'">
+                @if (s.shippingEnabled) {
+                  Charging shoppers the zone rate
+                } @else {
+                  Off — orders are for goods only
+                }
+              </se-badge>
+            </div>
+            <div seKvItem label="Quote valid for" numeric>{{ s.quoteExpiryMinutes }} min</div>
+            <div seKvItem label="Free delivery from" numeric>
+              {{
+                s.freeDeliveryThreshold !== null
+                  ? (s.freeDeliveryThreshold | seMoney)
+                  : 'Not offered'
+              }}
+            </div>
+            <div seKvItem label="VAT">
+              <se-badge [tone]="s.vatEnabled ? 'success' : 'neutral'">
+                @if (s.vatEnabled) {
+                  On, {{ s.vatRatePercent }}%
+                  {{ s.pricesIncludeVat ? 'inside listed prices' : 'added at checkout' }}
+                } @else {
+                  Off
+                }
+              </se-badge>
+            </div>
+            <div seKvItem label="VAT covers delivery fee">
+              {{ s.deliveryTaxable ? 'Yes' : 'No' }}
+            </div>
+            <div seKvItem label="Coupon codes">
+              <se-badge [tone]="s.couponsEnabled ? 'success' : 'neutral'">
+                {{ s.couponsEnabled ? 'On' : 'Off' }}
+              </se-badge>
+            </div>
+          </dl>
+          @if (canWrite) {
+            <button seButton type="button" (click)="openSettings()">Edit settings</button>
+          }
+        } @else if (settingsError()) {
+          <p>{{ settingsError() }}</p>
+        } @else {
+          <se-skeleton shape="text" />
+        }
       </se-card>
 
       <se-drawer [title]="drawerTitle()" [open]="!!selected()" (openChange)="$event || close()">
@@ -371,6 +420,96 @@ export interface ZoneRow {
           <button seButton variant="primary" type="button" (click)="getQuote()">Get quote</button>
         </ng-container>
       </se-drawer>
+      <se-drawer
+        title="Checkout delivery & payment settings"
+        [(open)]="editingSettings"
+      >
+        <form class="se-form" (ngSubmit)="saveSettings()">
+          <se-field
+            label="Delivery pricing"
+            hint="On: every order quotes a zone rate, and the customer pays goods plus delivery in one payment. Off: orders cover goods only."
+          >
+            <select seInput name="cship" [(ngModel)]="st.shipping">
+              <option [ngValue]="false">Off</option>
+              <option [ngValue]="true">On</option>
+            </select>
+          </se-field>
+          <se-field label="VAT" hint="7.5% is Nigeria's standard rate">
+            <select seInput name="cvat" [(ngModel)]="st.vat">
+              <option [ngValue]="false">Off</option>
+              <option [ngValue]="true">On</option>
+            </select>
+          </se-field>
+          @if (st.vat) {
+            <div class="se-form__row">
+              <se-field label="VAT rate %" [error]="vatError()">
+                <input
+                  seInput
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  name="cvatrate"
+                  [(ngModel)]="st.vatRate"
+                />
+              </se-field>
+              <se-field label="Applies to delivery fee too">
+                <select seInput name="cdtax" [(ngModel)]="st.deliveryTaxable">
+                  <option [ngValue]="false">Goods only</option>
+                  <option [ngValue]="true">Goods and delivery</option>
+                </select>
+              </se-field>
+            </div>
+            <se-field label="Where VAT sits" hint="What shoppers see at checkout">
+              <select seInput name="cinc" [(ngModel)]="st.pricesIncludeVat">
+                <option [ngValue]="true">
+                  Listed prices already include VAT — checkout adds nothing
+                </option>
+                <option [ngValue]="false">VAT is added on top at checkout</option>
+              </select>
+            </se-field>
+          }
+          <se-field
+            label="Free delivery from"
+            optional
+            hint="A basket at or above this ships free. Leave blank for none; clearing it switches the offer off."
+          >
+            <input seInput type="number" min="0" name="cthreshold" [(ngModel)]="st.threshold" />
+          </se-field>
+          <se-field label="Coupon codes" hint="The master switch; the codes live in Marketing">
+            <select seInput name="ccoupons" [(ngModel)]="st.coupons">
+              <option [ngValue]="false">Off</option>
+              <option [ngValue]="true">On</option>
+            </select>
+          </se-field>
+          <se-field
+            label="Reason for this change"
+            required
+            hint="Stored in the audit log beside your name"
+            [error]="reasonError()"
+          >
+            <textarea
+              seInput
+              rows="2"
+              name="creason"
+              [(ngModel)]="st.reason"
+              placeholder="For example: turning delivery pricing on with the new zone rate table"
+            ></textarea>
+          </se-field>
+        </form>
+        <ng-container seDrawerFooter>
+          <button seButton type="button" (click)="editingSettings.set(false)">Cancel</button>
+          <button
+            seButton
+            variant="primary"
+            type="button"
+            [loading]="saving()"
+            (click)="saveSettings()"
+          >
+            Save settings
+          </button>
+        </ng-container>
+      </se-drawer>
     </se-page>
   `,
 })
@@ -399,6 +538,23 @@ export class LogisticsAdminPage implements OnInit {
   readonly saving = signal(false);
   readonly quoteResult = signal<number | null>(null);
   readonly cpError = signal('');
+  readonly settings = signal<ShippingSettings | null>(null);
+  readonly settingsError = signal('');
+  readonly vatError = signal('');
+  readonly reasonError = signal('');
+  readonly editingSettings = signal(false);
+
+  /** The settings drawer's form. Primes from the row in openSettings(). */
+  st = {
+    shipping: true,
+    vat: false,
+    vatRate: 7.5,
+    deliveryTaxable: false,
+    pricesIncludeVat: true,
+    threshold: null as number | null,
+    coupons: false,
+    reason: '',
+  };
   readonly createError = signal('');
   readonly zoneError = signal('');
   readonly quoteError = signal('');
@@ -514,6 +670,89 @@ export class LogisticsAdminPage implements OnInit {
   ngOnInit(): void {
     this.load();
     this.loadZones();
+    this.loadSettings();
+  }
+  /** The switches behind what a shopper pays at checkout. */
+  loadSettings(): void {
+    this.api.shippingSettings().subscribe({
+      next: (s) => {
+        this.settings.set(s);
+        this.settingsError.set('');
+      },
+      error: (e) =>
+        this.settingsError.set(
+          e?.error?.message ?? 'The delivery settings could not be loaded.',
+        ),
+    });
+  }
+  /** Primes the drawer from the loaded row so nothing is left half-filled. */
+  openSettings(): void {
+    const s = this.settings();
+    if (!s) return;
+    this.st.shipping = s.shippingEnabled;
+    this.st.vat = s.vatEnabled;
+    this.st.vatRate = s.vatRatePercent;
+    this.st.deliveryTaxable = s.deliveryTaxable;
+    this.st.pricesIncludeVat = s.pricesIncludeVat;
+    this.st.threshold = s.freeDeliveryThreshold;
+    this.st.coupons = s.couponsEnabled;
+    this.st.reason = '';
+    this.vatError.set('');
+    this.reasonError.set('');
+    this.editingSettings.set(true);
+  }
+  saveSettings(): void {
+    if (!this.canWrite) return;
+    if (this.st.vat) {
+      const rate = this.st.vatRate;
+      if (rate === null || rate === undefined || String(rate).trim() === '' ||
+        !(Number(rate) >= 0 && Number(rate) <= 100)) {
+        this.vatError.set('Enter a VAT rate between 0 and 100.');
+        return;
+      }
+    }
+    this.vatError.set('');
+    if (!this.st.reason.trim()) {
+      this.reasonError.set('A reason is needed; it is stored in the audit log.');
+      return;
+    }
+    this.reasonError.set('');
+
+    const threshold = this.st.threshold;
+    const blank = threshold === null || threshold === undefined || String(threshold).trim() === '';
+    const hadThreshold = this.settings()?.freeDeliveryThreshold != null;
+    // Blank clears an existing offer; blank on an already-empty row keeps it.
+    const freeDeliveryThreshold = blank
+      ? hadThreshold
+        ? null
+        : undefined
+      : Math.max(0, Number(threshold));
+
+    const body: ShippingSettingsUpdate = {
+      shippingEnabled: !!this.st.shipping,
+      vatEnabled: !!this.st.vat,
+      vatRatePercent: this.st.vat ? Number(this.st.vatRate) : undefined,
+      pricesIncludeVat: this.st.vat ? !!this.st.pricesIncludeVat : undefined,
+      deliveryTaxable: this.st.vat ? !!this.st.deliveryTaxable : undefined,
+      couponsEnabled: !!this.st.coupons,
+      freeDeliveryThreshold,
+      reason: this.st.reason.trim(),
+    };
+    this.saving.set(true);
+    this.api.updateShippingSettings(body).subscribe({
+      next: (s) => {
+        this.saving.set(false);
+        this.editingSettings.set(false);
+        this.settings.set(s);
+        this.st.reason = '';
+        this.toast.show('Delivery & payment settings saved');
+      },
+      error: (e) =>
+        this.fail(
+          e?.error?.message ?? 'The settings could not be saved. Nothing has been changed.',
+          () => this.saveSettings(),
+        ),
+    });
   }
   load(): void {
     this.api.deliveries().subscribe({
