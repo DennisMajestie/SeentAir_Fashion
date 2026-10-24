@@ -17,6 +17,7 @@ import { AppOpsbarComponent } from './app-opsbar.component';
 import { AccessService } from './access.service';
 import { ApiService, Me } from './api.service';
 import { navFor } from './nav';
+import { roleLabel } from './role-labels';
 import { ThemeService } from './theme.service';
 import { environment } from '../environments/environment';
 
@@ -871,8 +872,4 @@ export class App implements OnInit, OnDestroy {
   }
 }
 
-/** "business_owner_admin" -> "Business owner admin". */
-function roleLabel(role: string): string {
-  const words = role.replace(/_/g, ' ').trim();
-  return words ? words[0].toUpperCase() + words.slice(1) : '';
-}
+

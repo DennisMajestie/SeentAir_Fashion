@@ -22,6 +22,7 @@ import {
 import { AccessService } from '../access.service';
 import { ApiService } from '../api.service';
 import { urlFilters } from '../url-filters';
+import { roleLabel } from '../role-labels';
 
 interface UserRow {
   id: string;
@@ -72,10 +73,7 @@ const MODULE_ORDER = [
   'communication',
 ];
 
-export function roleLabel(role: string): string {
-  const words = role.replaceAll('_', ' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
+export { roleLabel };
 
 /**
  * Staff accounts and what each role may do. Accounts are a table; adding one

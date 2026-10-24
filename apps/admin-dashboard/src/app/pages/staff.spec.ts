@@ -106,7 +106,7 @@ describe('StaffAdminPage', () => {
     fixture.componentInstance.openChange(user() as never);
     fixture.componentInstance.newRole = 'management';
     await fixture.componentInstance.changeRole();
-    expect(ask.calls.mostRecent().args[0].title).toBe("Change Chidi N.'s role to management?");
+    expect(ask.calls.mostRecent().args[0].title).toBe("Change Chidi N.'s role to manager?");
     expect(api.changeRole).not.toHaveBeenCalled();
   });
 
