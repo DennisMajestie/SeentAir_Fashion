@@ -113,7 +113,7 @@ describe('OrderPage', () => {
   describe('the four walked stages', () => {
     for (const [status, label, headline] of [
       ['order_received', 'ORDER RECEIVED', "We've got your order"],
-      ['processing', 'PROCESSING & PACKAGING', 'Making your pieces'],
+      ['processing', 'PROCESSING & PACKAGING', 'Preparing your order'],
       ['shipped', 'SHIPPED', 'On the way to you'],
       ['delivered', 'DELIVERED', 'Delivered'],
     ] as const) {
@@ -174,7 +174,9 @@ describe('OrderPage', () => {
       const nodes = element.querySelectorAll('.ot-node');
       expect(nodes.length).toBe(4);
       expect(text()).toContain('We have your order and your payment is confirmed.');
-      expect(text()).toContain('cut, sewn, quality-checked and packed');
+      expect(text()).toContain('Your order is being prepared and quality-checked before dispatch.');
+      expect(text()).not.toContain('cutting and sewing');
+      expect(text()).not.toContain('start production');
     });
 
     it('shows a timestamp only for stages that have been reached', async () => {

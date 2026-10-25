@@ -23,7 +23,7 @@ const STAGES: Stage[] = [
   {
     key: 'processing',
     name: 'Processing & packaging',
-    blurb: 'Your pieces are cut, sewn, quality-checked and packed at the workshop.',
+    blurb: 'Your order is being prepared and quality-checked before dispatch.',
   },
   {
     key: 'shipped',
@@ -63,21 +63,21 @@ const STATUS_COPY: Record<string, StatusCopy> = {
   awaiting_payment: {
     label: 'Awaiting payment',
     headline: 'Waiting on your payment',
-    next: 'Pay the exact total to start production. No part-payments.',
+    next: 'Pay the exact total to confirm your order. No part-payments.',
     tone: '',
   },
   order_received: {
     stage: 0,
     label: 'Order received',
     headline: "We've got your order",
-    next: 'Next: we start cutting and sewing your pieces in the workshop.',
+    next: 'Next: our team prepares your order for dispatch.',
     tone: '',
   },
   processing: {
     stage: 1,
     label: 'Processing & packaging',
-    headline: 'Making your pieces',
-    next: 'Next: quality check, then your parcel is packed and labelled for dispatch.',
+    headline: 'Preparing your order',
+    next: 'Next: your parcel is packed and labelled for dispatch.',
     tone: '',
   },
   shipped: {
