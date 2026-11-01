@@ -43,6 +43,7 @@ export enum ModuleName {
   STAFF_ACCESS = 'staff_access',
   APPROVALS_AUDIT = 'approvals_audit',
   COMMUNICATION = 'communication',
+  CUSTOMERS = 'customers',
 }
 
 /** Actions confirmed to require approval (appendix 19). */
