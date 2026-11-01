@@ -35,6 +35,8 @@ import { PublicConfigModule } from './modules/public-config/public-config.module
 import { PlatformSettingsModule } from './modules/platform-settings/platform-settings.module';
 import { CheckoutShippingModule } from './modules/checkout-shipping/checkout-shipping.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
+import { CustomersModule } from './modules/customers/customers.module';
+import { HelpModule } from './modules/help/help.module';
 
 @Module({
   imports: [
@@ -79,7 +81,9 @@ import { CouponsModule } from './modules/coupons/coupons.module';
     PublicConfigModule,
     PlatformSettingsModule,
     CheckoutShippingModule,
+  CustomersModule,
   CouponsModule,
+  HelpModule,
   ],
   providers: [
     // Order matters: rate-limit, then authenticate, then authorize, then audit.
