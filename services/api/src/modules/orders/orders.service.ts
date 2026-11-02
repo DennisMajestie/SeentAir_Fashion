@@ -38,11 +38,16 @@ import { DeliveryLeg, DeliveryLegStatus } from '../logistics/entities/delivery-l
 import { CUSTOMER_AWAITING_STOCK } from './customer-status';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { GuestContactDto } from './dto/guest-contact.dto';
+import { OrderDetailDto, mapOrderDetail } from './dto/order-detail.dto';
 import { OrderFulfilmentDto } from './dto/order-fulfilment.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { OrderAccessToken } from './entities/order-access-token.entity';
 import { OrderItem } from './entities/order-item.entity';
-import { OrderStatusEvent } from './entities/order-status-event.entity';
+import {
+  OrderStatusEvent,
+  ActorKind,
+  PAYMENT_EXCEPTION_EVENT,
+} from './entities/order-status-event.entity';
 import { DeliveryMethod, Order, OrderChannel, OrderStatus, PaymentStatus } from './entities/order.entity';
 import { Payment, PaymentMethod, PaymentRecordStatus } from './entities/payment.entity';
 import { ProcessedWebhookEvent } from './entities/processed-webhook-event.entity';
@@ -81,9 +86,6 @@ const PAYMENT_ATTENTION_ROLES = [
   RoleName.INVENTORY,
   RoleName.SALES,
 ];
-
-/** Status-event marker for internal payment notes; hidden from the customer timeline. */
-const PAYMENT_EXCEPTION_EVENT = 'payment_exception';
 
 /** What a Paystack delivery resolved to. Every value is acknowledged with 200. */
 export type PaystackWebhookOutcome =
@@ -772,6 +774,21 @@ export class OrdersService {
     return this.withDeliveryFee(order);
   }
 
+  async detail(
+    id: string,
+    user?: AuthenticatedUser,
+    rawToken?: string,
+  ): Promise<OrderDetailDto> {
+    const order = await this.findById(id, user, rawToken);
+    const audience: TrackingAudience =
+      user && (await this.trackingAudience(user)) === 'staff' ? 'staff' : 'customer';
+    const events = await this.eventRepo.find({
+      where: { order: { id } },
+      order: { createdAt: 'ASC' },
+    });
+    return mapOrderDetail(order, events, audience);
+  }
+
   /**
    * Offline payment (cash/POS/bank transfer), recorded manually by staff
    * with FULL payments access. Enforces full payment upfront, then confirms
@@ -987,7 +1004,15 @@ export class OrdersService {
     order.status = status;
     if (status === OrderStatus.DELIVERED) order.deliveredAt = new Date();
     const saved = await this.orderRepo.save(order);
-    await this.eventRepo.save(this.eventRepo.create({ order: saved, status, note: note ?? null }));
+    await this.eventRepo.save(
+      this.eventRepo.create({
+        order: saved,
+        status,
+        note: note ?? null,
+        actorId: actor.id,
+        actorKind: 'staff',
+      }),
+    );
     this.orderStatusBus.emit(saved.id, status);
     // Fire-and-forget: notifications never block or fail the status change.
     void this.notificationsService.onOrderStatusChange(
@@ -1175,6 +1200,7 @@ export class OrdersService {
         stillShort.length === 0
           ? 'Stock allocated from production'
           : `Still short: ${stillShort.join(', ')}`,
+        { id: actor.id, kind: 'staff' },
       );
       // Tell the buyer. refundStockException() notifies but this did not, so a
       // successful allocation reached the customer as silence: their tracker
@@ -1230,6 +1256,7 @@ export class OrdersService {
         result,
         OrderStatus.CANCELLED,
         'Refunded — stock exception',
+        { id: actor.id, kind: 'staff' },
       );
       await this.accountingService.record(
         {
@@ -1299,9 +1326,18 @@ export class OrdersService {
     order: Order,
     status: string,
     note: string,
+    actor?: { id: string | null; kind: ActorKind | null },
   ): Promise<void> {
     const events = manager.getRepository(OrderStatusEvent);
-    await events.save(events.create({ order, status, note }));
+    await events.save(
+      events.create({
+        order,
+        status,
+        note,
+        actorId: actor?.id ?? null,
+        actorKind: actor?.kind ?? 'system',
+      }),
+    );
     // Inside the transaction: a subscriber may re-fetch before commit and see
     // the old status, but it re-reads on the next tick, so the notification is
     // never wrong for long and cannot break the write.
@@ -1488,6 +1524,7 @@ export class OrdersService {
       order,
       OrderStatus.ORDER_RECEIVED,
       `Paid in full via ${method}`,
+      { id: recordedBy, kind: recordedBy ? 'staff' : 'system' },
     );
     if (short.length > 0) {
       await this.recordStatusEvent(
@@ -1495,6 +1532,7 @@ export class OrdersService {
         order,
         OrderStatus.STOCK_EXCEPTION,
         `Paid; stock short: ${short.join(', ')}`,
+        { id: recordedBy, kind: recordedBy ? 'staff' : 'system' },
       );
     }
     // Every sale lands in the accounting ledger automatically.

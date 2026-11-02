@@ -69,6 +69,18 @@ export class Order {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  /** Human-readable order number, owned by `order_number_seq` at the DB layer.
+   *  Application code never sets it; it is read-only via insert: false / update: false. */
+  @Column({
+    name: 'order_number',
+    type: 'bigint',
+    nullable: false,
+    default: () => 'nextval(\'order_number_seq\')',
+    insert: false,
+    update: false,
+  })
+  orderNumber: string;
+
   /** Nullable for walk-in in-store sales recorded by staff. */
   @ManyToOne(() => User, { nullable: true, eager: true })
   @JoinColumn({ name: 'customer_id' })

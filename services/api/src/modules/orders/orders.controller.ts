@@ -15,7 +15,13 @@ import {
   Sse,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { Observable } from 'rxjs';
@@ -23,6 +29,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OptionalAuth } from '../../common/decorators/optional-auth.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthenticatedUser } from '../../common/interfaces';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderFulfilmentDto } from './dto/order-fulfilment.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
@@ -30,6 +37,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrderChannel, OrderStatus } from './entities/order.entity';
 import { PaymentMethod } from './entities/payment.entity';
 import { OrderStatusBus } from './order-status.bus';
+import { OrderDetailDto } from './dto/order-detail.dto';
 import { OrdersService, PaystackWebhookEvent } from './orders.service';
 import { PaystackService } from './paystack.service';
 
@@ -65,16 +73,15 @@ export class OrdersController {
   @ApiBearerAuth()
   findAll(
     @CurrentUser() user: AuthenticatedUser,
+    @Query() pagination: PaginationQueryDto,
     @Query('channel') channel?: OrderChannel,
     @Query('status') status?: OrderStatus,
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
   ) {
     return this.ordersService.findAll(user, {
       channel,
       status,
-      page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
+      page: pagination.page ?? 1,
+      limit: pagination.limit ?? 20,
     });
   }
 
@@ -89,6 +96,24 @@ export class OrdersController {
     @Query('token') token?: string,
   ) {
     return this.ordersService.findById(id, user, token);
+  }
+
+  @Get('orders/:id/detail')
+  @OptionalAuth()
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get an authorized order detail snapshot',
+    description:
+      'Signed-in users follow their order permissions. Guest customers may use the order tracking token; it never widens signed-in access.',
+  })
+  @ApiQuery({ name: 'token', required: false, description: 'Guest order access token' })
+  @ApiOkResponse({ type: OrderDetailDto })
+  detail(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user?: AuthenticatedUser,
+    @Query('token') token?: string,
+  ): Promise<OrderDetailDto> {
+    return this.ordersService.detail(id, user, token);
   }
 
   @Patch('orders/:id/status')

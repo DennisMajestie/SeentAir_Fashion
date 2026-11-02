@@ -69,6 +69,8 @@ export class OrderExpiryService {
             order,
             status: OrderStatus.CANCELLED,
             note: `Expired: no payment within ${hours}h`,
+            actorId: null,
+            actorKind: 'system',
           }),
         );
         await this.coupons.release(manager, order.id);
