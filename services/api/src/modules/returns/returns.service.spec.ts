@@ -137,6 +137,14 @@ describe('ReturnsService', () => {
         expect.anything(),
       );
       expect(order.status).toBe(OrderStatus.RETURNED);
+      expect(eventRepoLike.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          order,
+          status: OrderStatus.RETURNED,
+          actorId: staff.id,
+          actorKind: 'staff',
+        }),
+      );
     });
 
     it('damaged returns write NO stock movement', async () => {
