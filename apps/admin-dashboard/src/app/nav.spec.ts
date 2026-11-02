@@ -38,7 +38,12 @@ const labels = (access: Record<string, string> | null): string[] =>
 
 describe('navFor', () => {
   it('gives the owner every screen', () => {
-    expect(labels(OWNER).length).toBe(22);
+    expect(labels(OWNER).length).toBe(27);
+  });
+
+  it('only offers settings when the role has full logistics access', () => {
+    expect(labels({ logistics: 'view' })).not.toContain('Settings');
+    expect(labels({ logistics: 'full' })).toContain('Settings');
   });
 
   it('gives the Inventory role a visibly smaller app, with nothing greyed out', () => {

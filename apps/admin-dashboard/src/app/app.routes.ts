@@ -56,6 +56,11 @@ export const routes: Routes = [
     title: 'Seentair Ops: Inventory',
   },
   {
+    path: 'inventory/counts',
+    loadComponent: () => import('./pages/counts.page').then((m) => m.InventoryCountsPage),
+    title: 'Seentair Ops: Warehouse counts',
+  },
+  {
     path: 'inventory/:itemType/:itemId',
     loadComponent: () => import('./pages/inventory-detail.page').then((m) => m.InventoryDetailPage),
     title: 'Seentair Ops: Stock item',
@@ -74,6 +79,26 @@ export const routes: Routes = [
     path: 'materials',
     loadComponent: () => import('./pages/materials.page').then((m) => m.MaterialsAdminPage),
     title: 'Seentair Ops: Materials',
+  },
+  {
+    path: 'purchases',
+    loadComponent: () => import('./pages/purchases.page').then((m) => m.PurchasesPage),
+    title: 'Seentair Ops: Purchasing',
+  },
+  {
+    path: 'help',
+    loadComponent: () => import('./pages/help-center.page').then((m) => m.HelpCenterPage),
+    title: 'Seentair Ops: Help Center',
+  },
+  {
+    path: 'help/tickets',
+    loadComponent: () => import('./pages/tickets.page').then((m) => m.HelpTicketsPage),
+    title: 'Seentair Ops: Help tickets',
+  },
+  {
+    path: 'settings',
+    loadComponent: () => import('./pages/settings.page').then((m) => m.SettingsPage),
+    title: 'Seentair Ops: Settings',
   },
   {
     path: 'materials/:id',

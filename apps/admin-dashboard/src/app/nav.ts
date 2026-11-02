@@ -15,6 +15,8 @@ interface NavEntry {
   modules: string[] | null;
   /** Shown only at approve level or above (the approvals queue). */
   needsApprove?: boolean;
+  /** Shown only at full access, for endpoints gated at FULL including reads. */
+  needsFull?: boolean;
   /** Key into the counts passed to navFor, for a "waiting for you" badge. */
   badge?: string;
 }
@@ -51,6 +53,8 @@ const GROUPS: { title?: string; items: NavEntry[] }[] = [
       { label: 'Custom orders', icon: 'edit', link: '/custom-orders', modules: ['custom_orders'] },
       { label: 'Wholesale', icon: 'users', link: '/wholesale', modules: ['wholesale_orders'] },
       { label: 'Messages', icon: 'message', link: '/messages', modules: ['communication'] },
+      { label: 'Help Center', icon: 'file', link: '/help', modules: ['communication'] },
+      { label: 'Help tickets', icon: 'message', link: '/help/tickets', modules: ['communication'] },
     ],
   },
   {
@@ -58,7 +62,9 @@ const GROUPS: { title?: string; items: NavEntry[] }[] = [
     items: [
       { label: 'Catalogue', icon: 'tag', link: '/catalogue', modules: ['catalogue'] },
       { label: 'Inventory', icon: 'box', link: '/inventory', modules: ['inventory'] },
+      { label: 'Warehouse counts', icon: 'clipboard-check', link: '/inventory/counts', modules: ['inventory'] },
       { label: 'Materials', icon: 'layers', link: '/materials', modules: ['raw_materials'] },
+      { label: 'Purchasing', icon: 'receipt', link: '/purchases', modules: ['raw_materials'] },
       { label: 'Production', icon: 'factory', link: '/production', modules: ['manufacturing'] },
       { label: 'Specs', icon: 'file', link: '/tech-pack', modules: ['catalogue'] },
       { label: 'Floor kiosk', icon: 'monitor', link: '/floor-kiosk', modules: ['manufacturing'] },
@@ -87,6 +93,13 @@ const GROUPS: { title?: string; items: NavEntry[] }[] = [
         needsApprove: true,
       },
       { label: 'Security', icon: 'shield', link: '/security', modules: null },
+      {
+        label: 'Settings',
+        icon: 'settings',
+        link: '/settings',
+        modules: ['logistics'],
+        needsFull: true,
+      },
     ],
   },
 ];
@@ -112,6 +125,7 @@ export function navFor(
     return entry.modules.some((m) => {
       const level = access[m];
       if (!level || level === 'none') return false;
+      if (entry.needsFull) return level === 'full';
       return entry.needsApprove ? level === 'approve' || level === 'full' : true;
     });
   };
