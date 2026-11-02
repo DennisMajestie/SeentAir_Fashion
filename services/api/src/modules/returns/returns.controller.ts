@@ -4,6 +4,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { ResolveReturnDto } from './dto/resolve-return.dto';
 import { ReturnsService } from './returns.service';
@@ -23,10 +24,9 @@ export class ReturnsController {
   @Get()
   findAll(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
+    @Query() pagination: PaginationQueryDto,
   ) {
-    return this.returnsService.findAll(user, parseInt(page, 10), parseInt(limit, 10));
+    return this.returnsService.findAll(user, pagination.page ?? 1, pagination.limit ?? 20);
   }
 
   @Patch(':id/resolve')

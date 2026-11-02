@@ -4,6 +4,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { AddCheckpointDto } from './dto/add-checkpoint.dto';
 import { UpdateDeliveryStatusDto } from './dto/update-delivery-status.dto';
@@ -18,8 +19,8 @@ export class LogisticsController {
 
   @Get('deliveries')
   @RequireAccess(ModuleName.LOGISTICS, AccessLevel.VIEW)
-  findAll(@Query('page') page = '1', @Query('limit') limit = '50') {
-    return this.logisticsService.findAll(parseInt(page, 10), parseInt(limit, 10));
+  findAll(@Query() pagination: PaginationQueryDto) {
+    return this.logisticsService.findAll(pagination.page ?? 1, pagination.limit ?? 50);
   }
 
   @Post('deliveries')

@@ -5,6 +5,7 @@ import { RequireAccess } from '../../common/decorators/require-access.decorator'
 import { AccessLevel, ApprovalActionType, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { ApprovalsService } from '../approvals/approvals.service';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { AccountingService, ReportType } from './accounting.service';
 import { RecordEntryDto } from './dto/record-entry.dto';
 import { LedgerEntryType } from './ledger-entry.entity';
@@ -24,15 +25,14 @@ export class AccountingController {
     @Query('type') type?: LedgerEntryType,
     @Query('from') from?: string,
     @Query('to') to?: string,
-    @Query('page') page = '1',
-    @Query('limit') limit = '50',
+    @Query() pagination?: PaginationQueryDto,
   ) {
     return this.accountingService.ledger({
       type,
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
-      page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
+      page: pagination?.page ?? 1,
+      limit: pagination?.limit ?? 50,
     });
   }
 

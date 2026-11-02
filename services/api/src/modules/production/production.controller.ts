@@ -4,6 +4,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { RecordCostDto } from './dto/record-cost.dto';
 import { RecordQCRejectionDto } from './dto/record-qc-rejection.dto';
@@ -21,8 +22,8 @@ export class ProductionController {
 
   @Get()
   @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.VIEW)
-  findAll(@Query('page') page = '1', @Query('limit') limit = '20', @Query('stage') stage?: string) {
-    return this.productionService.findAll(parseInt(page, 10), parseInt(limit, 10), stage);
+  findAll(@Query() pagination: PaginationQueryDto, @Query('stage') stage?: string) {
+    return this.productionService.findAll(pagination.page ?? 1, pagination.limit ?? 20, stage);
   }
 
   @Get(':id')

@@ -12,6 +12,7 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdatePermissionsDto } from './dto/update-permissions.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -25,8 +26,8 @@ export class UsersController {
 
   @Get()
   @RequireAccess(ModuleName.STAFF_ACCESS, AccessLevel.VIEW)
-  findAll(@Query('page') page = '1', @Query('limit') limit = '20') {
-    return this.usersService.findAll(parseInt(page, 10), parseInt(limit, 10));
+  findAll(@Query() pagination: PaginationQueryDto) {
+    return this.usersService.findAll(pagination.page ?? 1, pagination.limit ?? 20);
   }
 
   /** Role × module permission dot-matrix (staff-access screen). */

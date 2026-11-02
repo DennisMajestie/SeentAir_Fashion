@@ -17,6 +17,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CreateTierDto } from './dto/create-tier.dto';
 import { CreateWholesaleApplicationDto } from './dto/create-application.dto';
 import { ReviewAccountDto } from './dto/review-account.dto';
@@ -62,10 +63,9 @@ export class WholesaleController {
   @Get('pricing')
   pricing(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
+    @Query() pagination: PaginationQueryDto,
   ) {
-    return this.wholesaleService.pricing(user, parseInt(page, 10), parseInt(limit, 10));
+    return this.wholesaleService.pricing(user, pagination.page ?? 1, pagination.limit ?? 20);
   }
 
   /**
@@ -93,10 +93,9 @@ export class WholesaleController {
   @Get('invoices')
   invoices(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
+    @Query() pagination: PaginationQueryDto,
   ) {
-    return this.wholesaleService.invoices(user, parseInt(page, 10), parseInt(limit, 10));
+    return this.wholesaleService.invoices(user, pagination.page ?? 1, pagination.limit ?? 20);
   }
 
   /** Any authenticated user can apply; staff review below. */

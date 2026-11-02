@@ -5,6 +5,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { NotificationsService } from './notifications.service';
 
 class SendNotificationDto {
@@ -37,13 +38,12 @@ export class NotificationsController {
   @Get()
   list(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
+    @Query() pagination: PaginationQueryDto,
   ) {
     return this.notificationsService.listForRecipient(
       user.id,
-      parseInt(page, 10),
-      parseInt(limit, 10),
+      pagination.page ?? 1,
+      pagination.limit ?? 20,
     );
   }
 

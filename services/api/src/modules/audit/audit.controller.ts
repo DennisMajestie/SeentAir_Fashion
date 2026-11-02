@@ -2,6 +2,7 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { AuditService } from './audit.service';
 
 @ApiTags('Approvals & Audit')
@@ -18,16 +19,15 @@ export class AuditController {
     @Query('action') action?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
-    @Query('page') page = '1',
-    @Query('limit') limit = '50',
+    @Query() pagination?: PaginationQueryDto,
   ) {
     return this.auditService.query({
       actorId,
       action,
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
-      page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
+      page: pagination?.page ?? 1,
+      limit: pagination?.limit ?? 50,
     });
   }
 

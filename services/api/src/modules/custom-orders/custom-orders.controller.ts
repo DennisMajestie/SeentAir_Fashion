@@ -5,6 +5,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CustomOrdersService } from './custom-orders.service';
 import { CreateCustomOrderDto } from './dto/create-custom-order.dto';
 import { IssueQuotationDto } from './dto/issue-quotation.dto';
@@ -35,10 +36,9 @@ export class CustomOrdersController {
   @Get()
   findAll(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
+    @Query() pagination: PaginationQueryDto,
   ) {
-    return this.customOrdersService.findAll(user, parseInt(page, 10), parseInt(limit, 10));
+    return this.customOrdersService.findAll(user, pagination.page ?? 1, pagination.limit ?? 20);
   }
 
   @Get(':id')

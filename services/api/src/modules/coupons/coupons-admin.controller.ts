@@ -11,7 +11,7 @@ import { CustomerCouponStatus } from './entities/customer-coupon.entity';
 /**
  * Everything that can change what a customer pays.
  *
- * Gated at `@RequireAccess(ModuleName.LOGISTICS, AccessLevel.FULL)` - the
+ * Gated at `@RequireAccess(ModuleName.MARKETING, AccessLevel.FULL)` - the
  * highest level, on the controller class rather than per method, so a newly
  * added handler cannot accidentally ship unguarded. That matters here because
  * the global access guard lets a route through for ANY authenticated user when
@@ -22,7 +22,7 @@ import { CustomerCouponStatus } from './entities/customer-coupon.entity';
  * audit entry.
  */
 @Controller('coupons/admin')
-@RequireAccess(ModuleName.LOGISTICS, AccessLevel.FULL)
+@RequireAccess(ModuleName.MARKETING, AccessLevel.FULL)
 export class CouponsAdminController {
   constructor(private readonly admin: CouponsAdminService) {}
 
