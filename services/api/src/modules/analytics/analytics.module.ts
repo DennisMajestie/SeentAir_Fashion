@@ -8,7 +8,9 @@ import { RawMaterial } from '../materials/entities/raw-material.entity';
 import { MaterialsModule } from '../materials/materials.module';
 import { OrderItem } from '../orders/entities/order-item.entity';
 import { Order } from '../orders/entities/order.entity';
+import { ProductVariant } from '../catalogue/entities/product-variant.entity';
 import { ProductionBatch } from '../production/entities/production-batch.entity';
+import { ProductionCost } from '../production/entities/production-cost.entity';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
 
@@ -18,6 +20,8 @@ import { AnalyticsService } from './analytics.service';
       Order,
       OrderItem,
       ProductionBatch,
+      ProductionCost,
+      ProductVariant,
       ApprovalRequest,
       RawMaterial,
       InventoryMovement,

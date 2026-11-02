@@ -19,7 +19,11 @@ import { RecordScanDto } from './dto/record-scan.dto';
 import { RecordTelemetryDto } from './dto/record-telemetry.dto';
 import { ProductionBatch } from './entities/production-batch.entity';
 import { BatchScanEvent } from './entities/batch-scan-event.entity';
-import { ProductionCost } from './entities/production-cost.entity';
+import {
+  PRODUCTION_COST_COMPONENTS,
+  ProductionCost,
+  ProductionCostComponent,
+} from './entities/production-cost.entity';
 import { ProductionTelemetry } from './entities/production-telemetry.entity';
 import { QCDisposition, QCRejection } from './entities/qc-rejection.entity';
 
@@ -147,12 +151,17 @@ export class ProductionService {
         sewingCost: 0,
         brandingCost: 0,
         packagingCost: 0,
+        confirmedComponents: [],
       });
     }
-    if (dto.materialCost !== undefined) cost.materialCost = dto.materialCost;
-    if (dto.sewingCost !== undefined) cost.sewingCost = dto.sewingCost;
-    if (dto.brandingCost !== undefined) cost.brandingCost = dto.brandingCost;
-    if (dto.packagingCost !== undefined) cost.packagingCost = dto.packagingCost;
+    const confirmedComponents = new Set<ProductionCostComponent>(cost.confirmedComponents ?? []);
+    for (const component of PRODUCTION_COST_COMPONENTS) {
+      const value = dto[component];
+      if (value === undefined) continue;
+      cost[component] = value;
+      confirmedComponents.add(component);
+    }
+    cost.confirmedComponents = [...confirmedComponents];
     const saved = await this.costRepo.save(cost);
     return {
       ...saved,

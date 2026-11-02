@@ -17,6 +17,11 @@ export interface MaterialWithQuantity extends RawMaterial {
   lowStock: boolean;
 }
 
+export interface PurchaseListResult {
+  data: MaterialPurchase[];
+  total: number;
+}
+
 @Injectable()
 export class MaterialsService {
   constructor(
@@ -38,6 +43,16 @@ export class MaterialsService {
     const material = await this.materialRepo.findOne({ where: { id } });
     if (!material) throw new NotFoundException(`Material ${id} not found`);
     return this.withQuantity(material);
+  }
+
+  async findPurchases(page = 1, limit = 50): Promise<PurchaseListResult> {
+    const [data, total] = await this.purchaseRepo.findAndCount({
+      relations: { material: true },
+      order: { purchasedAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { data, total };
   }
 
   async create(dto: CreateMaterialDto): Promise<MaterialWithQuantity> {
