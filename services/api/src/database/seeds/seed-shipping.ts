@@ -6,6 +6,8 @@ import { CheckoutShippingRate } from '../../modules/checkout-shipping/entities/c
 import { DeliveryMethod } from '../../modules/orders/entities/order.entity';
 import { ProductSizeClass } from '../../modules/checkout-shipping/shipping-size-class';
 import { NIGERIAN_STATES } from '../../modules/checkout-shipping/nigerian-states';
+import { safeErrorMessage } from '../tools/db-tooling';
+import { assertSafeSeedEnvironment } from './seed-safety';
 
 /**
  * The six Nigerian geopolitical zones, each with its states and the FCT.
@@ -55,8 +57,7 @@ const FREIGHT_FEES: Record<string, Record<ProductSizeClass, number>> = {
   'North West': { light: 4000, medium: 6000, heavy: 8000 },
 };
 
-async function seed(): Promise<void> {
-  await AppDataSource.initialize();
+async function seedShippingData(): Promise<void> {
   const zoneRepo = AppDataSource.getRepository(CheckoutShippingZone);
   const stateRepo = AppDataSource.getRepository(CheckoutShippingZoneState);
 
@@ -168,10 +169,21 @@ async function seed(): Promise<void> {
     `Done. ${ZONES.length} zones, ${createdZones} created, ${createdStates} states added, ${renamedStates} names corrected. ` +
       `Rates: ${createdRates} created, ${changedRates} re-versioned, ${unchangedRates} already correct.`,
   );
-  await AppDataSource.destroy();
+}
+
+async function seed(): Promise<void> {
+  assertSafeSeedEnvironment();
+  try {
+    await AppDataSource.initialize();
+    await seedShippingData();
+  } finally {
+    if (AppDataSource.isInitialized) {
+      await AppDataSource.destroy();
+    }
+  }
 }
 
 seed().catch((error) => {
-  console.error(error);
+  console.error(safeErrorMessage(error));
   process.exit(1);
 });

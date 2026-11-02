@@ -24,6 +24,8 @@ import {
 } from '../../modules/orders/entities/order.entity';
 import { OrderItem } from '../../modules/orders/entities/order-item.entity';
 import { Review, ReviewStatus } from '../../modules/reviews/review.entity';
+import { safeErrorMessage } from '../tools/db-tooling';
+import { assertSafeSeedEnvironment, requireSeedPassword } from './seed-safety';
 
 /**
  * DEV CATALOGUE — demo products so every screen has something to show.
@@ -371,8 +373,7 @@ const REFERENCE_ITEMS: SeedProduct[] = [
 const REFERENCE_SOURCE = 'seed:reference-ratings';
 
 /** The seed grows four SHARED variables; the derived counting below reads them. */
-async function seedCatalogue(): Promise<void> {
-  await AppDataSource.initialize();
+async function seedCatalogueData(): Promise<void> {
   const collectionRepo = AppDataSource.getRepository(Collection);
   const categoryRepo = AppDataSource.getRepository(Category);
   const productRepo = AppDataSource.getRepository(Product);
@@ -519,7 +520,19 @@ async function seedCatalogue(): Promise<void> {
   );
   console.log(`Catalogue now holds ${totalProducts} products / ${totalVariants} variants.`);
 
-  await AppDataSource.destroy();
+}
+
+async function seedCatalogue(): Promise<void> {
+  assertSafeSeedEnvironment();
+  requireSeedPassword();
+  try {
+    await AppDataSource.initialize();
+    await seedCatalogueData();
+  } finally {
+    if (AppDataSource.isInitialized) {
+      await AppDataSource.destroy();
+    }
+  }
 }
 
 /**
@@ -550,7 +563,7 @@ async function ensureDevRatings(
       userRepo.create({
         name: 'Test Customer',
         email: 'customer@seentair.test',
-        passwordHash: await bcrypt.hash(process.env.SEED_USER_PASSWORD ?? 'Password123!', 10),
+        passwordHash: await bcrypt.hash(requireSeedPassword(), 10),
         role,
         status: UserStatus.ACTIVE,
       }),
@@ -622,6 +635,6 @@ async function ensureDevRatings(
 }
 
 seedCatalogue().catch((err) => {
-  console.error(err);
+  console.error(safeErrorMessage(err));
   process.exit(1);
 });

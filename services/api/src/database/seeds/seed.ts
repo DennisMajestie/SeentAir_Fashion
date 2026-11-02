@@ -10,13 +10,41 @@ import {
   WholesaleAccountStatus,
 } from '../../modules/wholesale/entities/wholesale-account.entity';
 import { PriceTier } from '../../modules/wholesale/entities/price-tier.entity';
+import { Customer } from '../../modules/customers/entities/customer.entity';
 import { PERMISSION_MATRIX } from './permission-matrix';
+import { safeErrorMessage } from '../tools/db-tooling';
+import {
+  assertSafeSeedEnvironment,
+  requireSeedPassword as getSeedPassword,
+} from './seed-safety';
+
+function fail(message: string): never {
+  console.error(message);
+  process.exit(1);
+}
+
+export function requireSeedPassword(): string {
+  try {
+    return getSeedPassword();
+  } catch (error) {
+    fail(error instanceof Error ? error.message : 'SEED_USER_PASSWORD is invalid.');
+  }
+}
+
+export function requireSafeEnvironment(): void {
+  try {
+    assertSafeSeedEnvironment();
+  } catch (error) {
+    fail(error instanceof Error ? error.message : 'Seed environment is invalid.');
+  }
+}
+
+export { fail };
 
 /** Reference data: roles, the permission matrix, one test user per role, and
  *  an approved wholesale account so the buyer portal is usable locally.
  *  Idempotent. */
-async function seed(): Promise<void> {
-  await AppDataSource.initialize();
+async function seedData(): Promise<void> {
   const roleRepo = AppDataSource.getRepository(Role);
   const permissionRepo = AppDataSource.getRepository(Permission);
   const userRepo = AppDataSource.getRepository(User);
@@ -59,7 +87,7 @@ async function seed(): Promise<void> {
   console.log(`Permissions: ${permissionCount} rows ensured`);
 
   // 3. One test user per role (local/dev only)
-  const password = process.env.SEED_USER_PASSWORD ?? 'Password123!';
+  const password = requireSeedPassword();
   const passwordHash = await bcrypt.hash(password, 10);
   const testUsers: Array<{ role: RoleName; email: string; name: string }> = [
     { role: RoleName.BUSINESS_OWNER_ADMIN, email: 'owner@seentair.test', name: 'Test Owner' },
@@ -86,7 +114,7 @@ async function seed(): Promise<void> {
       );
     }
   }
-  console.log(`Users: ${testUsers.length} test users ensured (password: $SEED_USER_PASSWORD)`);
+  console.log(`Users: ${testUsers.length} test users ensured`);
 
   // 4. Approved wholesale account for the test wholesaler.
   //
@@ -129,14 +157,117 @@ async function seed(): Promise<void> {
     );
   }
   console.log(
-    `Wholesale account: approved for ${wholesaler.email} on tier "${demoTier.name}" (${demoTier.discountPercent}% off)`,
+    `Wholesale account: approved for the test wholesaler on tier "${demoTier.name}" (${demoTier.discountPercent}% off)`,
   );
 
-  await AppDataSource.destroy();
-  console.log('Seed complete.');
+  // Seed some customers (stockists and shoppers) for the customer directory
+  const customerRepo = AppDataSource.getRepository(Customer);
+  const customerData: Array<{
+    name: string;
+    kind: 'stockist' | 'shopper';
+    contact: string | null;
+    email: string;
+    phone: string | null;
+    city: string | null;
+    region: string | null;
+    tags: string[] | null;
+    note: string | null;
+  }> = [
+    {
+      name: 'Juniper & Moss Apothecary',
+      kind: 'stockist',
+      contact: 'Clara Lindqvist',
+      email: 'clara@junipermoss.com',
+      phone: '(896) 555-0129',
+      city: 'Portland',
+      region: 'OR',
+      tags: ['vip', 'net30'],
+      note: 'Reorders the balm every 4–5 weeks. Prefers UPS.',
+    },
+    {
+      name: 'The Fern Room',
+      kind: 'stockist',
+      contact: 'Marcus Bell',
+      email: 'marcus@thefern.com',
+      phone: '(503) 555-0125',
+      city: 'Austin',
+      region: 'TX',
+      tags: ['net30'],
+      note: '',
+    },
+    {
+      name: 'Saltwater Pharmacy',
+      kind: 'stockist',
+      contact: 'Aisha Rahman',
+      email: 'aisha@saltwaterpharmacy.com',
+      phone: '(719) 555-0133',
+      city: 'Charleston',
+      region: 'SC',
+      tags: ['vip'],
+      note: '',
+    },
+    {
+      name: 'Amara Nwosu',
+      kind: 'shopper',
+      contact: 'Amara Nwosu',
+      email: 'amara.nwosu@mail.com',
+      phone: '(289) 555-0184',
+      city: 'Raleigh',
+      region: 'NC',
+      tags: ['subscriber'],
+      note: '',
+    },
+    {
+      name: 'Lena Fischer',
+      kind: 'shopper',
+      contact: 'Lena Fischer',
+      email: 'lena.fischer@mail.com',
+      phone: '(207) 555-0184',
+      city: 'Chicago',
+      region: 'IL',
+      tags: [],
+      note: '',
+    },
+    {
+      name: 'Diego Castillo',
+      kind: 'shopper',
+      contact: 'Diego Castillo',
+      email: 'diego.castillo@mail.com',
+      phone: '(563) 555-0169',
+      city: 'Phoenix',
+      region: 'AZ',
+      tags: ['subscriber'],
+      note: '',
+    },
+  ];
+
+  for (const cData of customerData) {
+    const existing = await customerRepo.findOne({ where: { email: cData.email } });
+    if (!existing) {
+      await customerRepo.save(customerRepo.create(cData));
+    }
+  }
+  console.log(`Customers: ${customerData.length} seeded`);
 }
 
-seed().catch((err) => {
-  console.error('Seed failed:', err);
-  process.exit(1);
-});
+export async function seed(): Promise<void> {
+  requireSafeEnvironment();
+  requireSeedPassword();
+  try {
+    await AppDataSource.initialize();
+    await seedData();
+    console.log('Seed complete.');
+  } finally {
+    if (AppDataSource.isInitialized) {
+      await AppDataSource.destroy();
+    }
+  }
+}
+
+// Only run when executed directly (e.g. `npm run seed`), not on import.
+if (require.main === module) {
+  seed().catch((err) => {
+    console.error('Seed failed:', safeErrorMessage(err));
+    process.exit(1);
+  });
+}

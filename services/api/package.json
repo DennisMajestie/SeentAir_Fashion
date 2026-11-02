@@ -2,7 +2,7 @@
   "name": "@seentair/api",
   "version": "0.1.0",
   "private": true,
-  "description": "Seentair core backend API (NestJS + PostgreSQL)",
+  "description": "Seentair core backend API (NestJS + PostgreSQL). Seeds require SEED_USER_PASSWORD (>=12 chars), ALLOW_SEED=true, and NODE_ENV != production.",
   "scripts": {
     "build": "node scripts/run-cli.js @nestjs/cli/bin/nest.js build",
     "start": "node dist/main.js",
@@ -16,7 +16,12 @@
     "migration:revert": "npm run typeorm -- migration:revert",
     "seed": "node -r ts-node/register/transpile-only src/database/seeds/seed.ts",
     "seed:catalogue": "node -r ts-node/register/transpile-only src/database/seeds/seed-catalogue.ts",
-    "seed:shipping": "node -r ts-node/register/transpile-only src/database/seeds/seed-shipping.ts"
+    "seed:shipping": "node -r ts-node/register/transpile-only src/database/seeds/seed-shipping.ts",
+    "db:reconcile": "node -r ts-node/register/transpile-only src/database/tools/db-reconcile.ts",
+    "db:hygiene": "node -r ts-node/register/transpile-only src/database/tools/db-hygiene.ts",
+    "db:verify-ledgers": "node -r ts-node/register/transpile-only src/database/tools/db-verify-ledgers.ts",
+    "test:db": "node scripts/test-db.js",
+    "test:db:guards": "node --test scripts/test-db-guard.spec.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1148.0",
