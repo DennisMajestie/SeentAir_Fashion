@@ -1,13 +1,33 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
-import { In, Repository } from 'typeorm';
-import { ACCESS_RANK, AccessLevel, ModuleName, RoleName } from '../../common/enums';
+import { createHash } from 'node:crypto';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { ACCESS_RANK, AccessLevel, ModuleName, RoleName, UserStatus } from '../../common/enums';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { PermissionEntryDto } from './dto/update-permissions.dto';
 import { Permission } from './entities/permission.entity';
 import { Role } from './entities/role.entity';
 import { User } from './entities/user.entity';
+
+const EXTERNAL_ROLES = new Set([RoleName.CUSTOMER, RoleName.WHOLESALER, RoleName.PARTNER_INVESTOR]);
+const PERMISSION_WRITE_LOCK = 0x5345454e;
+
+export interface RolePermissionMatrixRow {
+  id: string;
+  name: RoleName;
+  permissions: Array<{ id?: string; module: ModuleName; accessLevel: AccessLevel }>;
+  accessLevels: AccessLevel[];
+  version: string;
+  memberCount: number;
+}
 
 @Injectable()
 export class UsersService {
@@ -15,6 +35,7 @@ export class UsersService {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(Role) private readonly roleRepo: Repository<Role>,
     @InjectRepository(Permission) private readonly permissionRepo: Repository<Permission>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async findAll(page = 1, limit = 20): Promise<{ data: User[]; total: number }> {
@@ -78,6 +99,27 @@ export class UsersService {
     return this.findById(saved.id); // re-fetch without password hash
   }
 
+  async updateProfile(id: string, dto: UpdateProfileDto): Promise<User> {
+    const user = await this.findById(id);
+
+    if (dto.name !== undefined) user.name = dto.name.trim();
+    if (dto.phone !== undefined) user.phone = dto.phone.trim() || null;
+    if (dto.title !== undefined) user.title = dto.title.trim() || null;
+
+    if (dto.email !== undefined) {
+      const email = dto.email.trim().toLowerCase();
+      if (email !== user.email) {
+        const existing = await this.userRepo.findOne({ where: { email } });
+        if (existing) throw new ConflictException(`Email ${email} is already registered`);
+        user.email = email;
+        user.emailVerifiedAt = null;
+      }
+    }
+
+    await this.userRepo.save(user);
+    return this.findById(id);
+  }
+
   async updateRole(id: string, roleName: RoleName): Promise<User> {
     const user = await this.findById(id);
     user.role = await this.getRole(roleName);
@@ -86,45 +128,147 @@ export class UsersService {
   }
 
   /** Full role × module permission dot-matrix for the staff-access screen. */
-  async getPermissionMatrix(): Promise<Role[]> {
-    return this.roleRepo.find({
-      relations: { permissions: true },
-      order: { name: 'ASC' },
-    });
+  async getPermissionMatrix(): Promise<RolePermissionMatrixRow[]> {
+    const [roles, memberCounts] = await Promise.all([
+      this.roleRepo.find({ relations: { permissions: true }, order: { name: 'ASC' } }),
+      this.activeUserCounts(this.dataSource.manager),
+    ]);
+    return roles.map((role) => this.matrixRow(role, memberCounts.get(role.id) ?? 0));
   }
 
   /**
-   * Replace the whole permission set for one role (PUT semantics). At least
-   * one module must be granted, and every role must keep STAFF_ACCESS so the
-   * owner is never locked out of managing access.
+   * Replace a complete role permission set under a transaction. Role writes
+   * serialize on a transaction-scoped advisory lock so the last full-access
+   * staff-access holder cannot be removed by concurrent updates.
    */
   async updateRolePermissions(
     roleName: RoleName,
     permissions: PermissionEntryDto[],
-  ): Promise<Role> {
-    const role = await this.getRole(roleName);
-    if (
-      ACCESS_RANK[
-        permissions.find((p) => p.module === ModuleName.STAFF_ACCESS)?.accessLevel ??
-          AccessLevel.NONE
-      ] < ACCESS_RANK[AccessLevel.VIEW]
-    ) {
-      throw new ConflictException(
-        'STAFF_ACCESS must keep at least view access so the owner is never locked out',
-      );
+    baseVersion?: string,
+  ): Promise<RolePermissionMatrixRow> {
+    if (roleName === RoleName.BUSINESS_OWNER_ADMIN) {
+      throw new ConflictException('Business owner permissions are system-managed and cannot be changed');
     }
-    await this.permissionRepo.delete({ role: { id: role.id } });
-    await this.permissionRepo.save(
-      permissions.map((p) =>
-        this.permissionRepo.create({ role, module: p.module, accessLevel: p.accessLevel }),
-      ),
-    );
-    const updated = await this.roleRepo.findOne({
-      where: { name: roleName },
-      relations: { permissions: true },
+    if (EXTERNAL_ROLES.has(roleName)) {
+      throw new ForbiddenException('External role permissions cannot be changed from staff settings');
+    }
+    this.assertCompletePermissionSet(permissions);
+
+    return this.dataSource.transaction(async (manager) => {
+      await manager.query('SELECT pg_advisory_xact_lock($1)', [PERMISSION_WRITE_LOCK]);
+
+      const [roles, memberCounts] = await Promise.all([
+        manager.getRepository(Role).find({ relations: { permissions: true }, order: { name: 'ASC' } }),
+        this.activeUserCounts(manager),
+      ]);
+      const role = roles.find((item) => item.name === roleName);
+      if (!role) throw new NotFoundException(`Role ${roleName} not seeded`);
+
+      const currentVersion = this.permissionVersion(role.permissions ?? []);
+      if (baseVersion !== undefined && baseVersion !== currentVersion) {
+        throw new ConflictException({
+          message: `Role '${roleName}' permissions changed since they were loaded`,
+          permissions: this.canonicalPermissions(role.permissions ?? []),
+          version: currentVersion,
+        });
+      }
+
+      const staffAccess = permissions.find((permission) => permission.module === ModuleName.STAFF_ACCESS);
+      if (!staffAccess || ACCESS_RANK[staffAccess.accessLevel] < ACCESS_RANK[AccessLevel.VIEW]) {
+        throw new ConflictException(
+          'STAFF_ACCESS must keep at least view access so the owner is never locked out',
+        );
+      }
+
+      const activeFullAccessUsers = roles.reduce((total, item) => {
+        const rolePermissions =
+          item.id === role.id
+            ? permissions
+            : item.permissions ?? [];
+        const hasFullStaffAccess = rolePermissions.some(
+          (permission) =>
+            permission.module === ModuleName.STAFF_ACCESS &&
+            permission.accessLevel === AccessLevel.FULL,
+        );
+        return total + (hasFullStaffAccess ? (memberCounts.get(item.id) ?? 0) : 0);
+      }, 0);
+      if (activeFullAccessUsers === 0) {
+        throw new ConflictException(
+          'At least one active user must retain full staff-access permission',
+        );
+      }
+
+      const permissionRepo = manager.getRepository(Permission);
+      await permissionRepo.delete({ role: { id: role.id } });
+      const insertedPermissions = await permissionRepo.save(
+        permissions.map((permission) =>
+          permissionRepo.create({
+            role,
+            module: permission.module,
+            accessLevel: permission.accessLevel,
+          }),
+        ),
+      );
+      const updatedRole: Role = { ...role, permissions: insertedPermissions };
+      return this.matrixRow(updatedRole, memberCounts.get(role.id) ?? 0);
     });
-    if (!updated) throw new NotFoundException(`Role ${roleName} not found`);
-    return updated;
+  }
+
+  private assertCompletePermissionSet(permissions: PermissionEntryDto[]): void {
+    const modules = Object.values(ModuleName);
+    const supplied = permissions.map((permission) => permission.module);
+    if (
+      supplied.length !== modules.length ||
+      new Set(supplied).size !== modules.length ||
+      modules.some((module) => !supplied.includes(module))
+    ) {
+      throw new BadRequestException('Permissions must include exactly one entry for every module');
+    }
+  }
+
+  private async activeUserCounts(manager: EntityManager): Promise<Map<string, number>> {
+    const rows = await manager
+      .getRepository(User)
+      .createQueryBuilder('user')
+      .select('role.id', 'roleId')
+      .addSelect('COUNT(user.id)', 'memberCount')
+      .innerJoin('user.role', 'role')
+      .where('user.status = :status', { status: UserStatus.ACTIVE })
+      .groupBy('role.id')
+      .getRawMany<{ roleId: string; memberCount: string }>();
+    return new Map(rows.map((row) => [row.roleId, Number(row.memberCount)]));
+  }
+
+  private canonicalPermissions(
+    permissions: Array<{ module: ModuleName; accessLevel: AccessLevel }>,
+  ): Array<{ module: ModuleName; accessLevel: AccessLevel }> {
+    const levels = new Map(permissions.map((permission) => [permission.module, permission.accessLevel]));
+    return Object.values(ModuleName)
+      .sort()
+      .map((module) => ({ module, accessLevel: levels.get(module) ?? AccessLevel.NONE }));
+  }
+
+  private permissionVersion(
+    permissions: Array<{ module: ModuleName; accessLevel: AccessLevel }>,
+  ): string {
+    const canonical = this.canonicalPermissions(permissions);
+    return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
+  }
+
+  private matrixRow(role: Role, memberCount: number): RolePermissionMatrixRow {
+    const permissions = (role.permissions ?? []).map(({ id, module, accessLevel }) => ({
+      id,
+      module,
+      accessLevel,
+    }));
+    return {
+      id: role.id,
+      name: role.name,
+      permissions,
+      accessLevels: Object.values(AccessLevel),
+      version: this.permissionVersion(permissions),
+      memberCount,
+    };
   }
 
   private async getRole(name: RoleName): Promise<Role> {

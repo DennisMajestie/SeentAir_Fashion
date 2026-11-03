@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { Notification, NotificationChannel, NotificationStatus } from './notification.entity';
+import { NotificationPreference } from './notification-preference.entity';
 import { MailAdapter } from '../auth/mail.adapter';
 import { TermiiAdapter } from './termii.adapter';
 
@@ -20,10 +21,36 @@ export class NotificationsService {
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepo: Repository<Notification>,
+    @InjectRepository(NotificationPreference)
+    private readonly preferenceRepo: Repository<NotificationPreference>,
     private readonly termii: TermiiAdapter,
     private readonly usersService: UsersService,
     private readonly mailAdapter: MailAdapter,
   ) {}
+
+  async getPreferences(userId: string): Promise<Record<string, boolean>> {
+    const row = await this.preferenceRepo.findOne({ where: { userId } });
+    return row?.preferences ?? {};
+  }
+
+  async updatePreferences(
+    userId: string,
+    preferences: Record<string, boolean>,
+  ): Promise<Record<string, boolean>> {
+    const current = await this.getPreferences(userId);
+    const merged = { ...current };
+    for (const [key, value] of Object.entries(preferences)) {
+      if (typeof value === 'boolean') merged[key] = value;
+    }
+    let row = await this.preferenceRepo.findOne({ where: { userId } });
+    if (!row) {
+      row = this.preferenceRepo.create({ userId, preferences: merged });
+    } else {
+      row.preferences = merged;
+    }
+    await this.preferenceRepo.save(row);
+    return merged;
+  }
 
   /** In-platform notifications always land (stored in the database). */
   async notifyInPlatform(input: NotifyInput): Promise<Notification> {
@@ -149,6 +176,21 @@ export class NotificationsService {
       skip: (page - 1) * limit,
       take: limit,
     });
+    // Persisted GET behavior: reading your notifications marks them as read.
+    const now = new Date();
+    for (const n of data) {
+      if (!n.readAt) n.readAt = now;
+    }
+    if (data.length) await this.notificationRepo.save(data);
     return { data, total };
+  }
+
+  async markRead(id: string, recipientId: string): Promise<Notification> {
+    const notification = await this.notificationRepo.findOne({ where: { id, recipientId } });
+    if (!notification) {
+      throw new NotFoundException(`Notification ${id} not found`);
+    }
+    notification.readAt = new Date();
+    return this.notificationRepo.save(notification);
   }
 }

@@ -3,12 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailAdapter } from '../auth/mail.adapter';
 import { UsersModule } from '../users/users.module';
 import { Notification } from './notification.entity';
+import { NotificationPreference } from './notification-preference.entity';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { TermiiAdapter } from './termii.adapter';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Notification]), UsersModule],
+  imports: [TypeOrmModule.forFeature([Notification, NotificationPreference]), UsersModule],
   controllers: [NotificationsController],
   // MailAdapter is provided here rather than imported from AuthModule: it
   // depends on nothing but ConfigService, so a local instance avoids coupling

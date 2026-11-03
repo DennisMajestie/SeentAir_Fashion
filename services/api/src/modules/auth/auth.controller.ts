@@ -188,6 +188,13 @@ export class AuthController {
     for (const row of matrix) {
       if (row.accessLevel !== AccessLevel.NONE) access[row.module] = row.accessLevel;
     }
-    return { ...user, name: fresh.name, totpEnabled: fresh.totpEnabled, access };
+    return {
+      ...user,
+      name: fresh.name,
+      phone: fresh.phone,
+      title: fresh.title,
+      totpEnabled: fresh.totpEnabled,
+      access,
+    };
   }
 }

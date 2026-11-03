@@ -43,4 +43,7 @@ export class Notification {
 
   @CreateDateColumn({ name: 'sent_at' })
   sentAt: Date;
+
+  @Column({ name: 'read_at', type: 'timestamptz', nullable: true })
+  readAt: Date | null;
 }
