@@ -8,12 +8,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { createHash } from 'node:crypto';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import { ACCESS_RANK, AccessLevel, ModuleName, RoleName, UserStatus } from '../../common/enums';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { PermissionEntryDto } from './dto/update-permissions.dto';
 import { Permission } from './entities/permission.entity';
+import { RefreshToken } from '../auth/refresh-token.entity';
 import { Role } from './entities/role.entity';
 import { User } from './entities/user.entity';
 
@@ -35,6 +36,7 @@ export class UsersService {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(Role) private readonly roleRepo: Repository<Role>,
     @InjectRepository(Permission) private readonly permissionRepo: Repository<Permission>,
+    @InjectRepository(RefreshToken) private readonly refreshTokenRepo: Repository<RefreshToken>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -124,6 +126,18 @@ export class UsersService {
     const user = await this.findById(id);
     user.role = await this.getRole(roleName);
     await this.userRepo.save(user);
+    return this.findById(id);
+  }
+
+  /** Deactivate a staff member: sets status to DISABLED and revokes all sessions. */
+  async deactivate(id: string): Promise<User> {
+    const user = await this.findById(id);
+    user.status = UserStatus.DISABLED;
+    await this.userRepo.save(user);
+
+    // Revoke all active refresh tokens so the user is logged out everywhere
+    await this.refreshTokenRepo.update({ userId: id, revokedAt: IsNull() }, { revokedAt: new Date() });
+
     return this.findById(id);
   }
 

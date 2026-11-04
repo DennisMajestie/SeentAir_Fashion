@@ -74,4 +74,10 @@ export class UsersController {
   updateRole(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateRoleDto) {
     return this.usersService.updateRole(id, dto.role);
   }
+
+  @Patch(':id/deactivate')
+  @RequireAccess(ModuleName.STAFF_ACCESS, AccessLevel.FULL)
+  deactivate(@Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.deactivate(id);
+  }
 }

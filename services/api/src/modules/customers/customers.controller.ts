@@ -10,6 +10,7 @@ import { RequireAccess } from '../../common/decorators/require-access.decorator'
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CustomersService } from './customers.service';
+import { CustomerAggregate } from './dto/customer-aggregate.dto';
 
 @ApiTags('Customers')
 @ApiBearerAuth()
@@ -35,5 +36,11 @@ export class CustomersController {
   @RequireAccess(ModuleName.CUSTOMERS, AccessLevel.VIEW)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.customersService.findById(id);
+  }
+
+  @Get(':id/aggregate')
+  @RequireAccess(ModuleName.CUSTOMERS, AccessLevel.VIEW)
+  aggregate(@Param('id', ParseUUIDPipe) id: string) {
+    return this.customersService.aggregate(id);
   }
 }
