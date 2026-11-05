@@ -1,7 +1,14 @@
-import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
-import { AccessLevel, ModuleName, RoleName } from '../../common/enums';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { DataSource, EntityManager, IsNull } from 'typeorm';
+import { AccessLevel, ModuleName, RoleName, UserStatus } from '../../common/enums';
 import { Permission } from './entities/permission.entity';
+import { RefreshToken } from '../auth/refresh-token.entity';
 import { Role } from './entities/role.entity';
 import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
@@ -35,7 +42,10 @@ function role(
   } as Role;
 }
 
-function makeHarness(roles: Role[], activeCounts: Array<{ roleId: string; memberCount: string }> = []) {
+function makeHarness(
+  roles: Role[],
+  activeCounts: Array<{ roleId: string; memberCount: string }> = [],
+) {
   const builder = {
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
@@ -52,12 +62,19 @@ function makeHarness(roles: Role[], activeCounts: Array<{ roleId: string; member
       rows.map((row, index) => ({ ...row, id: `saved-${index}` })),
     ),
   };
-  const txUserRepo = { createQueryBuilder: jest.fn(() => builder) };
+  const txRefreshTokenRepo = {
+    update: jest.fn(async () => ({ affected: 1 })),
+  };
+  const txUserRepo = { findOne: jest.fn(async (params: any) => {
+      if (params.where?.id === 'user-id') return { id: 'user-id', name: 'Test User', role: RoleName.SALES, status: UserStatus.DISABLED };
+      return null;
+    }), createQueryBuilder: jest.fn(() => builder), save: jest.fn(async (u: any) => u) };
   const manager = {
     query: jest.fn(async () => undefined),
     getRepository: jest.fn((entity: unknown) => {
       if (entity === Role) return txRoleRepo;
       if (entity === Permission) return txPermissionRepo;
+      if (entity === RefreshToken) return txRefreshTokenRepo;
       if (entity === User) return txUserRepo;
       throw new Error('Unexpected repository');
     }),
@@ -69,19 +86,29 @@ function makeHarness(roles: Role[], activeCounts: Array<{ roleId: string; member
     ),
   } as unknown as DataSource;
   const roleRepo = { find: jest.fn(async () => roles) };
-  const userRepo = { createQueryBuilder: jest.fn(() => builder) };
+  const userRepo = txUserRepo;
   const permissionRepo = {};
   const service = new UsersService(
     userRepo as never,
     roleRepo as never,
     permissionRepo as never,
+    txRefreshTokenRepo as never,
     dataSource,
   );
 
-  return { service, dataSource, manager, builder, roleRepo, txPermissionRepo };
+  return {
+    service,
+    dataSource,
+    manager,
+    builder,
+    roleRepo: userRepo,
+    txPermissionRepo: txPermissionRepo,
+    refreshTokenRepo: txRefreshTokenRepo,
+    userRepo,
+  };
 }
 
-describe('UsersService role permission safeguards', () => {
+describe('UsersService role permission matrix', () => {
   it('rejects owner and external role edits before opening a transaction', async () => {
     const harness = makeHarness([]);
     const permissions = permissionSet({ [ModuleName.STAFF_ACCESS]: AccessLevel.FULL });
@@ -161,7 +188,7 @@ describe('UsersService role permission safeguards', () => {
     );
   });
 
-  it('accepts a matching or absent baseVersion and rejects a stale version before writes', async () => {
+  it('accepts a matching or absent baseVersion and rejects a stale version', async () => {
     const management = role('management-id', RoleName.MANAGEMENT, AccessLevel.FULL);
     const owner = role('owner-id', RoleName.BUSINESS_OWNER_ADMIN, AccessLevel.FULL);
     const harness = makeHarness(
@@ -190,5 +217,41 @@ describe('UsersService role permission safeguards', () => {
     await expect(
       harness.service.updateRolePermissions(RoleName.MANAGEMENT, permissions),
     ).resolves.toMatchObject({ name: RoleName.MANAGEMENT });
+  });
+});
+
+describe('deactivate', () => {
+  it('sets status to DISABLED and revokes all refresh tokens', async () => {
+    const harness = makeHarness([
+      role('user-id', RoleName.SALES, AccessLevel.FULL),
+    ]);
+    const service = new UsersService(
+      harness.userRepo as never,
+      harness.roleRepo as never,
+      harness.txPermissionRepo as never,
+      harness.refreshTokenRepo as never,
+      harness.dataSource,
+    );
+
+    const result = await service.deactivate('user-id');
+
+    expect(result.status).toBe(UserStatus.DISABLED);
+    expect(harness.refreshTokenRepo.update).toHaveBeenCalledWith(
+      { userId: 'user-id', revokedAt: IsNull() },
+      { revokedAt: expect.any(Date) },
+    );
+  });
+
+  it('throws NotFoundException when user does not exist', async () => {
+    const harness = makeHarness([]);
+    const service = new UsersService(
+      harness.userRepo as never,
+      harness.roleRepo as never,
+      harness.txPermissionRepo as never,
+      harness.refreshTokenRepo as never,
+      harness.dataSource,
+    );
+
+    await expect(service.deactivate('nonexistent')).rejects.toThrow(NotFoundException);
   });
 });
