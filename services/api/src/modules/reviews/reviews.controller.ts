@@ -7,6 +7,7 @@ import { RequireAccess } from '../../common/decorators/require-access.decorator'
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { CreateReviewDto } from './dto/create-review.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ModerateReviewDto } from './dto/moderate-review.dto';
 import { ReviewsService } from './reviews.service';
 
@@ -43,13 +44,12 @@ export class ReviewsController {
   @Get('products/:id/reviews')
   findForProduct(
     @Param('id', ParseUUIDPipe) productId: string,
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
+    @Query() pagination: PaginationQueryDto,
   ) {
     return this.reviewsService.findPublishedForProduct(
       productId,
-      parseInt(page, 10),
-      parseInt(limit, 10),
+      pagination.page ?? 1,
+      pagination.limit ?? 20,
     );
   }
 

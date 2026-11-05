@@ -14,8 +14,11 @@ import { RequireAccess } from '../../common/decorators/require-access.decorator'
 import { AccessLevel, ApprovalActionType, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { ApprovalsService } from '../approvals/approvals.service';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { RecordMovementDto } from './dto/record-movement.dto';
+import { CreateStockCountDto } from './dto/create-stock-count.dto';
 import { InventoryItemType } from './inventory-movement.entity';
+import { InventoryCountsService } from './inventory-counts.service';
 import { InventoryService } from './inventory.service';
 
 @ApiTags('Inventory')
@@ -24,6 +27,7 @@ import { InventoryService } from './inventory.service';
 export class InventoryController {
   constructor(
     private readonly inventoryService: InventoryService,
+    private readonly inventoryCounts: InventoryCountsService,
     private readonly approvalsService: ApprovalsService,
   ) {}
 
@@ -40,6 +44,18 @@ export class InventoryController {
     return this.inventoryService.verify();
   }
 
+  @Get('counts')
+  @RequireAccess(ModuleName.INVENTORY, AccessLevel.VIEW)
+  counts(@Query() pagination: PaginationQueryDto) {
+    return this.inventoryCounts.list(pagination.page ?? 1, pagination.limit ?? 50);
+  }
+
+  @Post('counts')
+  @RequireAccess(ModuleName.INVENTORY, AccessLevel.FULL)
+  recordCount(@Body() dto: CreateStockCountDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.inventoryCounts.record(dto, user.id);
+  }
+
   /** Per-item ledger digest: derived quantity + hash-chain head ("badge"). */
   @Get('digest/:itemType/:itemId')
   @RequireAccess(ModuleName.INVENTORY, AccessLevel.VIEW)
@@ -54,15 +70,14 @@ export class InventoryController {
   @RequireAccess(ModuleName.INVENTORY, AccessLevel.VIEW)
   movements(
     @Param('variantId', ParseUUIDPipe) variantId: string,
-    @Query('page') page = '1',
-    @Query('limit') limit = '50',
+    @Query() pagination: PaginationQueryDto,
     @Query('itemType') itemType: InventoryItemType = InventoryItemType.VARIANT,
   ) {
     return this.inventoryService.movements(
       itemType,
       variantId,
-      parseInt(page, 10),
-      parseInt(limit, 10),
+      pagination.page ?? 1,
+      pagination.limit ?? 50,
     );
   }
 

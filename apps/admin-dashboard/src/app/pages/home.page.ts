@@ -67,6 +67,25 @@ interface SellerRow {
   unitsSold: number;
   revenue: number;
 }
+
+function sellerImagesBySku(products: Array<Record<string, unknown>>): Record<string, string> {
+  const images: Record<string, string> = {};
+  for (const product of products) {
+    const primaryImageUrl =
+      typeof product['primaryImageUrl'] === 'string' ? product['primaryImageUrl'].trim() : '';
+    const variants = Array.isArray(product['variants']) ? product['variants'] : [];
+    for (const item of variants) {
+      if (!item || typeof item !== 'object') continue;
+      const variant = item as Record<string, unknown>;
+      const sku = typeof variant['sku'] === 'string' ? variant['sku'].trim() : '';
+      const variantImageUrl =
+        typeof variant['imageUrl'] === 'string' ? variant['imageUrl'].trim() : '';
+      if (sku) images[sku] = variantImageUrl || primaryImageUrl;
+    }
+  }
+  return images;
+}
+
 interface DeliveryRow {
   id: string;
   carrier: string;
@@ -839,9 +858,20 @@ const GAUGE_TICKS = 84;
                 <div class="sd-rows">
                   @for (s of visibleSellers(); track s.sku) {
                     <div class="sd-row">
-                      <span class="sd-tile sd-tile--gold" aria-hidden="true">
-                        <se-icon name="tag" />
-                      </span>
+                      @if (sellerImages()[s.sku]; as photo) {
+                        <span class="sd-tile sd-tile--gold">
+                          <img
+                            class="sd-seller__photo"
+                            [src]="photo"
+                            [alt]="s.productName"
+                            style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit"
+                          />
+                        </span>
+                      } @else {
+                        <span class="sd-tile sd-tile--gold" aria-hidden="true">
+                          <se-icon name="tag" />
+                        </span>
+                      }
                       <span class="sd-row__tx">
                         <b>{{ s.productName }}</b>
                         <small>{{ s.sku }}</small>
@@ -966,6 +996,7 @@ export class HomePage implements OnDestroy {
   private readonly campaigns = signal<Campaign[]>([]);
   readonly bestSellers = signal<SellerRow[]>([]);
   readonly slowMovers = signal<SellerRow[]>([]);
+  readonly sellerImages = signal<Record<string, string>>({});
 
   // ---- what this role sees: decided once from its access ----
   /** Sales and profit are money: shown to roles that can see payments or the books. */
@@ -1166,9 +1197,12 @@ export class HomePage implements OnDestroy {
         ...quiet,
       });
     }
-    if (this.access.can('inventory')) {
+    if (this.access.can('inventory') || (this.access.can('analytics') && this.access.can('catalogue'))) {
       this.api.products().subscribe({
-        next: (res) => this.productsTotal.set(res.total),
+        next: (res) => {
+          if (this.access.can('inventory')) this.productsTotal.set(res.total);
+          this.sellerImages.set(sellerImagesBySku(res.data));
+        },
         ...quiet,
       });
     }

@@ -9,7 +9,7 @@ export class AddCustomersModuleEnum1789591000000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TYPE "public"."permissions_module_enum" ADD VALUE 'customers'`,
+      `ALTER TYPE "public"."permissions_module_enum" ADD VALUE IF NOT EXISTS 'customers'`,
     );
   }
 

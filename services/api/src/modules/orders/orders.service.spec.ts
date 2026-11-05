@@ -5,6 +5,7 @@ import { BadRequestException, ConflictException, ForbiddenException } from '@nes
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
+import { createHash } from 'crypto';
 import { AccessLevel, ModuleName, RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { AccountingService } from '../accounting/accounting.service';
@@ -19,7 +20,7 @@ import { WholesaleService } from '../wholesale/wholesale.service';
 import { OrderCheckoutShipping } from '../checkout-shipping/entities/order-checkout-shipping.entity';
 import { OrderAccessToken } from './entities/order-access-token.entity';
 import { OrderStatusEvent } from './entities/order-status-event.entity';
-import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
+import { Order, OrderChannel, OrderStatus, PaymentStatus } from './entities/order.entity';
 import { Payment, PaymentMethod, PaymentRecordStatus } from './entities/payment.entity';
 import { DeliveryLeg } from '../logistics/entities/delivery-leg.entity';
 import { OrderStatusBus } from './order-status.bus';
@@ -81,6 +82,11 @@ function harness() {
   // Order tracking reads delivery legs; no legs by default in these fixtures.
   const legRepo = {
     find: jest.fn(async (): Promise<Row[]> => []),
+  };
+  const accessTokenRepo = {
+    create: jest.fn((v) => v),
+    save: jest.fn(async (v) => v),
+    findOne: jest.fn(),
   };
   const repoByEntity = new Map<unknown, unknown>([
     [Order, orderRepo],
@@ -153,6 +159,7 @@ function harness() {
     paymentRepo,
     eventRepo,
     legRepo,
+    accessTokenRepo,
     dataSource,
     setOrder: (o: Row) => {
       order = o;
@@ -257,11 +264,7 @@ describe('OrdersService — payment rules', () => {
         { provide: getRepositoryToken(DeliveryLeg), useValue: h.legRepo },
         {
           provide: getRepositoryToken(OrderAccessToken),
-          useValue: {
-            create: jest.fn((v) => v),
-            save: jest.fn(async (v) => v),
-            findOne: jest.fn(),
-          },
+          useValue: h.accessTokenRepo,
         },
         {
           provide: getRepositoryToken(OrderCheckoutShipping),
@@ -293,6 +296,130 @@ describe('OrdersService — payment rules', () => {
     service = moduleRef.get(OrdersService);
   });
 
+  describe('order detail projection', () => {
+    function setOrderDetailFixture(): void {
+      Object.assign(h.order(), {
+        orderNumber: '1001',
+        channel: OrderChannel.RETAIL,
+        status: OrderStatus.STOCK_EXCEPTION,
+        paymentStatus: PaymentStatus.PAID,
+        totalAmount: 17000,
+        deliveryFee: 1200,
+        deliveryMethod: null,
+        shippingAddress: { state: 'Abia', city: 'Aba', line: '1 Market Road', phone: '08000000000' },
+        guestName: 'Ada Buyer',
+        guestEmail: 'ada@example.test',
+        customer: { id: 'cust-1', name: 'Ada Buyer', email: 'ada@example.test', phone: null },
+        customerNote: 'Call on arrival',
+        deliveryNote: 'Keep upright',
+        grossWeightKg: 4.5,
+        palletRef: 'PAL-1',
+        qrStencilRef: 'OQR-1',
+        items: [
+          {
+            id: 'item-1',
+            variant: {
+              product: { name: 'Classic Tee' },
+              sku: 'TEE-BLK-M',
+              size: 'M',
+              colour: 'Black',
+            },
+            quantity: 2,
+            unitPrice: 8500,
+            shortfall: 1,
+          },
+        ],
+        deliveredAt: null,
+        createdAt: new Date('2026-01-01T10:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+      });
+      h.eventRepo.find.mockResolvedValue([
+        {
+          status: OrderStatus.ORDER_RECEIVED,
+          note: 'Paid in full',
+          actorId: finance.id,
+          actorKind: 'staff',
+          createdAt: new Date('2026-01-01T10:01:00.000Z'),
+        },
+        {
+          status: OrderStatus.STOCK_EXCEPTION,
+          note: 'Internal stock note',
+          actorId: null,
+          actorKind: 'system',
+          createdAt: new Date('2026-01-01T10:02:00.000Z'),
+        },
+      ]);
+    }
+
+    it('limits customer detail and hides internal status events', async () => {
+      setOrderDetailFixture();
+      permissionsService.getAccessLevel
+        .mockResolvedValueOnce(AccessLevel.OWN)
+        .mockResolvedValueOnce(AccessLevel.OWN);
+
+      const detail = await service.detail('o1', customer);
+
+      expect(detail.status).toBe(CUSTOMER_AWAITING_STOCK);
+      expect(detail.orderNumber).toBe('SO-1001');
+      expect(detail.events).toEqual([
+        expect.objectContaining({ status: OrderStatus.ORDER_RECEIVED }),
+      ]);
+      expect(detail.events[0]).not.toHaveProperty('note');
+      expect(detail.items[0]).not.toHaveProperty('shortfall');
+      expect(detail).not.toHaveProperty('deliveryNote');
+    });
+
+    it('allows a guest token to read only the customer projection', async () => {
+      setOrderDetailFixture();
+      h.accessTokenRepo.findOne.mockResolvedValue({
+        orderId: 'o1',
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+
+      const detail = await service.detail('o1', undefined, 'guest-token');
+
+      expect(h.accessTokenRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          tokenHash: createHash('sha256').update('guest-token').digest('hex'),
+        },
+      });
+      expect(detail.events[0]).not.toHaveProperty('actorId');
+      expect(detail).not.toHaveProperty('deliveryNote');
+    });
+
+    it('does not let a guest token widen signed-in access', async () => {
+      setOrderDetailFixture();
+      const outsider: AuthenticatedUser = {
+        id: 'outsider-1',
+        email: 'outsider@example.test',
+        role: RoleName.PARTNER_INVESTOR,
+      };
+      permissionsService.getAccessLevel
+        .mockResolvedValueOnce(AccessLevel.NONE)
+        .mockResolvedValueOnce(AccessLevel.NONE);
+
+      await expect(service.detail('o1', outsider, 'guest-token')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(h.accessTokenRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('includes internal detail and actor attribution for staff', async () => {
+      setOrderDetailFixture();
+
+      const detail = await service.detail('o1', finance);
+
+      expect(detail.status).toBe(OrderStatus.STOCK_EXCEPTION);
+      expect(detail.deliveryNote).toBe('Keep upright');
+      expect(detail.items[0].shortfall).toBe(1);
+      expect(detail.events[0]).toMatchObject({
+        actorId: finance.id,
+        actorKind: 'staff',
+        note: 'Paid in full',
+      });
+    });
+  });
+
   // ---- offline payments (unchanged rules) ----
 
   it('rejects a part-payment (amount below total)', async () => {
@@ -316,6 +443,13 @@ describe('OrdersService — payment rules', () => {
     );
     expect(h.order()['paymentStatus']).toBe(PaymentStatus.PAID);
     expect(h.order()['status']).toBe(OrderStatus.ORDER_RECEIVED);
+    expect(h.eventRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: OrderStatus.ORDER_RECEIVED,
+        actorId: finance.id,
+        actorKind: 'staff',
+      }),
+    );
     expect(inventoryService.record).toHaveBeenCalledWith(
       expect.objectContaining({
         itemId: 'v1',
@@ -324,6 +458,25 @@ describe('OrdersService — payment rules', () => {
         referenceId: 'o1',
       }),
       expect.anything(),
+    );
+  });
+
+  it('attributes staff status transitions to the signed-in actor', async () => {
+    permissionsService.getAccessLevel
+      .mockImplementationOnce(async () => AccessLevel.FULL)
+      .mockImplementationOnce(async () => AccessLevel.FULL);
+    h.order()['status'] = OrderStatus.ORDER_RECEIVED;
+    h.order()['paymentStatus'] = PaymentStatus.PAID;
+
+    await service.updateStatus('o1', OrderStatus.PROCESSING, 'Packed', finance);
+
+    expect(h.eventRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: OrderStatus.PROCESSING,
+        note: 'Packed',
+        actorId: finance.id,
+        actorKind: 'staff',
+      }),
     );
   });
 
@@ -501,7 +654,11 @@ describe('OrdersService — payment rules', () => {
     expect(accountingService.record).toHaveBeenCalledTimes(1);
     expect(h.eventRepo.save).toHaveBeenCalledTimes(1);
     expect(h.eventRepo.save).toHaveBeenCalledWith(
-      expect.objectContaining({ status: OrderStatus.ORDER_RECEIVED }),
+      expect.objectContaining({
+        status: OrderStatus.ORDER_RECEIVED,
+        actorId: null,
+        actorKind: 'system',
+      }),
     );
     expect(h.order()['paymentStatus']).toBe(PaymentStatus.PAID);
     expect(h.payment('p1')?.['status']).toBe(PaymentRecordStatus.SUCCESS);

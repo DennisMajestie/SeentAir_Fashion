@@ -31,6 +31,7 @@ export const PERMISSION_MATRIX: Record<RoleName, Partial<Record<ModuleName, Acce
     [ModuleName.STAFF_ACCESS]: VIEW,
     [ModuleName.APPROVALS_AUDIT]: APPROVE,
     [ModuleName.COMMUNICATION]: VIEW,
+    [ModuleName.CUSTOMERS]: VIEW,
   },
 
   [RoleName.SALES]: {
@@ -45,6 +46,7 @@ export const PERMISSION_MATRIX: Record<RoleName, Partial<Record<ModuleName, Acce
     [ModuleName.MARKETING]: VIEW,
     [ModuleName.ANALYTICS]: VIEW,
     [ModuleName.COMMUNICATION]: FULL,
+    [ModuleName.CUSTOMERS]: VIEW,
   },
 
   [RoleName.INVENTORY]: {
@@ -57,6 +59,7 @@ export const PERMISSION_MATRIX: Record<RoleName, Partial<Record<ModuleName, Acce
     [ModuleName.RETURNS]: VIEW,
     [ModuleName.LOGISTICS]: VIEW,
     [ModuleName.ANALYTICS]: VIEW,
+    [ModuleName.CUSTOMERS]: VIEW,
   },
 
   [RoleName.PRODUCTION]: {
@@ -80,6 +83,7 @@ export const PERMISSION_MATRIX: Record<RoleName, Partial<Record<ModuleName, Acce
     [ModuleName.ANALYTICS]: VIEW,
     [ModuleName.PARTNERS]: VIEW,
     [ModuleName.APPROVALS_AUDIT]: APPROVE,
+    [ModuleName.CUSTOMERS]: VIEW,
   },
 
   // Partner/Investor: summaries and permitted reports only — never
@@ -92,6 +96,7 @@ export const PERMISSION_MATRIX: Record<RoleName, Partial<Record<ModuleName, Acce
     [ModuleName.ACCOUNTING]: VIEW,
     [ModuleName.ANALYTICS]: VIEW,
     [ModuleName.PARTNERS]: OWN,
+    [ModuleName.CUSTOMERS]: VIEW,
   },
 
   [RoleName.WHOLESALER]: {
@@ -102,6 +107,7 @@ export const PERMISSION_MATRIX: Record<RoleName, Partial<Record<ModuleName, Acce
     [ModuleName.RETURNS]: OWN,
     [ModuleName.LOGISTICS]: OWN,
     [ModuleName.COMMUNICATION]: OWN,
+    [ModuleName.CUSTOMERS]: VIEW,
   },
 
   [RoleName.CUSTOMER]: {
@@ -111,6 +117,7 @@ export const PERMISSION_MATRIX: Record<RoleName, Partial<Record<ModuleName, Acce
     [ModuleName.RETURNS]: OWN,
     [ModuleName.LOGISTICS]: OWN,
     [ModuleName.COMMUNICATION]: OWN,
+    [ModuleName.CUSTOMERS]: VIEW,
   },
 };
 

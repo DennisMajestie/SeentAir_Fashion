@@ -54,6 +54,19 @@ ng e2e
 
 Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
 
+## Backend-connected sections
+
+The admin app uses the API for material purchase history, stock counts, help articles and staff help
+tickets, and checkout/platform settings. Material purchases are recorded through the existing
+approval-gated material purchase flow; this app does not implement purchase orders or supplier
+management. Stock-count differences are posted to the inventory movement ledger, and decreases
+require an approved stock-disposal request. Help articles are read-only; tickets support
+`open`, `in_progress`, and `resolved` statuses.
+
+Settings reuse the checkout settings API. The API requires `LOGISTICS/FULL` even to read settings,
+so the navigation and page restrict settings to roles with full logistics access. Warehouse
+transfers are not implemented.
+
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

@@ -150,6 +150,42 @@ describe('HomePage', () => {
   afterEach(() => fixture?.destroy());
 
   describe('for the owner', () => {
+    it('shows each seller photo from its matching API product SKU', () => {
+      mount(OWNER);
+      api.products.and.returnValue(
+        of({
+          data: [
+            {
+              primaryImageUrl: 'assets/products/product_01.png',
+              variants: [{ sku: 'SE-BRN-OS', imageUrl: 'assets/products/product_02.png' }],
+            },
+            {
+              primaryImageUrl: 'assets/products/product_03.png',
+              variants: [{ sku: 'SE-TEE-BLK-OS', imageUrl: null }],
+            },
+          ],
+          total: 2,
+        }),
+      );
+      api.bestSellers.and.returnValue(
+        of([
+          { sku: 'SE-BRN-OS', productName: 'Men 2-Piece Set', unitsSold: 3, revenue: 15000 },
+          { sku: 'SE-TEE-BLK-OS', productName: 'Men T-Shirt', unitsSold: 2, revenue: 10000 },
+        ]),
+      );
+
+      (fixture.componentInstance as any).loadSupporting();
+      fixture.detectChanges();
+
+      const photos = [...el().querySelectorAll<HTMLImageElement>('.sd-seller__photo')].map((image) =>
+        image.getAttribute('src'),
+      );
+      expect(photos).toEqual([
+        'assets/products/product_02.png',
+        'assets/products/product_03.png',
+      ]);
+    });
+
     it('answers the five questions, in order, each as one linked card', () => {
       mount(OWNER);
       expect(labels()).toEqual([

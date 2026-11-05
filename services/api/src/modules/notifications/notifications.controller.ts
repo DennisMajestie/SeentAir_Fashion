@@ -1,11 +1,13 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { IsIn, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { NotificationsService } from './notifications.service';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 
 class SendNotificationDto {
   @IsUUID()
@@ -37,14 +39,34 @@ export class NotificationsController {
   @Get()
   list(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
+    @Query() pagination: PaginationQueryDto,
   ) {
     return this.notificationsService.listForRecipient(
       user.id,
-      parseInt(page, 10),
-      parseInt(limit, 10),
+      pagination.page ?? 1,
+      pagination.limit ?? 20,
     );
+  }
+
+  @Get('preferences')
+  preferences(@CurrentUser() user: AuthenticatedUser) {
+    return this.notificationsService.getPreferences(user.id);
+  }
+
+  @Patch('preferences')
+  updatePreferences(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateNotificationPreferencesDto,
+  ) {
+    return this.notificationsService.updatePreferences(user.id, dto.preferences);
+  }
+
+  @Patch(':id/read')
+  markRead(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.notificationsService.markRead(id, user.id);
   }
 
   /** Staff-triggered sends (system events call the service directly). */

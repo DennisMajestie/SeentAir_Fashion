@@ -171,6 +171,8 @@ export class ReturnsService {
             order,
             status: OrderStatus.RETURNED,
             note: `Return resolved: ${dto.resolution} (${restocked ? 'restocked' : 'damaged'})`,
+            actorId: actor.id,
+            actorKind: 'staff',
           }),
         );
         return saved;

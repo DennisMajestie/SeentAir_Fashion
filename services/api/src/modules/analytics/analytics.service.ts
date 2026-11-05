@@ -1,17 +1,22 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { ApprovalStatus } from '../../common/enums';
 import { AccountingService } from '../accounting/accounting.service';
 import { ApprovalRequest } from '../approvals/approval-request.entity';
 import { InventoryItemType } from '../inventory/inventory-movement.entity';
-import { InventoryMovement } from '../inventory/inventory-movement.entity';
+import { InventoryMovement, MovementType } from '../inventory/inventory-movement.entity';
 import { InventoryService } from '../inventory/inventory.service';
 import { RawMaterial } from '../materials/entities/raw-material.entity';
 import { MaterialsService } from '../materials/materials.service';
 import { OrderItem } from '../orders/entities/order-item.entity';
 import { Order, OrderStatus, PaymentStatus } from '../orders/entities/order.entity';
+import { ProductVariant } from '../catalogue/entities/product-variant.entity';
 import { ProductionBatch } from '../production/entities/production-batch.entity';
+import {
+  PRODUCTION_COST_COMPONENTS,
+  ProductionCost,
+} from '../production/entities/production-cost.entity';
 
 const RANGE_STATUSES = [
   OrderStatus.AWAITING_PAYMENT,
@@ -54,6 +59,10 @@ export class AnalyticsService {
     @InjectRepository(OrderItem) private readonly orderItemRepo: Repository<OrderItem>,
     @InjectRepository(ProductionBatch)
     private readonly batchRepo: Repository<ProductionBatch>,
+    @InjectRepository(ProductionCost)
+    private readonly productionCostRepo: Repository<ProductionCost>,
+    @InjectRepository(ProductVariant)
+    private readonly variantRepo: Repository<ProductVariant>,
     @InjectRepository(ApprovalRequest)
     private readonly approvalRepo: Repository<ApprovalRequest>,
     @InjectRepository(RawMaterial) private readonly materialRepo: Repository<RawMaterial>,
@@ -65,12 +74,15 @@ export class AnalyticsService {
   ) {}
 
   async dashboard(range: 'today' | '7d' | '30d' | 'custom' = 'today', from?: string, to?: string) {
-    const startOfDay = new Date();
+    const now = new Date();
+    const startOfDay = new Date(now);
     startOfDay.setHours(0, 0, 0, 0);
+    const monthStart = new Date(startOfDay.getFullYear(), startOfDay.getMonth(), 1);
     const bounds = this.windowBounds(range, from, to);
 
     const [
       salesToday,
+      salesMonthToDate,
       profitReport,
       salesByChannel,
       salesBySource,
@@ -81,7 +93,8 @@ export class AnalyticsService {
       approvalsTrend,
       lowStockTrend,
     ] = await Promise.all([
-      this.paidOrderStats(startOfDay),
+      this.paidOrderStats(startOfDay, now),
+      this.paidOrderStats(monthStart, now),
       this.accountingService.report('profit'),
       this.groupPaidOrdersBy('channel'),
       this.groupPaidOrdersBy('source'),
@@ -101,6 +114,9 @@ export class AnalyticsService {
     const finishedGoodsUnits = inventorySummary
       .filter((i) => i.itemType === InventoryItemType.VARIANT)
       .reduce((sum, i) => sum + i.currentQuantity, 0);
+    const stockedVariantCount = inventorySummary.filter(
+      (i) => i.itemType === InventoryItemType.VARIANT && i.currentQuantity > 0,
+    ).length;
 
     const rows: Array<{
       created_at: Date;
@@ -137,6 +153,7 @@ export class AnalyticsService {
 
     return {
       salesToday,
+      salesMonthToDate,
       profitLoss: profitReport,
       salesByChannel,
       marketingSourcePerformance: salesBySource,
@@ -146,6 +163,7 @@ export class AnalyticsService {
       })),
       inventory: {
         finishedGoodsUnits,
+        stockedVariantCount,
         lowStockMaterialCount: lowStockMaterials.length,
         lowStockMaterials: lowStockMaterials.map((m) => ({
           id: m.id,
@@ -196,20 +214,386 @@ export class AnalyticsService {
     }));
   }
 
-  /** Low stock across materials (per-material threshold) and variants (global threshold). */
+  /** Low stock across materials (per-material threshold) and every catalogue variant. */
   async lowStock(variantThreshold = 10) {
-    const materials = await this.materialsService.lowStock();
-    const summary = await this.inventoryService.summary();
-    const lowVariants = summary.filter(
-      (i) => i.itemType === InventoryItemType.VARIANT && i.currentQuantity <= variantThreshold,
+    const [materials, variants, summary] = await Promise.all([
+      this.materialsService.lowStock(),
+      this.variantRepo.find({ relations: { product: true } }),
+      this.inventoryService.summary(),
+    ]);
+    const quantityByVariant = new Map(
+      summary
+        .filter((item) => item.itemType === InventoryItemType.VARIANT)
+        .map((item) => [item.itemId, item.currentQuantity]),
     );
+    const lowVariants = variants
+      .map((variant) => ({
+        variantId: variant.id,
+        sku: variant.sku,
+        productName: variant.product.name,
+        currentQuantity: quantityByVariant.get(variant.id) ?? 0,
+      }))
+      .filter((variant) => variant.currentQuantity <= variantThreshold);
     return {
       materials,
-      variants: lowVariants.map((v) => ({
-        variantId: v.itemId,
-        currentQuantity: v.currentQuantity,
+      variants: lowVariants.map((variant) => ({
+        ...variant,
+        reorderThreshold: variantThreshold,
       })),
       variantThreshold,
+    };
+  }
+
+  /** Finished-goods movements and recorded cost valuations for the last 12 buckets. */
+  async inventoryMovementTrend(period = 'monthly') {
+    const periodConfig = {
+      weekly: { unit: 'week', interval: '1 week', dateFormat: 'Mon FMDD' },
+      monthly: { unit: 'month', interval: '1 month', dateFormat: 'Mon' },
+      quarterly: { unit: 'quarter', interval: '3 months', dateFormat: '"Q"Q YYYY' },
+    } as const;
+    if (!Object.prototype.hasOwnProperty.call(periodConfig, period)) {
+      throw new BadRequestException('Period must be weekly, monthly, or quarterly.');
+    }
+    const config = periodConfig[period as keyof typeof periodConfig];
+    const bucketAt = (value: string) =>
+      config.unit === 'week'
+        ? `(date_trunc('week', ${value} + INTERVAL '1 day') - INTERVAL '1 day')`
+        : `date_trunc('${config.unit}', ${value})`;
+
+    const rows: Array<{
+      bucketStart: string;
+      label: string;
+      itemId: string | null;
+      stockIn: string | null;
+      stockOut: string | null;
+      unitsOnHand: string | null;
+    }> = await this.movementRepo.query(`
+      WITH buckets AS (
+        SELECT generate_series(
+          ${bucketAt("NOW() AT TIME ZONE 'UTC'")} - INTERVAL '${config.interval}' * 11,
+          ${bucketAt("NOW() AT TIME ZONE 'UTC'")},
+          INTERVAL '${config.interval}'
+        ) AS bucket
+      ),
+      items AS (
+        SELECT DISTINCT item_id
+        FROM inventory_movements
+        WHERE item_type = $1
+      ),
+      bucket_items AS (
+        SELECT buckets.bucket, items.item_id
+        FROM buckets
+        CROSS JOIN items
+      ),
+      opening_stock AS (
+        SELECT item_id, SUM(quantity_delta) AS quantity
+        FROM inventory_movements
+        WHERE item_type = $1
+          AND timestamp < (SELECT MIN(bucket) FROM buckets) AT TIME ZONE 'UTC'
+        GROUP BY item_id
+      ),
+      bucket_movements AS (
+        SELECT
+          item_id,
+          ${bucketAt("timestamp AT TIME ZONE 'UTC'")} AS bucket,
+          SUM(CASE WHEN quantity_delta > 0 THEN quantity_delta ELSE 0 END) AS stock_in,
+          SUM(CASE WHEN quantity_delta < 0 THEN -quantity_delta ELSE 0 END) AS stock_out,
+          SUM(quantity_delta) AS net_change
+        FROM inventory_movements
+        WHERE item_type = $1
+          AND timestamp >= (SELECT MIN(bucket) FROM buckets) AT TIME ZONE 'UTC'
+          AND timestamp < (
+            ${bucketAt("NOW() AT TIME ZONE 'UTC'")} + INTERVAL '${config.interval}'
+          ) AT TIME ZONE 'UTC'
+        GROUP BY 1, 2
+      ),
+      item_buckets AS (
+        SELECT
+          bucket_items.bucket,
+          bucket_items.item_id,
+          COALESCE(bucket_movements.stock_in, 0)::int AS stock_in,
+          COALESCE(bucket_movements.stock_out, 0)::int AS stock_out,
+          (
+            COALESCE(opening_stock.quantity, 0) +
+            SUM(COALESCE(bucket_movements.net_change, 0)) OVER (
+              PARTITION BY bucket_items.item_id ORDER BY bucket_items.bucket
+            )
+          )::int AS units_on_hand
+        FROM bucket_items
+        LEFT JOIN opening_stock USING (item_id)
+        LEFT JOIN bucket_movements
+          ON bucket_movements.item_id = bucket_items.item_id
+          AND bucket_movements.bucket = bucket_items.bucket
+      )
+      SELECT
+        TO_CHAR(buckets.bucket, 'YYYY-MM-DD') AS "bucketStart",
+        TO_CHAR(buckets.bucket, '${config.dateFormat}') AS label,
+        item_buckets.item_id AS "itemId",
+        COALESCE(item_buckets.stock_in, 0)::int AS "stockIn",
+        COALESCE(item_buckets.stock_out, 0)::int AS "stockOut",
+        COALESCE(item_buckets.units_on_hand, 0)::int AS "unitsOnHand"
+      FROM buckets
+      LEFT JOIN item_buckets ON item_buckets.bucket = buckets.bucket
+      ORDER BY buckets.bucket
+    `, [InventoryItemType.VARIANT]);
+
+    const buckets = new Map<string, {
+      label: string;
+      stockIn: number;
+      stockOut: number;
+      unitsOnHand: number;
+      items: Array<{ itemId: string; stockIn: number; stockOut: number; unitsOnHand: number }>;
+    }>();
+    for (const row of rows) {
+      const bucket = buckets.get(row.bucketStart) ?? {
+        label: row.label.trim(),
+        stockIn: 0,
+        stockOut: 0,
+        unitsOnHand: 0,
+        items: [],
+      };
+      if (row.itemId) {
+        const item = {
+          itemId: row.itemId,
+          stockIn: Number(row.stockIn) || 0,
+          stockOut: Number(row.stockOut) || 0,
+          unitsOnHand: Number(row.unitsOnHand) || 0,
+        };
+        bucket.items.push(item);
+        bucket.stockIn += item.stockIn;
+        bucket.stockOut += item.stockOut;
+        bucket.unitsOnHand += item.unitsOnHand;
+      }
+      buckets.set(row.bucketStart, bucket);
+    }
+
+    const itemIds = [...new Set([...buckets.values()].flatMap((bucket) => bucket.items.map((item) => item.itemId)))];
+    const completedBatches = itemIds.length
+      ? await this.batchRepo.find({
+          where: { completedDate: Not(IsNull()), variant: { id: In(itemIds) } },
+          relations: { variant: true },
+        })
+      : [];
+    const batchIds = completedBatches.map((batch) => batch.id);
+    const [costs, productionMovements] = batchIds.length
+      ? await Promise.all([
+          this.productionCostRepo.find({
+            where: { batch: { id: In(batchIds) } },
+            relations: { batch: { variant: true } },
+          }),
+          this.movementRepo.find({
+            where: {
+              itemType: InventoryItemType.VARIANT,
+              movementType: MovementType.PRODUCTION,
+              referenceId: In(batchIds),
+            },
+          }),
+        ])
+      : [[], []];
+    const costByBatch = new Map(costs.map((cost) => [cost.batch.id, cost]));
+    const producedQuantityByBatch = new Map<string, number>();
+    for (const movement of productionMovements) {
+      if (!movement.referenceId) continue;
+      producedQuantityByBatch.set(
+        movement.referenceId,
+        (producedQuantityByBatch.get(movement.referenceId) ?? 0) + movement.quantityDelta,
+      );
+    }
+    const batchesByVariant = new Map<string, ProductionBatch[]>();
+    for (const batch of completedBatches) {
+      const variantBatches = batchesByVariant.get(batch.variant.id) ?? [];
+      variantBatches.push(batch);
+      batchesByVariant.set(batch.variant.id, variantBatches);
+    }
+    for (const variantBatches of batchesByVariant.values()) {
+      variantBatches.sort(
+        (a, b) => new Date(a.completedDate!).getTime() - new Date(b.completedDate!).getTime(),
+      );
+    }
+
+    return [...buckets.entries()].map(([bucketStart, bucket]) => {
+      const [year, monthNumber, day] = bucketStart.slice(0, 10).split('-').map(Number);
+      const bucketEnd = new Date(Date.UTC(year, monthNumber - 1, day));
+      if (config.unit === 'week') bucketEnd.setUTCDate(bucketEnd.getUTCDate() + 7);
+      else if (config.unit === 'month') bucketEnd.setUTCMonth(bucketEnd.getUTCMonth() + 1);
+      else bucketEnd.setUTCMonth(bucketEnd.getUTCMonth() + 3);
+      const bucketEndTime = bucketEnd.getTime();
+      const unitCostByVariant = new Map<string, number | null>();
+      const unitCostFor = (variantId: string): number | null => {
+        if (unitCostByVariant.has(variantId)) return unitCostByVariant.get(variantId)!;
+        const latestBatch = [...(batchesByVariant.get(variantId) ?? [])]
+          .reverse()
+          .find((batch) => new Date(batch.completedDate!).getTime() < bucketEndTime);
+        const cost = latestBatch ? costByBatch.get(latestBatch.id) : undefined;
+        const producedQuantity = latestBatch
+          ? producedQuantityByBatch.get(latestBatch.id) ?? 0
+          : 0;
+        if (
+          !latestBatch ||
+          !cost ||
+          new Date(cost.updatedAt).getTime() >= bucketEndTime ||
+          producedQuantity <= 0 ||
+          !PRODUCTION_COST_COMPONENTS.every((component) => cost.confirmedComponents?.includes(component))
+        ) {
+          unitCostByVariant.set(variantId, null);
+          return null;
+        }
+        const unitCost =
+          (Number(cost.materialCost) +
+            Number(cost.sewingCost) +
+            Number(cost.brandingCost) +
+            Number(cost.packagingCost)) /
+          producedQuantity;
+        unitCostByVariant.set(variantId, unitCost);
+        return unitCost;
+      };
+
+      let stockValue = 0;
+      let stockInValue = 0;
+      let stockOutValue = 0;
+      let stockValueComplete = true;
+      let stockInValueComplete = true;
+      let stockOutValueComplete = true;
+      for (const item of bucket.items) {
+        const unitCost = unitCostFor(item.itemId);
+        if (item.unitsOnHand !== 0) {
+          if (unitCost === null) stockValueComplete = false;
+          else stockValue += item.unitsOnHand * unitCost;
+        }
+        if (item.stockIn > 0) {
+          if (unitCost === null) stockInValueComplete = false;
+          else stockInValue += item.stockIn * unitCost;
+        }
+        if (item.stockOut > 0) {
+          if (unitCost === null) stockOutValueComplete = false;
+          else stockOutValue += item.stockOut * unitCost;
+        }
+      }
+
+      return {
+        label: bucket.label,
+        stockIn: bucket.stockIn,
+        stockOut: bucket.stockOut,
+        unitsOnHand: bucket.unitsOnHand,
+        stockInValue: stockInValueComplete ? Math.round(stockInValue * 100) / 100 : null,
+        stockOutValue: stockOutValueComplete ? Math.round(stockOutValue * 100) / 100 : null,
+        stockValue: stockValueComplete ? Math.round(stockValue * 100) / 100 : null,
+      };
+    });
+  }
+
+  /** Values finished goods using the latest completed batch cost recorded for each SKU. */
+  async inventoryValuation() {
+    const inventorySummary = await this.inventoryService.summary();
+    const variantStock = new Map(
+      inventorySummary
+        .filter((item) => item.itemType === InventoryItemType.VARIANT && item.currentQuantity > 0)
+        .map((item) => [item.itemId, item.currentQuantity]),
+    );
+    const finishedGoodsUnits = [...variantStock.values()].reduce(
+      (total, quantity) => total + quantity,
+      0,
+    );
+    const stockedVariantCount = variantStock.size;
+    if (stockedVariantCount === 0) {
+      return {
+        finishedGoodsUnits: 0,
+        stockedVariantCount: 0,
+        totalValue: 0,
+        unvaluedUnits: 0,
+        unvaluedVariantCount: 0,
+        method: 'latest-recorded-completed-batch-cost',
+      };
+    }
+
+    const completedBatches = await this.batchRepo.find({
+      where: {
+        completedDate: Not(IsNull()),
+        variant: { id: In([...variantStock.keys()]) },
+      },
+      relations: { variant: true },
+    });
+    const batchIds = completedBatches.map((batch) => batch.id);
+
+    if (batchIds.length === 0) {
+      return {
+        finishedGoodsUnits,
+        stockedVariantCount,
+        totalValue: null,
+        unvaluedUnits: finishedGoodsUnits,
+        unvaluedVariantCount: stockedVariantCount,
+        method: 'latest-recorded-completed-batch-cost',
+      };
+    }
+
+    const [costs, productionMovements] = await Promise.all([
+      this.productionCostRepo.find({
+        where: { batch: { id: In(batchIds) } },
+        relations: { batch: { variant: true } },
+      }),
+      this.movementRepo.find({
+        where: {
+          itemType: InventoryItemType.VARIANT,
+          movementType: MovementType.PRODUCTION,
+          referenceId: In(batchIds),
+        },
+      }),
+    ]);
+
+    const producedQuantityByBatch = new Map<string, number>();
+    for (const movement of productionMovements) {
+      if (!movement.referenceId) continue;
+      producedQuantityByBatch.set(
+        movement.referenceId,
+        (producedQuantityByBatch.get(movement.referenceId) ?? 0) + movement.quantityDelta,
+      );
+    }
+
+    const costByBatch = new Map(costs.map((cost) => [cost.batch.id, cost]));
+    const latestBatchByVariant = new Map<string, ProductionBatch>();
+    for (const batch of completedBatches) {
+      const previous = latestBatchByVariant.get(batch.variant.id);
+      if (
+        !previous ||
+        new Date(batch.completedDate!).getTime() > new Date(previous.completedDate!).getTime()
+      ) {
+        latestBatchByVariant.set(batch.variant.id, batch);
+      }
+    }
+
+    let totalValue = 0;
+    let unvaluedUnits = 0;
+    let unvaluedVariantCount = 0;
+    for (const [variantId, quantity] of variantStock) {
+      const batch = latestBatchByVariant.get(variantId);
+      const cost = batch ? costByBatch.get(batch.id) : undefined;
+      const producedQuantity = batch ? producedQuantityByBatch.get(batch.id) ?? 0 : 0;
+      if (
+        !batch ||
+        !cost ||
+        producedQuantity <= 0 ||
+        !PRODUCTION_COST_COMPONENTS.every((component) => cost.confirmedComponents?.includes(component))
+      ) {
+        unvaluedUnits += quantity;
+        unvaluedVariantCount += 1;
+        continue;
+      }
+      const unitCost =
+        (Number(cost.materialCost) +
+          Number(cost.sewingCost) +
+          Number(cost.brandingCost) +
+          Number(cost.packagingCost)) /
+        producedQuantity;
+      totalValue += quantity * unitCost;
+    }
+
+    return {
+      finishedGoodsUnits,
+      stockedVariantCount,
+      totalValue: unvaluedUnits === 0 ? Math.round(totalValue * 100) / 100 : null,
+      unvaluedUnits,
+      unvaluedVariantCount,
+      method: 'latest-recorded-completed-batch-cost',
     };
   }
 
@@ -393,14 +777,15 @@ export class AnalyticsService {
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   }
 
-  private async paidOrderStats(since: Date) {
+  private async paidOrderStats(since: Date, until = new Date()) {
     const row: { count: string; revenue: string | null } | undefined = await this.orderRepo
       .createQueryBuilder('o')
       .select('COUNT(*)', 'count')
       .addSelect('SUM(o.total_amount)', 'revenue')
-      .where('o.payment_status = :paid AND o.created_at >= :since', {
+      .where('o.payment_status = :paid AND o.created_at >= :since AND o.created_at < :until', {
         paid: PaymentStatus.PAID,
         since,
+        until,
       })
       .getRawOne();
     return {

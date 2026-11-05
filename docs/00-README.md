@@ -12,6 +12,9 @@ This is the complete documentation set for the Seentair fashion manufacturing & 
 | Folder / file | Purpose |
 |---|---|
 | `phases/` | **The build plan.** One file per development phase (0–7), backend deliverables first, acceptance criteria, dependencies, frontend notes |
+| `api/phase-0-audit.md` | Phase 0 foundation audit, evidence, remaining acceptance gaps, and database tool report contracts |
+| `runbooks/database-test.md` | Guarded disposable-database migration, repeated-seed, and verification workflow |
+| `runbooks/database-migrations.md` | Migration authoring, review, execution, and rollback rules |
 | `project/01-Project-Bible.md` | Single source of truth — vision, goals, principles, glossary |
 | `project/02-PRD.md` | Full functional requirements, module by module |
 | `project/03-Open-Questions.md` | Unresolved items to close before/during Sprint 0 |

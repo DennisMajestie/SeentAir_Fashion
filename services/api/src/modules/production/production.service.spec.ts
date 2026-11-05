@@ -116,6 +116,25 @@ describe('ProductionService', () => {
     );
   });
 
+  it('marks production cost components confirmed only when explicitly recorded', async () => {
+    costRepo.findOne
+      .mockResolvedValueOnce(null)
+      .mockImplementationOnce(async () => costRepo.save.mock.calls[0][0]);
+
+    await service.recordCost('b1', { materialCost: 0, sewingCost: 12 });
+    const firstSavedCost = costRepo.save.mock.calls[0][0];
+    expect(firstSavedCost.confirmedComponents).toEqual(['materialCost', 'sewingCost']);
+
+    await service.recordCost('b1', { brandingCost: 4, packagingCost: 2 });
+    const secondSavedCost = costRepo.save.mock.calls[1][0];
+    expect(secondSavedCost.confirmedComponents).toEqual([
+      'materialCost',
+      'sewingCost',
+      'brandingCost',
+      'packagingCost',
+    ]);
+  });
+
   it('rejects an unknown stage name', async () => {
     await expect(service.updateStage('b1', 'Ironing', 'u1')).rejects.toThrow(BadRequestException);
   });

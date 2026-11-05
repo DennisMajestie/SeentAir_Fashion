@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AnalyticsService } from './analytics.service';
+import { BestSellersQueryDto } from './dto/best-sellers-query.dto';
 
 @ApiTags('Analytics')
 @ApiBearerAuth()
@@ -25,13 +26,25 @@ export class AnalyticsController {
   /** Best sellers by default; ?direction=slow for slow movers. */
   @Get('best-sellers')
   @RequireAccess(ModuleName.ANALYTICS, AccessLevel.VIEW)
-  sellers(@Query('limit') limit = '10', @Query('direction') direction: 'best' | 'slow' = 'best') {
-    return this.analyticsService.sellers(parseInt(limit, 10), direction);
+  sellers(@Query() query: BestSellersQueryDto) {
+    return this.analyticsService.sellers(query.limit ?? 10, query.direction ?? 'best');
   }
 
   @Get('low-stock')
   @RequireAccess(ModuleName.ANALYTICS, AccessLevel.VIEW)
   lowStock(@Query('variantThreshold') variantThreshold = '10') {
     return this.analyticsService.lowStock(parseInt(variantThreshold, 10));
+  }
+
+  @Get('inventory-movement-trend')
+  @RequireAccess(ModuleName.ANALYTICS, AccessLevel.VIEW)
+  inventoryMovementTrend(@Query('period') period = 'monthly') {
+    return this.analyticsService.inventoryMovementTrend(period);
+  }
+
+  @Get('inventory-valuation')
+  @RequireAccess(ModuleName.ANALYTICS, AccessLevel.VIEW)
+  inventoryValuation() {
+    return this.analyticsService.inventoryValuation();
   }
 }

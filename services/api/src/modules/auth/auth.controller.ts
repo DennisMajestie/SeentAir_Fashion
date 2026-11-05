@@ -1,8 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
   Post,
   Req,
   Res,
@@ -25,6 +29,9 @@ import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { TotpCodeDto, Verify2faDto } from './dto/twofa.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { IsNull, Repository } from 'typeorm';
+import { RefreshToken } from './refresh-token.entity';
 
 /**
  * Token transport (XSS-hardened):
@@ -44,6 +51,8 @@ export class AuthController {
     private readonly usersService: UsersService,
     private readonly permissions: PermissionsService,
     private readonly config: ConfigService,
+    @InjectRepository(RefreshToken)
+    private readonly refreshTokenRepo: Repository<RefreshToken>,
   ) {}
 
   private cookieOptions() {
@@ -97,6 +106,33 @@ export class AuthController {
       (req.cookies?.[REFRESH_COOKIE] as string | undefined) ?? dto.refreshToken;
     if (!token) throw new UnauthorizedException('No refresh token');
     return this.deliver(res, await this.authService.refresh(token));
+  }
+
+  /** List the current user's active (non-revoked, non-expired) refresh tokens. */
+  @Get('sessions')
+  @ApiBearerAuth()
+  listSessions(@CurrentUser() user: AuthenticatedUser) {
+    return this.refreshTokenRepo.find({
+      where: { userId: user.id, revokedAt: IsNull() },
+      order: { createdAt: 'DESC' },
+      select: ['id', 'createdAt', 'expiresAt'],
+    });
+  }
+
+  /** Revoke (invalidate) a single refresh token belonging to the current user. */
+  @Delete('sessions/:id')
+  @ApiBearerAuth()
+  @HttpCode(204)
+  async revokeSession(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const token = await this.refreshTokenRepo.findOne({
+      where: { id, userId: user.id },
+    });
+    if (!token) throw new NotFoundException(`Session ${id} not found`);
+    token.revokedAt = new Date();
+    await this.refreshTokenRepo.save(token);
   }
 
   /** Step 2 of a 2FA login. */
@@ -188,6 +224,13 @@ export class AuthController {
     for (const row of matrix) {
       if (row.accessLevel !== AccessLevel.NONE) access[row.module] = row.accessLevel;
     }
-    return { ...user, name: fresh.name, totpEnabled: fresh.totpEnabled, access };
+    return {
+      ...user,
+      name: fresh.name,
+      phone: fresh.phone,
+      title: fresh.title,
+      totpEnabled: fresh.totpEnabled,
+      access,
+    };
   }
 }

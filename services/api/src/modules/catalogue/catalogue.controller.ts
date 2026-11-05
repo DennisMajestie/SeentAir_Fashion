@@ -14,6 +14,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CatalogueService } from './catalogue.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateCollectionDto } from './dto/create-collection.dto';
@@ -32,8 +33,8 @@ export class CatalogueController {
   // Public storefront reads — no auth required.
   @Public()
   @Get('products')
-  findAll(@Query('page') page = '1', @Query('limit') limit = '20') {
-    return this.catalogueService.findAll(parseInt(page, 10), parseInt(limit, 10));
+  findAll(@Query() pagination: PaginationQueryDto) {
+    return this.catalogueService.findAll(pagination.page ?? 1, pagination.limit ?? 20);
   }
 
   @Public()

@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ApprovalActionType, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { CreateMaterialDto } from './dto/create-material.dto';
 import { RecordPurchaseDto } from './dto/record-purchase.dto';
@@ -35,6 +36,15 @@ export class MaterialsController {
   @RequireAccess(ModuleName.RAW_MATERIALS, AccessLevel.VIEW)
   valuation() {
     return this.materialsService.valuation();
+  }
+
+  @Get('purchases')
+  @RequireAccess(ModuleName.RAW_MATERIALS, AccessLevel.VIEW)
+  purchases(@Query() pagination: PaginationQueryDto) {
+    return this.materialsService.findPurchases(
+      pagination.page ?? 1,
+      pagination.limit ?? 50,
+    );
   }
 
   @Get(':id')

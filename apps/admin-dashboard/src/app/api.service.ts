@@ -91,6 +91,7 @@ export interface ShippingSettings {
 export interface ShippingSettingsUpdate {
   shippingEnabled?: boolean;
   freeDeliveryThreshold?: number | null;
+  quoteExpiryMinutes?: number;
   vatEnabled?: boolean;
   vatRatePercent?: number;
   pricesIncludeVat?: boolean;
@@ -149,6 +150,55 @@ export interface AdminOrder {
   oqrCode?: string | null;
   grossWeightKg?: number | null;
   palletRef?: string | null;
+}
+
+export interface AdminMaterialPurchase {
+  id: string;
+  quantity: number;
+  cost: number;
+  note: string | null;
+  supplierName: string | null;
+  leadTimeDays: number | null;
+  recordedBy: string | null;
+  purchasedAt: string;
+  material: { id: string; name: string; unit: string };
+}
+
+export interface AdminStockCountLine {
+  id: string;
+  itemType: 'variant' | 'material';
+  itemId: string;
+  systemQuantity: number;
+  countedQuantity: number;
+  adjustmentQuantity: number;
+  approvalRequestId: string | null;
+}
+
+export interface AdminStockCount {
+  id: string;
+  createdBy: string;
+  createdAt: string;
+  lines: AdminStockCountLine[];
+}
+
+export interface HelpArticle {
+  id: string;
+  title: string;
+  summary: string;
+  content: string[];
+  source: string;
+}
+
+export interface HelpTicket {
+  id: string;
+  subject: string;
+  description: string;
+  status: 'open' | 'in_progress' | 'resolved';
+  createdBy: string;
+  updatedBy: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ReturnRequest {
@@ -480,6 +530,14 @@ endProductSale(id: string): Observable<unknown> {
   recordPurchase(materialId: string, body: Record<string, unknown>): Observable<unknown> {
     return this.http.post(`${API_BASE}/materials/${materialId}/purchase`, body);
   }
+  materialPurchases(page = 1, limit = 50): Observable<{
+    data: AdminMaterialPurchase[];
+    total: number;
+  }> {
+    return this.http.get<{ data: AdminMaterialPurchase[]; total: number }>(
+      `${API_BASE}/materials/purchases?page=${page}&limit=${limit}`,
+    );
+  }
   recordUsage(materialId: string, body: Record<string, unknown>): Observable<unknown> {
     return this.http.post(`${API_BASE}/materials/${materialId}/usage`, body);
   }
@@ -763,6 +821,19 @@ endProductSale(id: string): Observable<unknown> {
       }>
     >(`${API_BASE}/inventory/summary`);
   }
+  inventoryCounts(page = 1, limit = 50): Observable<{ data: AdminStockCount[]; total: number }> {
+    return this.http.get<{ data: AdminStockCount[]; total: number }>(
+      `${API_BASE}/inventory/counts?page=${page}&limit=${limit}`,
+    );
+  }
+  recordInventoryCount(items: Array<{
+    itemType: 'variant' | 'material';
+    itemId: string;
+    countedQuantity: number;
+    approvalRequestId?: string;
+  }>): Observable<AdminStockCount> {
+    return this.http.post<AdminStockCount>(`${API_BASE}/inventory/counts`, { items });
+  }
   movements(
     itemId: string,
     itemType: 'variant' | 'material',
@@ -805,6 +876,22 @@ endProductSale(id: string): Observable<unknown> {
       runningBalance: number;
       materialCount: number;
     }>(`${API_BASE}/inventory/digest/${itemType}/${itemId}`);
+  }
+
+  helpArticles(): Observable<HelpArticle[]> {
+    return this.http.get<HelpArticle[]>(`${API_BASE}/help/articles`);
+  }
+  helpTickets(): Observable<{ data: HelpTicket[]; total: number }> {
+    return this.http.get<{ data: HelpTicket[]; total: number }>(`${API_BASE}/help/tickets`);
+  }
+  createHelpTicket(body: { subject: string; description: string }): Observable<HelpTicket> {
+    return this.http.post<HelpTicket>(`${API_BASE}/help/tickets`, body);
+  }
+  updateHelpTicketStatus(
+    id: string,
+    status: HelpTicket['status'],
+  ): Observable<HelpTicket> {
+    return this.http.patch<HelpTicket>(`${API_BASE}/help/tickets/${id}/status`, { status });
   }
 
   // --- Partners administration ---

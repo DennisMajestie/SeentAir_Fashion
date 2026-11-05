@@ -72,8 +72,10 @@ cd packages/ui-components && npm run check
 npm run api:dev        # from repo root; Swagger at http://localhost:3000/docs
 ```
 
-Seeded dev accounts use the password `Password123!`, e.g. `partner@seentair.test`,
-`wholesaler@seentair.test`, `owner@seentair.test` (full list in README).
+Seeded development accounts use the locally configured `SEED_USER_PASSWORD`,
+e.g. `partner@seentair.test`, `wholesaler@seentair.test`, `owner@seentair.test`
+(full list in README). Set a private value of at least 12 characters; do not
+commit it or reuse a production credential.
 
 ## Conventions to keep
 

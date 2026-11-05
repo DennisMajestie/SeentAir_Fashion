@@ -9,6 +9,14 @@ import {
 import { numericTransformer } from '../../../common/numeric.transformer';
 import { ProductionBatch } from './production-batch.entity';
 
+export const PRODUCTION_COST_COMPONENTS = [
+  'materialCost',
+  'sewingCost',
+  'brandingCost',
+  'packagingCost',
+] as const;
+export type ProductionCostComponent = (typeof PRODUCTION_COST_COMPONENTS)[number];
+
 /**
  * Production cost = raw material + sewing + branding + packaging (appendix 02).
  * One cost record per batch; components can be updated as real figures land.
@@ -21,6 +29,14 @@ export class ProductionCost {
   @OneToOne(() => ProductionBatch, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'batch_id' })
   batch: ProductionBatch;
+
+  @Column({
+    name: 'confirmed_components',
+    type: 'text',
+    array: true,
+    default: () => "'{}'",
+  })
+  confirmedComponents: ProductionCostComponent[];
 
   @Column({
     name: 'material_cost',
