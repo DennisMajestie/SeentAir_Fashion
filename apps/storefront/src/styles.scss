@@ -2331,8 +2331,15 @@ body:has(.m-tabs) {
 /* Three-dot endless loader — animates non-stop until the page lands. */
 .dot-loader {
   display: inline-flex;
-  gap: 4px;
+  gap: 8px;
   align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 24px 0;
+}
+.dot-loader--large {
+  padding: 48px 0;
+  gap: 12px;
 }
 .dot {
   width: 8px;
@@ -2340,6 +2347,11 @@ body:has(.m-tabs) {
   border-radius: 50%;
   background: var(--muted);
   animation: dot-bounce 1.4s infinite ease-in-out both;
+}
+.dot--large {
+  width: 12px;
+  height: 12px;
+  background: var(--ink);
 }
 .dot:nth-child(1) { animation-delay: -0.32s; }
 .dot:nth-child(2) { animation-delay: -0.16s; }

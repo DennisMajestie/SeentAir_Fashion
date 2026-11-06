@@ -74,6 +74,13 @@ interface RailCategory {
   imports: [CommonModule, RouterLink, ProductCardComponent],
   template: `
     <div class="m-home">
+      @if (loading()) {
+        <div class="dot-loader dot-loader--large" role="status" aria-live="polite">
+          <span class="dot dot--large"></span>
+          <span class="dot dot--large"></span>
+          <span class="dot dot--large"></span>
+        </div>
+      }
       <!-- Categories rail: hidden while loading, skeleton after. -->
       <section class="m-sec" [class.lg-loading]="loading()">
         <div class="m-sec__head" *ngIf="!loading()">
