@@ -844,6 +844,10 @@ body:has(.m-tabs) {
   color: var(--m-muted);
 }
 
+.m-sec__body {
+  padding-top: 12px;
+}
+
 /* circular category rail */
 .m-cats {
   display: flex;
@@ -1598,6 +1602,7 @@ body:has(.m-tabs) {
   position: relative;
   overflow: hidden;
   background: var(--container);
+  border: 1px solid color-mix(in srgb, var(--container) 40%, transparent);
   border-radius: var(--radius-field);
   &::after {
     content: '';
@@ -1607,7 +1612,7 @@ body:has(.m-tabs) {
     background: linear-gradient(
       90deg,
       transparent,
-      color-mix(in srgb, var(--card) 70%, transparent),
+      color-mix(in srgb, var(--card) 85%, transparent),
       transparent
     );
     animation: skeleton-shimmer 1.4s infinite;
