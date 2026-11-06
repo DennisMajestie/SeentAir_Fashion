@@ -116,22 +116,15 @@ function collectionKey(name: string): string {
     </div>
 
     @if (loading()) {
-      <div class="grid-loading" aria-hidden="true">
-        <div class="dot-loader dot-loader--large" role="status" aria-live="polite">
-          <span class="dot dot--large"></span>
-          <span class="dot dot--large"></span>
-          <span class="dot dot--large"></span>
-        </div>
-        <div class="grid" aria-hidden="true">
-          @for (g of skCards; track g) {
-            <div class="sk-card">
-              <div class="skeleton sk-img"></div>
-              <div class="skeleton sk-line w60"></div>
-              <div class="skeleton sk-line w40"></div>
-              <div class="skeleton sk-line w80"></div>
-            </div>
-          }
-        </div>
+      <div class="grid" aria-hidden="true">
+        @for (g of skCards; track g) {
+          <div class="sk-card">
+            <div class="skeleton sk-img"></div>
+            <div class="skeleton sk-line w60"></div>
+            <div class="skeleton sk-line w40"></div>
+            <div class="skeleton sk-line w80"></div>
+          </div>
+        }
       </div>
     } @else if (filtered().length === 0) {
       <div class="shop-empty">
