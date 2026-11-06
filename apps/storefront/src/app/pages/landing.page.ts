@@ -346,7 +346,7 @@ private readonly seo = inject(SeoService);
   /** Rows fetched per page. The landing rails project client-side over
    *  everything loaded, so endless scroll appends page by page until the
    *  catalogue is exhausted. */
-  private static readonly PAGE_SIZE = 50;
+  private static readonly PAGE_SIZE = 10;
 
   /**
    * Fetch one page of the catalogue and append it. Page 1 replaces the list;
