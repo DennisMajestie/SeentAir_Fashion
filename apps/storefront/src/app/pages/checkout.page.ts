@@ -330,7 +330,7 @@ const NIGERIAN_STATES = [
                   [(ngModel)]="shipState"
                   name="shipState"
                   required
-                  (ngModelChange)="refreshDeliveryQuote()"
+                  (ngModelChange)="onStateOrMethodChange()"
                 >
                   <option value="" disabled>Select a state</option>
                   @for (s of NIGERIAN_STATES; track s) {
@@ -343,7 +343,7 @@ const NIGERIAN_STATES = [
                 <select
                   [(ngModel)]="deliveryMethod"
                   name="deliveryMethod"
-                  (ngModelChange)="refreshDeliveryQuote()"
+                  (ngModelChange)="onStateOrMethodChange()"
                 >
                   <option value="freight">Deliver to me</option>
                   <option value="pickup">Collect from the factory</option>
@@ -771,7 +771,7 @@ export class CheckoutPage {
    * which is exactly what order creation wants in that case.
    */
   /** Public because the template re-asks for a figure when the state or the
-   * collection method changes. */
+   *  collection method changes. */
   refreshDeliveryQuote(): Observable<DeliveryQuote | null> {
     this.deliveryQuote.set(null);
     if (!this.shipState.trim()) {
@@ -794,6 +794,13 @@ export class CheckoutPage {
         catchError(() => of<DeliveryQuote | null>(null)),
         tap((q) => this.deliveryQuote.set(q)),
       );
+  }
+
+  /** Fires on every state or collection-method change so the delivery fee
+    *  lands in the summary card the moment the API answers — no button press
+    *  required. */
+  onStateOrMethodChange(): void {
+    this.refreshDeliveryQuote().subscribe();
   }
 
   private onOrderPlaced(order: Order): void {

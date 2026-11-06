@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
 import { ProductCardComponent } from '../product-card.component';
+import { SkeletonComponent } from '../skeleton.component';
 import { productImage } from '../product-image';
 import { SeoService } from '../seo.service';
 
@@ -71,9 +72,17 @@ interface RailCategory {
  */
 @Component({
   selector: 'app-landing',
-  imports: [CommonModule, RouterLink, ProductCardComponent],
+  imports: [CommonModule, RouterLink, ProductCardComponent, SkeletonComponent],
   template: `
     <div class="m-home">
+      @if (loading()) {
+        <div class="dot-loader" role="status" aria-live="polite">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+      }
+
       <section class="m-sec">
         <div class="m-sec__head">
           <h2>Shop by Category</h2>
@@ -92,7 +101,12 @@ interface RailCategory {
             }
           </div>
         } @else {
-          <p class="m-empty">{{ loading() ? 'Loading categories…' : 'No categories yet.' }}</p>
+          <div class="m-cat-skeleton">
+            @for (i of [0,1,2,3,4,5,6]; track i) {
+              <app-skeleton width="54px" height="54px" />
+              <app-skeleton width="40%" height="12px" />
+            }
+          </div>
         }
       </section>
 
@@ -111,7 +125,13 @@ interface RailCategory {
             }
           </div>
         } @else {
-          <p class="m-empty">{{ loading() ? 'Loading new arrivals…' : 'Nothing new yet.' }}</p>
+          <div class="m-row-skeleton">
+            @for (i of [0,1,2]; track i) {
+              <app-skeleton width="100%" height="260px" />
+              <app-skeleton width="30%" height="16px" class="mt-8" />
+              <app-skeleton width="60%" height="12px" class="mt-4" />
+            }
+          </div>
         }
       </section>
 
@@ -130,13 +150,13 @@ interface RailCategory {
             }
           </div>
         } @else {
-          <p class="m-empty">
-            {{
-              loading()
-                ? 'Loading best sellers…'
-                : 'Nothing flagged yet — check back after the first drop.'
-            }}
-          </p>
+          <div class="m-row-skeleton">
+            @for (i of [0,1,2]; track i) {
+              <app-skeleton width="100%" height="260px" />
+              <app-skeleton width="30%" height="16px" class="mt-8" />
+              <app-skeleton width="60%" height="12px" class="mt-4" />
+            }
+          </div>
         }
       </section>
 
@@ -155,7 +175,13 @@ interface RailCategory {
             }
           </div>
         } @else {
-          <p class="m-empty">{{ loading() ? 'Loading suggestions…' : 'Nothing to suggest yet.' }}</p>
+          <div class="m-row-skeleton">
+            @for (i of [0,1,2]; track i) {
+              <app-skeleton width="100%" height="260px" />
+              <app-skeleton width="30%" height="16px" class="mt-8" />
+              <app-skeleton width="60%" height="12px" class="mt-4" />
+            }
+          </div>
         }
       </section>
     </div>

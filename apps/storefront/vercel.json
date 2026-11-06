@@ -2,5 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "angular",
   "outputDirectory": "dist/storefront/browser",
-  "rewrites": [{ "source": "/((?!assets/).*)", "destination": "/index.html" }]
+  "routes": [
+    { "src": "/assets/(.*)", "headers": { "cache-control": "public, max-age=31536000, immutable" }, "dest": "/assets/$1" },
+    { "src": "/(.*\\.(js|css|ico|png|jpg|svg|woff|woff2))", "headers": { "cache-control": "public, max-age=31536000, immutable" }, "dest": "/$1" },
+    { "src": "/.*", "dest": "/index.html" }
+  ]
 }

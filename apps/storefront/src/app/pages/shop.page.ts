@@ -150,7 +150,11 @@ function collectionKey(name: string): string {
             Showing {{ all().length | number }} of {{ total() | number }} products
           </p>
           @if (loadingMore()) {
-            <p class="muted small" role="status" aria-live="polite">Loading more…</p>
+            <div class="dot-loader" role="status" aria-live="polite">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
           } @else {
             <div
               class="shop-sentinel"

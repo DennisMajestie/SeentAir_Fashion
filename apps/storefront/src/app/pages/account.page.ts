@@ -246,7 +246,13 @@ const REMEMBERED_EMAIL_KEY = 'seentair.rememberedEmail';
 
       <!-- Signed in: pull the account's own saved list down so it is visible
            here and usable on any device, not just this browser. -->
-      @if (wishlistItems().length > 0) {
+      @if (wishlistLoading()) {
+        <div class="dot-loader" role="status" aria-live="polite">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+      } @else if (wishlistItems().length > 0) {
         <h2 id="saved">Saved</h2>
         <div class="saved-grid">
           @for (item of wishlistItems(); track item.productId) {
@@ -787,6 +793,7 @@ export class AccountPage implements OnInit {
   protected readonly viewport = inject(ViewportService);
   /** The account's saved products, shown alongside orders and notifications. */
   readonly wishlistItems = signal<WishItem[]>([]);
+  readonly wishlistLoading = signal(false);
   readonly orders = signal<Order[]>([]);
   readonly notifications = signal<
     Array<{ id: string; type: string; message: string; sentAt: string }>
@@ -849,6 +856,7 @@ export class AccountPage implements OnInit {
     if (this.api.isLoggedIn) {
       this.loadOrders();
       // The account list is the authoritative one once signed in.
+      this.wishlistLoading.set(true);
       this.api
         .wishlist()
         .pipe(
@@ -862,8 +870,14 @@ export class AccountPage implements OnInit {
           ),
         )
         .subscribe({
-          next: (items) => this.wishlistItems.set(items),
-          error: () => undefined,
+          next: (items) => {
+            this.wishlistItems.set(items);
+            this.wishlistLoading.set(false);
+          },
+          error: () => {
+            this.wishlistLoading.set(false);
+            undefined;
+          },
         });
     }
   }
