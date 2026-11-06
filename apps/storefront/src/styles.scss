@@ -911,6 +911,32 @@ body:has(.m-tabs) {
   outline-offset: 3px;
   border-radius: 2px;
 }
+.m-row-skeleton {
+  display: grid;
+  gap: 14px;
+  padding: 14px 0;
+  > * {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+.m-cat-skeleton {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 14px 0;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+.mt-4 {
+  margin-top: var(--space-4);
+}
+.mt-8 {
+  margin-top: var(--space-8);
+}
+
 .site-footer {
   padding-block: 2.5rem;
   border-top: 1px solid var(--line);
@@ -2274,6 +2300,28 @@ body:has(.m-tabs) {
 .shop-sentinel {
   height: 1px;
   width: 100%;
+}
+
+/* Three-dot endless loader — animates non-stop until the page lands. */
+.dot-loader {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: dot-bounce 1.4s infinite ease-in-out both;
+}
+.dot:nth-child(1) { animation-delay: -0.32s; }
+.dot:nth-child(2) { animation-delay: -0.16s; }
+.dot:nth-child(3) { animation-delay: 0s; }
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
 }
 
 /* Nothing matched: the reset stays one click away instead of a dead sentence. */

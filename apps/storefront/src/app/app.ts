@@ -65,7 +65,8 @@ import { ChromeService } from './chrome.service';
     @if (!chrome.immersive() && !viewport.isDesktop()) {
       <app-mobile-tabs />
     }
-    <footer class="site-footer">
+    @if (!chrome.immersive() && viewport.isDesktop()) {
+      <footer class="site-footer">
       <div class="wrap-col">
         <div class="footer-cols">
           <div class="footer-col footer-brand">
@@ -94,6 +95,7 @@ import { ChromeService } from './chrome.service';
         </div>
       </div>
     </footer>
+    }
   `,
 })
 export class App {
