@@ -5,7 +5,6 @@ import { of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
 import { ProductCardComponent } from '../product-card.component';
-import { SkeletonComponent } from '../skeleton.component';
 import { productImage } from '../product-image';
 import { SeoService } from '../seo.service';
 
@@ -72,7 +71,7 @@ interface RailCategory {
  */
 @Component({
   selector: 'app-landing',
-  imports: [CommonModule, RouterLink, ProductCardComponent, SkeletonComponent],
+  imports: [CommonModule, RouterLink, ProductCardComponent],
   template: `
     <div class="m-home">
       <!-- Categories rail: hidden while loading, skeleton after. -->
@@ -96,8 +95,10 @@ interface RailCategory {
           } @else {
             <div class="m-cat-skeleton">
               @for (i of [0,1,2,3,4,5,6]; track i) {
-                <app-skeleton width="54px" height="54px" />
-                <app-skeleton width="40%" height="12px" />
+                <div class="sk-card">
+                  <div class="skeleton sk-img"></div>
+                  <div class="skeleton sk-line w60"></div>
+                </div>
               }
             </div>
           }
@@ -120,11 +121,14 @@ interface RailCategory {
               }
             </div>
           } @else {
-            <div class="m-row-skeleton">
+            <div class="m-row3">
               @for (i of [0,1,2]; track i) {
-                <app-skeleton width="100%" height="260px" />
-                <app-skeleton width="30%" height="16px" class="mt-8" />
-                <app-skeleton width="60%" height="12px" class="mt-4" />
+                <div class="sk-card">
+                  <div class="skeleton sk-img"></div>
+                  <div class="skeleton sk-line w60"></div>
+                  <div class="skeleton sk-line w40"></div>
+                  <div class="skeleton sk-line w80"></div>
+                </div>
               }
             </div>
           }
@@ -147,11 +151,14 @@ interface RailCategory {
               }
             </div>
           } @else {
-            <div class="m-row-skeleton">
+            <div class="m-row3">
               @for (i of [0,1,2]; track i) {
-                <app-skeleton width="100%" height="260px" />
-                <app-skeleton width="30%" height="16px" class="mt-8" />
-                <app-skeleton width="60%" height="12px" class="mt-4" />
+                <div class="sk-card">
+                  <div class="skeleton sk-img"></div>
+                  <div class="skeleton sk-line w60"></div>
+                  <div class="skeleton sk-line w40"></div>
+                  <div class="skeleton sk-line w80"></div>
+                </div>
               }
             </div>
           }
@@ -174,11 +181,14 @@ interface RailCategory {
               }
             </div>
           } @else {
-            <div class="m-row-skeleton">
+            <div class="m-row3">
               @for (i of [0,1,2]; track i) {
-                <app-skeleton width="100%" height="260px" />
-                <app-skeleton width="30%" height="16px" class="mt-8" />
-                <app-skeleton width="60%" height="12px" class="mt-4" />
+                <div class="sk-card">
+                  <div class="skeleton sk-img"></div>
+                  <div class="skeleton sk-line w60"></div>
+                  <div class="skeleton sk-line w40"></div>
+                  <div class="skeleton sk-line w80"></div>
+                </div>
               }
             </div>
           }
