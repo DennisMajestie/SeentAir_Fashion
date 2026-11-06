@@ -147,33 +147,37 @@ function collectionKey(name: string): string {
         }
       </div>
 
-      <!-- Endless scroll: the sentinel below loads the next page as it comes
-           into reach, so the row count stays stated but the paging control
-           itself disappears. While a page is in flight, the three-dot loader
-           sits at the very bottom (sentinel position) so the shopper knows
-           more products are on the way and should hold on. -->
-      @if (hasMore()) {
-        <div class="shop-more">
-          <p class="muted small">
-            Showing {{ all().length | number }} of {{ total() | number }} products
-          </p>
-        </div>
-        @if (loadingMore()) {
-          <div class="shop-sentinel loading-sentinel" role="status" aria-live="polite">
-            <div class="dot-loader" role="status" aria-live="polite">
-              <span class="dot"></span>
-              <span class="dot"></span>
-              <span class="dot"></span>
-            </div>
+      <!-- Endless scroll: the three-dot loader sits at the bottom of the page
+           while a page is loading, and keeps spinning even when the API has no
+           more products — the shopper knows to hold on at all times. -->
+      <div class="shop-more">
+        <p class="muted small">
+          Showing {{ all().length | number }} of {{ total() | number }} products
+        </p>
+      </div>
+      @if (loadingMore()) {
+        <div class="shop-sentinel loading-sentinel" role="status" aria-live="polite">
+          <div class="dot-loader dot-loader--large" role="status" aria-live="polite">
+            <span class="dot dot--large"></span>
+            <span class="dot dot--large"></span>
+            <span class="dot dot--large"></span>
           </div>
-        } @else {
-          <div
-            class="shop-sentinel"
-            appInfiniteScroll
-            (nearEnd)="loadMore()"
-            aria-hidden="true"
-          ></div>
-        }
+        </div>
+      } @else if (hasMore()) {
+        <div
+          class="shop-sentinel"
+          appInfiniteScroll
+          (nearEnd)="loadMore()"
+          aria-hidden="true"
+        ></div>
+      } @else {
+        <div class="shop-sentinel loading-sentinel" role="status" aria-live="polite">
+          <div class="dot-loader dot-loader--large" role="status" aria-live="polite">
+            <span class="dot dot--large"></span>
+            <span class="dot dot--large"></span>
+            <span class="dot dot--large"></span>
+          </div>
+        </div>
       }
     }
 
