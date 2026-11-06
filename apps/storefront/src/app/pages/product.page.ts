@@ -382,6 +382,17 @@ interface GalleryShot {
         </section>
       }
 
+      <!-- Scroll bottom: three-dot loader keeps spinning at the bottom of the
+           page, signalling more products are on the way even when the API has
+           no more products to give. -->
+      <div class="shop-sentinel loading-sentinel" role="status" aria-live="polite">
+        <div class="dot-loader dot-loader--large" role="status" aria-live="polite">
+          <span class="dot dot--large"></span>
+          <span class="dot dot--large"></span>
+          <span class="dot dot--large"></span>
+        </div>
+      </div>
+
       <!-- Sticky purchase bar. Fixed to the viewport on mobile; the page gets
            matching bottom padding so the last review is never trapped under it. -->
       <div class="p-buy">

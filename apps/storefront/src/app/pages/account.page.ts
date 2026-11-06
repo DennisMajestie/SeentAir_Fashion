@@ -265,6 +265,13 @@ const REMEMBERED_EMAIL_KEY = 'seentair.rememberedEmail';
             </a>
           }
         </div>
+        <div class="shop-sentinel loading-sentinel" role="status" aria-live="polite">
+          <div class="dot-loader dot-loader--large" role="status" aria-live="polite">
+            <span class="dot dot--large"></span>
+            <span class="dot dot--large"></span>
+            <span class="dot dot--large"></span>
+          </div>
+        </div>
       }
 
       <!-- ids match the fragments the mobile shell links to: the header bell
