@@ -75,114 +75,114 @@ interface RailCategory {
   imports: [CommonModule, RouterLink, ProductCardComponent, SkeletonComponent],
   template: `
     <div class="m-home">
-      @if (loading()) {
-        <div class="dot-loader" role="status" aria-live="polite">
-          <span class="dot"></span>
-          <span class="dot"></span>
-          <span class="dot"></span>
-        </div>
-      }
-
-      <section class="m-sec">
-        <div class="m-sec__head">
+      <!-- Categories rail: hidden while loading, skeleton after. -->
+      <section class="m-sec" [class.lg-loading]="loading()">
+        <div class="m-sec__head" *ngIf="!loading()">
           <h2>Shop by Category</h2>
           <a class="m-sec__more" routerLink="/shop"
             >See All <span class="m-chev" aria-hidden="true">›</span></a
           >
         </div>
-
-        @if (categories().length > 0) {
-          <div class="m-cats">
-            @for (cat of categories(); track cat.name) {
-              <a class="m-cat" [routerLink]="['/shop']" [queryParams]="{ category: cat.name }">
-                <span class="m-cat__img" [style.background-image]="'url(' + cat.image + ')'"></span>
-                <span class="m-cat__name">{{ cat.label }}</span>
-              </a>
-            }
-          </div>
-        } @else {
-          <div class="m-cat-skeleton">
-            @for (i of [0,1,2,3,4,5,6]; track i) {
-              <app-skeleton width="54px" height="54px" />
-              <app-skeleton width="40%" height="12px" />
-            }
-          </div>
-        }
+        <div class="m-sec__body">
+          @if (categories().length > 0) {
+            <div class="m-cats">
+              @for (cat of categories(); track cat.name) {
+                <a class="m-cat" [routerLink]="['/shop']" [queryParams]="{ category: cat.name }">
+                  <span class="m-cat__img" [style.background-image]="'url(' + cat.image + ')'"></span>
+                  <span class="m-cat__name">{{ cat.label }}</span>
+                </a>
+              }
+            </div>
+          } @else {
+            <div class="m-cat-skeleton">
+              @for (i of [0,1,2,3,4,5,6]; track i) {
+                <app-skeleton width="54px" height="54px" />
+                <app-skeleton width="40%" height="12px" />
+              }
+            </div>
+          }
+        </div>
       </section>
 
-      <section class="m-sec">
-        <div class="m-sec__head">
+      <!-- New Arrivals rail -->
+      <section class="m-sec" [class.lg-loading]="loading()">
+        <div class="m-sec__head" *ngIf="!loading()">
           <h2>New Arrivals</h2>
           <a class="m-sec__more" routerLink="/shop"
             >See All <span class="m-chev" aria-hidden="true">›</span></a
           >
         </div>
-
-        @if (newArrivals().length > 0) {
-          <div class="m-row3">
-            @for (p of newArrivals(); track p.id) {
-              <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
-            }
-          </div>
-        } @else {
-          <div class="m-row-skeleton">
-            @for (i of [0,1,2]; track i) {
-              <app-skeleton width="100%" height="260px" />
-              <app-skeleton width="30%" height="16px" class="mt-8" />
-              <app-skeleton width="60%" height="12px" class="mt-4" />
-            }
-          </div>
-        }
+        <div class="m-sec__body">
+          @if (newArrivals().length > 0) {
+            <div class="m-row3">
+              @for (p of newArrivals(); track p.id) {
+                <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
+              }
+            </div>
+          } @else {
+            <div class="m-row-skeleton">
+              @for (i of [0,1,2]; track i) {
+                <app-skeleton width="100%" height="260px" />
+                <app-skeleton width="30%" height="16px" class="mt-8" />
+                <app-skeleton width="60%" height="12px" class="mt-4" />
+              }
+            </div>
+          }
+        </div>
       </section>
 
-      <section class="m-sec">
-        <div class="m-sec__head">
+      <!-- Best Sellers rail -->
+      <section class="m-sec" [class.lg-loading]="loading()">
+        <div class="m-sec__head" *ngIf="!loading()">
           <h2>Best Sellers</h2>
           <a class="m-sec__more" routerLink="/shop"
             >See All <span class="m-chev" aria-hidden="true">›</span></a
           >
         </div>
-
-        @if (bestSellers().length > 0) {
-          <div class="m-row3">
-            @for (p of bestSellers(); track p.id) {
-              <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
-            }
-          </div>
-        } @else {
-          <div class="m-row-skeleton">
-            @for (i of [0,1,2]; track i) {
-              <app-skeleton width="100%" height="260px" />
-              <app-skeleton width="30%" height="16px" class="mt-8" />
-              <app-skeleton width="60%" height="12px" class="mt-4" />
-            }
-          </div>
-        }
+        <div class="m-sec__body">
+          @if (bestSellers().length > 0) {
+            <div class="m-row3">
+              @for (p of bestSellers(); track p.id) {
+                <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
+              }
+            </div>
+          } @else {
+            <div class="m-row-skeleton">
+              @for (i of [0,1,2]; track i) {
+                <app-skeleton width="100%" height="260px" />
+                <app-skeleton width="30%" height="16px" class="mt-8" />
+                <app-skeleton width="60%" height="12px" class="mt-4" />
+              }
+            </div>
+          }
+        </div>
       </section>
 
-      <section class="m-sec">
-        <div class="m-sec__head">
+      <!-- Suggested for You rail -->
+      <section class="m-sec" [class.lg-loading]="loading()">
+        <div class="m-sec__head" *ngIf="!loading()">
           <h2>Suggested for You</h2>
           <a class="m-sec__more" routerLink="/shop"
             >See All <span class="m-chev" aria-hidden="true">›</span></a
           >
         </div>
-
-        @if (suggestedForYou().length > 0) {
-          <div class="m-row3">
-            @for (p of suggestedForYou(); track p.id) {
-              <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
-            }
-          </div>
-        } @else {
-          <div class="m-row-skeleton">
-            @for (i of [0,1,2]; track i) {
-              <app-skeleton width="100%" height="260px" />
-              <app-skeleton width="30%" height="16px" class="mt-8" />
-              <app-skeleton width="60%" height="12px" class="mt-4" />
-            }
-          </div>
-        }
+        <div class="m-sec__body">
+          @if (suggestedForYou().length > 0) {
+            <div class="m-row3">
+              @for (p of suggestedForYou(); track p.id) {
+                <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
+              }
+            </div>
+          } @else {
+            <div class="m-row-skeleton">
+              @for (i of [0,1,2]; track i) {
+                <app-skeleton width="100%" height="260px" />
+                <app-skeleton width="30%" height="16px" class="mt-8" />
+                <app-skeleton width="60%" height="12px" class="mt-4" />
+              }
+            </div>
+          }
+        </div>
       </section>
     </div>
   `,

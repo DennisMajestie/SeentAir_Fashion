@@ -142,28 +142,31 @@ function collectionKey(name: string): string {
 
       <!-- Endless scroll: the sentinel below loads the next page as it comes
            into reach, so the row count stays stated but the paging control
-           itself disappears. It is held back while a page is in flight and
-           mounted again when it lands, which re-arms the fetch automatically. -->
+           itself disappears. While a page is in flight, the three-dot loader
+           sits at the very bottom (sentinel position) so the shopper knows
+           more products are on the way and should hold on. -->
       @if (hasMore()) {
         <div class="shop-more">
           <p class="muted small">
             Showing {{ all().length | number }} of {{ total() | number }} products
           </p>
-          @if (loadingMore()) {
+        </div>
+        @if (loadingMore()) {
+          <div class="shop-sentinel loading-sentinel" role="status" aria-live="polite">
             <div class="dot-loader" role="status" aria-live="polite">
               <span class="dot"></span>
               <span class="dot"></span>
               <span class="dot"></span>
             </div>
-          } @else {
-            <div
-              class="shop-sentinel"
-              appInfiniteScroll
-              (nearEnd)="loadMore()"
-              aria-hidden="true"
-            ></div>
-          }
-        </div>
+          </div>
+        } @else {
+          <div
+            class="shop-sentinel"
+            appInfiniteScroll
+            (nearEnd)="loadMore()"
+            aria-hidden="true"
+          ></div>
+        }
       }
     }
 

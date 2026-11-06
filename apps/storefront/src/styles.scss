@@ -798,6 +798,16 @@ body:has(.m-tabs) {
     letter-spacing: -0.01em;
   }
 }
+/* While the catalogue is loading, drop the section titles and show skeleton
+   shimmers instead, so no "New Arrivals" / "Best Sellers" text flashes before
+   the real products land. */
+.m-sec.lg-loading .m-sec__head {
+  display: none;
+}
+.m-sec.lg-loading .m-sec__body {
+  padding-top: 12px;
+}
+
 /* Desktop section headings. 14.5px was a phone-scale label sitting under a
    desktop masthead; at desktop these are page-level headings and need to read
    as such. The rail and the card grid stay on the shared 5-up count. */
@@ -2300,6 +2310,17 @@ body:has(.m-tabs) {
 .shop-sentinel {
   height: 1px;
   width: 100%;
+}
+
+/* While a page is loading, the sentinel becomes a full-height bottom bar so
+   the three-dot loader sits at the very end of the scroll, telling the
+   shopper more products are coming and to hold on. */
+.loading-sentinel {
+  height: 90px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Three-dot endless loader — animates non-stop until the page lands. */
