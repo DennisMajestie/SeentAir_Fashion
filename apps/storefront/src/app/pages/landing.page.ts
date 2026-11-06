@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { ApiService, Product } from '../api.service';
 import { ProductCardComponent } from '../product-card.component';
+import { InfiniteScrollDirective } from '../infinite-scroll.directive';
 import { productImage } from '../product-image';
 import { SeoService } from '../seo.service';
 
@@ -71,9 +72,10 @@ interface RailCategory {
  */
 @Component({
   selector: 'app-landing',
-  imports: [CommonModule, RouterLink, ProductCardComponent],
+  imports: [CommonModule, RouterLink, ProductCardComponent, InfiniteScrollDirective],
   template: `
     <div class="m-home">
+      <!-- Initial load: dot-loader only, no skeletons, no titles. -->
       @if (loading()) {
         <div class="dot-loader dot-loader--large" role="status" aria-live="polite">
           <span class="dot dot--large"></span>
@@ -81,126 +83,124 @@ interface RailCategory {
           <span class="dot dot--large"></span>
         </div>
       }
-      <!-- Categories rail: hidden while loading, skeleton after. -->
-      <section class="m-sec" [class.lg-loading]="loading()">
-        <div class="m-sec__head" *ngIf="!loading()">
-          <h2>Shop by Category</h2>
-          <a class="m-sec__more" routerLink="/shop"
-            >See All <span class="m-chev" aria-hidden="true">›</span></a
-          >
-        </div>
-        <div class="m-sec__body">
-          @if (categories().length > 0) {
-            <div class="m-cats">
-              @for (cat of categories(); track cat.name) {
-                <a class="m-cat" [routerLink]="['/shop']" [queryParams]="{ category: cat.name }">
-                  <span class="m-cat__img" [style.background-image]="'url(' + cat.image + ')'"></span>
-                  <span class="m-cat__name">{{ cat.label }}</span>
-                </a>
-              }
-            </div>
-          } @else {
-            <div class="m-cat-skeleton">
-              @for (i of [0,1,2,3,4,5,6]; track i) {
-                <div class="sk-card">
-                  <div class="skeleton sk-img"></div>
-                  <div class="skeleton sk-line w60"></div>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      </section>
 
-      <!-- New Arrivals rail -->
-      <section class="m-sec" [class.lg-loading]="loading()">
-        <div class="m-sec__head" *ngIf="!loading()">
-          <h2>New Arrivals</h2>
-          <a class="m-sec__more" routerLink="/shop"
-            >See All <span class="m-chev" aria-hidden="true">›</span></a
-          >
-        </div>
-        <div class="m-sec__body">
-          @if (newArrivals().length > 0) {
-            <div class="m-row3">
-              @for (p of newArrivals(); track p.id) {
-                <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
-              }
-            </div>
-          } @else {
-            <div class="m-row3">
-              @for (i of [0,1,2]; track i) {
-                <div class="sk-card">
-                  <div class="skeleton sk-img"></div>
-                  <div class="skeleton sk-line w60"></div>
-                  <div class="skeleton sk-line w40"></div>
-                  <div class="skeleton sk-line w80"></div>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      </section>
+      <!-- Everything below renders once data has landed. -->
+      @if (!loading()) {
+        <!-- Categories rail -->
+        <section class="m-sec">
+          <div class="m-sec__head">
+            <h2>Shop by Category</h2>
+            <a class="m-sec__more" routerLink="/shop"
+              >See All <span class="m-chev" aria-hidden="true">›</span></a
+            >
+          </div>
+          <div class="m-sec__body">
+            @if (categories().length > 0) {
+              <div class="m-cats">
+                @for (cat of categories(); track cat.name) {
+                  <a class="m-cat" [routerLink]="['/shop']" [queryParams]="{ category: cat.name }">
+                    <span class="m-cat__img" [style.background-image]="'url(' + cat.image + ')'"></span>
+                    <span class="m-cat__name">{{ cat.label }}</span>
+                  </a>
+                }
+              </div>
+            } @else {
+              <p class="m-empty">No categories yet.</p>
+            }
+          </div>
+        </section>
 
-      <!-- Best Sellers rail -->
-      <section class="m-sec" [class.lg-loading]="loading()">
-        <div class="m-sec__head" *ngIf="!loading()">
-          <h2>Best Sellers</h2>
-          <a class="m-sec__more" routerLink="/shop"
-            >See All <span class="m-chev" aria-hidden="true">›</span></a
-          >
-        </div>
-        <div class="m-sec__body">
-          @if (bestSellers().length > 0) {
-            <div class="m-row3">
-              @for (p of bestSellers(); track p.id) {
-                <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
-              }
-            </div>
-          } @else {
-            <div class="m-row3">
-              @for (i of [0,1,2]; track i) {
-                <div class="sk-card">
-                  <div class="skeleton sk-img"></div>
-                  <div class="skeleton sk-line w60"></div>
-                  <div class="skeleton sk-line w40"></div>
-                  <div class="skeleton sk-line w80"></div>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      </section>
+        <!-- New Arrivals rail -->
+        <section class="m-sec">
+          <div class="m-sec__head">
+            <h2>New Arrivals</h2>
+            <a class="m-sec__more" routerLink="/shop"
+              >See All <span class="m-chev" aria-hidden="true">›</span></a
+            >
+          </div>
+          <div class="m-sec__body">
+            @if (newArrivals().length > 0) {
+              <div class="m-row3">
+                @for (p of newArrivals(); track p.id) {
+                  <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
+                }
+              </div>
+            } @else {
+              <p class="m-empty">Nothing new yet.</p>
+            }
+          </div>
+        </section>
 
-      <!-- Suggested for You rail -->
-      <section class="m-sec" [class.lg-loading]="loading()">
-        <div class="m-sec__head" *ngIf="!loading()">
-          <h2>Suggested for You</h2>
-          <a class="m-sec__more" routerLink="/shop"
-            >See All <span class="m-chev" aria-hidden="true">›</span></a
-          >
-        </div>
-        <div class="m-sec__body">
-          @if (suggestedForYou().length > 0) {
-            <div class="m-row3">
-              @for (p of suggestedForYou(); track p.id) {
-                <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
-              }
+        <!-- Best Sellers rail -->
+        <section class="m-sec">
+          <div class="m-sec__head">
+            <h2>Best Sellers</h2>
+            <a class="m-sec__more" routerLink="/shop"
+              >See All <span class="m-chev" aria-hidden="true">›</span></a
+            >
+          </div>
+          <div class="m-sec__body">
+            @if (bestSellers().length > 0) {
+              <div class="m-row3">
+                @for (p of bestSellers(); track p.id) {
+                  <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
+                }
+              </div>
+            } @else {
+              <p class="m-empty">Nothing flagged yet — check back after the first drop.</p>
+            }
+          </div>
+        </section>
+
+        <!-- Suggested for You rail -->
+        <section class="m-sec">
+          <div class="m-sec__head">
+            <h2>Suggested for You</h2>
+            <a class="m-sec__more" routerLink="/shop"
+              >See All <span class="m-chev" aria-hidden="true">›</span></a
+            >
+          </div>
+          <div class="m-sec__body">
+            @if (suggestedForYou().length > 0) {
+              <div class="m-row3">
+                @for (p of suggestedForYou(); track p.id) {
+                  <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
+                }
+              </div>
+            } @else {
+              <p class="m-empty">Nothing to suggest yet.</p>
+            }
+          </div>
+        </section>
+
+        <!-- Endless scroll: the three-dot loader sits at the bottom of the
+             page and keeps spinning while more products load, and even when
+             the API has no more products — the shopper knows to hold on. -->
+        @if (loadingMore()) {
+          <div class="shop-sentinel loading-sentinel" role="status" aria-live="polite">
+            <div class="dot-loader dot-loader--large" role="status" aria-live="polite">
+              <span class="dot dot--large"></span>
+              <span class="dot dot--large"></span>
+              <span class="dot dot--large"></span>
             </div>
-          } @else {
-            <div class="m-row3">
-              @for (i of [0,1,2]; track i) {
-                <div class="sk-card">
-                  <div class="skeleton sk-img"></div>
-                  <div class="skeleton sk-line w60"></div>
-                  <div class="skeleton sk-line w40"></div>
-                  <div class="skeleton sk-line w80"></div>
-                </div>
-              }
+          </div>
+        } @else if (hasMore()) {
+          <div
+            class="shop-sentinel"
+            appInfiniteScroll
+            (nearEnd)="loadMore()"
+            aria-hidden="true"
+          ></div>
+        } @else if (all().length > 0) {
+          <div class="shop-sentinel loading-sentinel" role="status" aria-live="polite">
+            <div class="dot-loader dot-loader--large" role="status" aria-live="polite">
+              <span class="dot dot--large"></span>
+              <span class="dot dot--large"></span>
+              <span class="dot dot--large"></span>
             </div>
-          }
-        </div>
-      </section>
+          </div>
+        }
+      }
     </div>
   `,
 })
@@ -211,6 +211,10 @@ private readonly seo = inject(SeoService);
   readonly all = signal<Product[]>([]);
   readonly ratings = signal<Map<string, Rating>>(new Map());
   readonly loading = signal(true);
+  /** Pages fetched so far, and the catalogue's real size, for endless scroll. */
+  readonly page = signal(1);
+  readonly total = signal(0);
+  readonly loadingMore = signal(false);
 
   /**
    * New Arrivals: newest first, five across on desktop and three below.
@@ -336,17 +340,56 @@ private readonly seo = inject(SeoService);
       image: 'assets/walk-1.jpg',
       type: 'website',
     });
+    this.loadPage(1);
+  }
+
+  /** Rows fetched per page. The landing rails project client-side over
+   *  everything loaded, so endless scroll appends page by page until the
+   *  catalogue is exhausted. */
+  private static readonly PAGE_SIZE = 50;
+
+  /**
+   * Fetch one page of the catalogue and append it. Page 1 replaces the list;
+   * later pages append. Endless scroll re-arms on the fresh sentinel, so the
+   * three-dot loader keeps spinning at the bottom until the API has no more.
+   */
+  private loadPage(page: number): void {
+    if (page === 1) {
+      this.loading.set(true);
+      this.page.set(1);
+    } else {
+      this.loadingMore.set(true);
+    }
     this.api
-      .products()
+      .products(page, LandingPage.PAGE_SIZE)
       .pipe(
-        map((res) => res.data),
-        catchError(() => of([] as Product[])),
+        catchError(() => of({ data: [] as Product[], total: 0 })),
       )
-      .subscribe((products) => {
-        this.all.set(products);
+      .subscribe((res) => {
+        this.total.set(res.total);
+        if (page === 1) {
+          this.all.set(res.data);
+          this.loadRatings(res.data);
+        } else {
+          this.all.update((current) => {
+            const seen = new Set(current.map((p) => p.id));
+            return [...current, ...res.data.filter((p) => !seen.has(p.id))];
+          });
+          this.page.set(page);
+        }
         this.loading.set(false);
-        this.loadRatings(products);
+        this.loadingMore.set(false);
       });
+  }
+
+  /** True while the catalogue holds products the shopper has not loaded yet. */
+  hasMore(): boolean {
+    return this.all().length < this.total();
+  }
+
+  loadMore(): void {
+    if (this.loadingMore() || !this.hasMore()) return;
+    this.loadPage(this.page() + 1);
   }
 
   ratingOf(productId: string): Rating | null {
