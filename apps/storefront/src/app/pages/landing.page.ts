@@ -75,106 +75,129 @@ interface RailCategory {
   imports: [CommonModule, RouterLink, ProductCardComponent, InfiniteScrollDirective],
   template: `
     <div class="m-home">
-      <!-- Initial load: dot-loader only, no skeletons, no titles. -->
-      @if (loading()) {
-        <div class="dot-loader dot-loader--large" role="status" aria-live="polite">
-          <span class="dot dot--large"></span>
-          <span class="dot dot--large"></span>
-          <span class="dot dot--large"></span>
+      <!-- Categories rail -->
+      <section class="m-sec">
+        <div class="m-sec__head">
+          <h2>Shop by Category</h2>
+          <a class="m-sec__more" routerLink="/shop"
+            >See All <span class="m-chev" aria-hidden="true">›</span></a
+          >
         </div>
-      }
+        <div class="m-sec__body">
+          @if (categories().length > 0) {
+            <div class="m-cats">
+              @for (cat of categories(); track cat.name) {
+                <a class="m-cat" [routerLink]="['/shop']" [queryParams]="{ category: cat.name }">
+                  <span class="m-cat__img" [style.background-image]="'url(' + cat.image + ')'"></span>
+                  <span class="m-cat__name">{{ cat.label }}</span>
+                </a>
+              }
+            </div>
+          } @else {
+            <div class="m-cat-skeleton">
+              @for (i of [0,1,2,3,4,5,6]; track i) {
+                <div class="sk-card">
+                  <div class="skeleton sk-img"></div>
+                  <div class="skeleton sk-line w60"></div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
 
-      <!-- Everything below renders once data has landed. -->
-      @if (!loading()) {
-        <!-- Categories rail -->
-        <section class="m-sec">
-          <div class="m-sec__head">
-            <h2>Shop by Category</h2>
-            <a class="m-sec__more" routerLink="/shop"
-              >See All <span class="m-chev" aria-hidden="true">›</span></a
-            >
-          </div>
-          <div class="m-sec__body">
-            @if (categories().length > 0) {
-              <div class="m-cats">
-                @for (cat of categories(); track cat.name) {
-                  <a class="m-cat" [routerLink]="['/shop']" [queryParams]="{ category: cat.name }">
-                    <span class="m-cat__img" [style.background-image]="'url(' + cat.image + ')'"></span>
-                    <span class="m-cat__name">{{ cat.label }}</span>
-                  </a>
-                }
-              </div>
-            } @else {
-              <p class="m-empty">No categories yet.</p>
-            }
-          </div>
-        </section>
+      <!-- New Arrivals rail -->
+      <section class="m-sec">
+        <div class="m-sec__head">
+          <h2>New Arrivals</h2>
+          <a class="m-sec__more" routerLink="/shop"
+            >See All <span class="m-chev" aria-hidden="true">›</span></a
+          >
+        </div>
+        <div class="m-sec__body">
+          @if (newArrivals().length > 0) {
+            <div class="m-row3">
+              @for (p of newArrivals(); track p.id) {
+                <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
+              }
+            </div>
+          } @else {
+            <div class="m-row3">
+              @for (i of [0,1,2]; track i) {
+                <div class="sk-card">
+                  <div class="skeleton sk-img"></div>
+                  <div class="skeleton sk-line w60"></div>
+                  <div class="skeleton sk-line w40"></div>
+                  <div class="skeleton sk-line w80"></div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
 
-        <!-- New Arrivals rail -->
-        <section class="m-sec">
-          <div class="m-sec__head">
-            <h2>New Arrivals</h2>
-            <a class="m-sec__more" routerLink="/shop"
-              >See All <span class="m-chev" aria-hidden="true">›</span></a
-            >
-          </div>
-          <div class="m-sec__body">
-            @if (newArrivals().length > 0) {
-              <div class="m-row3">
-                @for (p of newArrivals(); track p.id) {
-                  <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
-                }
-              </div>
-            } @else {
-              <p class="m-empty">Nothing new yet.</p>
-            }
-          </div>
-        </section>
+      <!-- Best Sellers rail -->
+      <section class="m-sec">
+        <div class="m-sec__head">
+          <h2>Best Sellers</h2>
+          <a class="m-sec__more" routerLink="/shop"
+            >See All <span class="m-chev" aria-hidden="true">›</span></a
+          >
+        </div>
+        <div class="m-sec__body">
+          @if (bestSellers().length > 0) {
+            <div class="m-row3">
+              @for (p of bestSellers(); track p.id) {
+                <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
+              }
+            </div>
+          } @else {
+            <div class="m-row3">
+              @for (i of [0,1,2]; track i) {
+                <div class="sk-card">
+                  <div class="skeleton sk-img"></div>
+                  <div class="skeleton sk-line w60"></div>
+                  <div class="skeleton sk-line w40"></div>
+                  <div class="skeleton sk-line w80"></div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
 
-        <!-- Best Sellers rail -->
-        <section class="m-sec">
-          <div class="m-sec__head">
-            <h2>Best Sellers</h2>
-            <a class="m-sec__more" routerLink="/shop"
-              >See All <span class="m-chev" aria-hidden="true">›</span></a
-            >
-          </div>
-          <div class="m-sec__body">
-            @if (bestSellers().length > 0) {
-              <div class="m-row3">
-                @for (p of bestSellers(); track p.id) {
-                  <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
-                }
-              </div>
-            } @else {
-              <p class="m-empty">Nothing flagged yet — check back after the first drop.</p>
-            }
-          </div>
-        </section>
+      <!-- Suggested for You rail -->
+      <section class="m-sec">
+        <div class="m-sec__head">
+          <h2>Suggested for You</h2>
+          <a class="m-sec__more" routerLink="/shop"
+            >See All <span class="m-chev" aria-hidden="true">›</span></a
+          >
+        </div>
+        <div class="m-sec__body">
+          @if (suggestedForYou().length > 0) {
+            <div class="m-row3">
+              @for (p of suggestedForYou(); track p.id) {
+                <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
+              }
+            </div>
+          } @else {
+            <div class="m-row3">
+              @for (i of [0,1,2]; track i) {
+                <div class="sk-card">
+                  <div class="skeleton sk-img"></div>
+                  <div class="skeleton sk-line w60"></div>
+                  <div class="skeleton sk-line w40"></div>
+                  <div class="skeleton sk-line w80"></div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
 
-        <!-- Suggested for You rail -->
-        <section class="m-sec">
-          <div class="m-sec__head">
-            <h2>Suggested for You</h2>
-            <a class="m-sec__more" routerLink="/shop"
-              >See All <span class="m-chev" aria-hidden="true">›</span></a
-            >
-          </div>
-          <div class="m-sec__body">
-            @if (suggestedForYou().length > 0) {
-              <div class="m-row3">
-                @for (p of suggestedForYou(); track p.id) {
-                  <app-product-card [product]="p" [rating]="ratingOf(p.id)" />
-                }
-              </div>
-            } @else {
-              <p class="m-empty">Nothing to suggest yet.</p>
-            }
-          </div>
-        </section>
-
-        <!-- Endless scroll: the three-dot loader sits at the bottom of the
-             page and keeps spinning while more products load, and even when
+      <!-- Endless scroll: the three-dot loader sits at the bottom of the
+           page and keeps spinning while more products load, and even when
              the API has no more products — the shopper knows to hold on. -->
         @if (loadingMore()) {
           <div class="shop-sentinel loading-sentinel" role="status" aria-live="polite">
@@ -200,7 +223,6 @@ interface RailCategory {
             </div>
           </div>
         }
-      }
     </div>
   `,
 })
