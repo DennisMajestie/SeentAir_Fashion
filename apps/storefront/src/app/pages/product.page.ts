@@ -60,10 +60,10 @@ interface GalleryShot {
   ],
   template: `
     @if (product(); as p) {
-      <!-- No app-back-header here: the PDP is not an immersive route any more, so
-           the site header (with its own back affordance) frames the page. -->
+        <!-- No app-back-header here: the PDP is not an immersive route any more, so
+             the site header (with its own back affordance) frames the page. -->
 
-      <!-- Gallery. Full-bleed, one photo at a time, swiped with a finger. -->
+        <!-- Gallery. Full-bleed, one photo at a time, swiped with a finger. -->
       <div class="p-gal">
         <!-- Desktop thumbnail rail. Hidden below 900px, where the same photos are
              a horizontal swipe instead (see .p-gal__track). Rail, swipe track and
@@ -420,6 +420,13 @@ interface GalleryShot {
         <div class="skeleton sk-img"></div>
         <div class="skeleton sk-line"></div>
         <div class="skeleton sk-line w60"></div>
+      </div>
+      <div class="shop-sentinel loading-sentinel" role="status" aria-live="polite">
+        <div class="dot-loader dot-loader--large" role="status" aria-live="polite">
+          <span class="dot dot--large"></span>
+          <span class="dot dot--large"></span>
+          <span class="dot dot--large"></span>
+        </div>
       </div>
     }
   `,
