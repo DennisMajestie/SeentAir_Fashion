@@ -106,6 +106,25 @@ import { productImage } from './product-image';
             <a
               class="m-iconbtn"
               routerLink="/account"
+              fragment="saved"
+              [attr.aria-label]="wishLabel()"
+            >
+              <svg
+                class="m-ic m-ic--lg"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.6-7 9-7 9z" />
+              </svg>
+              @if (wish.count > 0) {
+                <span class="m-badge" aria-hidden="true">{{ wish.count }}</span>
+              }
+              <span class="sr-only">{{ wishLabel() }}</span>
+            </a>
+            <a
+              class="m-iconbtn"
+              routerLink="/account"
               fragment="notifications"
               [attr.aria-label]="notificationsLabel()"
             >
@@ -396,6 +415,9 @@ export class MobileHeaderComponent implements OnDestroy {
   );
   readonly cartLabel = computed(() =>
     this.cart.count === 1 ? 'Cart, 1 item' : 'Cart, ' + this.cart.count + ' items',
+  );
+  readonly wishLabel = computed(() =>
+    this.wish.count === 1 ? 'Saved, 1 item' : 'Saved, ' + this.wish.count + ' items',
   );
 
   readonly links = [
