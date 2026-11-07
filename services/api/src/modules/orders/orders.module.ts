@@ -21,6 +21,7 @@ import { OrderExpiryService } from './order-expiry.service';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { PaystackService } from './paystack.service';
+import { RealtimeGateway } from './realtime.gateway';
 
 @Module({
   imports: [
@@ -47,7 +48,7 @@ import { PaystackService } from './paystack.service';
     PlatformSettingsModule,
   ],
   controllers: [OrdersController],
-  providers: [OrdersService, PaystackService, OrderExpiryService],
-  exports: [OrdersService],
+  providers: [OrdersService, PaystackService, OrderExpiryService, RealtimeGateway],
+  exports: [OrdersService, RealtimeGateway],
 })
 export class OrdersModule {}

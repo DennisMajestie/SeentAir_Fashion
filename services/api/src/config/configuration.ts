@@ -1,5 +1,13 @@
 import { databaseConnection } from './database-connection';
 
+export function corsOrigins(): string[] {
+  const builtIn =
+    'http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4203,https://seent-air-fashion.vercel.app,https://seentair-wholesale.vercel.app,https://admin-dashboard-chi-eight-15.vercel.app,https://partner-portal-pi-ten.vercel.app';
+  const configured = process.env.CORS_ORIGINS ?? builtIn;
+  const origins = [...configured.split(','), ...builtIn.split(',')].map((origin) => origin.trim());
+  return Array.from(new Set(origins));
+}
+
 // Currency and locale are configuration, never hardcoded (Open Question #6).
 export default () => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
@@ -67,13 +75,7 @@ export default () => ({
     // deployed storefront) are always permitted; CORS_ORIGINS can only ADD
     // more (e.g. wholesale/admin/partner URLs) — an override can never
     // silently break the storefront.
-    corsOrigins: (() => {
-      const builtIn =
-        'http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4203,https://seent-air-fashion.vercel.app,https://seentair-wholesale.vercel.app,https://admin-dashboard-chi-eight-15.vercel.app,https://partner-portal-pi-ten.vercel.app';
-      const configured = process.env.CORS_ORIGINS ?? builtIn;
-      const origins = [...configured.split(','), ...builtIn.split(',')].map((o) => o.trim());
-      return Array.from(new Set(origins));
-    })(),
+    corsOrigins: corsOrigins(),
   },
   business: {
     currencyCode: process.env.CURRENCY_CODE ?? 'NGN',

@@ -403,6 +403,52 @@ export class ApiService {
     }
   }
 
+  /** Socket.IO notifications only prompt a fresh authorized tracking request. */
+  async orderSocketStream(
+    orderId: string,
+    onEvent: (kind: 'open' | 'status') => void,
+    signal: AbortSignal,
+    guestToken?: string,
+  ): Promise<void> {
+    if (signal.aborted) return;
+    const { io } = await import('socket.io-client');
+    if (signal.aborted) return;
+
+    const socket = io(new URL(API_BASE, window.location.origin).origin, {
+      withCredentials: true,
+      reconnection: false,
+      auth: (callback) => callback({ token: this.store.token() }),
+    });
+
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        signal.removeEventListener('abort', finish);
+        socket.removeAllListeners();
+        socket.disconnect();
+        resolve();
+      };
+      signal.addEventListener('abort', finish, { once: true });
+      socket.on('connect', () => {
+        socket.emit(
+          'order:subscribe',
+          { orderId, ...(guestToken ? { guestToken } : {}) },
+          (response: { ok?: boolean }) => {
+            if (!response?.ok) return finish();
+            onEvent('open');
+          },
+        );
+      });
+      socket.on('order:updated', (event: { orderId?: string }) => {
+        if (event.orderId === orderId) onEvent('status');
+      });
+      socket.on('connect_error', finish);
+      socket.on('disconnect', finish);
+    });
+  }
+
   /** `email` overrides where Paystack sends the receipt. The API refuses it in
       production unless PAYSTACK_EMAIL_OVERRIDE_ALLOWED is explicitly on, so
       only send it when the shopper actually changed it. */

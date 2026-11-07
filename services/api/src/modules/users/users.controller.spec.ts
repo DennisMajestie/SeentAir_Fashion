@@ -9,6 +9,7 @@ import { AccessGuard } from '../../common/guards/access.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuditInterceptor } from '../../common/interceptors/audit.interceptor';
 import { AuditService } from '../audit/audit.service';
+import { RealtimeGateway } from '../orders/realtime.gateway';
 import { PermissionsService } from './permissions.service';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
@@ -110,7 +111,12 @@ describe('UsersController — signed role permission requests', () => {
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
-    app.useGlobalInterceptors(new AuditInterceptor(audit as never));
+    app.useGlobalInterceptors(
+      new AuditInterceptor(
+        audit as never,
+        { publishAdminDataChanged: jest.fn() } as unknown as RealtimeGateway,
+      ),
+    );
     await app.init();
   });
 

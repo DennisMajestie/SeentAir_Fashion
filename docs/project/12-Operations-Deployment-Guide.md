@@ -16,6 +16,18 @@ Proposed defaults — confirm hosting provider and budget with client/team befor
 - On merge to `develop`: auto-deploy to Staging.
 - On merge to `main` (via release PR from `develop`): auto-deploy to Production after manual approval gate.
 
+## Realtime updates
+
+- The API serves Socket.IO on `/socket.io`. Reverse proxies must allow WebSocket
+  upgrades, and `CORS_ORIGINS` must include every deployed admin and customer
+  frontend origin.
+- Realtime messages are invalidation/status notifications only; clients fetch
+  the authorized data again through the HTTP API. Keep polling as a fallback.
+- The Socket.IO adapter and order-status bus are process-local. Run one API
+  instance until a shared Socket.IO adapter/pub-sub and appropriate load-balancer
+  support are configured; otherwise clients connected to another instance will
+  miss updates.
+
 ## Monitoring & alerting
 
 - Application error tracking (e.g. Sentry or similar).

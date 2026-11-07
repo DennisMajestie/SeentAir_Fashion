@@ -18,7 +18,7 @@ import {
 import { ApiService, DeliveryCheckpoint, DeliveryLegView, Invoice } from '../api.service';
 import { orderRef, units } from '../wholesale-format';
 
-/** Fallback poll cadence while the SSE stream is down, and the slow cadence
+/** Fallback poll cadence while the socket is down, and the slow cadence
     used while it is up. Visibility-aware, so a backgrounded tab costs nothing. */
 const POLL_FAST_MS = 60_000;
 const POLL_SLOW_MS = 300_000;
@@ -379,7 +379,7 @@ export class TrackingPage implements OnInit, OnDestroy {
     const abort = new AbortController();
     this.streamAbort = abort;
     void this.api
-      .orderStream(
+      .orderSocketStream(
         this.orderId(),
         (kind) => {
           if (abort.signal.aborted) return;

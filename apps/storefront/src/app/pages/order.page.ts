@@ -127,7 +127,7 @@ const CARRIER_NAMES: Record<string, string> = {
 
 const RETURN_WINDOW_MS = 12 * 3_600_000;
 
-/** Fallback poll cadence while the SSE stream is down, and the slow cadence
+/** Fallback poll cadence while the socket is down, and the slow cadence
     used while it is up. Visibility-aware, so a backgrounded tab costs nothing. */
 const POLL_FAST_MS = 15_000;
 const POLL_SLOW_MS = 60_000;
@@ -810,6 +810,9 @@ export class OrderPage implements OnInit, OnDestroy {
       this.refetchQueued = false;
       this.api.tracking(this.orderId, this.guestToken).subscribe({
         next: (t) => {
+          this.order.update((order) =>
+            order ? { ...order, status: t.status, deliveredAt: t.deliveredAt } : order,
+          );
           this.events.set(t.events);
           this.deliveredAt.set(t.deliveredAt);
           this.deliveries.set(t.deliveries ?? []);
@@ -838,15 +841,15 @@ export class OrderPage implements OnInit, OnDestroy {
   }
 
   /**
-   * SSE is the fast path; polling is the floor. If the stream fails for any
-   * reason the page keeps working off the poll timer, and the stream is retried.
+   * Socket.IO is the fast path; polling is the floor. If the connection fails,
+   * the page keeps working off the poll timer and retries the socket.
    */
   private openStream(): void {
     this.streamAbort?.abort();
     const abort = new AbortController();
     this.streamAbort = abort;
     void this.api
-      .orderStream(
+      .orderSocketStream(
         this.orderId,
         (kind) => {
           if (abort.signal.aborted) return;
@@ -858,6 +861,7 @@ export class OrderPage implements OnInit, OnDestroy {
           this.refreshTracking();
         },
         abort.signal,
+        this.guestToken,
       )
       .then(() => this.streamDropped(abort));
   }

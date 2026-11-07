@@ -26,6 +26,10 @@ const HEARTBEAT_MS = 25000;
 export class OrderStatusBus {
   private readonly changes = new Subject<OrderStatusChange>();
 
+  events(): Observable<OrderStatusChange> {
+    return this.changes.asObservable();
+  }
+
   emit(orderId: string, status: string): void {
     this.changes.next({ orderId, status, at: new Date().toISOString() });
   }

@@ -1,6 +1,7 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
 import { AuditService } from '../../modules/audit/audit.service';
+import { RealtimeGateway } from '../../modules/orders/realtime.gateway';
 import { AuthenticatedUser } from '../interfaces';
 
 const MUTATING_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
@@ -25,7 +26,10 @@ function redact(value: unknown): unknown {
  */
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
-  constructor(private readonly auditService: AuditService) {}
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly realtimeGateway: RealtimeGateway,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest();
@@ -36,6 +40,7 @@ export class AuditInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap((responseBody) => {
+        this.realtimeGateway.publishAdminDataChanged();
         void this.auditService
           .record({
             actorId: user?.id ?? null,

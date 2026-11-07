@@ -76,3 +76,18 @@ and status-event notes and actor attribution.
 The order number is allocated by the database sequence and formatted as
 `SO-<number>` in this response. The UUID `id` remains the resource identifier
 for API routes and existing links.
+
+## Live updates
+
+The API also exposes Socket.IO on the API host's default `/socket.io` path.
+Clients may emit `order:subscribe` with `{ "orderId": "..." }`; guest tracking
+clients also provide `guestToken`. The server validates the subscription with
+the same order-tracking access rules as the HTTP API and acknowledges it with
+`{ "ok": true }` only after authorization succeeds.
+
+An authorized subscriber receives `order:updated` with only the order ID and
+timestamp. This is a notification, not order data: clients should refetch
+`GET /orders/:id/tracking` using their existing bearer token or guest token.
+Admin-role clients receive `admin:data-changed` notifications after successful
+mutations and should refresh their authorized data. Socket.IO notifications do
+not replace the HTTP API, and clients should retain polling as a fallback.
