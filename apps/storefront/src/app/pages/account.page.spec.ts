@@ -55,7 +55,7 @@ describe('AccountPage favourites', () => {
     localStorage.clear();
   });
 
-  it('shows guest wishlist items without rendering auth controls', () => {
+  it('shows guest wishlist cards and the item count without any dot loader', () => {
     localStorage.setItem(
       'seentair.wishlist',
       JSON.stringify([
@@ -70,18 +70,23 @@ describe('AccountPage favourites', () => {
 
     setUp();
 
-    expect(element.querySelector('h1')?.textContent).toContain('Saved');
-    expect(element.querySelectorAll('.saved-row').length).toBe(1);
+    expect(element.querySelector('h1')?.textContent).toContain('Saved items');
+    expect(element.querySelectorAll('.saved-card').length).toBe(1);
+    expect(element.textContent).toContain('1 item');
     expect(element.textContent).toContain('Harmattan Hoodie');
+    expect(element.querySelector('.dot-loader')).toBeNull();
     expect(element.querySelector('.auth-screen')).toBeNull();
     expect(element.querySelector('.auth-form')).toBeNull();
   });
 
-  it('shows an empty favourite page when the guest has nothing saved', () => {
+  it('shows a helpful empty saved state when the guest has nothing saved', () => {
     setUp();
 
-    expect(element.querySelector('h1')?.textContent).toContain('Saved');
+    expect(element.querySelector('h1')?.textContent).toContain('Saved items');
     expect(element.querySelector('.saved-grid')).toBeNull();
+    expect(element.querySelector('.saved-empty')).not.toBeNull();
+    expect(element.textContent).toContain('Nothing saved yet');
+    expect(element.querySelector('.dot-loader')).toBeNull();
     expect(element.querySelector('.auth-form')).toBeNull();
   });
 
@@ -122,7 +127,7 @@ describe('AccountPage favourites', () => {
 
     setUp();
 
-    expect(element.querySelector('.saved-row')?.getAttribute('href')).toContain('/product/p1');
+    expect(element.querySelector('.saved-card')?.getAttribute('href')).toContain('/product/p1');
   });
 
   it('keeps the page usable when an authenticated wishlist request fails', () => {
@@ -131,7 +136,7 @@ describe('AccountPage favourites', () => {
       wishlist: () => throwError(() => new Error('offline')),
     });
 
-    expect(element.querySelector('h1')?.textContent).toContain('Your account');
-    expect(element.querySelector('.saved-grid')).toBeNull();
+    expect(element.querySelector('#account-title')?.textContent).toContain('Your account');
+    expect(element.querySelector('.saved-empty')).not.toBeNull();
   });
 });
