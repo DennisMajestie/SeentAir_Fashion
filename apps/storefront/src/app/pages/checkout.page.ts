@@ -7,6 +7,7 @@ import type { DeliveryMethod, DeliveryQuote, Order } from '../api.service';
 import { catchError, Observable, of, tap } from 'rxjs';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
+import { CouponService } from '../coupon.service';
 
 /** Middle dot, kept as a named constant so the stage labels stay readable and
     the character never has to survive a copy-paste through a shell. */
@@ -436,6 +437,47 @@ const NIGERIAN_STATES = [
             <span class="muted">Choose a state to see delivery</span>
           }
         </div>
+          @if (api.isLoggedIn && coupons.enabled()) {
+            <div class="coupon-card">
+              @if (coupons.applied(); as c) {
+                <div class="matrix-row coupon-row">
+                  <span>Coupon <b>{{ c.code }}</b></span>
+                  <span>−₦{{ c.discount | number: '1.0-2' }}</span>
+                </div>
+                <button class="link" type="button" (click)="coupons.useBest.set(false)">
+                  Don't apply
+                </button>
+              } @else if (coupons.best()) {
+                <button class="link" type="button" (click)="coupons.useBest.set(true)">
+                  Apply best offer
+                </button>
+              }
+              @if (coupons.nudge(); as n) {
+                <p class="small muted">
+                  Spend ₦{{ n.spendMore | number: '1.0-0' }} more to use <b>{{ n.code }}</b>.
+                </p>
+              }
+              <div class="coupon-claim">
+                <input
+                  [(ngModel)]="couponCode"
+                  name="couponCode"
+                  placeholder="Coupon code"
+                  autocomplete="off"
+                />
+                <button
+                  class="link"
+                  type="button"
+                  (click)="applyCode()"
+                  [disabled]="!couponCode.trim()"
+                >
+                  Apply
+                </button>
+              </div>
+              @if (coupons.codeError(); as e) {
+                <p class="small error">{{ e }}</p>
+              }
+            </div>
+          }
           <div class="matrix-divider"></div>
           <div class="matrix-total">
             <span class="label">Total due</span>
@@ -473,6 +515,7 @@ const NIGERIAN_STATES = [
 export class CheckoutPage {
   readonly cart = inject(CartService);
   readonly api = inject(ApiService);
+  readonly coupons = inject(CouponService);
   private readonly alerts = inject(BrandAlertService);
   private readonly details = viewChild<ElementRef<HTMLElement>>('details');
 
@@ -539,7 +582,9 @@ export class CheckoutPage {
     return Math.max(0, Math.round(quote.feeKobo / 100));
   });
 
-  readonly totalDue = computed(() => this.cart.total + this.deliveryFee());
+  readonly totalDue = computed(
+    () => this.cart.total - this.coupons.discount() + this.deliveryFee(),
+  );
 
   /** One button, two jobs: the details step advances, the delivery step places. */
   primaryAction(): void {
@@ -571,10 +616,42 @@ export class CheckoutPage {
   shipLandmark = '';
   receiptEmail = '';
 
+  /** The code the shopper is trying to claim into their wallet. */
+  couponCode = '';
+
   constructor() {
     // The total shown here is what the order will cost: drop any sale that has ended.
     this.cart.settlePrices();
     this.loadAccount();
+    this.refreshCoupons();
+  }
+
+  /**
+   * Re-asks the API what the shopper's held coupons are worth on this basket.
+   * The delivery state/method are passed once known, because a free-delivery
+   * coupon is only worth the fee the quote would charge.
+   */
+  private refreshCoupons(): void {
+    const state = this.shipState.trim();
+    this.coupons.refresh({
+      subtotal: this.cart.total,
+      lines: this.cart.items().map((i) => ({
+        variantId: i.variantId,
+        productId: i.productId,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        isOnSale: i.listPrice !== undefined,
+      })),
+      ...(state ? { state, method: this.deliveryMethod() } : {}),
+    });
+  }
+
+  /** Claims a typed code, then lets the service re-price the basket. */
+  applyCode(): void {
+    if (!this.couponCode.trim()) return;
+    this.coupons.claim(this.couponCode).subscribe((ok) => {
+      if (ok) this.couponCode = '';
+    });
   }
 
   /** Reads the signed-in account so the receipt override only shows for
@@ -724,6 +801,7 @@ export class CheckoutPage {
           guest,
           this.deliveryMethod(),
           quote?.quoteId,
+          this.coupons.customerCouponId() ?? undefined,
         )
         .subscribe({
           next: (order) => this.onOrderPlaced(order),
@@ -801,6 +879,9 @@ export class CheckoutPage {
     *  required. */
   onStateOrMethodChange(): void {
     this.refreshDeliveryQuote().subscribe();
+    // A free-delivery coupon is worth the quoted fee, so the coupon card has to
+    // be re-priced whenever the destination or collection method changes.
+    this.refreshCoupons();
   }
 
   private onOrderPlaced(order: Order): void {
@@ -814,6 +895,8 @@ export class CheckoutPage {
     }
     this.paidTotal.set(order.totalAmount);
     this.cart.clear();
+    // The coupon has been reserved onto the order; the shop starts clean.
+    this.coupons.reset();
     this.startPayment();
   }
 

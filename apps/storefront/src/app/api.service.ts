@@ -131,6 +131,86 @@ export interface ShippingAddress {
   landmark?: string;
 }
 
+/** How a coupon reduces an order. Mirrors the API's coupon_type enum. */
+export type CouponType = 'percent_off' | 'fixed_off' | 'free_delivery';
+
+/** Why a coupon in the wallet cannot be used on this basket. */
+export type CouponRejection =
+  | 'MIN_SPEND'
+  | 'EXPIRED'
+  | 'NOT_STARTED'
+  | 'USAGE_CAP'
+  | 'PER_CUSTOMER_CAP'
+  | 'NEW_CUSTOMERS_ONLY'
+  | 'EXCLUDED_ITEMS'
+  | 'SALE_ITEMS'
+  | 'NOT_COMBINABLE'
+  | 'INACTIVE';
+
+/**
+ * One coupon the API evaluated against the basket. `customerCouponId` is the
+ * wallet row to send back when placing the order — the coupon id is not enough,
+ * a coupon is only the shopper's once they hold it.
+ */
+export interface EligibleCoupon {
+  customerCouponId: string;
+  couponId: string;
+  code: string;
+  name: string;
+  type: CouponType;
+  /** Major units the coupon is worth on this basket. */
+  discount: number;
+  /** Present only on coupons that were evaluated but cannot be used. */
+  rejection?: CouponRejection;
+}
+
+/** The priced order the API would charge with the chosen coupon applied. */
+export interface CouponTotals {
+  subtotal: number;
+  itemDiscount: number;
+  deliveryFee: number;
+  deliveryWaived: number;
+  taxableBase: number;
+  vat: number;
+  total: number;
+}
+
+/**
+ * The result of previewing coupons for a basket. Read-only: it reserves
+ * nothing, so it is safe to call as the basket changes. `status` is
+ * `disabled` when the platform's coupon feature is switched off, in which case
+ * the card must render nothing.
+ */
+export interface CouponPreview {
+  status: 'ok' | 'disabled';
+  selected: { item: EligibleCoupon | null; freeDelivery: EligibleCoupon | null };
+  eligible: EligibleCoupon[];
+  /** Why a code the shopper typed could not be used, when one was sent. */
+  codeRejection?: CouponRejection;
+  /** How much more must be spent to unlock a coupon, in major units. */
+  nudge: { spendMore: number; code: string } | null;
+  totals: CouponTotals | null;
+}
+
+/** One basket line as the preview endpoint wants it. */
+export interface CouponPreviewLine {
+  variantId: string;
+  productId: string;
+  categoryIds: string[];
+  quantity: number;
+  unitPrice: number;
+  isOnSale: boolean;
+  taxExempt?: boolean;
+}
+
+export interface CouponPreviewRequest {
+  lines: CouponPreviewLine[];
+  state?: string;
+  method?: DeliveryMethod;
+  subtotal: number;
+  code?: string;
+}
+
 /** Access token only, the refresh token never reaches page JavaScript. */
 export interface TokenPair {
   accessToken: string;
@@ -294,6 +374,7 @@ export class ApiService {
     guest?: { name: string; email: string },
     deliveryMethod?: DeliveryMethod,
     quoteId?: string,
+    customerCouponId?: string,
   ): Observable<Order> {
     return this.http.post<Order>(`${API_BASE}/orders`, {
       items,
@@ -304,6 +385,9 @@ export class ApiService {
       // Sent only when the quote endpoint produced one. The API ignores it while
       // delivery pricing is off, and requires it while it is on.
       ...(quoteId ? { quoteId } : {}),
+      // A coupon the shopper is spending, named by its wallet row. Ignored by
+      // the API while the coupon feature is off or for a guest order.
+      ...(customerCouponId ? { customerCouponId } : {}),
     });
   }
 
@@ -322,6 +406,27 @@ export class ApiService {
     subtotal: number;
   }): Observable<DeliveryQuote> {
     return this.http.post<DeliveryQuote>(`${API_BASE}/checkout-shipping/quote`, request);
+  }
+
+  /**
+   * What the shopper's held coupons are worth on this basket, and what the
+   * order would cost with the best one applied. Read-only — it reserves
+   * nothing — so the cart and checkout can call it on every change. Requires a
+   * signed-in shopper: a coupon is tied to an account.
+   */
+  previewCoupon(request: CouponPreviewRequest): Observable<CouponPreview> {
+    return this.http.post<CouponPreview>(`${API_BASE}/coupons/preview`, request);
+  }
+
+  /**
+   * Adds a coupon to the shopper's wallet by typed code. Idempotent: asking
+   * twice returns the entry already held rather than minting a duplicate.
+   */
+  claimCoupon(code: string): Observable<{ wallet: unknown; alreadyHeld: boolean }> {
+    return this.http.post<{ wallet: unknown; alreadyHeld: boolean }>(
+      `${API_BASE}/coupons/claim`,
+      { code },
+    );
   }
 
   verifyEmail(token: string): Observable<{ message: string; ordersClaimed: number }> {

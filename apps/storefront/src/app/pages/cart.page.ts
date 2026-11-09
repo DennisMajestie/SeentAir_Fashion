@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { ApiService } from '../api.service';
 import { CartService } from '../cart.service';
+import { CouponService } from '../coupon.service';
 import { environment } from '../../environments/environment';
 
 /** Cart, Stitch approved screen, stage 01 "Review": manifest with
@@ -151,10 +153,51 @@ import { environment } from '../../environments/environment';
           </div>
           <div class="matrix-row"><span>Delivery</span><span>quoted at dispatch</span></div>
           <div class="matrix-row"><span>Payment policy</span><span>full &amp; upfront</span></div>
+          @if (api.isLoggedIn && coupons.enabled()) {
+            <div class="coupon-card">
+              @if (coupons.applied(); as c) {
+                <div class="matrix-row coupon-row">
+                  <span>Coupon <b>{{ c.code }}</b></span>
+                  <span>−₦{{ c.discount | number: '1.0-2' }}</span>
+                </div>
+                <button class="link" type="button" (click)="coupons.useBest.set(false)">
+                  Don't apply
+                </button>
+              } @else if (coupons.best()) {
+                <button class="link" type="button" (click)="coupons.useBest.set(true)">
+                  Apply best offer
+                </button>
+              }
+              @if (coupons.nudge(); as n) {
+                <p class="small muted">
+                  Spend ₦{{ n.spendMore | number: '1.0-0' }} more to use <b>{{ n.code }}</b>.
+                </p>
+              }
+              <div class="coupon-claim">
+                <input
+                  [(ngModel)]="couponCode"
+                  name="couponCode"
+                  placeholder="Coupon code"
+                  autocomplete="off"
+                />
+                <button
+                  class="link"
+                  type="button"
+                  (click)="applyCode()"
+                  [disabled]="!couponCode.trim()"
+                >
+                  Apply
+                </button>
+              </div>
+              @if (coupons.codeError(); as e) {
+                <p class="small error">{{ e }}</p>
+              }
+            </div>
+          }
           <div class="matrix-divider"></div>
           <div class="matrix-total">
             <span class="label">Total due</span>
-            <span class="value">₦{{ cart.total | number: '1.0-0' }}</span>
+            <span class="value">₦{{ (cart.total - coupons.discount()) | number: '1.0-0' }}</span>
           </div>
         </aside>
       </div>
@@ -170,10 +213,38 @@ import { environment } from '../../environments/environment';
 })
 export class CartPage {
   readonly cart = inject(CartService);
+  readonly api = inject(ApiService);
+  readonly coupons = inject(CouponService);
+  readonly environment = environment;
+
+  /** The code the shopper is trying to claim into their wallet. */
+  couponCode = '';
 
   constructor() {
     // A sale that ended since the item went in must not still be quoted here.
     this.cart.settlePrices();
+    // The coupon card follows the basket: any edit re-asks the API what the
+    // held coupons are worth. Debounced inside CouponService.
+    effect(() => {
+      const items = this.cart.items();
+      this.coupons.refresh({
+        subtotal: this.cart.total,
+        lines: items.map((i) => ({
+          variantId: i.variantId,
+          productId: i.productId,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          isOnSale: i.listPrice !== undefined,
+        })),
+      });
+    });
   }
-  readonly environment = environment;
+
+  /** Claims a typed code, then lets the service re-price the basket. */
+  applyCode(): void {
+    if (!this.couponCode.trim()) return;
+    this.coupons.claim(this.couponCode).subscribe((ok) => {
+      if (ok) this.couponCode = '';
+    });
+  }
 }

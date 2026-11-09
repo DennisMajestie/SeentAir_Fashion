@@ -76,6 +76,18 @@ describe('CheckoutPage — split steps', () => {
             login: () => of({ accessToken: 'a', refreshToken: 'r' }),
             deliveryQuote: (r: unknown) => deliveryQuote(r),
             me: () => of({ id: 'u1', email: 'ada@example.com', name: 'Ada', role: 'customer' }),
+            // The coupon card is gated behind a signed-in shopper and the
+            // feature flag; the API reports it disabled here, so the card stays
+            // out of the way and these specs keep testing the order flow.
+            previewCoupon: () =>
+              of({
+                status: 'disabled',
+                selected: { item: null, freeDelivery: null },
+                eligible: [],
+                nudge: null,
+                totals: null,
+              }),
+            claimCoupon: () => of({ wallet: null, alreadyHeld: false }),
             createOrder,
             payWithPaystack,
           },

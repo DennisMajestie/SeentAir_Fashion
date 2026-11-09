@@ -1456,6 +1456,34 @@ body:has(.m-tabs) {
     color: var(--ink);
   }
 }
+/* Coupon card in the cart and checkout summary. It sits inside .matrix-panel,
+   so it reuses the row typography; only the code field needs its own row. */
+.coupon-card {
+  border-top: 1px solid var(--line);
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+}
+/* The applied-coupon line: the code in ink, the saving in the success colour.
+   Declared after .matrix-panel so it wins the equal-specificity tie. */
+.matrix-panel .coupon-row b {
+  color: var(--ink);
+  font-weight: 700;
+}
+.matrix-panel .coupon-row span:last-child {
+  color: var(--ok);
+}
+.coupon-claim {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  input {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-top: 0;
+    text-transform: uppercase;
+  }
+}
 
 /* ---------- system components (approved spec tokens) ---------- */
 /* Stage bar, segmented progress; label carries the real step name. */

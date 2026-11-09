@@ -59,6 +59,8 @@ const REJECTION_COPY: Record<RejectionCode, string> = {
 };
 
 export interface EligibleCouponView {
+  /** The wallet row id — what the shopper sends back to spend the coupon. */
+  customerCouponId: string;
   couponId: string;
   code: string;
   name: string;
@@ -403,6 +405,7 @@ export class CouponsService {
       const row = walletCoupons.find((h) => h.coupon.id === id);
       if (!row) return null;
       return {
+        customerCouponId: row.id,
         couponId: id,
         code: row.coupon.code,
         name: row.coupon.name,
