@@ -82,7 +82,7 @@ describe('OrderPage', () => {
           useValue: {
             order: () => order$,
             tracking: () => of(tracking ?? makeTracking()),
-            orderStream: () => Promise.resolve(),
+            orderSocketStream: () => Promise.resolve(),
             payWithPaystack: () => of({ authorizationUrl: 'https://checkout.test/x' }),
             submitReview: () => of({}),
             requestReturn: () => of({}),
@@ -518,7 +518,7 @@ describe('OrderPage', () => {
             useValue: {
               order: () => throwError(() => ({ status, error: { message } })),
               tracking: () => of(makeTracking()),
-              orderStream: () => Promise.resolve(),
+              orderSocketStream: () => Promise.resolve(),
               payWithPaystack: () => of({ authorizationUrl: '' }),
               submitReview: () => of({}),
               requestReturn: () => of({}),

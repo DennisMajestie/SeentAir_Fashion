@@ -198,7 +198,7 @@ describe('ShopPage', () => {
 
     it('offers no paging control when everything is already loaded', async () => {
       await mountPaged([{ data: products, total: 3 }]);
-      expect(element.querySelector('.shop-more')).toBeNull();
+      expect(element.querySelector('.shop-sentinel:not(.loading-sentinel)')).toBeNull();
     });
 
     it('says how much is missing instead of hiding it', async () => {
@@ -242,7 +242,7 @@ describe('ShopPage', () => {
       fixture.detectChanges();
 
       expect(c.hasMore()).toBe(false);
-      expect(element.querySelector('.shop-more')).toBeNull();
+      expect(element.querySelector('.shop-sentinel:not(.loading-sentinel)')).toBeNull();
     });
 
     it('ignores a repeated tap while a page is still in flight', async () => {

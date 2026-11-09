@@ -12,6 +12,9 @@ describe('BrandAlertService', () => {
   const dialog = (): HTMLDialogElement | null => document.querySelector('dialog.ba-dialog');
 
   beforeEach(() => {
+    // Toasts and dialogs live on <body>, so a notice left behind by another
+    // suite would otherwise be counted here.
+    document.querySelectorAll('.ba-toast-host, dialog.ba-dialog').forEach((n) => n.remove());
     alerts = TestBed.inject(BrandAlertService);
   });
 

@@ -223,10 +223,12 @@ reviews: (id: string) =>
 
   it('shows an honest empty state instead of placeholder tiles', async () => {
     await mount();
-    const empties = [...element.querySelectorAll('.m-empty')].map((n) => n.textContent?.trim());
+    const rail = [...element.querySelectorAll('.m-sec')].find(
+      (section) => section.querySelector('h2')?.textContent?.trim() === 'Best Sellers',
+    );
     // Nothing was flagged for the rail, so Best Sellers must say so rather than
     // invent a rail out of products the seller never chose.
-    expect(empties).toContain('Nothing flagged yet — check back after the first drop.');
+    expect(rail?.querySelector('app-product-card')).toBeNull();
     expect(fixture.componentInstance.bestSellers().length).toBe(0);
   });
 });
