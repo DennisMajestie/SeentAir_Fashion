@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { ApprovalActionType } from '../../common/enums';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { CatalogueService } from '../catalogue/catalogue.service';
@@ -90,10 +90,12 @@ export class ProductionService {
   }
 
   /**
-   * Stage moves are free between configured stages (QC can send work back),
-   * but the completion stage is terminal and stocks finished goods exactly
-   * once: quantity minus burned rejects, via a ledger movement (E2E-critical
-   * production → inventory flow).
+   * Stage moves are free between non-terminal stages (QC can send work back),
+   * but the completion stage is terminal and only reachable from the
+   * penultimate stage. Completion stocks finished goods exactly once inside
+   * a transaction that holds a pessimistic lock on the batch row — two
+   * concurrent completion calls serialize on that lock, and the second one
+   * sees completedDate already set and bails with a conflict.
    */
   async updateStage(id: string, stage: string, actorId: string): Promise<ProductionBatch> {
     if (!this.stages.includes(stage)) {
@@ -105,18 +107,71 @@ export class ProductionService {
     if (batch.completedDate) {
       throw new ConflictException(`Batch ${id} is already completed; stage is final`);
     }
+    if (batch.cancelledAt) {
+      throw new ConflictException(`Batch ${id} is cancelled`);
+    }
 
     if (stage === this.completionStage) {
-      return this.complete(batch, actorId);
+      const penultimate = this.stages[this.stages.length - 2];
+      if (batch.stage !== penultimate) {
+        throw new BadRequestException(
+          `Can only complete from '${penultimate}' stage; current stage is '${batch.stage}'`,
+        );
+      }
+      return this.complete(id, actorId);
     }
     batch.stage = stage;
     return this.batchRepo.save(batch);
   }
 
-  private async complete(batch: ProductionBatch, actorId: string): Promise<ProductionBatch> {
-    const burned = await this.burnedQuantity(batch.id);
-    const goodUnits = batch.quantity - burned;
+  /** Abandon a batch before completion. No stock is moved; the row is kept for audit. */
+  async cancel(id: string, actorId: string): Promise<ProductionBatch> {
+    const batch = await this.findById(id);
+    if (batch.completedDate) {
+      throw new ConflictException(`Batch ${id} is already completed and cannot be cancelled`);
+    }
+    if (batch.cancelledAt) {
+      throw new ConflictException(`Batch ${id} is already cancelled`);
+    }
+    batch.cancelledAt = new Date();
+    batch.cancelledBy = actorId;
+    return this.batchRepo.save(batch);
+  }
+
+  private async complete(batchId: string, actorId: string): Promise<ProductionBatch> {
     return this.dataSource.transaction(async (manager) => {
+      // Pessimistic lock serializes concurrent completion attempts on this
+      // batch; the check below runs while holding the row lock, so a second
+      // caller cannot slip through between check and write.
+      const batch = await manager.getRepository(ProductionBatch).findOne({
+        where: { id: batchId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!batch) {
+        throw new NotFoundException(`Production batch ${batchId} not found`);
+      }
+      if (batch.completedDate) {
+        throw new ConflictException(`Batch ${batchId} is already completed; stage is final`);
+      }
+      if (batch.cancelledAt) {
+        throw new ConflictException(`Batch ${batchId} is cancelled`);
+      }
+
+      // Finished goods cannot be stocked until material consumption is
+      // recorded — otherwise the planned-vs-consumed report is meaningless.
+      const usageResult: Array<{ count: string }> = await manager.query(
+        `SELECT COUNT(*)::text AS count FROM material_usages WHERE batch_id = $1`,
+        [batchId],
+      );
+      const usageCount = parseInt(usageResult[0]?.count ?? '0', 10) || 0;
+      if (usageCount === 0) {
+        throw new BadRequestException(
+          `Cannot complete batch ${batchId}: no material usage recorded yet`,
+        );
+      }
+
+      const burned = await this.burnedQuantity(batchId, manager);
+      const goodUnits = Math.max(0, batch.quantity - burned);
       batch.stage = this.completionStage;
       batch.completedDate = new Date();
       const saved = await manager.getRepository(ProductionBatch).save(batch);
@@ -169,9 +224,11 @@ export class ProductionService {
     };
   }
 
-  async getCost(batchId: string): Promise<(ProductionCost & { totalCost: number }) | null> {
+  async getCost(batchId: string): Promise<ProductionCost & { totalCost: number }> {
     const cost = await this.costRepo.findOne({ where: { batch: { id: batchId } } });
-    if (!cost) return null;
+    if (!cost) {
+      throw new NotFoundException(`No cost record found for batch ${batchId}`);
+    }
     return {
       ...cost,
       totalCost: cost.materialCost + cost.sewingCost + cost.brandingCost + cost.packagingCost,
@@ -193,6 +250,9 @@ export class ProductionService {
       throw new ConflictException(
         `Batch ${batchId} is completed; QC rejections must be recorded before completion`,
       );
+    }
+    if (batch.cancelledAt) {
+      throw new ConflictException(`Batch ${batchId} is cancelled`);
     }
     const quantity = dto.quantity ?? 1;
     const alreadyRejected = await this.totalRejectedQuantity(batchId);
@@ -354,8 +414,11 @@ export class ProductionService {
     });
   }
 
-  private async burnedQuantity(batchId: string): Promise<number> {
-    const result: { sum: string | null } | undefined = await this.rejectionRepo
+  private async burnedQuantity(batchId: string, manager?: EntityManager): Promise<number> {
+    const repo = manager
+      ? manager.getRepository(QCRejection)
+      : this.rejectionRepo;
+    const result: { sum: string | null } | undefined = await repo
       .createQueryBuilder('r')
       .select('SUM(r.quantity)', 'sum')
       .where('r.batch_id = :batchId AND r.disposition = :disposition', {

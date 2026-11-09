@@ -61,7 +61,11 @@ describe('ProductionService', () => {
   const catalogueService = { findVariantById: jest.fn(async () => ({ id: 'v1' })) };
   const dataSource = {
     transaction: jest.fn(async (fn: (m: unknown) => Promise<unknown>) =>
-      fn({ getRepository: () => batchRepo }),
+      fn({
+        getRepository: (entity: unknown) =>
+          entity === QCRejection ? rejectionRepo : batchRepo,
+        query: jest.fn(async () => [{ count: '1' }]),
+      }),
     ),
   };
   const config = {

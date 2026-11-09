@@ -49,6 +49,13 @@ export class ProductionController {
     return this.productionService.updateStage(id, dto.stage, user.id);
   }
 
+  /** Cancel a batch before completion — no stock movement, audit trail kept. */
+  @Patch(':id/cancel')
+  @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.FULL)
+  cancel(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.productionService.cancel(id, user.id);
+  }
+
   @Get(':id/cost')
   @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.VIEW)
   getCost(@Param('id', ParseUUIDPipe) id: string) {

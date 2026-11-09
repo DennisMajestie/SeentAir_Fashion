@@ -41,6 +41,13 @@ export class ProductionBatch {
   @Column({ name: 'completed_date', type: 'timestamptz', nullable: true })
   completedDate: Date | null;
 
+  /** Set when a batch is abandoned before completion (no stock movement). */
+  @Column({ name: 'cancelled_at', type: 'timestamptz', nullable: true })
+  cancelledAt: Date | null;
+
+  @Column({ name: 'cancelled_by', type: 'uuid', nullable: true })
+  cancelledBy: string | null;
+
   /** The approved PRODUCTION_START request that authorized this batch. */
   @Column({ name: 'approval_request_id', type: 'uuid' })
   approvalRequestId: string;
