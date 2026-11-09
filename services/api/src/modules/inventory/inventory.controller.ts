@@ -17,6 +17,7 @@ import { ApprovalsService } from '../approvals/approvals.service';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { RecordMovementDto } from './dto/record-movement.dto';
 import { CreateStockCountDto } from './dto/create-stock-count.dto';
+import { MovementsQueryDto } from './dto/movements-query.dto';
 import { InventoryItemType } from './inventory-movement.entity';
 import { InventoryCountsService } from './inventory-counts.service';
 import { InventoryService } from './inventory.service';
@@ -70,14 +71,13 @@ export class InventoryController {
   @RequireAccess(ModuleName.INVENTORY, AccessLevel.VIEW)
   movements(
     @Param('variantId', ParseUUIDPipe) variantId: string,
-    @Query() pagination: PaginationQueryDto,
-    @Query('itemType') itemType: InventoryItemType = InventoryItemType.VARIANT,
+    @Query() query: MovementsQueryDto,
   ) {
     return this.inventoryService.movements(
-      itemType,
+      query.itemType ?? InventoryItemType.VARIANT,
       variantId,
-      pagination.page ?? 1,
-      pagination.limit ?? 50,
+      query.page ?? 1,
+      query.limit ?? 50,
     );
   }
 

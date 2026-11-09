@@ -7,6 +7,7 @@ import { AuthenticatedUser } from '../../common/interfaces';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { ApprovalsService } from './approvals.service';
 import { CreateApprovalDto } from './dto/create-approval.dto';
+import { ApprovalsQueryDto } from './dto/approvals-query.dto';
 import { DecideApprovalDto } from './dto/decide-approval.dto';
 
 @ApiTags('Approvals & Audit')
@@ -32,15 +33,13 @@ export class ApprovalsController {
   @Get()
   @RequireAccess(ModuleName.APPROVALS_AUDIT, AccessLevel.APPROVE)
   findAll(
-    @Query() pagination: PaginationQueryDto,
-    @Query('status') status?: ApprovalStatus,
-    @Query('actionType') actionType?: ApprovalActionType,
+    @Query() query: ApprovalsQueryDto,
   ) {
     return this.approvalsService.findAll({
-      status,
-      actionType,
-      page: pagination.page ?? 1,
-      limit: pagination.limit ?? 20,
+      status: query.status,
+      actionType: query.actionType,
+      page: query.page ?? 1,
+      limit: query.limit ?? 20,
     });
   }
 

@@ -10,6 +10,7 @@ import { AddCheckpointDto } from './dto/add-checkpoint.dto';
 import { UpdateDeliveryStatusDto } from './dto/update-delivery-status.dto';
 import { UpsertPricingDto } from './dto/upsert-pricing.dto';
 import { LogisticsService } from './logistics.service';
+import { DeliveriesQueryDto } from './dto/deliveries-query.dto';
 
 @ApiTags('Logistics')
 @ApiBearerAuth()
@@ -19,8 +20,8 @@ export class LogisticsController {
 
   @Get('deliveries')
   @RequireAccess(ModuleName.LOGISTICS, AccessLevel.VIEW)
-  findAll(@Query() pagination: PaginationQueryDto) {
-    return this.logisticsService.findAll(pagination.page ?? 1, pagination.limit ?? 50);
+  findAll(@Query() query: DeliveriesQueryDto) {
+    return this.logisticsService.findAll(query.page ?? 1, query.limit ?? 50, query.status);
   }
 
   @Post('deliveries')

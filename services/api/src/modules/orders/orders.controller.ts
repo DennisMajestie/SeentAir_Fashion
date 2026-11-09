@@ -30,6 +30,7 @@ import { OptionalAuth } from '../../common/decorators/optional-auth.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { OrdersQueryDto } from './dto/orders-query.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderFulfilmentDto } from './dto/order-fulfilment.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
@@ -73,15 +74,13 @@ export class OrdersController {
   @ApiBearerAuth()
   findAll(
     @CurrentUser() user: AuthenticatedUser,
-    @Query() pagination: PaginationQueryDto,
-    @Query('channel') channel?: OrderChannel,
-    @Query('status') status?: OrderStatus,
+    @Query() query: OrdersQueryDto,
   ) {
     return this.ordersService.findAll(user, {
-      channel,
-      status,
-      page: pagination.page ?? 1,
-      limit: pagination.limit ?? 20,
+      channel: query.channel,
+      status: query.status,
+      page: query.page ?? 1,
+      limit: query.limit ?? 20,
     });
   }
 

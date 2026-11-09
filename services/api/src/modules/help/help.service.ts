@@ -70,8 +70,13 @@ export class HelpService {
     return ARTICLES;
   }
 
-  listTickets(page = 1, limit = 50): Promise<[HelpTicket[], number]> {
+  listTickets(
+    page = 1,
+    limit = 50,
+    status?: HelpTicketStatus,
+  ): Promise<[HelpTicket[], number]> {
     return this.ticketRepo.findAndCount({
+      where: status ? { status } : {},
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,

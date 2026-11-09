@@ -4,9 +4,9 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CreateHelpTicketDto } from './dto/create-help-ticket.dto';
 import { UpdateHelpTicketStatusDto } from './dto/update-help-ticket-status.dto';
+import { HelpTicketsQueryDto } from './dto/help-tickets-query.dto';
 import { HelpService } from './help.service';
 
 @ApiTags('Help')
@@ -23,10 +23,11 @@ export class HelpController {
 
   @Get('tickets')
   @RequireAccess(ModuleName.COMMUNICATION, AccessLevel.VIEW)
-  async tickets(@Query() pagination: PaginationQueryDto) {
+  async tickets(@Query() query: HelpTicketsQueryDto) {
     const [data, total] = await this.help.listTickets(
-      pagination.page ?? 1,
-      pagination.limit ?? 50,
+      query.page ?? 1,
+      query.limit ?? 50,
+      query.status,
     );
     return { data, total };
   }

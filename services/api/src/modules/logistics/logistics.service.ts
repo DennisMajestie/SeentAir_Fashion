@@ -82,8 +82,13 @@ export class LogisticsService {
   }
 
   /** Staff view: all delivery legs, newest first. */
-  async findAll(page = 1, limit = 50): Promise<{ data: DeliveryLeg[]; total: number }> {
+  async findAll(
+    page = 1,
+    limit = 50,
+    status?: DeliveryLegStatus,
+  ): Promise<{ data: DeliveryLeg[]; total: number }> {
     const [data, total] = await this.legRepo.findAndCount({
+      where: status ? { status } : {},
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,

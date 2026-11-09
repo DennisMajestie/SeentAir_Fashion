@@ -4,6 +4,7 @@ import { RequireAccess } from '../../common/decorators/require-access.decorator'
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { AuditService } from './audit.service';
+import { AuditQueryDto } from './dto/audit-query.dto';
 
 @ApiTags('Approvals & Audit')
 @ApiBearerAuth()
@@ -15,19 +16,15 @@ export class AuditController {
   @Get()
   @RequireAccess(ModuleName.APPROVALS_AUDIT, AccessLevel.APPROVE)
   query(
-    @Query('actorId') actorId?: string,
-    @Query('action') action?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-    @Query() pagination?: PaginationQueryDto,
+    @Query() query: AuditQueryDto,
   ) {
     return this.auditService.query({
-      actorId,
-      action,
-      from: from ? new Date(from) : undefined,
-      to: to ? new Date(to) : undefined,
-      page: pagination?.page ?? 1,
-      limit: pagination?.limit ?? 50,
+      actorId: query.actorId,
+      action: query.action,
+      from: query.from ? new Date(query.from) : undefined,
+      to: query.to ? new Date(query.to) : undefined,
+      page: query.page ?? 1,
+      limit: query.limit ?? 50,
     });
   }
 
