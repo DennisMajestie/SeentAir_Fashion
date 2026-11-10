@@ -466,14 +466,18 @@ export class CouponsService {
           ? view(result.bestFreeDelivery.couponId, result.bestFreeDelivery.discountKobo)
           : null,
       },
-      eligible: result.ranked.map((e) => ({
-        couponId: e.couponId,
-        code: walletCoupons.find((h) => h.coupon.id === e.couponId)?.coupon.code ?? '',
-        name: walletCoupons.find((h) => h.coupon.id === e.couponId)?.coupon.name ?? '',
-        type: (walletCoupons.find((h) => h.coupon.id === e.couponId)?.coupon.type ?? CouponType.FIXED_OFF) as CouponType,
-        discount: e.discountKobo / 100,
-        rejection: e.rejection,
-      })),
+      eligible: result.ranked.map((e) => {
+        const row = walletCoupons.find((h) => h.coupon.id === e.couponId);
+        return {
+          customerCouponId: row?.id ?? '',
+          couponId: e.couponId,
+          code: row?.coupon.code ?? '',
+          name: row?.coupon.name ?? '',
+          type: (row?.coupon.type ?? CouponType.FIXED_OFF) as CouponType,
+          discount: e.discountKobo / 100,
+          rejection: e.rejection,
+        };
+      }),
       nudge,
       totals,
       delivery,

@@ -59,7 +59,7 @@ export class CouponCampaign {
   })
   placement: CouponCampaignPlacement;
 
-  @Column({ type: 'enum', enum: CouponCampaignClaimKind })
+  @Column({ name: 'claim_kind', type: 'enum', enum: CouponCampaignClaimKind })
   claimKind: CouponCampaignClaimKind;
 
   @Column({ name: 'coupon_id', type: 'uuid', nullable: true })
