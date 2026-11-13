@@ -12,6 +12,8 @@ export interface NotifyInput {
   type: string;
   message: string;
   relatedOrderId?: string | null;
+  /** Preference key checked against the recipient's saved switches (defaults to type). */
+  preferenceKey?: string;
 }
 
 @Injectable()
@@ -33,6 +35,11 @@ export class NotificationsService {
     return row?.preferences ?? {};
   }
 
+  /** A missing preference means the user wants the notification (default on). */
+  private preferenceAllows(preferences: Record<string, boolean>, key: string): boolean {
+    return preferences[key] ?? true;
+  }
+
   async updatePreferences(
     userId: string,
     preferences: Record<string, boolean>,
@@ -52,8 +59,13 @@ export class NotificationsService {
     return merged;
   }
 
-  /** In-platform notifications always land (stored in the database). */
-  async notifyInPlatform(input: NotifyInput): Promise<Notification> {
+  /** In-platform notifications always land (stored in the database) — unless the
+   *  recipient turned this notification type off. */
+  async notifyInPlatform(input: NotifyInput): Promise<Notification | null> {
+    const prefs = await this.getPreferences(input.recipientId);
+    if (!this.preferenceAllows(prefs, input.preferenceKey ?? input.type)) {
+      return null;
+    }
     return this.notificationRepo.save(
       this.notificationRepo.create({
         recipientId: input.recipientId,
@@ -78,6 +90,16 @@ export class NotificationsService {
       message: input.message,
       relatedOrderId: input.relatedOrderId ?? null,
     });
+    const prefs = await this.getPreferences(input.recipientId);
+    const typeKey = input.preferenceKey ?? input.type;
+    if (
+      !this.preferenceAllows(prefs, typeKey) ||
+      !this.preferenceAllows(prefs, 'channelSms')
+    ) {
+      notification.status = NotificationStatus.SKIPPED;
+      notification.providerRef = 'user_preferences';
+      return this.notificationRepo.save(notification);
+    }
     if (!this.termii.configured) {
       notification.status = NotificationStatus.SKIPPED;
       return this.notificationRepo.save(notification);
@@ -107,12 +129,15 @@ export class NotificationsService {
   ): Promise<void> {
     if (!customerId) return;
     const message = `Your Seentair order ${orderId.slice(0, 8)} is now: ${status.replace(/_/g, ' ')}`;
+    const preferenceKey =
+      status === 'shipped' || status === 'delivered' ? 'orderShipped' : 'newOrder';
     try {
       await this.notifyInPlatform({
         recipientId: customerId,
         type: 'order_status',
         message,
         relatedOrderId: orderId,
+        preferenceKey,
       });
       // SMS is reserved for delivery/location updates (client-confirmed).
       if (status === 'shipped' || status === 'delivered') {
@@ -121,6 +146,7 @@ export class NotificationsService {
           type: 'order_status',
           message,
           relatedOrderId: orderId,
+          preferenceKey,
         });
       }
     } catch (err) {
