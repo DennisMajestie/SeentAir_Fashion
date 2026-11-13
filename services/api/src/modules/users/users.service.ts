@@ -141,6 +141,14 @@ export class UsersService {
     return this.findById(id);
   }
 
+  /** Reactivate a disabled staff member: restores access without changing their role. */
+  async activate(id: string): Promise<User> {
+    const user = await this.findById(id);
+    user.status = UserStatus.ACTIVE;
+    await this.userRepo.save(user);
+    return this.findById(id);
+  }
+
   /** Full role × module permission dot-matrix for the staff-access screen. */
   async getPermissionMatrix(): Promise<RolePermissionMatrixRow[]> {
     const [roles, memberCounts] = await Promise.all([

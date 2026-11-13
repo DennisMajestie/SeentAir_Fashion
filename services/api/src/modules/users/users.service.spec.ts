@@ -255,3 +255,38 @@ describe('deactivate', () => {
     await expect(service.deactivate('nonexistent')).rejects.toThrow(NotFoundException);
   });
 });
+
+describe('activate', () => {
+  it('sets status to ACTIVE without changing the assigned role', async () => {
+    const harness = makeHarness([
+      role('user-id', RoleName.SALES, AccessLevel.FULL),
+    ]);
+    const service = new UsersService(
+      harness.userRepo as never,
+      harness.roleRepo as never,
+      harness.txPermissionRepo as never,
+      harness.refreshTokenRepo as never,
+      harness.dataSource,
+    );
+
+    const result = await service.activate('user-id');
+
+    expect(harness.userRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'user-id', status: UserStatus.ACTIVE, role: RoleName.SALES }),
+    );
+    expect(result.role).toBe(RoleName.SALES);
+  });
+
+  it('throws NotFoundException when user does not exist', async () => {
+    const harness = makeHarness([]);
+    const service = new UsersService(
+      harness.userRepo as never,
+      harness.roleRepo as never,
+      harness.txPermissionRepo as never,
+      harness.refreshTokenRepo as never,
+      harness.dataSource,
+    );
+
+    await expect(service.activate('nonexistent')).rejects.toThrow(NotFoundException);
+  });
+});

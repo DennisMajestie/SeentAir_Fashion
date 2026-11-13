@@ -80,4 +80,10 @@ export class UsersController {
   deactivate(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.deactivate(id);
   }
+
+  @Patch(':id/activate')
+  @RequireAccess(ModuleName.STAFF_ACCESS, AccessLevel.FULL)
+  activate(@Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.activate(id);
+  }
 }
