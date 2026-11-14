@@ -198,6 +198,10 @@ import { ThemeService } from './theme.service';
                   <span>{{ busy() ? 'Signing in…' : 'Sign in' }}</span>
                   <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
                 </button>
+                <button class="cta outline auth-apply" type="button" (click)="showApplyForm()">
+                  <span>Apply for Wholesale Access</span>
+                  <span class="material-symbols-outlined" aria-hidden="true">assignment_ind</span>
+                </button>
 
                 <p class="auth-fine">Secured connection. Authorised users only.</p>
 
@@ -431,10 +435,6 @@ import { ThemeService } from './theme.service';
                   </div>
                 </div>
               </div>
-              <button class="cta outline" type="button" (click)="showApplyForm()">
-                <span>Apply for Wholesale Access</span>
-                <span class="material-symbols-outlined" aria-hidden="true">assignment_ind</span>
-              </button>
               <span class="small muted apply-note"
                 >Applications typically vetted within 24 operational hours</span
               >
@@ -809,6 +809,13 @@ import { ThemeService } from './theme.service';
         background: color-mix(in srgb, var(--gold) 42%, var(--surface-low));
         color: var(--muted);
         cursor: not-allowed;
+      }
+      :host .auth-card .auth-apply {
+        width: 100%;
+        min-height: 48px;
+        margin-top: 10px;
+        border-radius: 12px;
+        font-weight: 700;
       }
 
       @media (min-width: 900px) {
