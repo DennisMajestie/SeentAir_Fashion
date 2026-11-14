@@ -1,218 +1,115 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
-import {
-  SeBadgeComponent,
-  SeButtonDirective,
-  SeCardComponent,
-  SeCellDirective,
-  SeColumn,
-  SeCurrencyService,
-  SeEmptyStateComponent,
-  SeKvDirective,
-  SeKvItemComponent,
-  SeMetricCardComponent,
-  SeMoneyPipe,
-  SePageComponent,
-  SeTableComponent,
-} from '@seentair/ui';
+import { SeMoneyPipe } from '@seentair/ui';
 import { PortalStore } from '../portal.store';
 
-interface PayoutRow {
-  id: string;
-  period: string;
-  totalProfit: number;
-  dividendPool: number;
-  myDividend: number;
-}
+interface PayoutRow { id: string; period: string; totalProfit: number; dividendPool: number; myDividend: number; }
 
-/**
- * Screen P7, Profit Sharing & Dividend Distribution. Pool figures derive from
- * the API's distribution rows; the 40/40/20 covenant and the founder's 60%
- * pool share are confirmed company config mirrored from the server's own
- * distribution math (partners.service.ts) — never invented values.
- */
 @Component({
   selector: 'app-profit-sharing-page',
-  imports: [
-    DecimalPipe,
-    SeBadgeComponent,
-    SeButtonDirective,
-    SeCardComponent,
-    SeCellDirective,
-    SeEmptyStateComponent,
-    SeKvDirective,
-    SeKvItemComponent,
-    SeMetricCardComponent,
-    SeMoneyPipe,
-    SePageComponent,
-    SeTableComponent,
-  ],
+  imports: [DecimalPipe, SeMoneyPipe],
   template: `
     @if (store.dash(); as d) {
-      <se-page
-        title="Profit Sharing & Dividend Distribution"
-        description="Quarterly distribution allocation for ordinary share equity partners, declared from audited net profit and approval-gated as fund movements."
-      >
-        <se-badge sePageStatus tone="info">{{ store.covenantLabel() }} covenant</se-badge>
-        <button seButton sePageActions type="button" (click)="print()">Print statement</button>
+      <div class="pg">
+        <section class="card hero">
+          <div class="eyebrow">Profit Sharing & Dividends</div>
+          <h1>Dividends</h1>
+          <p class="muted">Quarterly distribution allocation for ordinary share equity partners, declared from audited net profit.</p>
+          <span class="chip">{{ store.covenantLabel() }} covenant</span>
+        </section>
 
         @if (store.latestDistribution(); as latest) {
-          <div class="se-metric-grid">
-            <se-metric-card
-              label="Latest profit declared"
-              [value]="latest.totalProfit | seMoney"
-              [hint]="latest.period + ' · certified & board approved'"
-            />
-            <se-metric-card
-              label="Dividend pool"
-              [value]="latest.dividendPool | seMoney"
-              [hint]="d.config.dividendsPct + '% of quarterly net profit'"
-            />
-            <se-metric-card
-              label="Your dividend"
-              [value]="latest.myDividend | seMoney"
-              [hint]="d.investmentInformation.equityPercentage + '% equity entitlement'"
-            />
-            <se-metric-card
-              label="Lifetime dividends"
-              [value]="store.lifetimeDividends() | seMoney"
-              [hint]="cashOnCashHint()"
-            />
-          </div>
+          <section class="metrics">
+            <div class="metric card"><span>Latest profit declared</span><strong>{{ latest.totalProfit | seMoney }}</strong><small>{{ latest.period }} · board approved</small></div>
+            <div class="metric card"><span>Dividend pool</span><strong>{{ latest.dividendPool | seMoney }}</strong><small>{{ d.config.dividendsPct }}% of quarterly net</small></div>
+            <div class="metric card"><span>Your dividend</span><strong class="accent">{{ latest.myDividend | seMoney }}</strong><small>{{ d.investmentInformation.equityPercentage }}% entitlement</small></div>
+            <div class="metric card"><span>Lifetime dividends</span><strong>{{ store.lifetimeDividends() | seMoney }}</strong><small>{{ cashOnCashHint() }}</small></div>
+          </section>
 
-          <div class="se-detail">
-            <div class="se-detail__main">
-              <se-card title="Allocation break-up">
-                <dl seKv>
-                  <div seKvItem [label]="'Capital reinvestment (' + d.config.reinvestmentPct + '%)'" numeric>
-                    {{ reinvestment(latest.totalProfit) | seMoney }}
-                  </div>
-                  <div seKvItem [label]="'Dividend payout pool (' + d.config.dividendsPct + '%)'" numeric>
-                    {{ latest.dividendPool | seMoney }}
-                  </div>
-                  <div seKvItem [label]="'Strategic reserve (' + d.config.reservePct + '%)'" numeric>
-                    {{ reserve(latest.totalProfit) | seMoney }}
-                  </div>
-                  <div seKvItem label="Total operating profit declared" numeric>
-                    {{ latest.totalProfit | seMoney }}
-                  </div>
-                </dl>
-              </se-card>
+          <section class="card">
+            <div class="sec-head"><h2>Allocation break-up</h2><span class="muted small">{{ latest.period }}</span></div>
+            <div class="kv">
+              <div><span>Capital reinvestment ({{ d.config.reinvestmentPct }}%)</span><strong class="mono">{{ reinvestment(latest.totalProfit) | seMoney }}</strong></div>
+              <div><span>Dividend payout pool ({{ d.config.dividendsPct }}%)</span><strong class="mono">{{ latest.dividendPool | seMoney }}</strong></div>
+              <div><span>Strategic reserve ({{ d.config.reservePct }}%)</span><strong class="mono">{{ reserve(latest.totalProfit) | seMoney }}</strong></div>
+              <div><span>Total profit declared</span><strong class="mono accent">{{ latest.totalProfit | seMoney }}</strong></div>
             </div>
-            <aside class="se-detail__aside">
-              <se-card title="Your account">
-                <dl seKv>
-                  <div seKvItem label="Your dividend" numeric>{{ latest.myDividend | seMoney }}</div>
-                  <div seKvItem label="Equity entitlement" numeric>
-                    {{ d.investmentInformation.equityPercentage }}%
-                  </div>
-                  <div seKvItem label="Shares held" numeric>
-                    {{ d.investmentInformation.shares | number }} of
-                    {{ d.investmentInformation.totalShares | number }}
-                  </div>
-                  @if (cashOnCash() !== null) {
-                    <div seKvItem label="Cash-on-cash" numeric>{{ cashOnCash() | number: '1.0-1' }}%</div>
-                  }
-                  <div seKvItem label="Scheduled settlement">Advised per remittance</div>
-                </dl>
-              </se-card>
-            </aside>
-          </div>
+          </section>
+
+          <section class="card">
+            <div class="sec-head"><h2>Your account</h2></div>
+            <div class="kv">
+              <div><span>Your dividend</span><strong class="mono accent">{{ latest.myDividend | seMoney }}</strong></div>
+              <div><span>Equity entitlement</span><strong class="mono">{{ d.investmentInformation.equityPercentage }}%</strong></div>
+              <div><span>Shares held</span><strong class="mono">{{ d.investmentInformation.shares | number }} / {{ d.investmentInformation.totalShares | number }}</strong></div>
+              @if (cashOnCash() !== null) { <div><span>Cash-on-cash</span><strong class="mono">{{ cashOnCash() | number:'1.0-1' }}%</strong></div> }
+              <div><span>Settlement</span><strong>Advised per remittance</strong></div>
+            </div>
+          </section>
         } @else {
-          <se-card title="Distribution cycle">
-            <se-empty-state
-              heading="No distributions yet"
-              [text]="'Dividends are declared quarterly from audited net profit (' + store.covenantLabel() + ').'"
-            />
-          </se-card>
+          <section class="card"><p class="muted">No distributions yet. Dividends are declared quarterly from audited net profit ({{ store.covenantLabel() }}).</p></section>
         }
 
-        <se-card title="How profit sharing is calculated">
-          <p class="prs-copy">
-            Under Seentair Limited's shareholder covenant,
-            <strong>{{ d.config.dividendsPct }}% of certified net quarterly profit</strong> is
-            ring-fenced for cash dividends. Of that pool,
-            <strong>{{ d.config.founderSharePct }}% accrues to the founder</strong> and each outside
-            partner receives <strong>their equity percentage of the pool</strong>; a further
-            <strong>{{ d.config.reinvestmentPct }}% of profit</strong> is reinvested and
-            <strong>{{ d.config.reservePct }}%</strong> enters the strategic reserve. Distribution
-            occurs automatically on declaration, subject to server-side approval of the fund
-            movement.
-          </p>
-        </se-card>
+        <section class="card">
+          <div class="sec-head"><h2>How profit sharing works</h2></div>
+          <p class="copy muted">Under the shareholder covenant, <strong>{{ d.config.dividendsPct }}%</strong> of certified net quarterly profit is ring-fenced for cash dividends. <strong>{{ d.config.founderSharePct }}%</strong> of that pool accrues to the founder and each partner receives their equity percentage of the pool. <strong>{{ d.config.reinvestmentPct }}%</strong> is reinvested and <strong>{{ d.config.reservePct }}%</strong> enters the strategic reserve. Distribution occurs on declaration, subject to approval-gated fund movement.</p>
+        </section>
 
-        <se-card title="Historical payout ledger" flush>
-          <se-table
-            caption="All declared distribution periods"
-            [columns]="payoutColumns"
-            [rows]="payoutRows()"
-            hideDensity
-            emptyHeading="No distributions yet"
-            emptyText="The payout ledger populates as quarterly distributions are declared."
-          >
-            <ng-template seCell="status" let-row>
-              <se-badge tone="success">Declared</se-badge>
-            </ng-template>
-          </se-table>
-        </se-card>
-      </se-page>
+        <section class="card">
+          <div class="sec-head"><h2>Historical payout ledger</h2></div>
+          @if (payoutRows().length) {
+            <div class="list">
+              @for (row of payoutRows(); track row.id) {
+                <div class="prow">
+                  <div class="dtop"><span class="rtitle">{{ row.period }}</span><span class="chip ok sm">Declared</span></div>
+                  <div class="kv tight">
+                    <div><span>Net certified profit</span><strong class="mono">{{ row.totalProfit | seMoney }}</strong></div>
+                    <div><span>Dividend pool</span><strong class="mono">{{ row.dividendPool | seMoney }}</strong></div>
+                    <div><span>Your payout</span><strong class="mono accent">{{ row.myDividend | seMoney }}</strong></div>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="muted small">Payout ledger populates as quarterly distributions are declared.</p>
+          }
+          <button type="button" class="action" (click)="print()">Print statement</button>
+        </section>
+      </div>
     }
   `,
-  styles: [
-    `
-      .prs-copy {
-        margin: 0;
-        max-width: 82ch;
-        color: var(--se-color-text-muted);
-        font: var(--se-type-body);
-      }
-      .prs-copy strong {
-        color: var(--se-color-text);
-      }
-    `,
-  ],
+  styles: [`
+    :host{display:block;font-family:'Urbanist',sans-serif;}
+    .pg{display:flex;flex-direction:column;gap:12px;} .card{background:#fffdf9;border:1px solid #e8e1d3;border-radius:12px;padding:14px;box-shadow:0 8px 24px -4px rgba(27,25,22,.05);}
+    .eyebrow{font:700 10px/1 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#c88a12;margin-bottom:4px;}
+    h1{margin:0;font:700 20px/1.2 Urbanist,sans-serif;} h2{margin:0;font:700 14px/1.2 Urbanist,sans-serif;} p{margin:6px 0 0;font-size:13px;}
+    .chip{display:inline-block;margin-top:8px;font:600 11px/1 Urbanist,sans-serif;padding:5px 9px;border-radius:999px;background:#f1ede5;border:1px solid #e8e1d3;}
+    .chip.ok{background:rgba(35,128,77,.12);color:#23804d;border-color:rgba(35,128,77,.25);} .chip.sm{margin:0;padding:4px 8px;font-size:10px;}
+    .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .metric{display:flex;flex-direction:column;gap:4px;padding:12px;} .metric span{color:#7b756a;font-size:11px;} .metric strong{font:700 16px/1.1 'JetBrains Mono',monospace;color:#1b1916;}
+    .sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;}
+    .list,.kv{display:flex;flex-direction:column;gap:8px;} .kv.tight{gap:4px;margin-top:8px;}
+    .kv>div,.dtop{display:flex;justify-content:space-between;gap:10px;} .kv>div{padding:5px 0;border-bottom:1px solid rgba(232,225,211,.6);font-size:13px;} .kv>div:last-child{border-bottom:0;}
+    .prow{padding:10px 0;border-bottom:1px solid rgba(232,225,211,.6);} .prow:last-child{border-bottom:0;padding-bottom:0;}
+    .rtitle{font:700 13px/1 Urbanist,sans-serif;} .copy strong{color:#1b1916;}
+    .action{margin-top:12px;width:100%;padding:12px;border-radius:12px;border:1px solid #e8e1d3;background:#1b1916;color:#fffdf9;font:700 13px/1 Urbanist,sans-serif;}
+    .muted{color:#7b756a;} .small{font-size:11px;} .mono{font-family:'JetBrains Mono',monospace;} .accent{color:#c88a12;}
+    @media (max-width:360px){.metrics{grid-template-columns:1fr;}}
+  `],
 })
 export class ProfitSharingPage {
   readonly store = inject(PortalStore);
-  private readonly currency = inject(SeCurrencyService);
 
-  readonly money = (n: number): string => this.currency.format(n);
+  readonly payoutRows = computed<PayoutRow[]>(() => (this.store.dash()?.profitSharing ?? []).map((row) => ({ id: row.period, ...row })));
 
-  readonly payoutColumns: SeColumn<PayoutRow>[] = [
-    { key: 'period', header: 'Quarter' },
-    { key: 'totalProfit', header: 'Net certified profit', numeric: true, format: (v) => this.money(v as number) },
-    { key: 'dividendPool', header: 'Dividend pool', numeric: true, format: (v) => this.money(v as number) },
-    { key: 'myDividend', header: 'Your payout', numeric: true, format: (v) => this.money(v as number) },
-    { key: 'status', header: 'Payment status' },
-  ];
-
-  readonly payoutRows = computed<PayoutRow[]>(() =>
-    (this.store.dash()?.profitSharing ?? []).map((row) => ({ id: row.period, ...row })),
-  );
-
-  /** Mirrors server round2((total * pct) / 100) from partners.service.ts. */
-  private covenant(total: number, pct: number): number {
-    return Math.round(((total * pct) / 100) * 100) / 100;
-  }
-  reinvestment(total: number): number {
-    return this.covenant(total, this.store.dash()?.config.reinvestmentPct ?? 40);
-  }
-  reserve(total: number): number {
-    return this.covenant(total, this.store.dash()?.config.reservePct ?? 20);
-  }
-
-  readonly cashOnCash = computed(() => {
+  private covenant(total: number, pct: number): number { return Math.round(((total * pct) / 100) * 100) / 100; }
+  reinvestment(total: number): number { return this.covenant(total, this.store.dash()?.config.reinvestmentPct ?? 40); }
+  reserve(total: number): number { return this.covenant(total, this.store.dash()?.config.reservePct ?? 20); }
+  cashOnCash(): number | null {
     const invested = this.store.dash()?.investmentInformation.investedAmount ?? 0;
     if (!invested) return null;
     return (this.store.lifetimeDividends() / invested) * 100;
-  });
-
-  readonly cashOnCashHint = computed(() => {
-    const c = this.cashOnCash();
-    return c === null ? 'Cumulative dividends received' : `${c.toFixed(1)}% cash-on-cash on capital`;
-  });
-
-  print(): void {
-    window.print();
   }
+  cashOnCashHint(): string { const c = this.cashOnCash(); return c === null ? 'Return on invested capital' : `${c.toFixed(1)}% cash-on-cash return`; }
+  print(): void { window.print(); }
 }

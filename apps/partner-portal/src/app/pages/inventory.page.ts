@@ -1,205 +1,106 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
-import {
-  SeBadgeComponent,
-  SeCardComponent,
-  SeCellDirective,
-  SeColumn,
-  SeEmptyStateComponent,
-  SeKvDirective,
-  SeKvItemComponent,
-  SeMetricCardComponent,
-  SePageComponent,
-  SeStatusComponent,
-  SeTableComponent,
-} from '@seentair/ui';
 import { InventorySummaryRow, ProductVariantRef } from '../api.service';
 import { PortalStore } from '../portal.store';
 
 type RegisterRow = InventorySummaryRow & { meta: ProductVariantRef | null };
 
-interface CategoryRow {
-  name: string;
-  units: number;
-  pct: number;
-}
-
-/**
- * Screen P5, Inventory Valuation & Raw Material Reserves. The partner API
- * exposes the audited finished-goods aggregate plus the live event-sourced
- * per-item stock summary, labelled with product names from the public
- * catalogue. Valuations stay honest "unvalued" (no ₦ endpoint).
- */
 @Component({
   selector: 'app-inventory-page',
-  imports: [
-    DecimalPipe,
-    SeBadgeComponent,
-    SeCardComponent,
-    SeCellDirective,
-    SeEmptyStateComponent,
-    SeKvDirective,
-    SeKvItemComponent,
-    SeMetricCardComponent,
-    SePageComponent,
-    SeStatusComponent,
-    SeTableComponent,
-  ],
+  imports: [DecimalPipe],
   template: `
     @if (store.dash(); as d) {
-      <se-page
-        title="Inventory Valuation & Raw Material Reserves"
-        description="Audited warehouse and mill holdings for the Seentair garment factory, Aba: aggregate telemetry only, derived from event-sourced stock movements."
-      >
-        <se-badge sePageStatus tone="info">{{ store.periodLabel() }} position</se-badge>
+      <div class="pg">
+        <section class="card hero">
+          <div class="eyebrow">Inventory Valuation & Reserves</div>
+          <h1>Inventory</h1>
+          <p class="muted">Audited warehouse and mill holdings for the Seentair garment factory, Aba · aggregate telemetry from event-sourced stock movements.</p>
+          <span class="chip">{{ store.periodLabel() }} position</span>
+        </section>
 
-        <div class="se-metric-grid">
-          <se-metric-card
-            label="Finished goods in stock"
-            [value]="(d.inventoryVisibility.finishedGoodsUnits | number) + ' units'"
-            hint="Garment units ready in warehouse"
-          />
-          <se-metric-card
-            label="Finished goods value"
-            value="Not yet valued"
-            hint="Valuation follows the next audit cycle"
-          />
-          <se-metric-card
-            label="Raw material holdings"
-            [value]="(materialUnits() | number) + ' units'"
-            hint="Live mill lots: cotton, poly & trims"
-          />
-          <se-metric-card
-            label="Reserved & written off"
-            value="–"
-            hint="QC reason-coded; reported quarterly"
-          />
-        </div>
+        <section class="metrics">
+          <div class="metric card"><span>Finished goods</span><strong>{{ (d.inventoryVisibility.finishedGoodsUnits | number) }} units</strong><small>Ready in warehouse</small></div>
+          <div class="metric card"><span>Finished goods value</span><strong>Not valued</strong><small>Next audit cycle</small></div>
+          <div class="metric card"><span>Raw material holdings</span><strong>{{ (materialUnits() | number) }} units</strong><small>Live mill lots</small></div>
+          <div class="metric card"><span>Reserved & written off</span><strong>-</strong><small>QC reason-coded, quarterly</small></div>
+        </section>
 
-        <div class="se-detail">
-          <div class="se-detail__main">
-            <se-card title="Stock distribution by category" flush>
-              <se-table
-                caption="Finished-goods units grouped by product silhouette"
-                [columns]="categoryColumns"
-                [rows]="categoryRows()"
-                [rowId]="byName"
-                hideDensity
-                emptyHeading="No variant-level stock yet"
-                emptyText="The distribution fills as stock movements are posted to the ledger."
-              />
-            </se-card>
-          </div>
-          <aside class="se-detail__aside">
-            <se-card title="Facility breakdown">
-              <dl seKv>
-                <div seKvItem label="Aba garment factory" numeric>
-                  {{ d.inventoryVisibility.finishedGoodsUnits | number }} units
+        <section class="card">
+          <div class="sec-head"><h2>Stock distribution</h2><span class="muted small">By product silhouette</span></div>
+          @if (categoryRows().length) {
+            <div class="list">
+              @for (row of categoryRows(); track row.name) {
+                <div class="distrow">
+                  <div class="dtop"><span>{{ row.name }}</span><strong class="mono">{{ row.units | number }} · {{ row.pct | number:'1.0-0' }}%</strong></div>
+                  <div class="track"><div class="fill" [style.width.%]="row.pct"></div></div>
                 </div>
-              </dl>
-              <p class="inv-note">
-                Seentair operates a single factory; per-floor utilisation telemetry is not yet
-                shared.
-              </p>
-            </se-card>
-          </aside>
-        </div>
-
-        <se-card title="Product silhouette stock register" flush>
-          <se-table
-            caption="SKU aggregates, never individual person data"
-            [columns]="registerColumns"
-            [rows]="store.finishedVariantRows()"
-            [rowId]="byItem"
-            hideDensity
-            emptyHeading="No silhouette register yet"
-            emptyText="Line items appear here per SKU with audited unit counts once stock movements are recorded."
-          >
-            <ng-template seCell="silhouette" let-row>
-              <strong>{{ silhouetteLabel(row) }}</strong>
-              @if (skuLabel(row); as sku) {
-                <span class="inv-sub">{{ sku }}</span>
               }
-            </ng-template>
-            <ng-template seCell="status" let-row>
-              <se-status
-                kind="stock"
-                [value]="row.currentQuantity > 0 ? 'in_stock' : 'out_of_stock'"
-              />
-            </ng-template>
-          </se-table>
-        </se-card>
+            </div>
+          } @else {
+            <p class="muted small">Distribution fills as stock movements are posted to the ledger.</p>
+          }
+        </section>
 
-        <se-card title="Raw material mills & in-store reserves">
-          <se-empty-state
-            heading="Not yet published"
-            text="Mill custody lots (cotton reserves, poly & blend lots, trims and packaging) are not yet exposed to partners."
-          />
-        </se-card>
-      </se-page>
+        <section class="card">
+          <div class="sec-head"><h2>Product silhouette register</h2><span class="muted small">SKU aggregates</span></div>
+          @if (store.finishedVariantRows().length) {
+            <div class="list">
+              @for (row of store.finishedVariantRows(); track row.itemId) {
+                <div class="row">
+                  <div>
+                    <div class="rtitle">{{ silhouetteLabel(row) }}</div>
+                    <div class="muted small">{{ skuLabel(row) }} @if (specLabel(row) !== '-') { · {{ specLabel(row) }} }</div>
+                  </div>
+                  <div class="right">
+                    <strong class="mono">{{ row.currentQuantity | number }}</strong>
+                    <div class="status" [class.ok]="row.currentQuantity>0">{{ row.currentQuantity>0 ? 'In stock' : 'Out' }}</div>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="muted small">Line items appear per SKU with audited unit counts once stock movements are recorded.</p>
+          }
+        </section>
+
+        <section class="card">
+          <div class="sec-head"><h2>Facility & raw materials</h2></div>
+          <div class="kv">
+            <div><span>Aba garment factory</span><strong class="mono">{{ d.inventoryVisibility.finishedGoodsUnits | number }} units</strong></div>
+            <div><span>Per-floor utilisation</span><strong>Not yet shared</strong></div>
+            <div><span>Mill custody lots (cotton, poly, trims, packaging)</span><strong>Not yet published</strong></div>
+          </div>
+          <p class="muted small note">Seentair operates a single factory. Aggregate telemetry only, never individual person data.</p>
+        </section>
+      </div>
     }
   `,
-  styles: [
-    `
-      .inv-note {
-        margin: var(--se-space-4) 0 0;
-        color: var(--se-color-text-muted);
-        font: var(--se-type-caption);
-      }
-      .inv-sub {
-        display: block;
-        color: var(--se-color-text-muted);
-        font: var(--se-type-caption);
-      }
-    `,
-  ],
+  styles: [`
+    :host{display:block;font-family:'Urbanist',sans-serif;}
+    .pg{display:flex;flex-direction:column;gap:12px;} .card{background:#fffdf9;border:1px solid #e8e1d3;border-radius:12px;padding:14px;box-shadow:0 8px 24px -4px rgba(27,25,22,.05);}
+    .eyebrow{font:700 10px/1 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#c88a12;margin-bottom:4px;}
+    h1{margin:0;font:700 20px/1.2 Urbanist,sans-serif;} h2{margin:0;font:700 14px/1.2 Urbanist,sans-serif;} p{margin:6px 0 0;}
+    .chip{display:inline-block;margin-top:8px;font:600 11px/1 Urbanist,sans-serif;padding:5px 9px;border-radius:999px;background:#f1ede5;border:1px solid #e8e1d3;color:#1b1916;}
+    .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .metric{display:flex;flex-direction:column;gap:4px;padding:12px;} .metric span{color:#7b756a;font-size:11px;} .metric strong{font:700 16px/1.1 'JetBrains Mono',monospace;color:#1b1916;}
+    .sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;}
+    .list,.kv{display:flex;flex-direction:column;gap:10px;}
+    .row,.kv>div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(232,225,211,.6);font-size:13px;} .row:last-child,.kv>div:last-child{border-bottom:0;padding-bottom:0;}
+    .rtitle{font:600 13px/1.3 Urbanist,sans-serif;} .right{text-align:right;}
+    .dtop{display:flex;justify-content:space-between;font-size:13px;gap:8px;} .track{height:8px;background:#efeae0;border-radius:999px;overflow:hidden;margin-top:6px;} .fill{height:100%;background:#c88a12;border-radius:999px;}
+    .status{font:600 11px/1 Urbanist,sans-serif;color:#7b756a;margin-top:2px;} .status.ok{color:#23804d;}
+    .kv span,.muted{color:#7b756a;} .small{font-size:11px;} .mono{font-family:'JetBrains Mono',monospace;} .note{margin-top:10px;}
+    @media (max-width:360px){.metrics{grid-template-columns:1fr;}}
+  `],
 })
 export class InventoryPage {
   readonly store = inject(PortalStore);
-
-  readonly byName = (row: CategoryRow): string => row.name;
-  readonly byItem = (row: RegisterRow): string => row.itemId;
-
-  /** Total raw-material units across live mill lots (quantity, not ₦, no valuation endpoint). */
-  readonly materialUnits = computed(() => {
-    const rows = this.store.materialRows();
-    return rows.reduce((sum, r) => sum + Math.max(0, r.currentQuantity), 0);
-  });
-
-  readonly categoryColumns: SeColumn<CategoryRow>[] = [
-    { key: 'name', header: 'Product silhouette' },
-    { key: 'units', header: 'Units held', numeric: true, format: (v) => this.num(v as number) },
-    { key: 'pct', header: 'Share', numeric: true, format: (v) => `${(v as number).toFixed(0)}%` },
-  ];
-
-  readonly categoryRows = computed<CategoryRow[]>(() => this.store.categoryRows());
-
-  readonly registerColumns: SeColumn<RegisterRow>[] = [
-    { key: 'silhouette', header: 'Silhouette', value: (row) => this.silhouetteLabel(row) },
-    { key: 'spec', header: 'Fabric / spec', value: (row) => this.specLabel(row) },
-    {
-      key: 'currentQuantity',
-      header: 'Units held',
-      numeric: true,
-      format: (v) => this.num(v as number),
-    },
-    { key: 'status', header: 'Status' },
-  ];
-
-  silhouetteLabel(row: RegisterRow): string {
-    return row.meta?.name ?? 'Unlabelled item';
-  }
-
-  skuLabel(row: RegisterRow): string {
-    return row.meta?.sku ?? '';
-  }
-
+  readonly materialUnits = computed(() => (this.store.materialRows()).reduce((sum, r) => sum + Math.max(0, r.currentQuantity), 0));
+  readonly categoryRows = computed(() => this.store.categoryRows());
+  silhouetteLabel(row: RegisterRow): string { return row.meta?.name ?? 'Unlabelled item'; }
+  skuLabel(row: RegisterRow): string { return row.meta?.sku ?? ''; }
   specLabel(row: RegisterRow): string {
     const parts = [row.meta?.colour, row.meta?.size].filter((p): p is string => !!p);
-    return parts.length > 0 ? parts.join(' · ') : '-';
-  }
-
-  private num(value: number): string {
-    return new Intl.NumberFormat('en-NG').format(value);
+    return parts.length ? parts.join(' · ') : '-';
   }
 }

@@ -1,280 +1,138 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
-import {
-  SeBadgeComponent,
-  SeBarChartComponent,
-  SeButtonDirective,
-  SeCardComponent,
-  SeCellDirective,
-  SeColumn,
-  SeCurrencyService,
-  SeKvDirective,
-  SeKvItemComponent,
-  SeMetricCardComponent,
-  SeMoneyPipe,
-  SePageComponent,
-  SeTableComponent,
-} from '@seentair/ui';
+import { SeMoneyPipe } from '@seentair/ui';
 import { PortalStore } from '../portal.store';
 
-interface CapRow {
-  id: string;
-  cls: string;
-  group: string;
-  shares: number;
-  equityPct: number;
-  rights: string;
-}
-
-interface LedgerRow {
-  id: string;
-  date: string;
-  purpose: string;
-  shares: number;
-  amount: number;
-  status: 'cleared';
-}
-
-/**
- * Screen P3, My Investment & Equity Structure: registry record, share
- * mechanics, equity split, capitalization table and capital ledger. The
- * founder/partners split and the share covenant are mirrored from the server
- * dashboard config, so the "other partners" slice is the partners' share minus
- * this partner's equity.
- */
 @Component({
   selector: 'app-investment-page',
-  imports: [
-    DecimalPipe,
-    SeBadgeComponent,
-    SeBarChartComponent,
-    SeButtonDirective,
-    SeCardComponent,
-    SeCellDirective,
-    SeKvDirective,
-    SeKvItemComponent,
-    SeMetricCardComponent,
-    SeMoneyPipe,
-    SePageComponent,
-    SeTableComponent,
-  ],
+  imports: [DecimalPipe, SeMoneyPipe],
   template: `
     @if (store.dash(); as d) {
-      <se-page
-        title="My Investment & Equity Structure"
-        [description]="
-          'Official shareholder registry record for ' +
-          (store.me()?.name ?? 'this partner account') +
-          ' — read-only, maintained by Seentair Limited.'
-        "
-      >
-        <se-badge sePageStatus tone="success">Corporate ledger synced</se-badge>
-        <button seButton sePageActions type="button" (click)="print()">Print registry slip</button>
-
-        <div class="se-metric-grid">
-          <se-metric-card
-            label="Total capital invested"
-            [value]="d.investmentInformation.investedAmount | seMoney"
-            hint="Fully paid · nominal value on registry"
-          />
-          <se-metric-card
-            label="Investment inception"
-            value="On registry"
-            hint="Date held by the company secretary"
-          />
-          <se-metric-card
-            label="Shares held"
-            [value]="(d.investmentInformation.shares | number) + ' shares'"
-            hint="1 share = 1 ordinary voting right"
-          />
-          <se-metric-card
-            label="Equity ownership"
-            [value]="d.investmentInformation.equityPercentage + '%'"
-            [hint]="(d.investmentInformation.totalShares | number) + ' total company shares'"
-          />
-        </div>
-
-        <se-card title="How your shares work & capital model">
-          <dl seKv>
-            <div seKvItem label="Instrument">Class A voting ordinary shares</div>
-            <div seKvItem label="Profit retention policy">{{ d.config.reinvestmentPct }}% reinvestment</div>
-            <div seKvItem label="Dividend payout pool">{{ d.config.dividendsPct }}% of quarterly net</div>
-            <div seKvItem label="Strategic reserve">{{ d.config.reservePct }}% retained</div>
-            <div seKvItem label="Liquidation preference">Per shareholders' agreement</div>
-          </dl>
-        </se-card>
-
-        <div class="se-detail">
-          <div class="se-detail__main">
-            <se-card title="Equity distribution">
-              <se-bar-chart
-                title="Equity split by shareholder group"
-                [labels]="equityLabels()"
-                [values]="equityValues()"
-                [formatValue]="pct"
-                height="sm"
-              />
-            </se-card>
+      <div class="pg">
+        <section class="card hero">
+          <div class="eyebrow">Holding & Equity</div>
+          <h1>My Investment</h1>
+          <p class="muted">Official shareholder registry record — read-only, maintained by Seentair Limited.</p>
+          <div class="big">{{ d.investmentInformation.equityPercentage }}% <span>equity ownership</span></div>
+          <div class="chips">
+            <span class="chip ok">Corporate ledger synced</span>
+            <span class="chip">{{ store.covenantLabel() }} covenant</span>
           </div>
-          <aside class="se-detail__aside">
-            <se-card title="Registry facts">
-              <dl seKv>
-                <div seKvItem label="Authorized shares" numeric>
-                  {{ d.config.totalShares | number }}
-                </div>
-                <div seKvItem label="Your shares" numeric>
-                  {{ d.investmentInformation.shares | number }}
-                </div>
-                <div seKvItem label="Your equity" numeric>
-                  {{ d.investmentInformation.equityPercentage }}%
-                </div>
-              </dl>
-            </se-card>
-          </aside>
-        </div>
+        </section>
 
-        <se-card title="Official capitalization table" flush>
-          <se-table
-            caption="Capitalization structure by shareholder group"
-            [columns]="capColumns"
-            [rows]="capRows()"
-            hideDensity
-          />
-        </se-card>
+        <section class="metrics">
+          <div class="metric card"><span>Total capital invested</span><strong>{{ d.investmentInformation.investedAmount | seMoney }}</strong><small>Fully paid on registry</small></div>
+          <div class="metric card"><span>Shares held</span><strong>{{ d.investmentInformation.shares | number }}</strong><small>of {{ d.investmentInformation.totalShares | number }} total</small></div>
+          <div class="metric card"><span>Dividends to date</span><strong>{{ store.lifetimeDividends() | seMoney }}</strong><small>Lifetime declared</small></div>
+          <div class="metric card"><span>Latest dividend</span><strong>{{ (store.latestDistribution()?.myDividend ?? 0) | seMoney }}</strong><small>{{ store.latestDistribution()?.period ?? 'No distribution yet' }}</small></div>
+        </section>
 
-        <se-card title="Investment transactions & capital calls ledger">
-          <se-table
-            caption="Verifiable subscriptions against the registry"
-            [columns]="ledgerColumns"
-            [rows]="ledgerRows()"
-            hideDensity
-          >
-            <ng-template seCell="status" let-row>
-              <se-badge tone="success">Cleared · audited</se-badge>
-            </ng-template>
-          </se-table>
-          <p class="inv-note">
-            Certified share certificates and the countersigned shareholders' agreement are issued
-            by the company secretary; they appear under Documents &amp; Messages once shared.
-          </p>
-        </se-card>
-      </se-page>
+        <section class="card">
+          <div class="sec-head"><h2>Equity distribution</h2><span class="muted small">Shareholder groups</span></div>
+          <div class="dist">
+            @for (row of equityRows(); track row.label) {
+              <div class="drow">
+                <div class="dtop"><span>{{ row.label }}</span><strong class="mono">{{ row.pct }}%</strong></div>
+                <div class="track"><div class="fill" [class.me]="row.me" [style.width.%]="row.pct"></div></div>
+                <small class="muted">{{ row.shares | number }} shares</small>
+              </div>
+            }
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="sec-head"><h2>Capitalization table</h2></div>
+          <div class="list">
+            @for (row of capRows(); track row.id) {
+              <div class="row">
+                <div>
+                  <div class="rtitle">{{ row.group }}</div>
+                  <div class="muted small">Class {{ row.cls }} · {{ row.rights }}</div>
+                </div>
+                <div class="right">
+                  <strong class="mono">{{ row.equityPct }}%</strong>
+                  <div class="muted small">{{ row.shares | number }} shares</div>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="sec-head"><h2>Registry & capital model</h2></div>
+          <div class="kv">
+            <div><span>Instrument</span><strong>Class A voting ordinary shares</strong></div>
+            <div><span>Profit retention</span><strong class="mono">{{ d.config.reinvestmentPct }}% reinvestment</strong></div>
+            <div><span>Dividend pool</span><strong class="mono">{{ d.config.dividendsPct }}% of quarterly net</strong></div>
+            <div><span>Strategic reserve</span><strong class="mono">{{ d.config.reservePct }}% retained</strong></div>
+            <div><span>Ledger entry</span><strong>Initial equity injection · cleared</strong></div>
+          </div>
+          <button type="button" class="action" (click)="print()">Print registry slip</button>
+        </section>
+      </div>
     }
   `,
-  styles: [
-    `
-      .inv-note {
-        margin: var(--se-space-4) 0 0;
-        color: var(--se-color-text-muted);
-        font: var(--se-type-caption);
-      }
-    `,
-  ],
+  styles: [`
+    :host{display:block;font-family:'Urbanist',sans-serif;}
+    .pg{display:flex;flex-direction:column;gap:12px;}
+    .card{background:#fffdf9;border:1px solid #e8e1d3;border-radius:12px;padding:14px;box-shadow:0 8px 24px -4px rgba(27,25,22,.05);}
+    .eyebrow{font:700 10px/1 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#c88a12;margin-bottom:4px;}
+    h1{margin:0;font:700 20px/1.2 Urbanist,sans-serif;} p{margin:6px 0 0;font-size:13px;}
+    .big{margin-top:12px;font:700 28px/1 'JetBrains Mono',monospace;color:#1b1916;} .big span{display:block;margin-top:4px;font:500 12px/1 Urbanist,sans-serif;color:#7b756a;}
+    .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+    .chip{font:600 11px/1 Urbanist,sans-serif;padding:5px 9px;border-radius:999px;background:#f1ede5;color:#1b1916;border:1px solid #e8e1d3;}
+    .chip.ok{background:rgba(35,128,77,.12);color:#23804d;border-color:rgba(35,128,77,.25);}
+    .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .metric{display:flex;flex-direction:column;gap:4px;padding:12px;}
+    .metric span,.muted{color:#7b756a;font-size:11px;} .metric strong{font:700 16px/1.1 'JetBrains Mono',monospace;color:#1b1916;}
+    .sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;}
+    h2{margin:0;font:700 14px/1.2 Urbanist,sans-serif;}
+    .dist,.list,.kv{display:flex;flex-direction:column;gap:10px;}
+    .dtop{display:flex;justify-content:space-between;font-size:13px;gap:8px;}
+    .track{height:8px;background:#efeae0;border-radius:999px;overflow:hidden;margin:5px 0;}
+    .fill{height:100%;background:#b6aa97;border-radius:999px;} .fill.me{background:#c88a12;}
+    .row,.kv>div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(232,225,211,.6);}
+    .row:last-child,.kv>div:last-child{border-bottom:0;padding-bottom:0;}
+    .rtitle{font:600 13px/1.3 Urbanist,sans-serif;} .right{text-align:right;}
+    .kv{font-size:13px;} .kv span{color:#7b756a;}
+    .action{margin-top:12px;width:100%;padding:12px;border-radius:12px;border:1px solid #e8e1d3;background:#1b1916;color:#fffdf9;font:700 13px/1 Urbanist,sans-serif;}
+    .mono{font-family:'JetBrains Mono',monospace;} .small{font-size:11px;}
+    @media (max-width:360px){.metrics{grid-template-columns:1fr;}}
+  `],
 })
 export class InvestmentPage {
   readonly store = inject(PortalStore);
-  private readonly currency = inject(SeCurrencyService);
-
-  readonly money = (n: number): string => this.currency.format(n);
-  readonly pct = (n: number): string => `${n.toFixed(1)}%`;
 
   readonly otherPartnersPct = computed(() => {
     const mine = this.store.dash()?.investmentInformation.equityPercentage ?? 0;
     const partnersPct = this.store.dash()?.config.partnersSharePct ?? 40;
     return Math.max(0, partnersPct - mine);
   });
-
   readonly founderShares = computed(() => {
     const total = this.store.dash()?.investmentInformation.totalShares ?? 0;
     const founderPct = this.store.dash()?.config.founderSharePct ?? 60;
     return Math.round(total * (founderPct / 100));
   });
-
   readonly otherPartnersShares = computed(() => {
     const d = this.store.dash()?.investmentInformation;
     if (!d) return 0;
     return Math.max(0, d.totalShares - this.founderShares() - d.shares);
   });
-
-  readonly equityLabels = computed(() => [
-    'Founder & executive team',
-    'Other strategic partners',
-    `Your holding (${this.store.firstName()})`,
-  ]);
-
-  readonly equityValues = computed(() => [
-    this.store.dash()?.config.founderSharePct ?? 0,
-    this.otherPartnersPct(),
-    this.store.dash()?.investmentInformation.equityPercentage ?? 0,
-  ]);
-
-  readonly capColumns: SeColumn<CapRow>[] = [
-    { key: 'cls', header: 'Class' },
-    { key: 'group', header: 'Shareholder group' },
-    { key: 'shares', header: 'Shares', numeric: true, format: (v) => this.num(v as number) },
-    { key: 'equityPct', header: 'Equity', numeric: true, format: (v) => `${v}%` },
-    { key: 'rights', header: 'Dividend rights' },
-  ];
-
-  readonly capRows = computed<CapRow[]>(() => {
-    const d = this.store.dash();
-    if (!d) return [];
+  readonly equityRows = computed(() => {
+    const d = this.store.dash(); if (!d) return [];
     return [
-      {
-        id: 'founder',
-        cls: 'A',
-        group: 'Founder & executive team',
-        shares: this.founderShares(),
-        equityPct: d.config.founderSharePct,
-        rights: `${d.config.founderSharePct}% of pool`,
-      },
-      {
-        id: 'partners',
-        cls: 'A',
-        group: 'Other strategic partners',
-        shares: this.otherPartnersShares(),
-        equityPct: this.otherPartnersPct(),
-        rights: 'Equity % of pool',
-      },
-      {
-        id: 'me',
-        cls: 'A',
-        group: `${this.store.me()?.name ?? 'You'} (your holding)`,
-        shares: d.investmentInformation.shares,
-        equityPct: d.investmentInformation.equityPercentage,
-        rights: `${d.investmentInformation.equityPercentage}% of pool`,
-      },
+      { label: 'Founder & executive team', pct: d.config.founderSharePct, shares: this.founderShares(), me: false },
+      { label: 'Other strategic partners', pct: this.otherPartnersPct(), shares: this.otherPartnersShares(), me: false },
+      { label: `Your holding (${this.store.firstName()})`, pct: d.investmentInformation.equityPercentage, shares: d.investmentInformation.shares, me: true },
     ];
   });
-
-  readonly ledgerColumns: SeColumn<LedgerRow>[] = [
-    { key: 'date', header: 'Date' },
-    { key: 'purpose', header: 'Transaction purpose / call' },
-    { key: 'shares', header: 'Shares issued', numeric: true, format: (v) => this.num(v as number) },
-    { key: 'amount', header: 'Amount subscribed', numeric: true, format: (v) => this.money(v as number) },
-    { key: 'status', header: 'Status' },
-  ];
-
-  readonly ledgerRows = computed<LedgerRow[]>(() => {
-    const d = this.store.dash();
-    if (!d) return [];
+  readonly capRows = computed(() => {
+    const d = this.store.dash(); if (!d) return [];
     return [
-      {
-        id: 'initial',
-        date: 'On registry',
-        purpose: 'Initial equity injection: founding partner subscription',
-        shares: d.investmentInformation.shares,
-        amount: d.investmentInformation.investedAmount,
-        status: 'cleared',
-      },
+      { id: 'founder', cls: 'A', group: 'Founder & executive team', shares: this.founderShares(), equityPct: d.config.founderSharePct, rights: `${d.config.founderSharePct}% of pool` },
+      { id: 'partners', cls: 'A', group: 'Other strategic partners', shares: this.otherPartnersShares(), equityPct: this.otherPartnersPct(), rights: 'Equity % of pool' },
+      { id: 'me', cls: 'A', group: `${this.store.me()?.name ?? 'You'} (your holding)`, shares: d.investmentInformation.shares, equityPct: d.investmentInformation.equityPercentage, rights: `${d.investmentInformation.equityPercentage}% of pool` },
     ];
   });
-
-  private num(value: number): string {
-    return new Intl.NumberFormat('en-NG').format(value);
-  }
-
-  print(): void {
-    window.print();
-  }
+  print(): void { window.print(); }
 }

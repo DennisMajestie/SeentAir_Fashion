@@ -1,176 +1,91 @@
 import { Component, computed, inject } from '@angular/core';
-import {
-  SeBadgeComponent,
-  SeCardComponent,
-  SeColumn,
-  SeCurrencyService,
-  SeEmptyStateComponent,
-  SeKvDirective,
-  SeKvItemComponent,
-  SeMetricCardComponent,
-  SeMoneyPipe,
-  SePageComponent,
-  SeTableComponent,
-} from '@seentair/ui';
+import { SeMoneyPipe } from '@seentair/ui';
 import { PortalStore } from '../portal.store';
 
-/** One income line drawn from the ledger's by-type breakdown. */
-interface IncomeRow {
-  label: string;
-  amount: number;
-}
+interface IncomeRow { label: string; amount: number; }
 
-/**
- * Screen P4, Operational & Financial Performance: yield ledger, revenue & cost
- * breakdown, and the parts of the factory picture that are not yet published to
- * partners. Every figure comes from the dashboard payload; a section with no
- * endpoint renders an honest empty state rather than a fabricated number.
- */
 @Component({
   selector: 'app-performance-page',
-  imports: [
-    SeBadgeComponent,
-    SeCardComponent,
-    SeEmptyStateComponent,
-    SeKvDirective,
-    SeKvItemComponent,
-    SeMetricCardComponent,
-    SeMoneyPipe,
-    SePageComponent,
-    SeTableComponent,
-  ],
+  imports: [SeMoneyPipe],
   template: `
     @if (store.dash(); as d) {
-      <se-page
-        title="Operational & financial performance"
-        description="Verified production and net yield ledgers for the Seentair garment factory, Aba — drawn live from the company accounting ledger."
-      >
-        <se-badge sePageStatus tone="info">{{ store.periodLabel() }} · current</se-badge>
+      <div class="pg">
+        <section class="card hero">
+          <div class="eyebrow">Operational & Financial</div>
+          <h1>Performance</h1>
+          <p class="muted">Verified production and net yield ledgers from the company accounting ledger · {{ store.periodLabel() }}.</p>
+        </section>
 
-        <div class="se-metric-grid">
-          <se-metric-card
-            label="Recorded income"
-            [value]="d.performance.income | seMoney"
-            hint="All income entries, incl. capital inflows"
-          />
-          <se-metric-card
-            label="Total expenditure"
-            [value]="d.performance.expenditure | seMoney"
-            hint="Materials, production & overheads combined"
-          />
-          <se-metric-card
-            label="Net operating profit"
-            [value]="d.performance.net | seMoney"
-            hint="Income less expenditure"
-          />
-          <se-metric-card label="Net margin" [value]="marginText()" hint="Net profit as a share of revenue" />
-        </div>
+        <section class="metrics">
+          <div class="metric card"><span>Recorded income</span><strong>{{ d.performance.income | seMoney }}</strong><small>All income entries</small></div>
+          <div class="metric card"><span>Total expenditure</span><strong>{{ d.performance.expenditure | seMoney }}</strong><small>Materials, production, overheads</small></div>
+          <div class="metric card"><span>Net operating profit</span><strong>{{ d.performance.net | seMoney }}</strong><small>Income less expenditure</small></div>
+          <div class="metric card"><span>Net margin</span><strong>{{ marginText() }}</strong><small>Net profit share of revenue</small></div>
+        </section>
 
-        <div class="se-detail">
-          <div class="se-detail__main">
-            <se-card title="Revenue & cost breakdown" flush>
-              <se-table
-                caption="Income recognised by ledger entry type"
-                [columns]="incomeColumns"
-                [rows]="incomeRows()"
-                hideDensity
-                emptyHeading="No income entries yet"
-                emptyText="Income lines appear here as entries are posted to the company ledger."
-              />
-            </se-card>
+        <section class="card">
+          <div class="sec-head"><h2>Revenue breakdown</h2><span class="muted small">By ledger entry type</span></div>
+          @if (incomeRows().length) {
+            <div class="list">
+              @for (row of incomeRows(); track row.label) {
+                <div class="row"><span>{{ row.label }}</span><strong class="mono">{{ row.amount | seMoney }}</strong></div>
+              }
+            </div>
+          } @else {
+            <p class="muted small">No income entries yet. Lines appear as entries are posted to the ledger.</p>
+          }
+        </section>
 
-            <se-card title="Ledger totals">
-              <dl seKv>
-                <div seKvItem label="Total recorded income (topline)" numeric>
-                  {{ d.performance.income | seMoney }}
-                </div>
-                <div seKvItem label="Total expenditure (COGS + operating)" numeric>
-                  {{ d.performance.expenditure | seMoney }}
-                </div>
-                <div seKvItem label="Net operating profit" numeric>
-                  {{ d.performance.net | seMoney }}
-                </div>
-              </dl>
-              <p class="perf-note">
-                Production cost basis: raw material + sewing + branding + packaging. Detailed
-                cost-line disclosure follows officer sign-off.
-              </p>
-            </se-card>
+        <section class="card">
+          <div class="sec-head"><h2>Ledger totals</h2></div>
+          <div class="kv">
+            <div><span>Total recorded income</span><strong class="mono">{{ d.performance.income | seMoney }}</strong></div>
+            <div><span>Total expenditure</span><strong class="mono">{{ d.performance.expenditure | seMoney }}</strong></div>
+            <div><span>Net operating profit</span><strong class="mono" [class.ok]="d.performance.net>=0" [class.neg]="d.performance.net<0">{{ d.performance.net | seMoney }}</strong></div>
           </div>
+          <p class="muted small note">Production cost basis: raw material + sewing + branding + packaging. Detailed cost-line disclosure follows officer sign-off.</p>
+        </section>
 
-          <aside class="se-detail__aside">
-            <se-card title="Net margin trend">
-              <se-empty-state
-                heading="Not yet published"
-                [text]="marginNote()"
-              />
-            </se-card>
-
-            <se-card title="More operational telemetry">
-              <dl seKv>
-                <div seKvItem label="Channel mix (retail · wholesale · in-store)">Not yet published</div>
-                <div seKvItem label="Top products by revenue">Not yet published</div>
-                <div seKvItem label="Factory floor (batches · output · QC)">Not yet published</div>
-              </dl>
-              <p class="perf-note">
-                Product rankings, when released, are strictly anonymized SKU telemetry —
-                aggregates only, never down to individual people.
-              </p>
-            </se-card>
-          </aside>
-        </div>
-      </se-page>
+        <section class="card">
+          <div class="sec-head"><h2>More telemetry</h2></div>
+          <div class="kv">
+            <div><span>Channel mix (retail / wholesale / in-store)</span><strong>Not yet published</strong></div>
+            <div><span>Top products by revenue</span><strong>Not yet published</strong></div>
+            <div><span>Factory floor (batches / output / QC)</span><strong>Not yet published</strong></div>
+            <div><span>Quarter-by-quarter margin trend</span><strong>Not yet published</strong></div>
+          </div>
+          <p class="muted small note">When released, rankings are anonymized SKU aggregates only — never individual people.</p>
+        </section>
+      </div>
     }
   `,
-  styles: [
-    `
-      .perf-note {
-        margin: var(--se-space-4) 0 0;
-        color: var(--se-color-text-muted);
-        font: var(--se-type-caption);
-      }
-    `,
-  ],
+  styles: [`
+    :host{display:block;font-family:'Urbanist',sans-serif;}
+    .pg{display:flex;flex-direction:column;gap:12px;} .card{background:#fffdf9;border:1px solid #e8e1d3;border-radius:12px;padding:14px;box-shadow:0 8px 24px -4px rgba(27,25,22,.05);}
+    .eyebrow{font:700 10px/1 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#c88a12;margin-bottom:4px;}
+    h1{margin:0;font:700 20px/1.2 Urbanist,sans-serif;} h2{margin:0;font:700 14px/1.2 Urbanist,sans-serif;} p{margin:6px 0 0;}
+    .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .metric{display:flex;flex-direction:column;gap:4px;padding:12px;} .metric span{color:#7b756a;font-size:11px;} .metric strong{font:700 16px/1.1 'JetBrains Mono',monospace;color:#1b1916;}
+    .sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;}
+    .list,.kv{display:flex;flex-direction:column;gap:8px;}
+    .row,.kv>div{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid rgba(232,225,211,.6);font-size:13px;} .row:last-child,.kv>div:last-child{border-bottom:0;}
+    .kv span,.muted{color:#7b756a;} .small{font-size:11px;} .mono{font-family:'JetBrains Mono',monospace;}
+    .note{margin-top:10px;} .ok{color:#23804d;} .neg{color:#b13131;}
+    @media (max-width:360px){.metrics{grid-template-columns:1fr;}}
+  `],
 })
 export class PerformancePage {
   readonly store = inject(PortalStore);
-  private readonly currency = inject(SeCurrencyService);
 
-  readonly money = (n: number): string => this.currency.format(n);
-
-  readonly incomeColumns: SeColumn<IncomeRow>[] = [
-    { key: 'label', header: 'Ledger entry type' },
-    {
-      key: 'amount',
-      header: 'Amount',
-      numeric: true,
-      format: (value) => this.money(value as number),
-    },
-  ];
-
-  /** Real revenue-by-ledger-type rows from accountsReports.income.byType. */
   readonly incomeRows = computed<IncomeRow[]>(() => {
     const byType = this.store.dash()?.accountsReports.income.byType ?? {};
     return Object.entries(byType)
-      .filter(([, value]) => typeof value === 'number')
-      .sort((a, b) => b[1] - a[1])
-      .map(([key, amount]) => ({
-        label: key.replace(/[_-]+/g, ' ').replace(/^\w/, (c) => c.toUpperCase()),
-        amount,
-      }));
+      .filter(([, v]) => typeof v === 'number')
+      .sort((a, b) => (b[1] as number) - (a[1] as number))
+      .map(([key, amount]) => ({ label: key.replace(/[_-]+/g, ' ').replace(/^\w/, c => c.toUpperCase()), amount: amount as number }));
   });
-
   readonly marginText = computed(() => {
-    const margin = this.store.netMarginPct();
-    return margin === null ? '–' : `${margin.toFixed(1)}%`;
-  });
-
-  readonly marginNote = computed(() => {
-    const margin = this.store.netMarginPct();
-    const now =
-      margin === null
-        ? 'No income has been recorded yet, so the margin is not computable.'
-        : `The all-time net margin is ${margin.toFixed(1)}%.`;
-    return `${now} A quarter-by-quarter trend appears once quarterly ledger snapshots are published.`;
+    const m = this.store.netMarginPct();
+    return m === null ? '-' : `${m.toFixed(1)}%`;
   });
 }
