@@ -72,6 +72,9 @@ export class CustomOrderRequest {
   @Column({ name: 'paid_at', type: 'timestamptz', nullable: true })
   paidAt: Date | null;
 
+  @Column({ name: 'reference_image_url', type: 'varchar', length: 512, nullable: true })
+  referenceImageUrl: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

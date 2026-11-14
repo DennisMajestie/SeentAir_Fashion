@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AccountingModule } from '../accounting/accounting.module';
+import { MediaModule } from '../media/media.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
 import { CustomOrdersController } from './custom-orders.controller';
@@ -15,6 +16,7 @@ import { SampleApproval } from './entities/sample-approval.entity';
     UsersModule,
     AccountingModule,
     NotificationsModule,
+    MediaModule,
   ],
   controllers: [CustomOrdersController],
   providers: [CustomOrdersService],

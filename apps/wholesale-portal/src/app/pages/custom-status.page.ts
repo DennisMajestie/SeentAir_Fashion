@@ -157,6 +157,13 @@ type Quote = { amount: number; note: string | null };
             <se-card title="Request">
               <dl seKv>
                 <div seKvItem label="Description">{{ req.description }}</div>
+                @if (req.referenceImageUrl) {
+                  <div seKvItem label="Reference image">
+                    <a [href]="req.referenceImageUrl" target="_blank" rel="noopener">
+                      <img class="ref-image" [src]="req.referenceImageUrl" alt="Reference image for this custom design request" />
+                    </a>
+                  </div>
+                }
                 <div seKvItem label="Fabric">{{ req.fabricQuality }}</div>
                 <div seKvItem label="Colourways">{{ req.colours }}</div>
                 <div seKvItem label="Sizes">{{ req.sizes }}</div>
@@ -195,6 +202,16 @@ type Quote = { amount: number; note: string | null };
       }
       dl + .note {
         margin-top: var(--se-space-4);
+      }
+      .ref-image {
+        display: block;
+        width: 100%;
+        max-width: 320px;
+        max-height: 220px;
+        object-fit: cover;
+        border: 1px solid var(--line);
+        border-radius: var(--sd-r-row, 16px);
+        background: var(--surface-2);
       }
     `,
   ],

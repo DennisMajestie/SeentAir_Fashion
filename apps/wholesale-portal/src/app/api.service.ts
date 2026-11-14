@@ -71,6 +71,7 @@ export interface CustomOrder {
   desiredDate: string;
   reviewNote: string | null;
   paidAt: string | null;
+  referenceImageUrl?: string | null;
   createdAt: string;
 }
 
@@ -346,8 +347,15 @@ export class ApiService {
     fabricQuality: string;
     description: string;
     desiredDate: string;
+    referenceImageUrl?: string;
   }): Observable<CustomOrder> {
     return this.http.post<CustomOrder>(`${API_BASE}/custom-orders`, body);
+  }
+
+  uploadCustomReferenceImage(file: File): Observable<{ url: string }> {
+    const body = new FormData();
+    body.append('file', file, file.name);
+    return this.http.post<{ url: string }>(`${API_BASE}/custom-orders/reference-image`, body);
   }
 
   quotation(id: string): Observable<{ amount: number; note: string | null } | null> {

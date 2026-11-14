@@ -38,6 +38,7 @@ export interface CustomRow {
   desiredDate: string;
   buyer: { name: string; email: string };
   paidAt: string | null;
+  referenceImageUrl?: string | null;
   productName?: string;
 }
 
@@ -115,6 +116,13 @@ export interface CustomRow {
             <div seKvItem label="Wanted by">{{ r.desiredDate | seDate }}</div>
             <div seKvItem label="Deliver to">{{ r.location }}</div>
             <div seKvItem label="Request">{{ r.description }}</div>
+            @if (r.referenceImageUrl) {
+              <div seKvItem label="Reference image">
+                <a [href]="r.referenceImageUrl" target="_blank" rel="noopener">
+                  <img class="ref-image" [src]="r.referenceImageUrl" alt="Reference image for this custom design request" />
+                </a>
+              </div>
+            }
             @if (quotation(); as q) {
               <div seKvItem label="Quotation" numeric>{{ num(q['amount']) | seMoney: 2 }}</div>
             } @else {
@@ -195,6 +203,20 @@ export interface CustomRow {
       </se-drawer>
     </se-page>
   `,
+  styles: [
+    `
+      .ref-image {
+        display: block;
+        width: 100%;
+        max-width: 320px;
+        max-height: 220px;
+        object-fit: cover;
+        border: 1px solid var(--line);
+        border-radius: var(--sd-r-row, 16px);
+        background: var(--surface-2);
+      }
+    `,
+  ],
 })
 export class CustomAdminPage implements OnInit {
   private readonly api = inject(ApiService);

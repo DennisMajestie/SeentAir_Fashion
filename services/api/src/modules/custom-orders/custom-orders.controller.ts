@@ -1,16 +1,45 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
+import { randomUUID } from 'crypto';
+import { diskStorage } from 'multer';
+import type { File } from 'multer';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { MediaService } from '../media/media.service';
 import { CustomOrdersService } from './custom-orders.service';
 import { CreateCustomOrderDto } from './dto/create-custom-order.dto';
 import { IssueQuotationDto } from './dto/issue-quotation.dto';
 import { RecordCustomPaymentDto } from './dto/record-custom-payment.dto';
 import { UpdateCustomStatusDto } from './dto/update-custom-status.dto';
+
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const MAX_BYTES = 5 * 1024 * 1024;
+
+const tempUploadDir = path.join(os.tmpdir(), 'seentair-custom-orders');
+fs.mkdirSync(tempUploadDir, { recursive: true });
 
 class DecideSampleDto {
   @IsBoolean()
@@ -25,7 +54,50 @@ class DecideSampleDto {
 @ApiBearerAuth()
 @Controller('custom-orders')
 export class CustomOrdersController {
-  constructor(private readonly customOrdersService: CustomOrdersService) {}
+  constructor(
+    private readonly customOrdersService: CustomOrdersService,
+    private readonly media: MediaService,
+  ) {}
+
+  /**
+   * Upload a reference image for a custom design request. Any authenticated
+   * buyer can upload a sample/reference photo; the returned URL is sent with
+   * the create request (stored under custom-orders/ in media storage).
+   */
+  @Post('reference-image')
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: tempUploadDir,
+        filename: (_req, file, cb) => {
+          const ext = path.extname(file.originalname).toLowerCase();
+          cb(null, `${randomUUID()}${ext}`);
+        },
+      }),
+      limits: { fileSize: MAX_BYTES },
+      fileFilter: (_req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (ALLOWED_TYPES.has(file.mimetype) && ALLOWED_EXTENSIONS.has(ext)) {
+          cb(null, true);
+        } else {
+          cb(new BadRequestException('Only JPG, PNG and WebP images are allowed'), false);
+        }
+      },
+    }),
+  )
+  async uploadReferenceImage(
+    @UploadedFile() file: File | undefined,
+  ): Promise<{ url: string }> {
+    if (!file?.path) {
+      throw new BadRequestException('No file was uploaded');
+    }
+    const fileBuffer = fs.readFileSync(file.path);
+    const key = `custom-orders/${path.basename(file.path)}`;
+    const url = await this.media.uploadFile(key, fileBuffer, file.mimetype);
+    fs.unlinkSync(file.path);
+    return { url };
+  }
 
   /** Buyers (customers/wholesalers) submit design requests. */
   @Post()

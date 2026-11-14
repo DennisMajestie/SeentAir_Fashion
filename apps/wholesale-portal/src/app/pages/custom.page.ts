@@ -130,11 +130,35 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
           </se-field>
           <se-field
             label="Design and construction"
-            hint="Silhouette, panels, print or embroidery placements, trims, stitch spec. Describe any reference pieces here; techpack upload is not available yet."
+            hint="Silhouette, panels, print or embroidery placements, trims and stitch spec."
             [error]="errors()['description']"
           >
             <textarea seInput [(ngModel)]="form.description" name="description" rows="4"></textarea>
           </se-field>
+          <se-field
+            label="Reference image"
+            hint="Optional photo or sketch of the sample/design (JPG, PNG or WebP, up to 5 MB)."
+          >
+            <input
+              seInput
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              name="referenceImage"
+              (change)="pickPhoto($event)"
+            />
+          </se-field>
+          @if (photoUploading()) {
+            <p class="photo-note">Uploading photo…</p>
+          }
+          @if (photoError()) {
+            <p class="photo-error" role="alert">{{ photoError() }}</p>
+          }
+          @if (photoUrl(); as url) {
+            <div class="photo-preview">
+              <img [src]="url" alt="Reference image preview" />
+              <button seButton size="sm" type="button" (click)="clearPhoto()">Remove photo</button>
+            </div>
+          }
         </div>
 
         <div class="se-form__section">
@@ -219,6 +243,31 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
         color: var(--se-color-text-muted);
         font: var(--se-type-caption);
       }
+      .photo-note {
+        margin: 0;
+        color: var(--se-color-text-muted);
+        font: var(--se-type-caption);
+      }
+      .photo-error {
+        margin: 0;
+        color: var(--se-color-danger-text, var(--bad));
+        font: var(--se-type-caption);
+      }
+      .photo-preview {
+        display: grid;
+        gap: var(--se-space-2);
+      }
+      .photo-preview img {
+        width: 100%;
+        max-height: 220px;
+        object-fit: cover;
+        border: 1px solid var(--line);
+        border-radius: var(--sd-r-row, 16px);
+        background: var(--surface-2);
+      }
+      .photo-preview .se-btn {
+        justify-self: start;
+      }
     `,
   ],
 })
@@ -234,6 +283,9 @@ export class CustomPage implements OnInit {
   readonly formOpen = signal(false);
   readonly busy = signal(false);
   readonly errors = signal<Partial<Record<FieldKey, string>>>({});
+  readonly photoUrl = signal<string | null>(null);
+  readonly photoUploading = signal(false);
+  readonly photoError = signal('');
   readonly sizeKeys = SIZE_KEYS;
   readonly roadmap = ROADMAP;
 
@@ -338,11 +390,50 @@ export class CustomPage implements OnInit {
     return Object.keys(e).length === 0;
   }
 
+  pickPhoto(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    input.value = '';
+    this.photoError.set('');
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      this.photoError.set('Only JPG, PNG and WebP images are allowed.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.photoError.set('The photo must be 5 MB or smaller.');
+      return;
+    }
+    this.photoUploading.set(true);
+    this.api.uploadCustomReferenceImage(file).subscribe({
+      next: (res) => {
+        this.photoUploading.set(false);
+        this.photoUrl.set(res.url);
+      },
+      error: (err) => {
+        this.photoUploading.set(false);
+        this.photoError.set(err?.error?.message ?? 'The photo could not be uploaded. Try again.');
+      },
+    });
+  }
+
+  clearPhoto(): void {
+    this.photoUrl.set(null);
+    this.photoError.set('');
+  }
+
   submit(): void {
+    if (this.photoUploading()) {
+      this.photoError.set('Wait for the photo to finish uploading first.');
+      return;
+    }
     if (!this.validate()) return;
     const sizes = this.sizesString();
+    const referenceImageUrl = this.photoUrl() ?? undefined;
     this.busy.set(true);
-    this.api.submitCustomOrder({ ...this.form, sizes, quantity: this.totalUnits() }).subscribe({
+    this.api
+      .submitCustomOrder({ ...this.form, sizes, quantity: this.totalUnits(), ...(referenceImageUrl ? { referenceImageUrl } : {}) })
+      .subscribe({
       next: (created) => {
         this.busy.set(false);
         this.formOpen.set(false);
@@ -367,5 +458,8 @@ export class CustomPage implements OnInit {
     this.sizeQty.set({});
     this.sizeNote = '';
     this.errors.set({});
+    this.photoUrl.set(null);
+    this.photoUploading.set(false);
+    this.photoError.set('');
   }
 }

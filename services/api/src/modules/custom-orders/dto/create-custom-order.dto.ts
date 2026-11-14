@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsNotEmpty, IsString, Min } from 'class-validator';
+import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 /** All intake fields are client-confirmed as required (appendix 07). */
 export class CreateCustomOrderDto {
@@ -28,4 +28,9 @@ export class CreateCustomOrderDto {
 
   @IsDateString()
   desiredDate: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  referenceImageUrl?: string;
 }

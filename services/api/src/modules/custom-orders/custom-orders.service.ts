@@ -55,6 +55,7 @@ export class CustomOrdersService {
         fabricQuality: dto.fabricQuality,
         description: dto.description,
         desiredDate: dto.desiredDate,
+        referenceImageUrl: dto.referenceImageUrl ?? null,
         status: CustomOrderStatus.SUBMITTED,
       }),
     );
