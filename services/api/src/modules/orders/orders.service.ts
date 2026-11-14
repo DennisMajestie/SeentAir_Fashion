@@ -740,6 +740,10 @@ export class OrdersService {
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
+      // variant.product joins so order lines carry the product id — the admin
+      // aggregates (top products, ledger) label rows by product name, and
+      // without this join every line degrades to a variant uuid.
+      relations: { items: { variant: { product: true } } },
     });
     return { data, total };
   }
