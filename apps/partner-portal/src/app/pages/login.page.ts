@@ -721,6 +721,17 @@ import { ThemeService } from '../theme.service';
       .auth-kpis .kpi-value.sm {
         font-size: 0.95rem;
       }
+      @media (max-width: 899px) {
+        .auth-kpis {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.6rem;
+        }
+      }
+      @media (max-width: 520px) {
+        .auth-kpis {
+          grid-template-columns: 1fr;
+        }
+      }
       .auth-footer {
         margin-top: auto;
         padding: 1.2rem 1rem;

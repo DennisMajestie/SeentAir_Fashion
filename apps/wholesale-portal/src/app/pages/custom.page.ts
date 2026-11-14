@@ -239,6 +239,16 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
         grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: var(--se-space-2);
       }
+      @media (max-width: 40rem) {
+        .sizes {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 22rem) {
+        .sizes {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
       .roadmap span {
         color: var(--se-color-text-muted);
         font: var(--se-type-caption);

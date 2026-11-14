@@ -853,6 +853,31 @@ import { ThemeService } from './theme.service';
         :host .auth-card .field-pair {
           grid-template-columns: 1fr;
         }
+        :host .apply-panel {
+          padding: 20px;
+        }
+        :host .criteria .crit {
+          padding: 12px;
+        }
+        :host .auth-utilities {
+          flex-wrap: wrap;
+          row-gap: 6px;
+        }
+      }
+      @media (max-width: 520px) {
+        :host .auth-main {
+          padding-inline: 0.75rem;
+        }
+        :host .auth-panel {
+          padding: 20px 16px;
+        }
+        :host .auth-title {
+          font-size: 1.7rem;
+        }
+        :host .apply-head {
+          align-items: flex-start;
+          flex-direction: column;
+        }
       }
     `,
   ],

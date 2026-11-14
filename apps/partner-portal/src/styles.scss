@@ -542,9 +542,14 @@ input:focus-visible {
 /* KPI strip, stat tiles (values wear ink, never series color) */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
   gap: 0.8rem;
   margin-bottom: 1.2rem;
+}
+@media (max-width: 30rem) {
+  .kpi-grid {
+    gap: 0.6rem;
+  }
 }
 .kpi {
   background: var(--panel);

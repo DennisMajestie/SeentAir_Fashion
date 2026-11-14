@@ -172,6 +172,12 @@ import {
         border-top-color: var(--se-color-primary);
         color: var(--se-color-text);
       }
+      @media (max-width: 40rem) {
+        .track {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: var(--se-space-3) var(--se-space-2);
+        }
+      }
     `,
   ],
 })

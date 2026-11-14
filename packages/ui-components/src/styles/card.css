@@ -112,7 +112,12 @@ a.se-metric:hover {
 .se-metric-grid {
   display: grid;
   gap: var(--se-space-4);
-  grid-template-columns: repeat(auto-fit, minmax(calc(var(--se-space-16) * 3), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
+}
+@media (max-width: 30rem) {
+  .se-metric-grid {
+    gap: var(--se-space-3);
+  }
 }
 
 /* A metric that leads somewhere: the whole card is one link.
