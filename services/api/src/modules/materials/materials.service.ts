@@ -180,8 +180,17 @@ export class MaterialsService {
   }
 
   async lowStock(): Promise<MaterialWithQuantity[]> {
-    const all = await this.findAll();
-    return all.filter((m) => m.lowStock);
+    // Two queries total (materials + one grouped ledger SUM) — the previous
+    // implementation ran one SUM query per material, which dominated the
+    // dashboard/analytics latency when material counts grew.
+    const [materials, quantities] = await Promise.all([
+      this.materialRepo.find({ order: { name: 'ASC' } }),
+      this.inventoryService.quantitiesByItem(InventoryItemType.MATERIAL),
+    ]);
+    return materials
+      .map((m) => ({ ...m, currentQuantity: quantities.get(m.id) ?? 0 }))
+      .filter((m) => m.currentQuantity <= m.reorderThreshold)
+      .map((m) => ({ ...m, lowStock: true }));
   }
 
   private async withQuantity(material: RawMaterial): Promise<MaterialWithQuantity> {

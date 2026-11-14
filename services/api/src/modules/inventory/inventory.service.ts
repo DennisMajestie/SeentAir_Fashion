@@ -195,6 +195,18 @@ export class InventoryService {
     return [...byItem.values()];
   }
 
+  /** One grouped query for an item type: item_id -> SUM(quantity_delta). */
+  async quantitiesByItem(itemType: InventoryItemType): Promise<Map<string, number>> {
+    const rows: Array<{ item_id: string; total: string | null }> = await this.movementRepo
+      .createQueryBuilder('m')
+      .select('m.item_id', 'item_id')
+      .addSelect('SUM(m.quantity_delta)', 'total')
+      .where('m.item_type = :itemType', { itemType })
+      .groupBy('m.item_id')
+      .getRawMany();
+    return new Map(rows.map((r) => [r.item_id, parseInt(r.total ?? '0', 10) || 0]));
+  }
+
   /**
    * Per-item ledger digest: the derived quantity plus the hash-chain head for
    * that item. The admin shows this as a verifiable "ledger badge".

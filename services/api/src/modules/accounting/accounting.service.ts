@@ -60,9 +60,11 @@ export class AccountingService {
     if (!REPORT_TYPES.includes(type)) {
       throw new BadRequestException(`Unknown report type; valid: ${REPORT_TYPES.join(', ')}`);
     }
-    const income = await this.sumByTypes(INCOME_TYPES, from, to);
-    const expenditure = await this.sumByTypes(OUTFLOW_TYPES, from, to);
-    const investment = await this.sumByTypes([LedgerEntryType.INVESTMENT], from, to);
+    const [income, expenditure, investment] = await Promise.all([
+      this.sumByTypes(INCOME_TYPES, from, to),
+      this.sumByTypes(OUTFLOW_TYPES, from, to),
+      this.sumByTypes([LedgerEntryType.INVESTMENT], from, to),
+    ]);
     const net = Math.round((income.total - expenditure.total) * 100) / 100;
 
     const period = { from: from ?? null, to: to ?? null };
