@@ -43,6 +43,22 @@
 .se-table tbody tr:hover, table tbody tr:hover{background:var(--surface-2)}
 h1,h2,h3{letter-spacing:-.01em}
 
+/* Vessa-style banners: tone lives in a soft tint + icon; text stays neutral */
+.se-banner{gap:14px;align-items:center;padding:13px 18px;border:1px solid var(--line)!important;border-left-width:1px!important;border-radius:var(--sd-r-row)!important;box-shadow:none;background:var(--well);color:var(--text)}
+.se-banner--danger{background:color-mix(in srgb,var(--bad) 9%,var(--sd-card));border-color:color-mix(in srgb,var(--bad) 32%,var(--line))!important}
+.se-banner--warning{background:color-mix(in srgb,var(--warn) 10%,var(--sd-card));border-color:color-mix(in srgb,var(--warn) 30%,var(--line))!important}
+.se-banner--success{background:color-mix(in srgb,var(--good) 10%,var(--sd-card));border-color:color-mix(in srgb,var(--good) 30%,var(--line))!important}
+.se-banner--info{background:var(--well)}
+.se-banner>.se-icon{width:18px;height:18px}
+.se-banner--danger>.se-icon{color:var(--bad)}
+.se-banner--warning>.se-icon{color:var(--warn)}
+.se-banner--success>.se-icon{color:var(--good)}
+.se-banner--info>.se-icon{color:var(--info)}
+.se-banner__title{color:var(--text);font-weight:700}
+.se-banner__text{color:var(--muted)}
+.se-banner .se-btn{min-height:36px;padding:0 16px;border:1px solid var(--line-2)!important;background:transparent;color:var(--text);font-size:13px}
+.se-banner .se-btn:hover{background:var(--well);border-color:var(--hair)!important}
+
 /* auth & page-level alignment */
 .auth-shell,.auth-main,.auth-screen{background:radial-gradient(80% 70% at 0% 0%, var(--sd-tint), transparent 55%), var(--sd-page)!important;color:var(--text)!important;font-family:var(--font)!important;}
 .auth-card,.auth-panel,.apply-panel,.phase-card{border-radius:22px!important;box-shadow:var(--sd-shadow)!important;border:1px solid var(--line)!important;background:var(--sd-card)!important;}
