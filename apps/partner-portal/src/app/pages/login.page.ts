@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -20,783 +20,139 @@ import { ThemeService } from '../theme.service';
   selector: 'app-login-page',
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <div class="auth-shell">
-      <header class="auth-topstrip">
-        <span class="term-chip"><span class="dot ok"></span> Secured connection</span>
-        <button
-          class="theme-toggle"
-          type="button"
-          [attr.aria-label]="
-            theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
-          "
-          (click)="theme.toggle()"
-        >
-          @if (theme.theme() === 'dark') {
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="4" />
-              <path
-                d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
-              />
-            </svg>
-          } @else {
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
-            </svg>
-          }
-        </button>
+    <div class="p1-app">
+      <header class="p1-topbar">
+        <div class="p1-topstatus">
+          <span class="p1-dot" aria-hidden="true"></span>
+          <span class="material-symbols-outlined p1-shield">shield</span>
+          <span>{{ phase() === 2 ? 'Security enclave active' : 'Partner Portal Security Enclave' }}</span>
+        </div>
+        <div class="p1-topright">
+          <span class="p1-chip">{{ phase() === 2 ? 'MFA CHALLENGE' : 'EQUITY REGISTRY' }}</span>
+          <button type="button" class="p1-iconbtn" [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" (click)="theme.toggle()">
+            <span class="material-symbols-outlined">{{ theme.theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
+          </button>
+        </div>
       </header>
 
-      <main class="auth-main">
-        <div class="auth-card">
-          <!--
-            Branded half. Gated on a signal rather than a media query because
-            the seam photo is an image: display:none does not stop a fetch, so a
-            CSS-only hide would pull ~107 kB onto every phone for something it
-            never shows.
-          -->
-          @if (isDesktop()) {
-            <aside class="auth-brand" aria-hidden="true">
-              <span class="auth-brand__cloud auth-brand__cloud--a"></span>
-              <span class="auth-brand__cloud auth-brand__cloud--b"></span>
-              <span class="auth-brand__cloud auth-brand__cloud--c"></span>
+      <main class="p1-main">
+        @if (phase() === 1) {
+          <section class="p1-hero">
+            <div class="p1-heroicon"><span class="material-symbols-outlined">account_balance</span></div>
+            <h1>SEENTAIR PARTNERS</h1>
+            <p>Equity, Dividends & Manufacturing Telemetry</p>
+          </section>
 
-              <div class="auth-brand__copy">
-                <p class="auth-brand__hello">WELCOME</p>
-                <p class="auth-brand__name">SEENTAIR</p>
-                <p class="auth-brand__lede">Sign in to your partner account.</p>
-              </div>
+          <div class="p1-notice"><span class="material-symbols-outlined">verified</span><p><strong>Authorised stakeholders only:</strong> Access is restricted to registered equity partners and factory investment syndicate members.</p></div>
 
-              <!-- The photograph this screen used to run full-bleed, reused in
-                   place as the seam circle. -->
-              <img
-                class="auth-brand__photo auth-brand__photo--seam"
-                src="assets/form-bg.jpg"
-                alt=""
-                decoding="async"
-              />
-              <!-- No second photograph exists in this app, so the corner circle
-                   is a brand-tinted disc rather than a repeated crop of the
-                   same image. -->
-              <span class="auth-brand__photo auth-brand__photo--corner"></span>
-              <span class="auth-brand__dot"></span>
-            </aside>
-          }
-
-          <div class="auth-panel">
-            <h1 class="auth-heading">Partner Portal Login</h1>
-
-           
-            <p class="auth-sub">Access the institutional investor terminal</p>
- <!-- <h1 class="auth-heading">Partners Portal</h1> -->
-            <div class="auth-forms">
-              <form class="phase" (ngSubmit)="signIn()" [class.dimmed]="phase() === 2">
-                <label class="auth-field">
-                  <span class="auth-sr">Email</span>
-                  <span class="auth-input">
-                    <svg class="auth-input__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                    <input
-                      type="email"
-                      name="email"
-                      [(ngModel)]="email"
-                      required
-                      autocomplete="email"
-                      placeholder="you@partner.com"
-                      [disabled]="phase() === 2"
-                    />
-                  </span>
-                </label>
-
-                <label class="auth-field">
-                  <span class="auth-field__row">
-                    <span class="auth-sr">Password</span>
-                    <button class="link forgot-link" type="button" (click)="forgot()">
-                      Forgot Password?
-                    </button>
-                  </span>
-                  <span class="pw-wrap">
-                    <span class="auth-input">
-                      <svg class="auth-input__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="3" y="11" width="18" height="11" rx="2" />
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                      </svg>
-                      <input
-                        [type]="showPassword() ? 'text' : 'password'"
-                        name="password"
-                        [(ngModel)]="password"
-                        required
-                        autocomplete="current-password"
-                        placeholder="Password"
-                        [disabled]="phase() === 2"
-                      />
-                    </span>
-                    <button
-                      class="pw-toggle"
-                      type="button"
-                      [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
-                      [attr.aria-pressed]="showPassword()"
-                      (click)="showPassword.set(!showPassword())"
-                      [disabled]="phase() === 2"
-                    >
-                      @if (showPassword()) {
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                          <path d="M9.9 5.2A9.9 9.9 0 0 1 12 5c6.4 0 10 6 10 6a17 17 0 0 1-2.3 3.2M6.3 6.4A17 17 0 0 0 2 11s3.6 6 10 6c1.5 0 2.9-.4 4.1-1" />
-                          <path d="M9.9 9.9a3 3 0 1 1 4.2 4.2" />
-                          <path d="M2 2l20 20" />
-                        </svg>
-                      } @else {
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                          <path d="M2 11s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z" />
-                          <circle cx="12" cy="11" r="3" />
-                        </svg>
-                      }
-                    </button>
-                  </span>
-                </label>
-
-                <p class="fine">Authorised users only.</p>
-
-                <button class="cta block auth-submit" type="submit" [disabled]="busy() || phase() === 2">
-                  @if (busy() && phase() === 1) {
-                    Signing in…
-                  } @else {
-                    Sign in
-                  }
-                </button>
-
-                @if (phase() === 1 && error()) {
-                  <p class="error auth-error" role="alert">{{ error() }}</p>
-                }
-                @if (phase() === 1 && info()) {
-                  <p class="auth-info" role="status">{{ info() }}</p>
-                }
-              </form>
-
-              <form class="phase phase-2" (ngSubmit)="verify()" [class.dimmed]="phase() === 1">
-                <p class="eyebrow">Two-factor check</p>
-                <h2>Verify it's you.</h2>
-                @if (phase() === 2) {
-                  <div class="challenge-note">
-                    <strong>Security challenge active.</strong>
-                    Enter the 6-digit code from the authenticator app on your account.
-                  </div>
-                } @else {
-                  <div class="challenge-note idle">
-                    Activates after sign-in when two-step verification is enrolled on the account.
-                  </div>
-                }
-                <label class="auth-field">
-                  <span class="auth-sr">Code</span>
-                  <span class="auth-input">
-                    <input
-                      class="otp"
-                      type="text"
-                      name="code"
-                      inputmode="numeric"
-                      autocomplete="one-time-code"
-                      pattern="[0-9]*"
-                      maxlength="6"
-                      placeholder="••••••"
-                      [(ngModel)]="code"
-                      [disabled]="phase() === 1"
-                    />
-                  </span>
-                </label>
-                <button
-                  class="cta block auth-submit"
-                  type="submit"
-                  [disabled]="busy() || phase() === 1 || code.length < 6"
-                >
-                  @if (busy() && phase() === 2) {
-                    Verifying…
-                  } @else {
-                    Verify
-                  }
-                </button>
-                @if (phase() === 2) {
-                  <p class="fine">Codes rotate every 30 seconds, attempts are rate-limited.</p>
-                  <button class="link" type="button" (click)="restart()">Start over</button>
-                  @if (error()) {
-                    <p class="error auth-error" role="alert">{{ error() }}</p>
-                  }
-                }
-              </form>
+          <section class="p1-card">
+            <div>
+              <h2>Partner Account Access</h2>
+              <p class="p1-sub">Sign in to view financial audits and distribution ledgers</p>
             </div>
-          </div>
-        </div>
+            <form class="p1-form" (ngSubmit)="signIn()" novalidate>
+              <label class="p1-field"><span>Investor corporate email</span>
+                <div class="p1-inputwrap"><span class="material-symbols-outlined">mail</span><input type="email" name="email" [(ngModel)]="email" required autocomplete="email" placeholder="partner@domain.com" /></div>
+              </label>
+              <label class="p1-field">
+                <div class="p1-labelrow"><span>Partner Security Key</span><button class="p1-link" type="button" (click)="forgot()">Forgot key?</button></div>
+                <div class="p1-inputwrap">
+                  <span class="material-symbols-outlined">key</span>
+                  <input [type]="showPassword() ? 'text' : 'password'" name="password" [(ngModel)]="password" required autocomplete="current-password" placeholder="Password" />
+                  <button type="button" class="p1-affix" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'" (click)="showPassword.set(!showPassword())"><span class="material-symbols-outlined">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span></button>
+                </div>
+              </label>
+              <button class="p1-btn p1-btn--primary" type="submit" [disabled]="busy()">
+                <span>{{ busy() ? 'Signing inâ€¦' : 'Proceed to 2FA Challenge' }}</span>
+                <span class="material-symbols-outlined">security</span>
+              </button>
+              @if (error()) { <p class="p1-banner p1-banner--error" role="alert">{{ error() }}</p> }
+              @if (info()) { <p class="p1-banner p1-banner--info" role="status">{{ info() }}</p> }
+            </form>
+          </section>
 
-        <!-- GAP: reference P1 shows live pre-auth KPI figures (run rate, equity retained, hub ops,
-             dividend cycle); no unauthenticated telemetry endpoint exists, so these tiles carry
-             descriptive copy only: no fabricated numbers. -->
-        <div class="kpi-grid auth-kpis">
-          <div class="kpi">
-            <span class="kpi-label">Manufacturing</span
-            ><span class="kpi-value sm">Factory telemetry</span
-            ><span class="kpi-sub">Visible after authorization</span>
-          </div>
-          <div class="kpi">
-            <span class="kpi-label">Equity registry</span
-            ><span class="kpi-value sm">Shareholding &amp; capital</span
-            ><span class="kpi-sub">Registered partners only</span>
-          </div>
-          <div class="kpi">
-            <span class="kpi-label">Aba hub operations</span
-            ><span class="kpi-value sm">Single-factory ops</span
-            ><span class="kpi-sub">Aggregates: never customer data</span>
-          </div>
-          <div class="kpi">
-            <span class="kpi-label">Partner dividend cycle</span
-            ><span class="kpi-value sm">Quarterly distribution</span
-            ><span class="kpi-sub">40 / 40 / 20 covenant</span>
-          </div>
-        </div>
+          <section class="p1-trust">
+            <div class="tile"><span class="material-symbols-outlined">query_stats</span><strong>Factory Telemetry</strong><p>Aggregated Aba line production capacity and cut volume.</p></div>
+            <div class="tile"><span class="material-symbols-outlined">pie_chart</span><strong>Equity Registry</strong><p>Real-time cap table positions and audited distributions.</p></div>
+            <div class="tile"><span class="material-symbols-outlined">payments</span><strong>Quarterly Dividends</strong><p>Calculated on audited EBITDA covenants every 90 days.</p></div>
+            <div class="tile"><span class="material-symbols-outlined">gavel</span><strong>SEC & NDA Compliance</strong><p>All financial statements governed under confidentiality covenants.</p></div>
+          </section>
+        } @else {
+          <section class="p1-hero">
+            <div class="p1-heroicon"><span class="material-symbols-outlined">phonelink_lock</span></div>
+            <h1>Security Challenge Active</h1>
+            <p>Enter the 6-digit rotating verification code from your hardware token or authenticator app.</p>
+          </section>
 
-        <div class="notice">
-          Regulatory &amp; statutory governance notice, this terminal provides restricted,
-          read-only institutional data telemetry. Access is granted strictly to verified equity
-          partners under non-disclosure covenants. Unauthorised access, scraping, replication, or
-          forwarding of manufacturing outputs is strictly prohibited and subject to full criminal
-          prosecution under applicable Nigerian law.
-        </div>
+          <section class="p1-card">
+            <form class="p1-form" (ngSubmit)="verify()" novalidate>
+              <label class="p1-field"><span>6-Digit Authenticator Code</span>
+                <input class="otp" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" placeholder="??????" [(ngModel)]="code" />
+              </label>
+              <div class="p1-meta"><span><span class="material-symbols-outlined">timer</span> Codes rotate every 30s</span><span>Rate-limited attempts</span></div>
+              <button class="p1-btn p1-btn--primary" type="submit" [disabled]="busy() || code.length < 6">
+                <span>{{ busy() ? 'Verifyingâ€¦' : 'Verify & Enter Portal' }}</span>
+                <span class="material-symbols-outlined">lock_open</span>
+              </button>
+              <button type="button" class="p1-link center" (click)="restart()">Use backup recovery key / start over</button>
+              @if (error()) { <p class="p1-banner p1-banner--error" role="alert">{{ error() }}</p> }
+            </form>
+          </section>
+
+          <div class="p1-notice muted-note"><p>Partner telemetry access is audited under Section 14 of the Seentair Partner Operating Covenant. Session tokens expire after 30 minutes of inactivity.</p></div>
+        }
       </main>
 
-      <footer class="auth-footer">
-        Seentair Manufacturing Ltd · Institutional Investor Relations Terminal · Aba, Abia, NG
+      <footer class="p1-footer">
+        @if (phase() === 2) { <span>SESSION ID: #ST-AUTH-7719</span><span>ENCRYPTED: ED25519</span> }
+        @else { <span>SEENTAIR EQUITY LEDGER</span><span>Aba, Nigeria</span> }
       </footer>
     </div>
   `,
-  styles: [
-    `
-      /* ---------- page ---------- */
-      .auth-shell {
-        position: relative;
-        min-height: 100vh;
-        min-height: 100svh;
-        display: flex;
-        flex-direction: column;
-        background: var(--obsidian);
-        color: var(--ink);
-      }
-
-      /* The sign-in bar is a copy of the storefront's site header: full-bleed, sticky,
-         a theme-following surface, a hairline underneath, the wordmark leading
-         and the controls trailing.
-
-         It used to carry max-width + margin-inline:auto, which shrink-wrapped it
-         to its content -- it measured 431px wide and centred at 1440, so the bar
-         did not span the page at all. The storefront solves this the same way
-         its own container does: no cap on the bar itself, and a gutter that
-         grows past the content measure on wide screens, so the wordmark still
-         lands on the same line as the storefront's. */
-      .auth-topstrip {
-        position: sticky;
-        top: 0;
-        z-index: 30;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        width: 100%;
-        padding: 14px clamp(20px, 4vw, 56px);
-        /* Same measure as the storefront's .wrap-col: content capped at
-           --wrap-max, gutter of --wrap-x outside it. */
-        padding-inline: calc(max(0px, (100vw - 1150px) / 2) + clamp(20px, 4vw, 56px));
-        padding-top: calc(14px + env(safe-area-inset-top, 0px));
-        background: var(--panel);
-        border-bottom: 1px solid var(--hairline);
-        .term-chip {
-          margin-left: auto;
-          color: var(--ink-dim);
-        }
-      }
-      .strip-logo {
-        display: block;
-        line-height: 0;
-        flex: none;
-        img {
-          display: block;
-          /* 50px, aligned across all four apps. */
-          height: 50px;
-          width: auto;
-        }
-      }
-
-      .auth-main {
-        width: 100%;
-        max-width: 1040px;
-        margin: 0 auto;
-        padding: clamp(1.2rem, 4vw, 2.6rem) 1rem 2.4rem;
-      }
-
-      /* ---------- card ---------- */
-      .auth-card {
-        display: grid;
-        grid-template-columns: 1fr;
-        border-radius: 28px;
-        overflow: hidden;
-        background: var(--panel);
-        box-shadow:
-          0 30px 70px -22px rgb(0 0 0 / 0.34),
-          0 8px 24px -14px rgb(0 0 0 / 0.2);
-      }
-
-      /* ---------- branded half ---------- */
-      /* Brand dark in both themes. This half is decoration, so it keeps its own
-         palette rather than following --panel, exactly like a hero. No
-         overflow:hidden: the seam photo is meant to overhang onto the form
-         half, and the card is what clips at its rounded edge. */
-      .auth-brand {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        padding: 36px;
-        background: linear-gradient(160deg, #1f1a14 0%, #14110e 55%, #100d0b 100%);
-        color: #fff;
-      }
-
-      .auth-brand__cloud {
-        position: absolute;
-        border-radius: 50%;
-        filter: blur(26px);
-        pointer-events: none;
-      }
-      .auth-brand__cloud--a {
-        width: 210px;
-        height: 150px;
-        top: -46px;
-        left: -34px;
-        background: rgb(255 255 255 / 0.07);
-      }
-      .auth-brand__cloud--b {
-        width: 180px;
-        height: 130px;
-        top: 26px;
-        right: -56px;
-        background: rgb(201 162 75 / 0.12);
-      }
-      .auth-brand__cloud--c {
-        width: 200px;
-        height: 140px;
-        top: 118px;
-        left: 52px;
-        background: rgb(255 255 255 / 0.045);
-      }
-
-      .auth-brand__copy {
-        position: relative;
-        z-index: 2;
-      }
-      .auth-brand__hello {
-        margin: 0;
-        font-size: clamp(2.4rem, 5.2vw, 3.5rem);
-        font-weight: 800;
-        line-height: 0.9;
-        letter-spacing: 0.01em;
-        color: #fff;
-        text-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
-      }
-      .auth-brand__name {
-        margin: 0.6rem 0 0;
-        font-size: 1.125rem;
-        font-weight: 700;
-        letter-spacing: 0.25em;
-        text-transform: uppercase;
-        color: var(--gold);
-      }
-      /* Narrower than the copy block so the sentence can never run under the
-         seam circle, whatever the panel width does. */
-      .auth-brand__lede {
-        margin: 0.85rem 0 0;
-        max-width: 240px;
-        font-size: 0.8125rem;
-        line-height: 1.5;
-        color: rgb(255 255 255 / 0.78);
-      }
-
-      .auth-brand__photo {
-        position: absolute;
-        z-index: 3;
-        border-radius: 50%;
-        object-fit: cover;
-        box-shadow: 0 18px 44px -12px rgb(0 0 0 / 0.6);
-      }
-      .auth-brand__photo--seam {
-        width: 152px;
-        height: 152px;
-        right: -76px;
-        top: 40%;
-        transform: translateY(-50%);
-        border: 3px solid rgb(255 255 255 / 0.85);
-      }
-      /* Stand-in for a photograph this app does not have: a brand-tinted disc
-         rather than a second crop of the same image. */
-      .auth-brand__photo--corner {
-        width: 198px;
-        height: 198px;
-        left: -66px;
-        bottom: -74px;
-        border: 3px solid rgb(255 255 255 / 0.22);
-        background:
-          radial-gradient(circle at 34% 30%, rgb(201 162 75 / 0.85), rgb(201 162 75 / 0.1) 62%),
-          linear-gradient(150deg, #2a2419, #14110e);
-      }
-      .auth-brand__dot {
-        position: absolute;
-        z-index: 1;
-        left: 44%;
-        bottom: 28px;
-        width: 106px;
-        height: 106px;
-        border-radius: 50%;
-        background: rgb(255 255 255 / 0.12);
-      }
-
-      /* ---------- form half ---------- */
-      .auth-panel {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 40px 48px 30px;
-        background: var(--panel);
-      }
-      .auth-logo {
-        display: block;
-        line-height: 0;
-      }
-      .auth-logo img {
-        display: block;
-        height: 80px;
-        width: auto;
-      }
-      .auth-heading {
-        margin: 1.1rem 0 0;
-        font-size: 2rem;
-        font-weight: 700;
-        line-height: 1.1;
-        color: var(--ink);
-      }
-      .auth-sub {
-        margin: 0.35rem 0 0;
-        font-size: 0.8125rem;
-        color: var(--ink-dim);
-        max-width: 34ch;
-      }
-
-      .auth-forms {
-        width: 100%;
-        max-width: 340px;
-        margin-top: 1.6rem;
-      }
-      /* The two phases used to sit side by side inside the old two-column card.
-         Stacked, because the form half is only ~500px wide and two inputs
-         abreast would be unreadable. The idle two-factor step stays visible
-         underneath, still dimmed when inactive, so both steps remain legible. */
-      .phase {
-        min-width: 0;
-      }
-      .phase-2 {
-        margin-top: 1.6rem;
-        padding-top: 1.6rem;
-        border-top: 1px solid var(--hairline);
-        transition: opacity var(--dur-2, 0.2s) ease;
-      }
-      .phase.dimmed {
-        opacity: 0.55;
-      }
-
-      .auth-field {
-        display: block;
-        margin-bottom: 16px;
-        text-align: left;
-      }
-      .auth-field__row {
-        display: flex;
-        align-items: baseline;
-        justify-content: flex-end;
-        margin-bottom: 6px;
-        min-height: 1rem;
-      }
-      /* Labels are in the markup for screen readers; the design shows the
-         placeholder inside the field instead. */
-      .auth-sr {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border: 0;
-      }
-
-      .auth-input {
-        position: relative;
-        display: block;
-      }
-      .auth-input__icon {
-        position: absolute;
-        left: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 18px;
-        height: 18px;
-        color: var(--ink-dim);
-        pointer-events: none;
-      }
-      .auth-input input {
-        display: block;
-        width: 100%;
-        height: 48px;
-        padding: 0 16px 0 44px;
-        font: inherit;
-        font-size: 0.9375rem;
-        color: var(--ink);
-        background: var(--panel-2);
-        /* No visible edge at rest; the ring appears on focus. */
-        border: 1px solid transparent;
-        border-radius: 14px;
-        transition:
-          border-color 0.15s ease,
-          box-shadow 0.15s ease,
-          background-color 0.15s ease;
-        &::placeholder {
-          color: var(--ink-dim);
-          opacity: 0.7;
-        }
-        &:focus-visible {
-          outline: 2px solid var(--acid-ink);
-          outline-offset: 1px;
-        }
-        &:disabled {
-          opacity: 0.6;
-          cursor: default;
-        }
-      }
-      input.otp {
-        text-align: center;
-        padding-left: 0.6rem;
-      }
-
-      .pw-wrap {
-        position: relative;
-        display: block;
-      }
-      .pw-wrap input {
-        padding-right: 48px;
-      }
-      .pw-toggle {
-        position: absolute;
-        top: 50%;
-        right: 6px;
-        transform: translateY(-50%);
-        display: grid;
-        place-items: center;
-        width: 36px;
-        height: 36px;
-        padding: 0;
-        background: none;
-        border: 0;
-        border-radius: 10px;
-        color: var(--ink-dim);
-        cursor: pointer;
-        svg {
-          width: 18px;
-          height: 18px;
-        }
-        &:hover:not(:disabled) {
-          color: var(--ink);
-          background: color-mix(in srgb, var(--ink) 6%, transparent);
-        }
-        &:focus-visible {
-          outline: 2px solid var(--acid-ink);
-          outline-offset: 1px;
-        }
-        &:disabled {
-          opacity: 0.5;
-          cursor: default;
-        }
-      }
-
-      .forgot-link {
-        font-size: 0.78rem;
-        font-weight: 700;
-      }
-
-      .auth-submit {
-        width: 100%;
-        height: 48px;
-        border-radius: 12px;
-        border: 0;
-        font-weight: 700;
-        /* Gold fill carries the app's ink colour, not white: white on #c9a24b is
-           about 2.1:1 and fails AA, while --on-acid on --gold measures 6.9:1. */
-        background: var(--gold);
-        color: var(--on-acid);
-      }
-      .auth-submit:disabled {
-        background: color-mix(in srgb, var(--gold) 42%, var(--panel-2));
-        color: var(--ink-dim);
-        cursor: not-allowed;
-      }
-
-      .auth-error {
-        margin: 12px 0 0;
-        padding: 10px 12px;
-        border-radius: 12px;
-        font-size: 0.8125rem;
-        line-height: 1.45;
-        text-align: left;
-        color: var(--danger);
-        background: color-mix(in srgb, var(--danger) 8%, var(--panel));
-        border: 1px solid color-mix(in srgb, var(--danger) 34%, transparent);
-      }
-      .auth-info {
-        margin: 12px 0 0;
-        text-align: left;
-      }
-
-      .phase-2 .eyebrow {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.45rem;
-        font-size: var(--type-label-sm);
-        font-weight: 700;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: var(--acid-ink);
-        margin: 0 0 0.4rem;
-      }
-      .phase-2 h2 {
-        margin: 0;
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--ink);
-      }
-      .challenge-note {
-        border: 1px solid var(--gold);
-        background: color-mix(in srgb, var(--gold) 9%, var(--panel));
-        padding: 0.6rem 0.7rem;
-        font-size: 0.8125rem;
-        margin: 0.8rem 0 1rem;
-        text-align: left;
-        border-radius: 12px;
-        strong {
-          display: block;
-        }
-        &.idle {
-          border-color: var(--hairline);
-          background: var(--panel-2);
-          color: var(--ink-dim);
-        }
-      }
-      .phase-2 .fine {
-        margin-top: 0.9rem;
-      }
-
-      /* ---------- below the card ---------- */
-      .auth-kpis {
-        margin-top: 2rem;
-      }
-      .auth-kpis .kpi-value.sm {
-        font-size: 0.95rem;
-      }
-      @media (max-width: 899px) {
-        .auth-kpis {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 0.6rem;
-        }
-      }
-      @media (max-width: 520px) {
-        .auth-kpis {
-          grid-template-columns: 1fr;
-        }
-      }
-      .auth-footer {
-        margin-top: auto;
-        padding: 1.2rem 1rem;
-        border-top: 1px solid var(--hairline);
-        text-align: center;
-        color: var(--ink-dim);
-        font-size: var(--type-label-sm);
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-      }
-
-      /* ---------- breakpoints ---------- */
-      /* Split only where the branded half is actually rendered, so the CSS and
-         the signal that gates the markup agree on the same 900px. */
-      @media (min-width: 900px) {
-        .auth-card {
-          grid-template-columns: 46% 54%;
-        }
-      }
-      @media (max-width: 1100px) {
-        .auth-brand {
-          padding: 30px;
-        }
-        .auth-brand__photo--seam {
-          width: 124px;
-          height: 124px;
-          right: -62px;
-        }
-        .auth-brand__photo--corner {
-          width: 160px;
-          height: 160px;
-          left: -54px;
-          bottom: -60px;
-        }
-        .auth-brand__dot {
-          width: 88px;
-          height: 88px;
-        }
-        .auth-panel {
-          padding: 36px 32px 26px;
-        }
-      }
-      @media (max-width: 899px) {
-        .auth-panel {
-          padding: 24px;
-        }
-        .auth-logo img {
-          height: 52px;
-        }
-        .auth-forms {
-          max-width: 380px;
-        }
-        .auth-heading {
-          font-size: 1.75rem;
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .auth-input input,
-        .pw-toggle,
-        .phase-2 {
-          transition: none;
-        }
-      }
-    `,
-  ],
+  styles: [`
+    :host{display:block;}
+    .p1-app{min-height:100vh;background:#f7f2ea;color:#1b1916;display:flex;flex-direction:column;font-family:'Urbanist',sans-serif;}
+    .p1-topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px 12px;border-bottom:1px solid rgba(232,225,211,.7);background:rgba(247,242,234,.9);backdrop-filter:blur(10px);}
+    .p1-topstatus,.p1-topright{display:flex;align-items:center;gap:8px;} .p1-topstatus{font-size:12px;color:#7b756a;font-weight:500;}
+    .p1-shield{font-size:14px;color:#c88a12;} .p1-dot{width:8px;height:8px;border-radius:999px;background:#c88a12;box-shadow:0 0 0 4px rgba(200,138,18,.15);}
+    .p1-chip{font:600 11px/1.2 'JetBrains Mono',monospace;padding:4px 8px;border-radius:999px;border:1px solid #e8e1d3;background:#efe3c8;color:#1b1916;}
+    .p1-iconbtn{border:1px solid #e8e1d3;background:#fffdf9;color:#7b756a;border-radius:999px;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;}
+    .material-symbols-outlined{font-size:18px;line-height:1;}
+    .p1-main{flex:1;width:100%;max-width:390px;margin:0 auto;padding:20px 16px;display:flex;flex-direction:column;gap:16px;}
+    .p1-hero{text-align:center;padding-top:4px;}
+    .p1-heroicon{width:48px;height:48px;margin:0 auto 10px;border-radius:16px;display:inline-flex;align-items:center;justify-content:center;background:#1b1916;color:#c88a12;border:1px solid #e8e1d3;}
+    .p1-hero h1{margin:0;font:700 24px/1.1 Urbanist,sans-serif;letter-spacing:-.02em;}
+    .p1-hero p{margin:4px auto 0;color:#7b756a;font-size:13px;max-width:280px;}
+    .p1-notice{display:flex;gap:10px;align-items:flex-start;padding:14px;border-radius:12px;border:1px solid #e8e1d3;background:rgba(239,227,200,.7);font-size:12px;line-height:1.5;}
+    .p1-notice .material-symbols-outlined{color:#c88a12;}
+    .p1-card{background:#fffdf9;border:1px solid #e8e1d3;border-radius:12px;padding:20px;box-shadow:0 8px 24px -4px rgba(27,25,22,.06);display:flex;flex-direction:column;gap:14px;}
+    .p1-card h2{margin:0;font:700 18px/1.2 Urbanist,sans-serif;} .p1-sub{margin:2px 0 0;color:#7b756a;font-size:13px;}
+    .p1-form{display:flex;flex-direction:column;gap:12px;}
+    .p1-field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#1b1916;}
+    .p1-labelrow{display:flex;justify-content:space-between;align-items:center;}
+    .p1-inputwrap{position:relative;display:flex;align-items:center;}
+    .p1-inputwrap>.material-symbols-outlined{position:absolute;left:12px;color:#7b756a;}
+    .p1-inputwrap input{padding-left:38px;padding-right:40px;}
+    .p1-field input{width:100%;border:1px solid #e8e1d3;background:rgba(247,242,234,.6);color:#1b1916;border-radius:10px;padding:11px 14px;font:400 14px/1.3 Urbanist,sans-serif;min-height:44px;}
+    .p1-field input:focus{outline:none;border-color:#c88a12;background:#fffdf9;}
+    .p1-field input.otp{text-align:center;letter-spacing:.25em;font:700 20px/1 'JetBrains Mono',monospace;padding:12px;}
+    .p1-affix{position:absolute;right:8px;border:0;background:none;color:#7b756a;padding:6px;}
+    .p1-link{border:0;background:none;color:#93600a;font:500 12px/1 Urbanist,sans-serif;padding:0;} .p1-link.center{text-align:center;}
+    .p1-btn{width:100%;min-height:48px;border-radius:999px;border:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 15px/1 Urbanist,sans-serif;padding:12px 16px;}
+    .p1-btn--primary{background:#c88a12;color:#1a1405;} .p1-btn:disabled{opacity:.6;}
+    .p1-banner{margin:0;padding:10px 12px;border-radius:10px;font-size:12px;}
+    .p1-banner--error{background:rgba(191,58,45,.1);color:#8f2b21;border:1px solid rgba(191,58,45,.25);}
+    .p1-banner--info{background:rgba(35,128,77,.1);color:#1d6840;border:1px solid rgba(35,128,77,.2);}
+    .p1-meta{display:flex;justify-content:space-between;gap:8px;font:500 11px/1.2 'JetBrains Mono',monospace;color:#7b756a;border-top:1px solid #e8e1d3;padding-top:10px;}
+    .p1-meta span{display:inline-flex;align-items:center;gap:4px;} .p1-meta .material-symbols-outlined{font-size:15px;color:#c88a12;}
+    .p1-trust{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .tile{background:rgba(255,253,249,.85);border:1px solid #e8e1d3;border-radius:12px;padding:12px;}
+    .tile .material-symbols-outlined{color:#c88a12;margin-bottom:4px;}
+    .tile strong{display:block;font-size:12px;color:#1b1916;margin-bottom:2px;} .tile p{margin:0;font-size:11px;color:#7b756a;line-height:1.4;}
+    .muted-note{background:rgba(239,227,200,.5);} .muted-note p{margin:0;color:#7b756a;}
+    .p1-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 20px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid #e8e1d3;background:rgba(239,227,200,.6);color:#7b756a;font:500 11px/1.2 'JetBrains Mono',monospace;}
+    @media (max-width:360px){.p1-trust{grid-template-columns:1fr;}}
+  `],
 })
 export class LoginPage {
   private readonly api = inject(ApiService);

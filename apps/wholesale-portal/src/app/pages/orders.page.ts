@@ -1,21 +1,15 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   SeBannerComponent,
-  SeButtonDirective,
-  SeCellDirective,
-  SeColumn,
   SeCurrencyService,
   SeFilter,
-  SeFilterBarComponent,
   SeFilterValue,
-  SeIconComponent,
-  SePageComponent,
-  SeRowAction,
+  SeMoneyPipe,
   SeStatusComponent,
-  SeTableComponent,
   SeToastService,
-  formatDate,
 } from '@seentair/ui';
 import { ApiService, Invoice } from '../api.service';
 import { isClosed, isPaid, orderRef, summarise, units } from '../wholesale-format';
@@ -29,77 +23,76 @@ import { isClosed, isPaid, orderRef, summarise, units } from '../wholesale-forma
 @Component({
   selector: 'app-orders',
   imports: [
+    DatePipe,
+    FormsModule,
     SeBannerComponent,
-    SeButtonDirective,
-    SeCellDirective,
-    SeFilterBarComponent,
-    SeIconComponent,
-    SePageComponent,
+    SeMoneyPipe,
     SeStatusComponent,
-    SeTableComponent,
   ],
   template: `
-    <se-page title="Orders & invoices" [description]="summaryLine()">
-      <button
-        seButton
-        sePageActions
-        type="button"
-        [disabled]="invoices().length === 0"
-        (click)="exportCsv()"
-      >
-        <se-icon name="download" />
-        Export CSV
-      </button>
+    <div class="w6">
+      <header class="w6-head">
+        <div>
+          <h1>Orders & Invoices</h1>
+          <span class="muted small">Factory Batches & Commercial Invoices</span>
+        </div>
+        <button type="button" class="icon-btn" [disabled]="invoices().length === 0" (click)="exportCsv()" aria-label="Export CSV">
+          <span class="material-symbols-outlined">download</span>
+        </button>
+      </header>
+
+      <div class="chips">
+        <button type="button" class="chip" [class.on]="!filterValue()['payment'] && !filterValue()['status']" (click)="filterValue.set({})">All ({{ invoices().length }})</button>
+        <button type="button" class="chip warn" [class.on]="filterValue()['payment']==='unpaid'" (click)="filterValue.set({payment:'unpaid'})"><span class="dot"></span>Awaiting Payment ({{ summary().awaitingPayment }})</button>
+        <button type="button" class="chip" [class.on]="filterValue()['status']==='open'" (click)="filterValue.set({status:'open'})">Open</button>
+        <button type="button" class="chip" [class.on]="filterValue()['status']==='closed'" (click)="filterValue.set({status:'closed'})">Closed</button>
+      </div>
+
+      <label class="search cardish">
+        <span class="material-symbols-outlined">search</span>
+        <input type="search" [ngModel]="query()" (ngModelChange)="query.set($event)" placeholder="Search by order ref or SKU" />
+      </label>
 
       @if (summary().awaitingPayment > 0) {
-        <se-banner
-          tone="warning"
-          [title]="paymentHeadline()"
-          actionLabel="Pay oldest"
-          (action)="openInvoice(oldestUnpaid()!)"
-        >
+        <se-banner tone="warning" [title]="paymentHeadline()" actionLabel="Pay oldest" (action)="openInvoice(oldestUnpaid()!)">
           Wholesale is full payment upfront; nothing enters production until it clears.
         </se-banner>
       }
 
-      <se-table
-        caption="Orders"
-        [columns]="columns"
-        [rows]="filtered()"
-        [rowId]="rowId"
-        [loading]="loading()"
-        [error]="error()"
-        (retry)="load()"
-        [actions]="actions"
-        activatable
-        (rowActivate)="openInvoice($event)"
-        [pageSize]="25"
-        [emptyHeading]="invoices().length === 0 ? 'No orders yet' : 'No orders match'"
-        [emptyText]="
-          invoices().length === 0
-            ? 'Your first wholesale batch will appear here once it is placed.'
-            : 'Clear the search or filters to see every order.'
-        "
-        [emptyActionLabel]="invoices().length === 0 ? 'Browse catalogue' : 'Clear filters'"
-        (emptyAction)="onEmptyAction()"
-      >
-        <se-filter-bar
-          seTableToolbar
-          searchLabel="Search by order ref or SKU"
-          searchPlaceholder="#A1B2C3D4 or SKU"
-          [(query)]="query"
-          [filters]="filters"
-          [(value)]="filterValue"
-          [summary]="countLine()"
-        />
-        <ng-template seCell="status" let-row>
-          <se-status kind="order" [value]="row.status" />
-        </ng-template>
-        <ng-template seCell="payment" let-row>
-          <se-status kind="payment" [value]="row.paymentStatus" />
-        </ng-template>
-      </se-table>
-    </se-page>
+      @if (loading()) {
+        <div class="card muted small">Loading orders…</div>
+      } @else if (error()) {
+        <se-banner tone="danger" title="Orders could not be loaded" actionLabel="Try again" (action)="load()">{{ error() }}</se-banner>
+      } @else if (filtered().length === 0) {
+        <div class="card empty">
+          <strong>{{ invoices().length === 0 ? 'No orders yet' : 'No orders match' }}</strong>
+          <p class="muted small">{{ invoices().length === 0 ? 'Your first wholesale batch will appear here once it is placed.' : 'Clear the search or filters to see every order.' }}</p>
+          <button type="button" class="btn" (click)="onEmptyAction()">{{ invoices().length === 0 ? 'Browse catalogue' : 'Clear filters' }}</button>
+        </div>
+      } @else {
+        <div class="list">
+          @for (inv of filtered(); track inv.orderId) {
+            <article class="card order" [class.due]="!isPaid(inv) && !isClosed(inv)">
+              @if (!isPaid(inv) && !isClosed(inv)) { <div class="bar"></div> }
+              <div class="row1">
+                <div><span class="mono ref">{{ orderRef(inv.orderId) }}</span> <span class="muted small">{{ inv.createdAt | date:'d MMM y' }}</span></div>
+                <se-status kind="order" [value]="inv.status" />
+              </div>
+              <div class="row2"><span class="muted small">{{ units(inv) }} units</span><span class="mono amt">{{ inv.totalAmount | seMoney: 2 }}</span></div>
+              <div class="row3">
+                <se-status kind="payment" [value]="inv.paymentStatus" />
+                <div class="acts">
+                  <button type="button" class="linkish" (click)="openInvoice(inv)">Invoice <span class="material-symbols-outlined">chevron_right</span></button>
+                  @if (!isPaid(inv) && !isClosed(inv)) { <button type="button" class="btn primary" (click)="openInvoice(inv)">Pay now</button> }
+                  <button type="button" class="btn ghost" (click)="track(inv)">Track</button>
+                  <button type="button" class="btn ghost" (click)="reorder(inv)">Reorder</button>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </div>
   `,
 })
 export class OrdersPage implements OnInit {
@@ -113,6 +106,10 @@ export class OrdersPage implements OnInit {
   readonly error = signal('');
   readonly query = signal('');
   readonly filterValue = signal<SeFilterValue>({});
+  readonly isPaid = isPaid;
+  readonly isClosed = isClosed;
+  readonly orderRef = orderRef;
+  readonly units = units;
 
   readonly filters: SeFilter[] = [
     {
@@ -158,37 +155,6 @@ export class OrdersPage implements OnInit {
     });
   });
 
-  readonly rowId = (i: Invoice) => i.orderId;
-  readonly columns: SeColumn<Invoice>[] = [
-    { key: 'ref', header: 'Order', value: (i) => orderRef(i.orderId) },
-    {
-      key: 'createdAt',
-      header: 'Placed',
-      sortable: true,
-      format: (v) => formatDate(v as string),
-    },
-    { key: 'units', header: 'Units', numeric: true, value: (i) => units(i) },
-    {
-      key: 'totalAmount',
-      header: 'Total',
-      numeric: true,
-      sortable: true,
-      format: (v) => this.currency.format(v as number),
-    },
-    { key: 'status', header: 'Status' },
-    { key: 'payment', header: 'Payment', value: (i) => i.paymentStatus },
-  ];
-  readonly actions: SeRowAction<Invoice>[] = [
-    { label: 'View invoice', icon: 'receipt', run: (i) => this.openInvoice(i) },
-    { label: 'Track', icon: 'truck', run: (i) => this.track(i) },
-    {
-      label: 'Pay now',
-      icon: 'bank',
-      hidden: (i) => isPaid(i) || isClosed(i),
-      run: (i) => this.openInvoice(i),
-    },
-    { label: 'Reorder batch', icon: 'refresh', run: (i) => this.reorder(i) },
-  ];
 
   ngOnInit(): void {
     this.load();
