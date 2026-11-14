@@ -3,7 +3,7 @@ import { Injectable, signal } from '@angular/core';
 export type Theme = 'light' | 'dark';
 
 const THEME_KEY = 'seentair.theme';
-const THEME_META_COLORS: Record<Theme, string> = { light: '#fbf9f4', dark: '#0f0e0c' };
+const THEME_META_COLORS: Record<Theme, string> = { light: '#f7f2ea', dark: '#11100e' };
 
 /** Light/dark theme, mirrors the pre-paint script in index.html.
  *  Ops surfaces default to gold-on-ivory light and gold-on-near-black dark. */

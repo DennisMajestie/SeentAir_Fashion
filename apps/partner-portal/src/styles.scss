@@ -1,3 +1,12 @@
+/* Vessa dashboard alignment overrides (visual only) */
+html,body{font-family:var(--font,'Urbanist',sans-serif)!important;background:var(--sd-page,#f7f2ea)!important;color:var(--text,#18201b)!important;}
+body{min-height:100vh;}
+:root{--surface:var(--sd-page);--surface-lowest:var(--sd-card);--surface-low:var(--surface-2);--panel:var(--sd-card);--obsidian:var(--sd-page);--ink:var(--text);--muted:var(--se-color-text-muted);--gold:var(--ochre);--gold-strong:#b07a10;--primary-action:var(--ochre);--on-primary:#1a1405;}
+:root[data-theme='dark']{--surface:var(--sd-page);--surface-lowest:var(--sd-card);--surface-low:var(--surface-2);--panel:var(--sd-card);--obsidian:var(--sd-page);--ink:var(--text);--muted:var(--se-color-text-muted);}
+.panel,.card,.strip,.drow,.facts,.ledger,.moq-tray,.status-strip,.matrix-scroll,.table-scroll,.auth-card,.auth-panel{border-radius:22px!important;box-shadow:var(--sd-shadow,0 12px 30px -16px rgba(60,45,10,.3));border-color:var(--line,#14241c16)!important;background:var(--sd-card,#fffdf9);}
+.cta,button.cta,.ba-btn{border-radius:999px!important;font-weight:600;}
+input,select,textarea{border-radius:14px!important;font-family:var(--font,'Urbanist',sans-serif);}
+
 /* ============================================================
    SEENTAIR PARTNERS: Approved Stitch design system
    "Utilitarian Industrial B2B" (project 4978034307012465281).

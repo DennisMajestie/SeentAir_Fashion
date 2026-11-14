@@ -1,4 +1,4 @@
-/* The whole design system as one stylesheet: tokens first, then components.
+﻿/* The whole design system as one stylesheet: tokens first, then components.
    An app lists this file ahead of its own in angular.json. */
 @import '../tokens/tokens.css';
 @import './base.css';
@@ -15,3 +15,5 @@
 @import './page.css';
 @import './filter.css';
 @import './popover.css';
+@import './vessa-shell.css';
+
