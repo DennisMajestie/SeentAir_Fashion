@@ -1,0 +1,216 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SEENTAIR | Admin dashboard concept</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#f7f2ea; --bg2:#efe3c8; --card:#fffdf9; --ink:#1b1916; --mute:#7b756a; --line:#e8e1d3;
+  --dark:#171512; --darkink:#f4f0e6; --gold:#c9a54a; --gold2:#e9d08a; --out:#1b1916; --val:#5f7f92; --in:#c9a54a;
+  --good:#2f8f6b; --bad:#c0392b; --track:#dcd6ca; --shadow:0 12px 30px -16px rgba(60,45,10,.3);
+  --head:'Outfit','Avenir Next','Segoe UI',system-ui,sans-serif;
+  --body:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#11100e;--bg2:#241e10;--card:#1c1a17;--ink:#f2efe9;--mute:#a39e94;--line:#34312c;--dark:#0b0a09;--out:#d9d4c9;--track:#3a3732;--good:#5fd0a0;--bad:#ff8a7a;--shadow:0 12px 30px -16px rgba(0,0,0,.7)}}
+:root[data-theme="dark"]{--bg1:#11100e;--bg2:#241e10;--card:#1c1a17;--ink:#f2efe9;--mute:#a39e94;--line:#34312c;--dark:#0b0a09;--out:#d9d4c9;--track:#3a3732;--good:#5fd0a0;--bad:#ff8a7a;--shadow:0 12px 30px -16px rgba(0,0,0,.7)}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{font-family:var(--body);color:var(--ink);background:radial-gradient(80% 70% at 0% 0%,var(--bg2),transparent 55%),var(--bg1);min-height:100vh;padding:14px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.note{font-size:12px;color:var(--mute);margin:0 0 10px;text-align:center}
+.top{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:26px;padding:12px 16px;box-shadow:var(--shadow);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto}
+.mark{background:#111;color:#fff;border-radius:10px;padding:7px 12px;text-align:center;line-height:1}
+.mark b{display:block;font:500 15px var(--head);letter-spacing:.14em}.mark small{display:block;font-size:6.5px;letter-spacing:.22em;color:var(--gold);margin-top:3px}
+.tabs{display:flex;gap:2px;border:1px solid var(--line);border-radius:999px;padding:4px}
+.tabs button{border:0;background:none;padding:9px 18px;border-radius:999px;font-size:13px;color:var(--mute)}
+.tabs .on{background:var(--dark);color:var(--darkink)}
+.search{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:0 8px 0 16px;height:42px;min-width:210px;color:var(--mute);font-size:13px}
+.search kbd{margin-left:auto;font:500 11px var(--body);border:1px solid var(--line);border-radius:8px;padding:3px 7px}
+.circ{position:relative;width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:grid;place-items:center}
+.circ i{position:absolute;top:-4px;right:-4px;background:var(--bad);color:#fff;font:600 10px var(--body);border-radius:999px;padding:2px 6px;font-style:normal}
+.new{height:42px;border:0;border-radius:999px;background:var(--gold);color:#1a1405;font-weight:600;padding:0 20px}
+.user{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:999px;padding:4px 14px 4px 5px}
+.av{width:34px;height:34px;border-radius:50%;background:var(--gold2);color:#1a1405;display:grid;place-items:center;font-weight:600;font-size:13px}
+.user small{display:block;font-size:10px;color:var(--mute)}.user span{font-size:13px;font-weight:500}
+.layout{display:grid;grid-template-columns:76px 1fr;gap:16px;margin-top:16px}
+.rail{display:flex;flex-direction:column;gap:14px}
+.railbox{background:var(--card);border-radius:34px;padding:8px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow)}
+.ri{position:relative;width:60px;height:60px;border-radius:50%;border:0;background:none;display:grid;place-items:center;color:var(--mute)}
+.ri.on{background:var(--dark);color:var(--darkink)}
+.ri.sel{background:var(--gold);color:#1a1405;border-radius:22px}
+.ri i{position:absolute;top:2px;right:2px;background:var(--bad);color:#fff;font:600 10px var(--body);border-radius:999px;padding:2px 6px;font-style:normal}
+.ri svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.main{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;min-width:0}
+.welcome{grid-column:span 1;display:flex;flex-direction:column;gap:10px;padding:4px 6px}
+.date{align-self:flex-start;background:var(--card);border-radius:999px;padding:7px 14px;font-size:12px;box-shadow:var(--shadow)}
+.date::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-right:8px}
+h1{font:500 clamp(30px,3.4vw,44px)/1.05 var(--head);margin:0;letter-spacing:-.01em}
+.welcome p{margin:0;font-size:13px;color:var(--mute);line-height:1.5}
+.welcome p b{color:var(--ink)}
+.acts{display:flex;gap:10px;flex-wrap:wrap}
+.acts .new{height:44px}
+.ghost{height:44px;border-radius:999px;border:1px solid var(--line);background:var(--card);padding:0 18px;font-weight:600;font-size:13px}
+.card{background:var(--card);border-radius:26px;padding:20px;box-shadow:var(--shadow);min-width:0;position:relative;overflow:hidden}
+.kpi{display:flex;flex-direction:column;justify-content:space-between;min-height:182px}
+.kpi .lbl{font-size:14px;color:var(--ink)}
+.kpi .row{display:flex;align-items:baseline;gap:10px;margin-top:8px}
+.kpi b{font:400 30px var(--head)}
+.up{color:var(--good);font-size:12px}.dn{color:var(--bad);font-size:12px}
+.kpi .foot{display:flex;justify-content:space-between;align-items:flex-end;font-size:12px;color:var(--mute)}
+.orb{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:16px}
+.o1{background:linear-gradient(160deg,#3a3126,#14110d)}.o2{background:linear-gradient(160deg,#8fb0c0,#4a6c80)}.o3{background:linear-gradient(160deg,#e9c24a,#b8891a)}
+.spark{width:120px;height:44px}
+.stack{display:flex}.stack i{width:30px;height:30px;border-radius:8px;border:2px solid var(--card);margin-left:-8px;background:var(--track)}
+.stack i:nth-child(1){background:#d8c7a3}.stack i:nth-child(2){background:#2b2722}.stack i:nth-child(3){background:#9a7b2f}
+.chartcard{grid-column:span 2}
+.sales{grid-column:span 1}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.hd h2{font:400 16px var(--body);margin:0}
+.legend{display:flex;gap:16px;align-items:center;font-size:12px;color:var(--mute);flex-wrap:wrap}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.sel2{border:1px solid var(--line);border-radius:999px;background:var(--card);height:36px;padding:0 14px;font-size:12px}
+.chart{position:relative;height:290px;margin-left:44px}
+.gl{position:absolute;left:0;right:0;border-top:1px dashed var(--line)}
+.gl span{position:absolute;left:-44px;top:-8px;font-size:11px;color:var(--mute)}
+.cols{position:absolute;inset:0 0 0 0;display:flex;justify-content:space-between;align-items:stretch}
+.m{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;border:0;background:none;padding:0 0 0;position:relative}
+.m .bars{display:flex;gap:3px;align-items:flex-end;height:100%;padding-bottom:0;width:70%;justify-content:center}
+.m .bars u{display:block;width:22%;border-radius:3px 3px 0 0;text-decoration:none}
+.m .bars .a{background:var(--in)}.m .bars .b{background:var(--out)}.m .bars .c{background:var(--val)}
+.m span.l{position:absolute;bottom:-26px;font-size:12px;color:var(--mute)}
+.m.on{background:linear-gradient(var(--bg2),transparent);background:color-mix(in srgb,var(--gold) 10%,transparent);border-radius:10px}
+.m.on span.l{color:var(--ink);font-weight:600}
+.tip{position:absolute;top:0;right:8px;background:var(--card);border-radius:14px;box-shadow:0 14px 30px -10px rgba(0,0,0,.35);padding:12px 16px;font-size:12px;min-width:190px;z-index:2;border:1px solid var(--line)}
+.tip b{display:block;margin-bottom:8px;font-size:12px}
+.tip div{display:flex;justify-content:space-between;gap:18px;margin:5px 0}
+.tip i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+.sum{margin-top:40px;font-size:12px;color:var(--mute)}
+.sum b{color:var(--ink)}
+.gauge{display:grid;place-items:center;margin:-4px 0 0}
+.gauge svg{width:100%;max-width:330px}
+.big{font:500 34px var(--head)}
+.two{display:flex;justify-content:space-between;margin-top:4px;font-size:12px;color:var(--mute)}
+.two b{display:block;color:var(--ink);font:500 22px var(--head);margin-top:2px}
+.goal{margin-top:14px;background:color-mix(in srgb,var(--track) 45%,transparent);border-radius:14px;padding:12px 14px;font-size:12px;color:var(--mute)}
+.goal b{color:var(--ink)}
+@media (max-width:1180px){.main{grid-template-columns:1fr 1fr}.welcome{grid-column:1/-1}.chartcard{grid-column:1/-1}.sales{grid-column:1/-1}}
+@media (max-width:860px){.layout{grid-template-columns:1fr}.rail{flex-direction:row;overflow-x:auto}.railbox{flex-direction:row;border-radius:30px;padding:6px}.ri{width:48px;height:48px;flex:none}.top .tabs,.search{display:none}}
+@media (max-width:640px){.main{grid-template-columns:1fr}.chart{height:230px;margin-left:34px}.gl span{left:-34px}.m span.l{font-size:10px}.tip{position:static;margin-bottom:10px}}
+</style>
+</head>
+<body>
+<p class="note">Design concept with sample data. Nothing here is connected to real orders or stock.</p>
+<header class="top">
+  <div class="brand"><div class="mark" aria-label="SEENTAIR"><b>SEENTAIR</b><small>STYLE FOR EVERYONE</small></div></div>
+  <nav class="tabs" aria-label="Views"><button class="on">Overview</button><button>Activity</button><button>Alerts</button></nav>
+  <div class="search" role="search">⌕ <span>Search orders, products</span><kbd>⌘K</kbd></div>
+  <button class="circ" aria-label="Settings">⚙</button>
+  <button class="circ" aria-label="Notifications">🔔<i>3</i></button>
+  <button class="new">+ New</button>
+  <div class="user"><div class="av">M</div><div><small>Good morning</small><span>Majesty</span></div></div>
+</header>
+
+<div class="layout">
+  <aside class="rail" aria-label="Main navigation">
+    <div class="railbox"><button class="ri on" id="themeBtn" aria-label="Toggle light and dark mode">☀</button></div>
+    <nav class="railbox" id="nav"></nav>
+  </aside>
+
+  <main class="main">
+    <section class="welcome">
+      <span class="date">Thursday, Oct 22</span>
+      <h1>Welcome back, Majesty!</h1>
+      <p>Here’s what’s moving today: <b>12 orders</b> to dispatch and <b>3 products</b> running low.</p>
+      <div class="acts"><button class="new">+ New order</button><button class="ghost">Add product</button></div>
+    </section>
+
+    <article class="card kpi">
+      <span class="orb o1" aria-hidden="true">▦</span>
+      <div><div class="lbl">Items in stock</div><div class="row"><b>4,345</b><span class="dn">↘ 3.2%</span></div></div>
+      <div class="foot"><span>128 products · 2 warehouses</span>
+        <svg class="spark" viewBox="0 0 120 44" aria-hidden="true"><polyline fill="none" stroke="#b5612d" stroke-width="2" points="0,10 10,16 20,28 30,20 40,26 55,12 65,18 80,10 95,22 108,20 120,24"/></svg></div>
+    </article>
+
+    <article class="card kpi">
+      <span class="orb o2" aria-hidden="true">◈</span>
+      <div><div class="lbl">Total stock value</div><div class="row"><b>₦32.0M</b><span class="up">↗ 4.9%</span></div></div>
+      <div class="foot"><span>At cost</span>
+        <svg class="spark" viewBox="0 0 120 44" aria-hidden="true"><polyline fill="none" stroke="#4a6c80" stroke-width="2" points="0,32 15,34 30,26 45,28 60,22 75,24 90,14 105,16 120,6"/></svg></div>
+    </article>
+
+    <article class="card chartcard">
+      <div class="hd"><h2>Inventory statistics</h2>
+        <div class="legend"><span><i style="background:var(--in)"></i>Stock in</span><span><i style="background:var(--out)"></i>Stock out</span><span><i style="background:var(--val)"></i>Stock value</span><button class="sel2">Monthly ⌄</button></div></div>
+      <div class="chart" id="chart" role="group" aria-label="Monthly stock in, stock out and value, sample data"></div>
+      <div class="tip" id="tip" style="display:none"></div>
+      <p class="sum" id="sum"></p>
+    </article>
+
+    <article class="card sales">
+      <div class="hd"><h2>Sales overview</h2><span class="circ" style="width:34px;height:34px" aria-hidden="true">⋮</span></div>
+      <div class="gauge"><svg viewBox="0 0 330 220" id="gauge" role="img" aria-label="69.8 percent of the sales goal, sample data"></svg></div>
+      <div class="two"><div>Number of sales<b>48</b></div><div style="text-align:right">Total sales<b>₦17.1M</b></div></div>
+      <div class="goal">↗ <b>₦7.4M</b> to the <b>₦24.5M</b> goal, 12 days left.</div>
+    </article>
+
+    <article class="card kpi" style="grid-column:span 1">
+      <span class="orb o3" aria-hidden="true">⚠</span>
+      <div><div class="lbl">Low stock items</div><div class="row"><b>7</b><span class="dn">⚠ 1 out</span></div></div>
+      <div class="foot"><span>3 products · 4 materials</span><div class="stack" aria-hidden="true"><i></i><i></i><i></i></div></div>
+    </article>
+  </main>
+</div>
+
+<script>
+(function(){
+  var ic={grid:'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',box:'M21 8l-9-5-9 5v8l9 5 9-5V8zM3 8l9 5 9-5M12 13v8',receipt:'M6 3h12v18l-3-2-3 2-3-2-3 2V3zM9 8h6M9 12h6',cart:'M3 4h2l2.5 11h10L20 7H6',truck:'M2 6h11v9H2zM13 9h4l3 3v3h-7',chart:'M4 20V10M10 20V4M16 20v-8M22 20H2',users:'M16 20v-1a4 4 0 00-4-4H8a4 4 0 00-4 4v1M10 11a3 3 0 100-6 3 3 0 000 6',sliders:'M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4'};
+  var items=[['grid','Dashboard','',1],['box','Orders','3'],['receipt','Payments','7'],['cart','Catalogue',''],['truck','Delivery',''],['chart','Reports',''],['users','Customers',''],['sliders','Settings','']];
+  var nav=document.getElementById('nav');
+  items.forEach(function(it){
+    var b=document.createElement('button');b.className='ri'+(it[3]?' sel':'');b.setAttribute('aria-label',it[1]);
+    b.innerHTML='<svg viewBox="0 0 24 24"><path d="'+ic[it[0]]+'"/></svg>'+(it[2]?'<i>'+it[2]+'</i>':'');nav.appendChild(b);
+  });
+  var d=document.documentElement,tb=document.getElementById('themeBtn');
+  tb.addEventListener('click',function(){
+    var dark=d.getAttribute('data-theme')==='dark'||(!d.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);
+    d.setAttribute('data-theme',dark?'light':'dark');tb.textContent=dark?'☀':'☾';
+  });
+
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct'];
+  var sIn=[7.5,8,12,13,13.5,12.5,13.5,13,11.5,6.2],sOut=[7.4,7.6,11.4,12.6,12.2,12.8,12.2,12.4,11,4.7],val=[26,26.5,27,27.5,28.5,28.4,29.8,30.2,30.3,32];
+  var chart=document.getElementById('chart');
+  [0,10,20,30,40,50].forEach(function(v){var g=document.createElement('div');g.className='gl';g.style.bottom=(v/50*100)+'%';g.innerHTML='<span>₦'+v+'M</span>';chart.appendChild(g)});
+  var cols=document.createElement('div');cols.className='cols';chart.appendChild(cols);
+  var tip=document.getElementById('tip'),sum=document.getElementById('sum');
+  function show(i){
+    document.querySelectorAll('.m').forEach(function(m,k){m.classList.toggle('on',k===i)});
+    tip.style.display='block';
+    tip.innerHTML='<b>'+months[i]+'</b><div><span><i style="background:var(--in)"></i>Stock in</span><span>₦'+sIn[i].toFixed(1)+'M</span></div><div><span><i style="background:var(--out)"></i>Stock out</span><span>₦'+sOut[i].toFixed(1)+'M</span></div><div><span><i style="background:var(--val)"></i>Stock value</span><span>₦'+val[i].toFixed(1)+'M</span></div>';
+    var net=(sIn[i]-sOut[i]).toFixed(1);
+    sum.innerHTML='In '+months[i]+': <b>₦'+sIn[i].toFixed(1)+'M</b> in, <b>₦'+sOut[i].toFixed(1)+'M</b> out, net <b style="color:var(--good)">+₦'+net+'M</b> (sample data)';
+  }
+  months.forEach(function(mn,i){
+    var b=document.createElement('button');b.className='m';b.setAttribute('aria-label',mn+' details');
+    b.innerHTML='<div class="bars"><u class="a" style="height:'+sIn[i]/50*100+'%"></u><u class="b" style="height:'+sOut[i]/50*100+'%"></u><u class="c" style="height:'+val[i]/50*100+'%"></u></div><span class="l">'+mn+'</span>';
+    b.addEventListener('mouseenter',function(){show(i)});b.addEventListener('focus',function(){show(i)});b.addEventListener('click',function(){show(i)});
+    cols.appendChild(b);
+  });
+  chart.style.marginBottom='30px';show(9);
+
+  var g=document.getElementById('gauge'),NS='http://www.w3.org/2000/svg',cx=165,cy=165,r1=96,r2=140,n=84,pct=.698,from=-115,to=115,out='';
+  for(var k=0;k<n;k++){
+    var a=(from+(to-from)*k/(n-1))*Math.PI/180,x1=cx+Math.sin(a)*r1,y1=cy-Math.cos(a)*r1,x2=cx+Math.sin(a)*r2,y2=cy-Math.cos(a)*r2;
+    out+='<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+(k/(n-1)<=pct?'#c9a54a':'var(--track)')+'" stroke-width="2.4" stroke-linecap="round"/>';
+  }
+  out+='<text x="165" y="150" text-anchor="middle" font-family="Outfit,sans-serif" font-size="38" font-weight="500" fill="var(--ink)">69.8%</text><text x="165" y="174" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" fill="var(--mute)">Sales goal</text>';
+  g.innerHTML=out;
+})();
+</script>
+</body>
+</html>
