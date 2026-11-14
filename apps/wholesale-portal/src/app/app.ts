@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterOutlet } from '@angular/router';
 import {
   SeButtonDirective,
   SeConfirmService,
@@ -21,7 +21,7 @@ import { ThemeService } from './theme.service';
  */
 @Component({
   selector: 'app-root',
-  imports: [FormsModule, RouterLink, RouterOutlet, SeButtonDirective, SeIconComponent, SeShellComponent],
+  imports: [FormsModule, RouterOutlet, SeButtonDirective, SeIconComponent, SeShellComponent],
   template: `
     @if (api.isLoggedIn) {
       <se-shell

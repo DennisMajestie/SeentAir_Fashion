@@ -2,7 +2,6 @@
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
-  SeBadgeComponent,
   SeBannerComponent,
   SeButtonDirective,
   SeCardComponent,
@@ -10,7 +9,6 @@ import {
   SeFilter,
   SeFilterValue,
   SeMoneyPipe,
-  SeStatusComponent,
   SeToastService,
 } from '@seentair/ui';
 import { AvailabilityStatus, Pricing, PricingProduct } from '../api.service';
@@ -36,13 +34,11 @@ import { InfiniteScrollDirective } from '../infinite-scroll.directive';
   imports: [
     RouterLink,
     FormsModule,
-    SeBadgeComponent,
     SeBannerComponent,
     SeButtonDirective,
     SeCardComponent,
     SeEmptyStateComponent,
     SeMoneyPipe,
-    SeStatusComponent,
     InfiniteScrollDirective,
   ],
   template: `

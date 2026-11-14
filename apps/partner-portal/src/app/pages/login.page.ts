@@ -1,7 +1,7 @@
 ﻿import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { ApiService } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 import { PortalStore } from '../portal.store';
@@ -18,7 +18,7 @@ import { ThemeService } from '../theme.service';
  */
 @Component({
   selector: 'app-login-page',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="p1-app">
       <header class="p1-topbar">
