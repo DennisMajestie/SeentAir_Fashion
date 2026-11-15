@@ -13,6 +13,12 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
 
+  // Render terminates TLS in front of the API, and in production the browser
+  // reaches us through Vercel's /api rewrite, so express must trust one hop:
+  // otherwise req.ip is a proxy address and the credential throttler buckets
+  // every user under a single IP.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   // Cookies carry the httpOnly refresh token (never readable by page JS).
   app.use(cookieParser());
 
