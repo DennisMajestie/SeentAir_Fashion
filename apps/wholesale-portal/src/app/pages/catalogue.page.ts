@@ -129,7 +129,7 @@ import { InfiniteScrollDirective } from '../infinite-scroll.directive';
             </div>
           } @else if (pricing(); as p) {
             @if (cart.units() > 0 && !moqMet()) {
-              <div class="moq-alert p-3.5 rounded-xl bg-[#fff7eb] border border-warning/30 flex items-center justify-between gap-2">
+              <div class="moq-alert p-3.5 rounded-xl bg-warning/10 border border-warning/30 flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2.5">
                   <span class="w-8 h-8 rounded-full bg-warning/20 text-warning flex items-center justify-center flex-shrink-0">
                     <span class="material-symbols-outlined text-[18px]">error</span>

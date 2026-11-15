@@ -4,15 +4,16 @@
 
 /* Exact Vessa wordmarks (C:\Users\charl\vessa-re\app\public): the dark-ink
    mark rides the light page, the light-ink mark rides the dark page. Selected
-   by attribute so the swap happens before paint with the pre-paint script. */
+   by attribute so the swap happens before paint with the pre-paint script.
+   !important outranks `.stitch img { display: block }`. */
 .vessa-logo--dark {
-  display: none;
+  display: none !important;
 }
 [data-theme='dark'] .vessa-logo--dark {
-  display: block;
+  display: block !important;
 }
 [data-theme='dark'] .vessa-logo--light {
-  display: none;
+  display: none !important;
 }
 
 /* Tailwind runs with preflight disabled so the design-system components and
@@ -26,7 +27,7 @@
   box-sizing: border-box;
   border-width: 0;
   border-style: solid;
-  border-color: #e8e1d3;
+  border-color: var(--stitch-border);
 }
 .stitch blockquote,
 .stitch dl,
@@ -112,4 +113,56 @@
   height: 0;
   color: inherit;
   border-top-width: 1px;
+}
+
+/* Stitch semantic palette as alpha-channel variables. The utility classes
+   (.stitch .bg-light-surface etc.) compile to rgb(var(--sem-*) / <alpha-value>),
+   so flipping these under [data-theme='dark'] re-themes every screen with no
+   markup changes. Dark values pair with the admin 'dark ops' brief (15.5) and
+   the --sd-* shell variables. */
+:root {
+  --sem-canvas: 247 242 234;
+  --sem-canvas-tint: 239 227 200;
+  --sem-border: 232 225 211;
+  --sem-accent: 200 138 18;
+  --sem-on-accent: 26 20 5;
+  --sem-success: 35 128 77;
+  --sem-on-success: 255 255 255;
+  --sem-warning: 147 96 10;
+  --sem-on-warning: 255 255 255;
+  --sem-danger: 191 58 45;
+  --sem-on-danger: 255 255 255;
+  --sem-primary: 27 25 22;
+  --sem-on-primary: 255 255 255;
+  --sem-secondary: 123 117 106;
+  --sem-on-secondary: 255 255 255;
+  --sem-surface: 255 253 249;
+  --sem-on-surface: 27 25 22;
+  --sem-surface-variant: 242 236 224;
+  --sem-on-surface-variant: 112 107 97;
+  --sem-outline: 232 225 211;
+  --stitch-border: #e8e1d3;
+}
+[data-theme='dark'] {
+  --sem-canvas: 15 14 12;
+  --sem-canvas-tint: 29 26 23;
+  --sem-border: 43 38 33;
+  --sem-accent: 242 192 86;
+  --sem-on-accent: 26 20 5;
+  --sem-success: 111 208 138;
+  --sem-on-success: 10 46 22;
+  --sem-warning: 240 180 94;
+  --sem-on-warning: 58 44 6;
+  --sem-danger: 255 146 136;
+  --sem-on-danger: 68 14 10;
+  --sem-primary: 240 236 226;
+  --sem-on-primary: 22 19 13;
+  --sem-secondary: 168 159 146;
+  --sem-on-secondary: 22 19 13;
+  --sem-surface: 28 26 23;
+  --sem-on-surface: 240 236 226;
+  --sem-surface-variant: 36 33 29;
+  --sem-on-surface-variant: 168 159 146;
+  --sem-outline: 43 38 33;
+  --stitch-border: #2b2621;
 }

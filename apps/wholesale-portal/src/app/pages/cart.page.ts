@@ -131,7 +131,7 @@ import { CartLine, CartService } from '../cart.service';
             <!-- Order Cost Summary Breakdown -->
             <section class="bg-light-surface rounded-xl p-4 border border-border flex flex-col gap-2 text-[13px]">
               @if (moqKnown() && !moqMet()) {
-                <div class="moq-warning p-2.5 rounded-lg bg-[#fff7eb] border border-warning/30 text-[12px]">
+                <div class="moq-warning p-2.5 rounded-lg bg-warning/10 border border-warning/30 text-[12px]">
                   <strong class="font-semibold text-warning block">Below the batch minimum</strong>
                   <span class="text-light-secondary">Add {{ moqShort() }} more units: the batch minimum is at least {{ moq() }} units.</span>
                 </div>

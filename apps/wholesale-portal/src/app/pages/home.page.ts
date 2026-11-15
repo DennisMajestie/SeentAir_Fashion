@@ -77,7 +77,7 @@ import {
 
           <!-- Alert Banner: Payment Due -->
           @if (summary().awaitingPayment > 0) {
-            <button type="button" class="pay-alert p-3.5 rounded-xl bg-[#fff7eb] border border-warning/30 flex items-center justify-between active:scale-[0.99] transition-all text-left w-full" (click)="router.navigate(['/orders'])">
+            <button type="button" class="pay-alert p-3.5 rounded-xl bg-warning/10 border border-warning/30 flex items-center justify-between active:scale-[0.99] transition-all text-left w-full" (click)="router.navigate(['/orders'])">
               <div class="flex items-center gap-2.5">
                 <span class="w-8 h-8 rounded-full bg-warning/20 text-warning flex items-center justify-center flex-shrink-0">
                   <span class="material-symbols-outlined text-[18px]">receipt_long</span>

@@ -41,9 +41,13 @@ export class TokenStore {
     }
   }
 
-  /** App-boot session restore; resolves either way so startup never blocks on auth. */
+  /** App-boot session restore; resolves either way so startup never blocks on auth.
+   *  A hung refresh request must not hold the app on the preloader. */
   async init(): Promise<void> {
-    await this.refresh();
+    await Promise.race([
+      this.refresh(),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 8000)),
+    ]);
   }
 }
 

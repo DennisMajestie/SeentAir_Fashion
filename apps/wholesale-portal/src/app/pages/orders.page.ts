@@ -61,7 +61,7 @@ import { inTransit, isClosed, isPaid, orderRef, payMethod, summarise, units } fr
 
         <main class="px-4 py-4 flex flex-col gap-3 max-w-[390px] mx-auto w-full md:max-w-5xl">
           @if (summary().awaitingPayment > 0 && !loading()) {
-            <button type="button" class="pay-banner p-3.5 rounded-xl bg-[#fff7eb] border border-warning/30 flex items-center justify-between active:scale-[0.99] transition-all text-left w-full" (click)="openInvoice(oldestUnpaid()!)">
+            <button type="button" class="pay-banner p-3.5 rounded-xl bg-warning/10 border border-warning/30 flex items-center justify-between active:scale-[0.99] transition-all text-left w-full" (click)="openInvoice(oldestUnpaid()!)">
               <div class="flex items-center gap-2.5">
                 <span class="w-8 h-8 rounded-full bg-warning/20 text-warning flex items-center justify-center flex-shrink-0">
                   <span class="material-symbols-outlined text-[18px]">receipt_long</span>
