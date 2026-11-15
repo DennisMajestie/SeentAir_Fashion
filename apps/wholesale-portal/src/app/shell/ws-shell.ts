@@ -136,13 +136,6 @@ import { RailIndicator } from '../rail-indicator.directive';
       background: radial-gradient(80% 70% at 0% 0%, var(--tint), transparent 55%), var(--pg);
       color: var(--text); font-family:'Urbanist',sans-serif; min-height:100dvh;
     }
-    [data-theme='dark'] .ws-shell{
-      --pg:#11100e; --tint:#241e10; --card:#1c1a17; --well:rgba(255,255,255,.055);
-      --text:#ecf2ee; --muted:#a8b4ad; --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.16);
-      --ochre:#f2c056; --ochre-ink:#1a1405; --dark:#0b0a09; --darkink:#f4f0e6;
-      --shadow:0 14px 34px -18px rgba(0,0,0,.72);
-    }
-
     /* ---- desktop-only Vessa island topbar ---- */
     .ws-top{display:none;}
     .circ{position:relative;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;border:1px solid var(--line-2);background:var(--card);color:var(--muted);cursor:pointer;flex:none;text-decoration:none;}
@@ -151,7 +144,6 @@ import { RailIndicator } from '../rail-indicator.directive';
     .brand{display:flex;align-items:center;gap:10px;min-width:0;text-decoration:none;}
     .vessa-logo{display:block;width:88px;height:auto;max-height:46px;object-fit:contain;object-position:left center;}
     .tag{font:600 10px/1 'JetBrains Mono',monospace;padding:3px 6px;border-radius:999px;background:rgba(200,138,18,.2);color:#93600a;border:1px solid rgba(200,138,18,.35);}
-    [data-theme='dark'] .tag{color:#f2c056;border-color:rgba(242,192,86,.35);}
     .top-actions{display:flex;align-items:center;gap:10px;}
     .top-actions .material-symbols-outlined{font-size:20px;color:var(--text);}
 
@@ -192,7 +184,6 @@ import { RailIndicator } from '../rail-indicator.directive';
 
     /* ---- mobile bottom tab bar (unchanged design) ---- */
     .ws-nav{position:fixed;left:0;right:0;bottom:0;max-width:390px;margin:0 auto;z-index:30;display:flex;align-items:center;justify-content:space-around;gap:2px;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));background:rgba(255,253,249,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);}
-    [data-theme='dark'] .ws-nav{background:rgba(28,26,23,.96);}
     .ws-nav a{display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:var(--muted);padding:4px 6px;border-radius:10px;min-width:0;}
     .ws-nav a .material-symbols-outlined{font-size:22px;}
     .ws-nav a span:last-child{font:500 10px/1.1 Urbanist,sans-serif;white-space:nowrap;}

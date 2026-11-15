@@ -17,8 +17,8 @@
 }
 
 /* Fixed checkout/quote action bars: full-width beside the island rail.
-   The rail is an in-flow grid column (10px pad + 248px rail + 16px gap on
-   desktop; 10px + 88px + 16px when collapsed). */
+   The rail is an in-flow grid column (12px pad + 248px rail + 16px gap on
+   desktop; 12px + 88px + 16px when collapsed). */
 @media (min-width: 768px) {
   .ws-cta-bar {
     left: 276px !important;
@@ -180,3 +180,10 @@
   --sem-outline: 43 38 33;
   --stitch-border: #2b2621;
 }
+
+/* Island shell in dark mode (the light half lives in the ws-shell component).
+   `html[` prefix outranks the emulated-encapsulation `.ws-shell[_ngcontent]`
+   selector the component injects at runtime (order tiebreak there). */
+html[data-theme='dark'] .ws-shell { --pg:#11100e; --tint:#241e10; --card:#1c1a17; --well:rgba(255,255,255,.055); --text:#ecf2ee; --muted:#a8b4ad; --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.16); --ochre:#f2c056; --ochre-ink:#1a1405; --dark:#0b0a09; --darkink:#f4f0e6; --shadow:0 14px 34px -18px rgba(0,0,0,.72); }
+html[data-theme='dark'] .ws-nav { background:rgba(28,26,23,.96); }
+html[data-theme='dark'] .ws-shell .tag { color:#f2c056; border-color:rgba(242,192,86,.35); }

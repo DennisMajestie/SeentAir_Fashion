@@ -166,3 +166,11 @@
   --sem-outline: 43 38 33;
   --stitch-border: #2b2621;
 }
+
+/* Island shell in dark mode (the light half lives in the portal-shell component).
+   `html[` prefix outranks the emulated-encapsulation `.p-shell[_ngcontent]`
+   selector the component injects at runtime (order tiebreak there). */
+html[data-theme='dark'] .p-shell { --pg:#11100e; --tint:#241e10; --card:#1c1a17; --well:rgba(255,255,255,.055); --text:#ecf2ee; --muted:#a8b4ad; --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.16); --ochre:#f2c056; --ochre-ink:#1a1405; --dark:#0b0a09; --darkink:#f4f0e6; --shadow:0 14px 34px -18px rgba(0,0,0,.72); }
+html[data-theme='dark'] .p-top { background:rgba(17,16,14,.88); }
+html[data-theme='dark'] .p-nav { background:rgba(28,26,23,.96); }
+html[data-theme='dark'] .p-shell .tag { color:#f2c056; border-color:rgba(242,192,86,.35); }
