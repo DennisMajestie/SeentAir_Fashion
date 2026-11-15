@@ -5,7 +5,6 @@ import { Router } from '@angular/router';
 import { SeFilter, SeFilterValue, SeMoneyPipe, SeToastService } from '@seentair/ui';
 import { ApiService, Invoice } from '../api.service';
 import { pill } from '../status-pill';
-import { WholesaleTabBar } from '../tab-bar';
 import { inTransit, isClosed, isPaid, orderRef, payMethod, summarise, units } from '../wholesale-format';
 
 /**
@@ -16,11 +15,11 @@ import { inTransit, isClosed, isPaid, orderRef, payMethod, summarise, units } fr
  */
 @Component({
   selector: 'app-orders',
-  imports: [DatePipe, FormsModule, SeMoneyPipe, WholesaleTabBar],
+  imports: [DatePipe, FormsModule, SeMoneyPipe],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-24 antialiased md:pb-8 selection:bg-accent/20">
-        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:bg-transparent pb-24 antialiased md:pb-8 selection:bg-accent/20">
+        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 md:static">
           <div class="flex items-center justify-between mb-3">
             <div class="min-w-0">
               <h1 class="text-[20px] font-bold text-light-primary tracking-tight">Orders & Invoices</h1>
@@ -173,7 +172,6 @@ import { inTransit, isClosed, isPaid, orderRef, payMethod, summarise, units } fr
           }
         </main>
 
-        <ws-tab-bar />
       </div>
     </div>
   `,

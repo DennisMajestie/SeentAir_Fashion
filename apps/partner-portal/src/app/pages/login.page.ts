@@ -40,7 +40,10 @@ import { ThemeService } from '../theme.service';
 
             <!-- Hero / Title -->
             <div class="pt-2 text-center">
-              <img src="assets/logo.png" alt="SeentAir" width="132" height="78" class="logo-mark h-11 w-auto mx-auto mb-3" />
+                <div class="mb-3">
+                  <img class="vessa-logo vessa-logo--light h-11 w-auto mx-auto" src="assets/logo-light.png" alt="Seentair — Style for Everyone" width="834" height="299" />
+                  <img class="vessa-logo vessa-logo--dark h-11 w-auto mx-auto" src="assets/logo-dark.png" alt="" aria-hidden="true" width="243" height="78" />
+                </div>
               <h1 class="sr-only">SEENTAIR PARTNERS</h1>
               <p class="text-[13px] text-light-secondary font-medium tracking-wide uppercase mt-0.5">Equity, Dividends &amp; Manufacturing Telemetry</p>
             </div>

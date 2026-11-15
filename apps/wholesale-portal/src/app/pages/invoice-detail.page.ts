@@ -19,8 +19,8 @@ import { pill } from '../status-pill';
   imports: [SeDatePipe, SeMoneyPipe],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-32 antialiased md:pb-8 selection:bg-accent/20">
-        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:bg-transparent pb-32 antialiased md:pb-8 selection:bg-accent/20">
+        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 md:static flex items-center justify-between">
           <div class="flex items-center gap-2">
             <a routerLink="/orders" class="w-8 h-8 rounded-full bg-light-surface border border-border flex items-center justify-center text-light-primary" aria-label="Back to orders">
               <span class="material-symbols-outlined text-[18px]">arrow_back</span>
@@ -177,7 +177,7 @@ import { pill } from '../status-pill';
         @if (invoice(); as inv) {
           @if (payable(inv)) {
             <!-- Sticky Bottom Pay CTA -->
-            <aside aria-label="Pay invoice" class="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto md:left-56 md:max-w-none md:mx-0 bg-light-surface border-t border-border px-4 py-3 flex items-center justify-between shadow-[0_-8px_20px_rgba(27,25,22,0.06)] z-30 no-print">
+            <aside aria-label="Pay invoice" class="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto ws-cta-bar bg-light-surface border-t border-border px-4 py-3 flex items-center justify-between shadow-[0_-8px_20px_rgba(27,25,22,0.06)] z-30 no-print">
               <div>
                 <span class="text-[11px] text-light-secondary block font-medium">Full Amount Due</span>
                 <span class="font-mono font-bold text-[18px] text-light-primary">{{ inv.totalAmount | seMoney: 2 }}</span>
@@ -202,8 +202,7 @@ import { pill } from '../status-pill';
     `
       :host { display: block; }
       @media print {
-        .no-print,
-        ws-tab-bar {
+        .no-print {
           display: none !important;
         }
       }

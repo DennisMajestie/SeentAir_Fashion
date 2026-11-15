@@ -20,6 +20,10 @@ export class ThemeService {
     this.set(this.theme() === 'light' ? 'dark' : 'light');
   }
 
+  setMode(t: Theme): void {
+    this.set(t);
+  }
+
   private load(): Theme {
     if (typeof window === 'undefined') return 'light';
     const saved = localStorage.getItem(THEME_KEY);

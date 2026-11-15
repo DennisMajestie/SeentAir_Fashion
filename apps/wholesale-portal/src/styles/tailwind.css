@@ -2,12 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
-/* assets/logo.png is near-black ink on a transparent ground (measured mean
-   luminance 0.005). On the dark theme's #1f1c18 surfaces it is invisible, so
-   the same invert(1) treatment the admin dashboard's .auth-logo uses flips it
-   to a light mark while the alpha channel is left untouched. */
-[data-theme='dark'] img.logo-mark {
-  filter: invert(1);
+/* Exact Vessa wordmarks (C:\\Users\\charl\\vessa-re\\app\\public): the dark-ink
+   mark rides the light page, the light-ink mark rides the dark page. Selected
+   by attribute so the swap happens before paint with the pre-paint script. */
+.vessa-logo--dark {
+  display: none;
+}
+[data-theme='dark'] .vessa-logo--dark {
+  display: block;
+}
+[data-theme='dark'] .vessa-logo--light {
+  display: none;
+}
+
+/* Fixed checkout/quote action bars: full-width beside the island rail.
+   The rail is an in-flow grid column (10px pad + 248px rail + 16px gap on
+   desktop; 10px + 88px + 16px when collapsed). */
+@media (min-width: 768px) {
+  .ws-cta-bar {
+    left: 276px !important;
+    max-width: none !important;
+    margin-inline: 0 !important;
+  }
+  .ws-shell.sd-collapsed .ws-cta-bar {
+    left: 116px !important;
+  }
 }
 
 /* Tailwind runs with preflight disabled so the design-system components and

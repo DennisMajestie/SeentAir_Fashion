@@ -3,7 +3,6 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SeConfirmService, SeDatePipe } from '@seentair/ui';
 import { ApiService, DeliveryCheckpoint, DeliveryLegView, Invoice } from '../api.service';
-import { WholesaleTabBar } from '../tab-bar';
 import { PIPELINE, orderRef, units } from '../wholesale-format';
 
 /** Fallback poll cadence while the socket is down, and the slow cadence
@@ -34,12 +33,12 @@ interface Milestone {
  */
 @Component({
   selector: 'app-tracking',
-  imports: [RouterLink, FormsModule, SeDatePipe, WholesaleTabBar],
+  imports: [RouterLink, FormsModule, SeDatePipe],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-24 antialiased md:pb-8 selection:bg-accent/20">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:bg-transparent pb-24 antialiased md:pb-8 selection:bg-accent/20">
         <!-- Header -->
-        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
+        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 md:static flex items-center justify-between">
           <div class="flex items-center gap-2">
             <a routerLink="/orders" class="w-8 h-8 rounded-full bg-light-surface border border-border flex items-center justify-center text-light-primary" aria-label="Back to orders">
               <span class="material-symbols-outlined text-[18px]">arrow_back</span>
@@ -261,7 +260,6 @@ interface Milestone {
           }
         </main>
 
-        <ws-tab-bar />
       </div>
     </div>
   `,

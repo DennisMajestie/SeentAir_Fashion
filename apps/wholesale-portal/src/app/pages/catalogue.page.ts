@@ -6,7 +6,6 @@ import { AvailabilityStatus, Pricing, PricingProduct } from '../api.service';
 import { ApiService } from '../api.service';
 import { CartService } from '../cart.service';
 import { InfiniteScrollDirective } from '../infinite-scroll.directive';
-import { WholesaleTabBar } from '../tab-bar';
 
 /**
  * W3 Catalogue, carried verbatim from the Stitch screen. One card per product
@@ -24,11 +23,11 @@ import { WholesaleTabBar } from '../tab-bar';
  */
 @Component({
   selector: 'app-catalogue',
-  imports: [RouterLink, FormsModule, SeMoneyPipe, InfiniteScrollDirective, WholesaleTabBar],
+  imports: [RouterLink, FormsModule, SeMoneyPipe, InfiniteScrollDirective],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-24 antialiased md:pb-8 selection:bg-accent/20">
-        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:bg-transparent pb-24 antialiased md:pb-8 selection:bg-accent/20">
+        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 md:static">
           <div class="flex items-center justify-between mb-2.5">
             <div>
               <h1 class="text-[20px] font-bold text-light-primary tracking-tight">Catalogue</h1>
@@ -208,7 +207,6 @@ import { WholesaleTabBar } from '../tab-bar';
           }
         </main>
 
-        <ws-tab-bar />
       </div>
     </div>
   `,

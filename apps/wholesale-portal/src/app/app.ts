@@ -38,7 +38,8 @@ import { ThemeService } from './theme.service';
 
             <main class="flex-1 px-4 py-5 flex flex-col gap-5 max-w-[390px] mx-auto w-full md:max-w-md">
               <div class="pt-2 text-center">
-                <img src="assets/logo.png" alt="SeentAir" width="132" height="78" class="logo-mark h-11 w-auto mx-auto mb-3" />
+                <img class="vessa-logo vessa-logo--light h-11 w-auto mx-auto mb-3" src="assets/logo-light.png" alt="Seentair — Style for Everyone" width="834" height="299" />
+                <img class="vessa-logo vessa-logo--dark h-11 w-auto mx-auto mb-3" src="assets/logo-dark.png" alt="" aria-hidden="true" width="243" height="78" />
                 <h1 class="sr-only">SEENTAIR</h1>
                 <p class="text-[13px] text-light-secondary font-medium tracking-wide uppercase mt-0.5">Aba B2B Wholesale Portal</p>
               </div>

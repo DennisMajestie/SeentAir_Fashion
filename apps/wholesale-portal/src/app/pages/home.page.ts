@@ -4,7 +4,6 @@ import { SeCurrencyService, SeToastService, formatDate } from '@seentair/ui';
 import { ApiService, Invoice, Pricing } from '../api.service';
 import { CartService } from '../cart.service';
 import { pill } from '../status-pill';
-import { WholesaleTabBar } from '../tab-bar';
 import {
   PIPELINE,
   isClosed,
@@ -23,13 +22,14 @@ import {
  */
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, WholesaleTabBar],
+  imports: [RouterLink],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-24 antialiased md:pb-8 selection:bg-accent/20">
-        <header class="px-4 pt-4 pb-3 flex items-center justify-between border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:bg-transparent pb-24 antialiased md:pb-8 selection:bg-accent/20">
+        <header class="px-4 pt-4 pb-3 flex items-center justify-between border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 md:hidden">
           <div class="flex items-center gap-2.5">
-            <img src="assets/logo.png" alt="SeentAir" width="104" height="61" class="logo-mark h-9 w-auto" />
+            <img class="vessa-logo vessa-logo--light h-9 w-auto" src="assets/logo-light.png" alt="Seentair — Style for Everyone" width="834" height="299" />
+            <img class="vessa-logo vessa-logo--dark h-9 w-auto" src="assets/logo-dark.png" alt="" aria-hidden="true" width="243" height="78" />
             <div>
               <div class="flex items-center gap-1.5">
                 <span class="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded bg-canvas-tint text-light-primary border border-border">WHOLESALE</span>
@@ -269,7 +269,6 @@ import {
           </section>
         </main>
 
-        <ws-tab-bar />
       </div>
     </div>
   `,

@@ -3,7 +3,6 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { SeDatePipe, SeToastService } from '@seentair/ui';
 import { ApiService, CustomOrder, Pricing } from '../api.service';
-import { WholesaleTabBar } from '../tab-bar';
 import { customRef } from '../wholesale-format';
 
 const SIZE_KEYS = ['S', 'M', 'L', 'XL', 'XXL'] as const;
@@ -25,12 +24,12 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
  */
 @Component({
   selector: 'app-custom',
-  imports: [FormsModule, RouterLink, SeDatePipe, WholesaleTabBar],
+  imports: [FormsModule, RouterLink, SeDatePipe],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-24 antialiased md:pb-8 selection:bg-accent/20">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:bg-transparent pb-24 antialiased md:pb-8 selection:bg-accent/20">
         <!-- Header -->
-        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
+        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 md:static flex items-center justify-between">
           <div>
             <h1 class="text-[20px] font-bold text-light-primary tracking-tight">Custom Designs</h1>
             <span class="text-[11px] text-light-secondary font-medium">Bespoke Mill Batches &amp; Technical Tech-Packs</span>
@@ -136,7 +135,6 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
           }
         </main>
 
-        <ws-tab-bar />
       </div>
     </div>
 
