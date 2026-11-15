@@ -10,9 +10,9 @@ import { PortalStore } from '../portal.store';
   template: `
     @if (store.dash(); as d) {
       <div class="stitch">
-        <div class="flex flex-col gap-3.5">
+        <div class="flex flex-col gap-3.5 md:grid md:grid-cols-2 md:items-start">
           <!-- Vault Encryption Notice -->
-          <div class="p-3.5 rounded-xl bg-canvas-tint/70 border border-border flex items-start gap-2.5 shadow-xs">
+          <div class="p-3.5 rounded-xl bg-canvas-tint/70 border border-border flex items-start gap-2.5 shadow-xs md:col-span-2">
             <span class="material-symbols-outlined text-accent text-[20px] mt-0.5">enhanced_encryption</span>
             <div class="text-[12px] leading-relaxed text-light-primary">
               <strong class="font-semibold text-light-primary">Secured Enclave:</strong> All executed instruments are watermarked with your partner reference upon download and released through the governance desk.
@@ -20,7 +20,7 @@ import { PortalStore } from '../portal.store';
           </div>
 
           <!-- Holding Metrics Ribbon -->
-          <section class="metrics grid grid-cols-2 gap-2 text-[12px]">
+          <section class="metrics grid grid-cols-2 gap-2 text-[12px] md:grid-cols-4">
             <div class="p-2.5 rounded-lg bg-light-surface border border-border shadow-xs">
               <span class="text-[10px] text-light-secondary font-mono block">Active holding</span>
               <strong class="font-mono text-light-primary text-[15px] block mt-0.5">{{ d.investmentInformation.shares | number }} shares</strong>

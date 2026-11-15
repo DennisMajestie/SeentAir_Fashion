@@ -19,7 +19,7 @@ import { CartLine, CartService } from '../cart.service';
   imports: [FormsModule, RouterLink, SeMoneyPipe],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen pb-32 antialiased selection:bg-accent/20">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-32 antialiased md:pb-8 selection:bg-accent/20">
         <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
           <div class="flex items-center gap-2">
             <a routerLink="/catalogue" class="w-8 h-8 rounded-full bg-light-surface border border-border flex items-center justify-center text-light-primary" aria-label="Back to catalogue">
@@ -39,7 +39,7 @@ import { CartLine, CartService } from '../cart.service';
           }
         </header>
 
-        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full">
+        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full md:max-w-5xl">
           @if (cart.lines().length === 0) {
             <div class="empty-state bg-light-surface p-3.5 rounded-xl border border-border flex flex-col items-center gap-1.5 text-center">
               <span class="material-symbols-outlined text-[28px] text-light-secondary">shopping_bag</span>
@@ -176,7 +176,7 @@ import { CartLine, CartService } from '../cart.service';
 
         @if (cart.lines().length > 0) {
           <!-- Sticky Bottom Checkout Action -->
-          <aside aria-label="Checkout action" class="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto bg-light-surface border-t border-border px-4 py-3 flex items-center justify-between shadow-[0_-8px_20px_rgba(27,25,22,0.06)] z-30">
+          <aside aria-label="Checkout action" class="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto md:left-56 md:max-w-none md:mx-0 bg-light-surface border-t border-border px-4 py-3 flex items-center justify-between shadow-[0_-8px_20px_rgba(27,25,22,0.06)] z-30">
             <div>
               <span class="text-[11px] text-light-secondary block font-medium">Payable in full now</span>
               <span class="font-mono font-bold text-[18px] text-light-primary">{{ cart.amount() | seMoney: 2 }}</span>

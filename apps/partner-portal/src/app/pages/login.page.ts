@@ -36,14 +36,12 @@ import { ThemeService } from '../theme.service';
           </header>
 
           <!-- P1 · Main Scrollable Content -->
-          <main class="flex-1 px-4 py-5 flex flex-col gap-5 max-w-[390px] mx-auto w-full">
+          <main class="flex-1 px-4 py-5 flex flex-col gap-5 max-w-[390px] mx-auto w-full md:max-w-md">
 
             <!-- Hero / Title -->
             <div class="pt-2 text-center">
-              <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-light-primary text-accent shadow-sm mb-3 border border-border">
-                <span class="material-symbols-outlined text-[26px]">account_balance</span>
-              </div>
-              <h1 class="text-[24px] font-bold tracking-tight text-light-primary">SEENTAIR PARTNERS</h1>
+              <img src="assets/logo.png" alt="SeentAir" width="132" height="78" class="logo-mark h-11 w-auto mx-auto mb-3" />
+              <h1 class="sr-only">SEENTAIR PARTNERS</h1>
               <p class="text-[13px] text-light-secondary font-medium tracking-wide uppercase mt-0.5">Equity, Dividends &amp; Manufacturing Telemetry</p>
             </div>
 
@@ -101,7 +99,7 @@ import { ThemeService } from '../theme.service';
             </section>
 
             <!-- Pre-Auth Trust & Governance Tiles (Factual, No fake live PII) -->
-            <section class="grid grid-cols-2 gap-2.5 text-[12px]">
+            <section class="grid grid-cols-2 gap-2.5 text-[12px] md:grid-cols-4">
               <div class="bg-light-surface/80 p-3 rounded-xl border border-border">
                 <span class="material-symbols-outlined text-[18px] text-accent mb-1">query_stats</span>
                 <strong class="font-bold text-light-primary block">Factory Telemetry</strong>
@@ -145,7 +143,7 @@ import { ThemeService } from '../theme.service';
           </header>
 
           <!-- P2 · Content -->
-          <main class="flex-1 px-4 py-6 flex flex-col gap-5 max-w-[390px] mx-auto w-full">
+          <main class="flex-1 px-4 py-6 flex flex-col gap-5 max-w-[390px] mx-auto w-full md:max-w-md">
 
             <div class="text-center pt-2">
               <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-light-primary text-accent shadow-sm mb-3 border border-border">

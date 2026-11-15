@@ -19,7 +19,7 @@ import { inTransit, isClosed, isPaid, orderRef, payMethod, summarise, units } fr
   imports: [DatePipe, FormsModule, SeMoneyPipe, WholesaleTabBar],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen pb-24 antialiased selection:bg-accent/20">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-24 antialiased md:pb-8 selection:bg-accent/20">
         <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30">
           <div class="flex items-center justify-between mb-3">
             <div class="min-w-0">
@@ -60,7 +60,7 @@ import { inTransit, isClosed, isPaid, orderRef, payMethod, summarise, units } fr
           </div>
         </header>
 
-        <main class="px-4 py-4 flex flex-col gap-3 max-w-[390px] mx-auto w-full">
+        <main class="px-4 py-4 flex flex-col gap-3 max-w-[390px] mx-auto w-full md:max-w-5xl">
           @if (summary().awaitingPayment > 0 && !loading()) {
             <button type="button" class="pay-banner p-3.5 rounded-xl bg-[#fff7eb] border border-warning/30 flex items-center justify-between active:scale-[0.99] transition-all text-left w-full" (click)="openInvoice(oldestUnpaid()!)">
               <div class="flex items-center gap-2.5">

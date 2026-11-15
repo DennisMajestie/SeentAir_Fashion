@@ -18,9 +18,9 @@ interface PayoutRow {
   template: `
     @if (store.dash(); as d) {
       <div class="stitch">
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start">
           <!-- Covenant Allocation Model Island Card -->
-          <section class="bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-3.5 relative overflow-hidden">
+          <section class="bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-3.5 relative overflow-hidden md:col-span-2">
             <div>
               <span class="text-[11px] font-mono uppercase tracking-wider text-light-secondary font-semibold block">Statutory net profit allocation model</span>
               <h2 class="text-[16px] font-bold text-light-primary mt-0.5">{{ d.config.reinvestmentPct }}/{{ d.config.dividendsPct }}/{{ d.config.reservePct }} covenant distribution rules</h2>

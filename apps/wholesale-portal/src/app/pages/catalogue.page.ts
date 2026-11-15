@@ -27,7 +27,7 @@ import { WholesaleTabBar } from '../tab-bar';
   imports: [RouterLink, FormsModule, SeMoneyPipe, InfiniteScrollDirective, WholesaleTabBar],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen pb-24 antialiased selection:bg-accent/20">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-24 antialiased md:pb-8 selection:bg-accent/20">
         <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30">
           <div class="flex items-center justify-between mb-2.5">
             <div>
@@ -85,7 +85,7 @@ import { WholesaleTabBar } from '../tab-bar';
           <p class="text-[11px] text-light-secondary pt-1.5 px-1">{{ description() }}</p>
         </header>
 
-        <main class="px-4 py-4 flex flex-col gap-3.5 max-w-[390px] mx-auto w-full">
+        <main class="px-4 py-4 flex flex-col gap-3.5 max-w-[390px] mx-auto w-full md:max-w-5xl">
           @if (needsAccount()) {
             <section class="needs-account bg-light-surface rounded-xl p-4 border border-border flex flex-col gap-2">
               <div class="flex items-center gap-2.5">
@@ -154,6 +154,7 @@ import { WholesaleTabBar } from '../tab-bar';
                 <button type="button" class="mt-1 px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold" (click)="clearFilters()">Clear filters</button>
               </div>
             } @else {
+              <div class="md:grid md:grid-cols-2 md:gap-3.5 md:items-start">
               @for (product of filtered(); track product.id) {
                 <article class="product-card bg-light-surface rounded-xl p-3.5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex gap-3.5">
                   <div class="w-24 h-28 rounded-lg bg-canvas-tint/70 border border-border flex flex-col items-center justify-center flex-shrink-0 relative overflow-hidden">
@@ -196,12 +197,13 @@ import { WholesaleTabBar } from '../tab-bar';
 
               @if (hasMore()) {
                 @if (loadingMore()) {
-                  <p class="text-[11px] text-light-secondary text-center">Loading more…</p>
+                  <p class="text-[11px] text-light-secondary text-center md:col-span-2">Loading more…</p>
                 } @else {
-                  <div class="sentinel" appInfiniteScroll (nearEnd)="loadMore()" aria-hidden="true"></div>
+                  <div class="sentinel md:col-span-2" appInfiniteScroll (nearEnd)="loadMore()" aria-hidden="true"></div>
                 }
-                <p class="text-[11px] text-light-secondary text-center">Showing {{ all().length }} of {{ total() }} products</p>
+                <p class="text-[11px] text-light-secondary text-center md:col-span-2">Showing {{ all().length }} of {{ total() }} products</p>
               }
+              </div>
             }
           }
         </main>

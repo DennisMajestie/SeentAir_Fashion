@@ -28,7 +28,7 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
   imports: [FormsModule, RouterLink, SeDatePipe, WholesaleTabBar],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen pb-24 antialiased selection:bg-accent/20">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-24 antialiased md:pb-8 selection:bg-accent/20">
         <!-- Header -->
         <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
           <div>
@@ -42,7 +42,7 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
         </header>
 
         <!-- Main Content -->
-        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full">
+        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full md:max-w-5xl">
           <!-- Intro & Policy Notice -->
           <section class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex flex-col gap-2">
             <div class="flex items-center gap-2">
@@ -144,7 +144,7 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
     @if (formOpen()) {
       <div class="fixed inset-0 z-50 flex flex-col justify-end">
         <div class="absolute inset-0 bg-black/40" (click)="formOpen.set(false)"></div>
-        <div class="sheet relative bg-light-surface rounded-t-[28px] border-t border-border shadow-[0_-12px_40px_rgba(27,25,22,0.18)] max-w-[390px] mx-auto w-full max-h-[92vh] flex flex-col overflow-hidden">
+        <div class="sheet relative bg-light-surface rounded-t-[28px] border-t border-border shadow-[0_-12px_40px_rgba(27,25,22,0.18)] max-w-[390px] mx-auto w-full md:max-w-lg max-h-[92vh] flex flex-col overflow-hidden">
           <!-- Sheet Drag Handle & Header -->
           <div class="pt-3 pb-3 px-5 border-b border-border flex flex-col items-center relative">
             <div class="w-12 h-1.5 rounded-full bg-border mb-3"></div>

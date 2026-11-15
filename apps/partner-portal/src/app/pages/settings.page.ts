@@ -12,7 +12,7 @@ import { ThemeService } from '../theme.service';
   imports: [FormsModule],
   template: `
     <div class="stitch">
-      <div class="flex flex-col gap-4">
+      <div class="flex flex-col gap-4 md:max-w-3xl md:mx-auto">
         <!-- Partner Profile Card -->
         <section class="profile-card bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex items-center gap-3.5">
           <div class="w-14 h-14 rounded-2xl bg-light-primary text-accent font-bold text-[18px] flex items-center justify-center border border-border flex-shrink-0 shadow-sm">

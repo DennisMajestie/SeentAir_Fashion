@@ -26,15 +26,12 @@ import {
   imports: [RouterLink, WholesaleTabBar],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen pb-24 antialiased selection:bg-accent/20">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-24 antialiased md:pb-8 selection:bg-accent/20">
         <header class="px-4 pt-4 pb-3 flex items-center justify-between border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30">
           <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-xl bg-light-primary text-accent flex items-center justify-center font-bold text-[16px] shadow-sm">
-              S
-            </div>
+            <img src="assets/logo.png" alt="SeentAir" width="104" height="61" class="logo-mark h-9 w-auto" />
             <div>
               <div class="flex items-center gap-1.5">
-                <span class="text-[15px] font-bold text-light-primary tracking-tight">SEENTAIR</span>
                 <span class="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded bg-canvas-tint text-light-primary border border-border">WHOLESALE</span>
               </div>
               <span class="text-[11px] text-light-secondary font-medium block">Aba Industrial Line</span>
@@ -53,7 +50,7 @@ import {
           </div>
         </header>
 
-        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full">
+        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full md:max-w-5xl">
           <!-- Greeting & Buyer Tier Card -->
           <section class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)]">
             <div class="flex items-start justify-between">
@@ -98,7 +95,7 @@ import {
           }
 
           <!-- 4 Metric Cards (2x2 Grid) -->
-          <section class="grid grid-cols-2 gap-2.5">
+          <section class="grid grid-cols-2 gap-2.5 md:grid-cols-4">
             <div class="bg-light-surface p-3.5 rounded-xl border border-border flex flex-col justify-between">
               <div class="flex items-center justify-between text-light-secondary text-[11px]">
                 <span>Open Orders</span>

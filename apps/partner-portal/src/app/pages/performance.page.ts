@@ -14,9 +14,9 @@ interface IncomeRow {
   template: `
     @if (store.dash(); as d) {
       <div class="stitch">
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start">
           <!-- Run-rate Island Card -->
-          <section class="hero bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] relative overflow-hidden">
+          <section class="hero bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] relative overflow-hidden md:col-span-2">
             <div class="flex items-start justify-between">
               <div>
                 <span class="text-[11px] font-mono uppercase tracking-wider text-light-secondary font-semibold block">Recorded income</span>
@@ -25,7 +25,7 @@ interface IncomeRow {
               <span class="px-2.5 py-0.5 rounded-full bg-accent/15 text-warning font-semibold text-[11px] font-mono border border-accent/25">{{ store.periodLabel() }}</span>
             </div>
 
-            <div class="metrics grid grid-cols-2 gap-2 pt-3 mt-3 border-t border-border text-[12px]">
+            <div class="metrics grid grid-cols-2 gap-2 pt-3 mt-3 border-t border-border text-[12px] md:grid-cols-4">
               <div class="p-2.5 rounded-lg bg-canvas border border-border/80">
                 <span class="text-[10px] text-light-secondary font-mono block">Total expenditure</span>
                 <strong class="font-mono text-light-primary text-[15px] block mt-0.5">{{ d.performance.expenditure | seMoney }}</strong>

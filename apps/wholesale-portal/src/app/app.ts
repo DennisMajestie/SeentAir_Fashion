@@ -36,12 +36,10 @@ import { ThemeService } from './theme.service';
               </div>
             </header>
 
-            <main class="flex-1 px-4 py-5 flex flex-col gap-5 max-w-[390px] mx-auto w-full">
+            <main class="flex-1 px-4 py-5 flex flex-col gap-5 max-w-[390px] mx-auto w-full md:max-w-md">
               <div class="pt-2 text-center">
-                <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-light-primary text-accent shadow-sm mb-3 border border-border">
-                  <span class="material-symbols-outlined text-[26px]">precision_manufacturing</span>
-                </div>
-                <h1 class="text-[26px] font-bold tracking-tight text-light-primary">SEENTAIR</h1>
+                <img src="assets/logo.png" alt="SeentAir" width="132" height="78" class="logo-mark h-11 w-auto mx-auto mb-3" />
+                <h1 class="sr-only">SEENTAIR</h1>
                 <p class="text-[13px] text-light-secondary font-medium tracking-wide uppercase mt-0.5">Aba B2B Wholesale Portal</p>
               </div>
 
@@ -141,7 +139,7 @@ import { ThemeService } from './theme.service';
               <span class="text-[12px] font-mono text-light-secondary">APPLICATION DESK</span>
             </header>
 
-            <main class="flex-1 px-4 py-5 flex flex-col gap-4 max-w-[390px] mx-auto w-full">
+            <main class="flex-1 px-4 py-5 flex flex-col gap-4 max-w-[390px] mx-auto w-full md:max-w-lg">
               <div>
                 <div class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent/15 text-warning text-[11px] font-mono font-semibold mb-1">WHOLESALE ONBOARDING</div>
                 <h1 class="text-[22px] font-bold text-light-primary">Apply for Wholesale Access</h1>
@@ -226,7 +224,7 @@ import { ThemeService } from './theme.service';
               <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-success/15 text-success border border-success/30 font-semibold">RECEIVED</span>
             </header>
 
-            <main class="flex-1 px-4 py-6 flex flex-col gap-5 max-w-[390px] mx-auto w-full">
+            <main class="flex-1 px-4 py-6 flex flex-col gap-5 max-w-[390px] mx-auto w-full md:max-w-md">
               <div class="text-center pt-2">
                 <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-success/15 text-success border border-success/30 mb-3">
                   <span class="material-symbols-outlined text-[32px]">task_alt</span>

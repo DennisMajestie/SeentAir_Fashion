@@ -24,7 +24,7 @@ type Quote = { amount: number; note: string | null };
   imports: [RouterLink, SeDatePipe, SeMoneyPipe, WholesaleTabBar],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen pb-28 antialiased selection:bg-accent/20">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-28 antialiased md:pb-8 selection:bg-accent/20">
         <!-- Header -->
         <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -44,7 +44,7 @@ type Quote = { amount: number; note: string | null };
         </header>
 
         <!-- Content -->
-        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full">
+        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full md:max-w-5xl">
           @if (loading()) {
             <div aria-busy="true">
               <span class="text-[11px] font-mono text-light-secondary uppercase tracking-wider block mb-2">Loading request…</span>
@@ -249,7 +249,7 @@ type Quote = { amount: number; note: string | null };
         @if (request(); as req) {
           @if (req.status === 'quoted' && quote(); as q) {
             <!-- Sticky Bottom Quick Action -->
-            <aside aria-label="Quotation action" class="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto bg-light-surface border-t border-border px-4 py-3 flex items-center justify-between shadow-[0_-8px_20px_rgba(27,25,22,0.06)] z-30">
+            <aside aria-label="Quotation action" class="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto md:left-56 md:max-w-none md:mx-0 bg-light-surface border-t border-border px-4 py-3 flex items-center justify-between shadow-[0_-8px_20px_rgba(27,25,22,0.06)] z-30">
               <div>
                 <span class="text-[11px] text-light-secondary block font-medium">Full Amount Due</span>
                 <span class="font-mono font-bold text-[18px] text-light-primary">{{ q.amount | seMoney }}</span>

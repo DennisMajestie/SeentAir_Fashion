@@ -11,9 +11,9 @@ import { PortalStore } from '../portal.store';
   template: `
     @if (store.dash(); as d) {
       <div class="stitch">
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start">
           <!-- Greeting & Data Freshness Card -->
-          <section class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)]">
+          <section class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] md:col-span-2">
             <div class="flex items-start justify-between">
               <div>
                 <span class="text-[12px] text-light-secondary font-medium">Welcome back,</span>
@@ -34,7 +34,7 @@ import { PortalStore } from '../portal.store';
           </section>
 
           <!-- 4 Metric Cards (2x2 Grid) -->
-          <section class="metrics grid grid-cols-2 gap-2.5">
+          <section class="metrics grid grid-cols-2 gap-2.5 md:grid-cols-4">
 
             <!-- Metric 1: Revenue Recorded -->
             <div class="bg-light-surface p-3.5 rounded-xl border border-border flex flex-col justify-between">

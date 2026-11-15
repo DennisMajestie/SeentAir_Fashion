@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* assets/logo.png is near-black ink on a transparent ground (measured mean
+   luminance 0.005). On the dark theme's #1f1c18 surfaces it is invisible, so
+   the same invert(1) treatment the admin dashboard's .auth-logo uses flips it
+   to a light mark while the alpha channel is left untouched. Works both under
+   the .stitch root and in the shell's own component styles. */
+[data-theme='dark'] img.logo-mark {
+  filter: invert(1);
+}
+
 /* Tailwind runs with preflight disabled so the design-system components and
    the earlier screen work keep their own resets. The parts of preflight the
    Stitch screens depend on are re-applied inside the `.stitch` root that every

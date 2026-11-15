@@ -10,11 +10,24 @@ import { ThemeService } from '../theme.service';
   imports: [RouterOutlet, RouterLink, RouterLinkActive, SeBannerComponent, SeButtonDirective, SeSkeletonComponent],
   template: `
     <div class="p-shell">
+      <aside class="p-side" aria-label="Partner sections">
+        <div class="side-brand">
+          <img class="logo-mark" src="assets/logo.png" alt="SeentAir" width="104" height="61" />
+          <span class="tag">PARTNER</span>
+        </div>
+        @for (item of navItems; track item.link) {
+          <a [routerLink]="item.link" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">
+            <span class="material-symbols-outlined">{{ item.icon }}</span>
+            <span>{{ item.label }}</span>
+          </a>
+        }
+      </aside>
+
       <header class="p-top">
         <div class="brand">
-          <div class="logo">S</div>
+          <img class="logo-mark" src="assets/logo.png" alt="SeentAir" width="104" height="61" />
           <div>
-            <div class="brand-row"><span class="name">SEENTAIR</span><span class="tag">PARTNER</span></div>
+            <div class="brand-row"><span class="tag">PARTNER</span></div>
             <span class="sub">Equity Syndicate Ledger</span>
           </div>
         </div>
@@ -57,9 +70,9 @@ import { ThemeService } from '../theme.service';
     .p-shell{min-height:100vh;background:#f7f2ea;color:#1b1916;font-family:'Urbanist',sans-serif;padding-bottom:132px;}
     .p-top{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px 10px;border-bottom:1px solid rgba(232,225,211,.8);background:rgba(247,242,234,.94);backdrop-filter:blur(10px);}
     .brand{display:flex;align-items:center;gap:10px;min-width:0;}
-    .logo{width:36px;height:36px;border-radius:12px;background:#1b1916;color:#c88a12;display:flex;align-items:center;justify-content:center;font:700 16px/1 Urbanist,sans-serif;flex:none;}
+    .logo-mark{width:88px;height:auto;display:block;}
+    .side-brand{display:none;}
     .brand-row{display:flex;align-items:center;gap:6px;}
-    .name{font:700 15px/1 Urbanist,sans-serif;letter-spacing:-.01em;}
     .tag{font:600 10px/1 'JetBrains Mono',monospace;padding:3px 6px;border-radius:999px;background:rgba(200,138,18,.2);color:#93600a;border:1px solid rgba(200,138,18,.3);}
     .sub{display:block;font:500 11px/1.2 Urbanist,sans-serif;color:#7b756a;margin-top:2px;}
     .top-actions{display:flex;align-items:center;gap:4px;}
@@ -73,6 +86,22 @@ import { ThemeService } from '../theme.service';
     .p-nav a span:last-child{font:500 10px/1.1 Urbanist,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
     .p-nav a.active{color:#c88a12;}
     .p-nav a.active span:last-child{font-weight:700;}
+    .p-side{display:none;}
+
+    /* Desktop: nav becomes a left sidebar and the content column widens. */
+    @media (min-width: 768px) {
+      .p-shell{padding-left:232px;padding-bottom:32px;}
+      .p-top{padding:12px 24px;}
+      .p-top .brand{display:none;}
+      .p-main{max-width:1200px;padding:24px 32px;}
+      .p-nav{display:none;}
+      .p-side{display:flex;flex-direction:column;gap:4px;position:fixed;top:0;left:0;bottom:0;width:232px;z-index:40;padding:20px 12px;background:#fffdf9;border-right:1px solid #e8e1d3;overflow-y:auto;}
+      .side-brand{display:flex;align-items:center;gap:10px;padding:0 6px 14px;border-bottom:1px solid #e8e1d3;margin-bottom:10px;}
+      .p-side a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;text-decoration:none;color:#7b756a;font:500 13px/1.2 Urbanist,sans-serif;}
+      .p-side a .material-symbols-outlined{font-size:20px;}
+      .p-side a:hover{background:#f2ece0;color:#1b1916;}
+      .p-side a.active{background:rgba(200,138,18,.12);color:#c88a12;font-weight:700;}
+    }
   `],
 })
 export class PortalShell implements OnInit {

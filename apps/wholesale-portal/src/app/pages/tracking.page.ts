@@ -37,7 +37,7 @@ interface Milestone {
   imports: [RouterLink, FormsModule, SeDatePipe, WholesaleTabBar],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen pb-24 antialiased selection:bg-accent/20">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:pl-56 pb-24 antialiased md:pb-8 selection:bg-accent/20">
         <!-- Header -->
         <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -55,7 +55,7 @@ interface Milestone {
         </header>
 
         <!-- Tracking Content -->
-        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full">
+        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full md:max-w-5xl">
           @if (loaded()) {
             <!-- A paid batch the ledger could not fully allocate. The API reports
                  awaiting_stock rather than the admin-only stock_exception, so the
