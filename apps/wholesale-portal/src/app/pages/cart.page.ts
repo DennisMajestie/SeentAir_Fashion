@@ -2,8 +2,52 @@
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { SeConfirmService, SeCurrencyService, SeMoneyPipe, SeToastService } from '@seentair/ui';
-import { ApiService, Pricing } from '../api.service';
+import { catchError, tap } from 'rxjs/operators';
+import { of } from 'rxjs';
+import { ApiService, DeliveryQuote, Pricing, WholesaleShippingAddress } from '../api.service';
 import { CartLine, CartService } from '../cart.service';
+
+/** Destination states for the GIGL dropdown, mirroring the storefront list
+ *  (FCT label included so the API's state matcher sees a familiar name). */
+const NIGERIAN_STATES = [
+  'Abia',
+  'Adamawa',
+  'Akwa Ibom',
+  'Anambra',
+  'Bauchi',
+  'Bayelsa',
+  'Benue',
+  'Borno',
+  'Cross River',
+  'Delta',
+  'Ebonyi',
+  'Edo',
+  'Ekiti',
+  'Enugu',
+  'FCT: Abuja',
+  'Gombe',
+  'Imo',
+  'Jigawa',
+  'Kaduna',
+  'Kano',
+  'Katsina',
+  'Kebbi',
+  'Kogi',
+  'Kwara',
+  'Lagos',
+  'Nasarawa',
+  'Niger',
+  'Ogun',
+  'Ondo',
+  'Osun',
+  'Oyo',
+  'Plateau',
+  'Rivers',
+  'Sokoto',
+  'Taraba',
+  'Yobe',
+  'Zamfara',
+];
 
 /**
  * W5 Bulk Cart & Checkout, carried verbatim from the Stitch screen. The cart
@@ -110,11 +154,96 @@ import { CartLine, CartService } from '../cart.service';
                   <span class="text-light-secondary block">{{ freightHint() }}</span>
                 </div>
                 <span class="text-warning font-semibold text-[11px]">Edit</span>
-                <select class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" aria-label="Delivery method" [(ngModel)]="freight" name="freight">
+                <select class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" aria-label="Delivery method" [ngModel]="freight" (ngModelChange)="onMethodChange($event)" name="freight">
                   <option value="gigl">GIGL freight dispatch (tracked)</option>
                   <option value="pickup">Factory pickup, Aba workshop</option>
                 </select>
               </div>
+
+              @if (freight === 'gigl') {
+                <div class="flex flex-col gap-2">
+                  <div class="grid grid-cols-2 gap-2">
+                    <label class="flex flex-col gap-1">
+                      <span class="text-[11px] font-semibold text-light-primary">State <span class="text-danger">*</span></span>
+                      <select
+                        class="px-2.5 py-2 rounded-md bg-canvas/70 border border-border text-[12px] text-light-primary focus:outline-none focus:border-accent"
+                        [(ngModel)]="shipState"
+                        name="shipState"
+                        (ngModelChange)="onStateChange()"
+                      >
+                        <option value="">Select state…</option>
+                        @for (s of states; track s) {
+                          <option [value]="s">{{ s }}</option>
+                        }
+                      </select>
+                    </label>
+                    <label class="flex flex-col gap-1">
+                      <span class="text-[11px] font-semibold text-light-primary">City / LGA <span class="text-danger">*</span></span>
+                      <input
+                        type="text"
+                        placeholder="e.g. Aba North"
+                        class="px-2.5 py-2 rounded-md bg-canvas/70 border border-border text-[12px] text-light-primary placeholder:text-light-secondary focus:outline-none focus:border-accent"
+                        [(ngModel)]="shipCity"
+                        name="shipCity"
+                      />
+                    </label>
+                  </div>
+                  <label class="flex flex-col gap-1">
+                    <span class="text-[11px] font-semibold text-light-primary">Street address &amp; house number <span class="text-danger">*</span></span>
+                    <input
+                      type="text"
+                      placeholder="e.g. 14 Market Road"
+                      class="px-2.5 py-2 rounded-md bg-canvas/70 border border-border text-[12px] text-light-primary placeholder:text-light-secondary focus:outline-none focus:border-accent"
+                      [(ngModel)]="shipLine"
+                      name="shipLine"
+                    />
+                  </label>
+                  <div class="grid grid-cols-2 gap-2">
+                    <label class="flex flex-col gap-1">
+                      <span class="text-[11px] font-semibold text-light-primary">Rider phone <span class="text-danger">*</span></span>
+                      <input
+                        type="tel"
+                        inputmode="tel"
+                        placeholder="e.g. 0803 123 4567"
+                        class="px-2.5 py-2 rounded-md bg-canvas/70 border border-border text-[12px] text-light-primary placeholder:text-light-secondary focus:outline-none focus:border-accent"
+                        [(ngModel)]="shipPhone"
+                        name="shipPhone"
+                      />
+                    </label>
+                    <label class="flex flex-col gap-1">
+                      <span class="text-[11px] font-semibold text-light-primary">Landmark <span class="text-light-secondary font-normal">(optional)</span></span>
+                      <input
+                        type="text"
+                        placeholder="Opposite the market gate"
+                        class="px-2.5 py-2 rounded-md bg-canvas/70 border border-border text-[12px] text-light-primary placeholder:text-light-secondary focus:outline-none focus:border-accent"
+                        [(ngModel)]="shipLandmark"
+                        name="shipLandmark"
+                      />
+                    </label>
+                  </div>
+                  @if (quoteLoading()) {
+                    <div class="text-[11px] text-light-secondary flex items-center gap-1.5" aria-busy="true">
+                      <span class="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+                      Pricing dispatch…
+                    </div>
+                  } @else if (deliveryQuote(); as d) {
+                    @if (d.status === 'unserviceable_state' || d.status === 'no_rate') {
+                      <div class="p-2 rounded-lg bg-danger/10 border border-danger/30 text-[11px] text-danger font-semibold" role="alert">
+                        We cannot dispatch to {{ d.stateName ?? shipState }} yet. Choose a different state to price dispatch.
+                      </div>
+                    } @else {
+                      <div class="p-2 rounded-lg bg-canvas/60 border border-border text-[11px] flex justify-between items-center gap-2">
+                        <span class="text-light-secondary">{{ d.estimate }}@if (d.zoneName) { · {{ d.zoneName }} }</span>
+                        <strong class="text-light-primary font-mono whitespace-nowrap">{{ dispatchFeeLabel() }}</strong>
+                      </div>
+                    }
+                  } @else if (quoteFailed()) {
+                    <div class="p-2 rounded-lg bg-warning/10 border border-warning/30 text-[11px] text-warning">
+                      Dispatch could not be priced right now — check the destination and try again.
+                    </div>
+                  }
+                </div>
+              }
 
               <label class="flex flex-col gap-1">
                 <span class="text-[12px] font-semibold text-light-primary">Packing/Dispatch notes</span>
@@ -161,13 +290,30 @@ import { CartLine, CartService } from '../cart.service';
                   <span>Subtotal</span>
                   <span class="font-mono text-light-primary">{{ cart.amount() | seMoney: 2 }}</span>
                 </div>
-                <div class="flex justify-between text-light-secondary">
-                  <span>Freight & Handling</span>
-                  <span class="font-mono text-light-primary">On final invoice</span>
-                </div>
+                @if (freight === 'pickup') {
+                  <div class="flex justify-between text-light-secondary">
+                    <span>Freight &amp; Handling</span>
+                    <span class="font-mono text-light-primary">Free — factory pickup</span>
+                  </div>
+                } @else if (deliveryFee() > 0) {
+                  <div class="flex justify-between text-light-secondary">
+                    <span>Freight &amp; Handling</span>
+                    <span class="font-mono text-light-primary">{{ deliveryFee() | seMoney: 2 }}</span>
+                  </div>
+                } @else if (deliveryQuote()?.status === 'quoted' || deliveryQuote()?.status === 'not_applicable') {
+                  <div class="flex justify-between text-light-secondary">
+                    <span>Freight &amp; Handling</span>
+                    <span class="font-mono text-success">Free delivery</span>
+                  </div>
+                } @else {
+                  <div class="flex justify-between text-light-secondary">
+                    <span>Freight &amp; Handling</span>
+                    <span class="font-mono text-light-primary">Confirmed on invoice</span>
+                  </div>
+                }
                 <div class="pt-2 border-t border-border flex justify-between items-baseline font-bold">
                   <span class="text-light-primary text-[15px]">Total Payable (100% Upfront)</span>
-                  <span class="font-mono text-[18px] text-accent">{{ cart.amount() | seMoney: 2 }}</span>
+                  <span class="font-mono text-[18px] text-accent">{{ totalDue() | seMoney: 2 }}</span>
                 </div>
               </div>
             </section>
@@ -178,13 +324,13 @@ import { CartLine, CartService } from '../cart.service';
           <!-- Sticky Bottom Checkout Action -->
           <aside aria-label="Checkout action" class="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto ws-cta-bar bg-light-surface border-t border-border px-4 py-3 flex items-center justify-between shadow-[0_-8px_20px_rgba(27,25,22,0.06)] z-30">
             <div>
-              <span class="text-[11px] text-light-secondary block font-medium">Payable in full now</span>
-              <span class="font-mono font-bold text-[18px] text-light-primary">{{ cart.amount() | seMoney: 2 }}</span>
+              <span class="text-[11px] text-light-secondary block font-medium">Payable in full now{{ deliveryFee() > 0 ? ' · incl. freight' : '' }}</span>
+              <span class="font-mono font-bold text-[18px] text-light-primary">{{ totalDue() | seMoney: 2 }}</span>
             </div>
             <button
               type="button"
               class="place px-6 py-3.5 rounded-full bg-accent text-on-accent font-semibold text-[14px] flex items-center gap-2 shadow-sm hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
-              [disabled]="!moqMet()"
+              [disabled]="!moqMet() || dispatchBlocked()"
               [attr.aria-busy]="placing()"
               (click)="placeOrder()"
             >
@@ -212,6 +358,31 @@ export class CartPage implements OnInit {
   readonly placing = signal(false);
   freight: 'gigl' | 'pickup' = 'gigl';
   notes = '';
+  shipState = '';
+  shipCity = '';
+  shipLine = '';
+  shipPhone = '';
+  shipLandmark = '';
+  readonly states = NIGERIAN_STATES;
+  readonly deliveryQuote = signal<DeliveryQuote | null>(null);
+  readonly quoteLoading = signal(false);
+  readonly quoteFailed = signal(false);
+
+  /** Delivery fee in naira; zero for factory pickup, free delivery, or unquoted (the server re-prices on create). */
+  readonly deliveryFee = computed(() => {
+    const quote = this.deliveryQuote();
+    if (!quote || quote.status !== 'quoted' || quote.freeDeliveryApplied) return 0;
+    return Math.max(0, Math.round(quote.feeKobo / 100));
+  });
+
+  /** What the buyer pays in full: basket + dispatch, exactly what order creation re-prices. */
+  readonly totalDue = computed(() => this.cart.amount() + this.deliveryFee());
+
+  /** Blocks checkout only when the API says this destination cannot take dispatch. */
+  readonly dispatchBlocked = computed(() => {
+    const quote = this.deliveryQuote();
+    return !!quote && (quote.status === 'unserviceable_state' || quote.status === 'no_rate');
+  });
 
   /** Cart lines grouped per product, like the Stitch screen's line items. */
   readonly groups = computed(() => {
@@ -290,21 +461,124 @@ export class CartPage implements OnInit {
     this.cart.lines.set(
       this.cart.lines().map((l) => (l.variantId === line.variantId ? { ...l, quantity: qty } : l)),
     );
+    this.refreshDeliveryQuote();
   }
 
   remove(line: CartLine): void {
     this.cart.lines.set(this.cart.lines().filter((l) => l.variantId !== line.variantId));
+    this.refreshDeliveryQuote();
   }
 
   /** Removes every drafted variant of one product. */
   removeProduct(productId: string): void {
     this.cart.lines.set(this.cart.lines().filter((l) => l.productId !== productId));
+    this.refreshDeliveryQuote();
+  }
+
+  /** Method change clears the quote and re-prices when freight goes out on GIGL. */
+  onMethodChange(value: string): void {
+    this.freight = value === 'pickup' ? 'pickup' : 'gigl';
+    this.deliveryQuote.set(null);
+    this.quoteFailed.set(false);
+    if (this.freight === 'gigl') this.refreshDeliveryQuote();
+  }
+
+  onStateChange(): void {
+    this.refreshDeliveryQuote();
+  }
+
+  /** Re-prices dispatch for the current basket and destination; pickup is never charged. */
+  refreshDeliveryQuote(): void {
+    this.deliveryQuote.set(null);
+    this.requestQuote().subscribe();
+  }
+
+  private requestQuote() {
+    if (this.freight !== 'gigl' || !this.shipState.trim() || this.cart.lines().length === 0) {
+      this.deliveryQuote.set(null);
+      this.quoteLoading.set(false);
+      return of(null);
+    }
+    this.quoteFailed.set(false);
+    this.quoteLoading.set(true);
+    return this.api
+      .deliveryQuote({
+        state: this.shipState.trim(),
+        method: 'freight',
+        subtotal: this.cart.amount(),
+        lines: this.cart
+          .lines()
+          .map((l) => ({ variantId: l.variantId, quantity: l.quantity, unitPrice: l.unitPrice })),
+      })
+      .pipe(
+        catchError(() => of(null)),
+        tap((quote) => {
+          this.quoteLoading.set(false);
+          this.deliveryQuote.set(quote);
+          this.quoteFailed.set(!quote);
+        }),
+      );
+  }
+
+  dispatchFeeLabel(): string {
+    const quote = this.deliveryQuote();
+    if (!quote) return '';
+    if (quote.freeDeliveryApplied || quote.feeKobo === 0) return 'Free';
+    return this.currency.format(Math.round(quote.feeKobo / 100), 2);
+  }
+
+  private shippingAddress(): WholesaleShippingAddress {
+    return {
+      state: this.shipState.trim(),
+      city: this.shipCity.trim(),
+      line: this.shipLine.trim(),
+      phone: this.shipPhone.trim(),
+      ...(this.shipLandmark.trim() ? { landmark: this.shipLandmark.trim() } : {}),
+    };
+  }
+
+  /** The destination reasons a buyer gets bounced, in their own words. */
+  private deliveryMissing(): string | null {
+    if (this.freight !== 'gigl') return null;
+    if (!this.shipState) return 'Choose the delivery state so dispatch can be routed.';
+    if (!this.shipCity.trim()) return 'Add the city or LGA the rider should use.';
+    if (!this.shipLine.trim()) return 'Add the street and house number.';
+    if (!this.shipPhone.trim()) return 'Add a phone number the rider can reach.';
+    return null;
+  }
+
+  /** The rejection reasons a buyer can act on. */
+  private deliveryProblem(err: unknown): string | null {
+    const code = (err as { error?: { code?: string } } | undefined)?.error?.code;
+    switch (code) {
+      case 'QUOTE_STALE':
+      case 'QUOTE_MISMATCH':
+      case 'QUOTE_EXPIRED':
+        return 'Prices or dispatch changed just now. Please try again.';
+      case 'QUOTE_REQUIRED':
+        return 'Dispatch could not be confirmed for this address. Please check it and try again.';
+      case 'DESTINATION_NOT_SERVICEABLE':
+        return 'We cannot dispatch to that state yet. Choose a different state.';
+      default:
+        return null;
+    }
   }
 
   async placeOrder(): Promise<void> {
     if (this.placing() || !this.moqMet() || this.cart.lines().length === 0) return;
+    if (this.dispatchBlocked()) {
+      this.toast.show('We cannot dispatch to this destination yet. Choose a different state.', {
+        tone: 'danger',
+      });
+      return;
+    }
+    const missing = this.deliveryMissing();
+    if (missing) {
+      this.toast.show(missing, { tone: 'danger' });
+      return;
+    }
     const units = this.cart.units();
-    const total = this.currency.format(this.cart.amount(), 2);
+    const total = this.currency.format(this.totalDue(), 2);
     const ok = await this.confirm.ask({
       title: `Place this ${units}-unit order for ${total}?`,
       consequence: `Payment of ${total} is taken in full through Paystack now. Wholesale orders cannot be part-paid or changed once placed.`,
@@ -312,28 +586,56 @@ export class CartPage implements OnInit {
     });
     if (!ok) return;
     this.placing.set(true);
-    const items = this.cart.toOrderItems();
-    this.api
-      .placeOrder(items, {
-        deliveryMethod: this.freight === 'pickup' ? 'pickup' : 'freight',
-        customerNote: this.notes,
-      })
-      .subscribe({
-        next: (order) => {
-          this.cart.clear();
-          this.toast.show(
-            `Order #${order.id.slice(0, 8).toUpperCase()} placed. Taking you to Paystack.`,
-          );
-          this.pay(order.id, order.totalAmount);
-        },
-        error: (err) => {
-          this.placing.set(false);
-          this.toast.show(err?.error?.message ?? 'The order could not be placed', {
-            tone: 'danger',
-            action: { label: 'Try again', run: () => void this.placeOrder() },
-          });
-        },
-      });
+    this.submitWithQuote(this.cart.toOrderItems(), 0);
+  }
+
+  /**
+   * The fee shown and the fee charged must come from the same request, so a
+   * quote is asked for at the moment of ordering. If the API still rejects it
+   * as stale (a price moved, a window closed) the order is retried once against
+   * a fresh quote rather than failing the buyer.
+   */
+  private submitWithQuote(items: Array<{ variantId: string; quantity: number }>, attempt: number): void {
+    this.requestQuote().subscribe((quote) => {
+      this.api
+        .placeOrder(items, {
+          deliveryMethod: this.freight === 'pickup' ? 'pickup' : 'freight',
+          customerNote: this.notes,
+          ...(this.freight === 'gigl'
+            ? { shippingAddress: this.shippingAddress(), deliveryQuoteId: quote?.quoteId }
+            : {}),
+        })
+        .subscribe({
+          next: (order) => {
+            this.cart.clear();
+            this.toast.show(
+              `Order #${order.id.slice(0, 8).toUpperCase()} placed. Taking you to Paystack.`,
+            );
+            this.pay(order.id, order.totalAmount);
+          },
+          error: (err) => {
+            const code = (err as { error?: { code?: string } } | undefined)?.error?.code;
+            if (
+              attempt === 0 &&
+              (code === 'QUOTE_STALE' ||
+                code === 'QUOTE_EXPIRED' ||
+                code === 'QUOTE_REQUIRED' ||
+                code === 'QUOTE_MISMATCH')
+            ) {
+              this.submitWithQuote(items, attempt + 1);
+              return;
+            }
+            this.placing.set(false);
+            const problem = this.deliveryProblem(err);
+            this.toast.show(problem ?? err?.error?.message ?? 'The order could not be placed', {
+              tone: 'danger',
+              ...(problem
+                ? {}
+                : { action: { label: 'Try again', run: () => void this.placeOrder() } }),
+            });
+          },
+        });
+    });
   }
 
   /** Full amount, always: the API rejects any other figure. */

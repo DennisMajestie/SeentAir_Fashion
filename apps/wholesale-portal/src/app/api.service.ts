@@ -5,6 +5,32 @@ import { API_BASE, TokenStore } from './auth-token.store';
 
 export { API_BASE, authInterceptor } from './auth-token.store';
 
+export type DeliveryMethod = 'freight' | 'pickup';
+
+/** What the API quotes for dispatching this basket to a state. `feeKobo` is
+ *  for display only — order creation re-verifies the quote server-side. */
+export interface DeliveryQuote {
+  status: 'quoted' | 'not_applicable' | 'unserviceable_state' | 'no_rate' | 'empty';
+  method: DeliveryMethod;
+  sizeClass: string | null;
+  zoneName: string | null;
+  stateName: string | null;
+  feeKobo: number;
+  estimate: string;
+  freeDeliveryApplied: boolean;
+  quoteId?: string;
+  expiresAt?: string;
+}
+
+/** Routable destination for dispatching a batch. Matches ShippingAddressDto. */
+export interface WholesaleShippingAddress {
+  state: string;
+  city: string;
+  line: string;
+  phone: string;
+  landmark?: string;
+}
+
 /**
  * A variant's availability is a display status only. Stock quantity is derived
  * from the inventory ledger and is never sent to a wholesale buyer - the
@@ -204,15 +230,33 @@ export class ApiService {
     return this.http.get<{ data: Invoice[]; total: number }>(`${API_BASE}/wholesale/invoices`);
   }
 
+  /** Asks what dispatch costs for this basket and destination. Public route,
+   *  quoteId is what order creation is verified against. */
+  deliveryQuote(request: {
+    state: string;
+    lines: Array<{ variantId: string; quantity: number; unitPrice: number }>;
+    method: DeliveryMethod;
+    subtotal: number;
+  }): Observable<DeliveryQuote> {
+    return this.http.post<DeliveryQuote>(`${API_BASE}/checkout-shipping/quote`, request);
+  }
+
   placeOrder(
     items: Array<{ variantId: string; quantity: number }>,
-    options?: { deliveryMethod?: 'freight' | 'pickup'; customerNote?: string },
+    options?: {
+      deliveryMethod?: DeliveryMethod;
+      customerNote?: string;
+      shippingAddress?: WholesaleShippingAddress;
+      deliveryQuoteId?: string;
+    },
   ): Observable<{ id: string; totalAmount: number }> {
     const note = options?.customerNote?.trim();
     return this.http.post<{ id: string; totalAmount: number }>(`${API_BASE}/orders`, {
       items,
       source: 'wholesale_portal',
       ...(options?.deliveryMethod ? { deliveryMethod: options.deliveryMethod } : {}),
+      ...(options?.shippingAddress ? { shippingAddress: options.shippingAddress } : {}),
+      ...(options?.deliveryQuoteId ? { quoteId: options.deliveryQuoteId } : {}),
       ...(note ? { customerNote: note } : {}),
     });
   }

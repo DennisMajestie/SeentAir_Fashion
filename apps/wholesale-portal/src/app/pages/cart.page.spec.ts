@@ -42,10 +42,24 @@ describe('CartPage', () => {
       'pricing',
       'placeOrder',
       'payWithPaystack',
+      'deliveryQuote',
     ]);
     api.pricing.and.returnValue(pricing as never);
     api.placeOrder.and.returnValue(
       of({ id: 'abcdef12-3456-7890-abcd-ef1234567890', totalAmount: 1 }),
+    );
+    api.deliveryQuote.and.returnValue(
+      of({
+        status: 'quoted',
+        method: 'freight',
+        sizeClass: null,
+        zoneName: 'Aba Metro',
+        stateName: 'Abia',
+        feeKobo: 0,
+        estimate: '1–2 days',
+        freeDeliveryApplied: true,
+        quoteId: 'quote-1',
+      }) as never,
     );
     api.payWithPaystack.and.returnValue(of({ authorizationUrl: '' }));
     TestBed.configureTestingModule({
@@ -65,6 +79,10 @@ describe('CartPage', () => {
     spyOn(router, 'navigate').and.resolveTo(true);
     fixture = TestBed.createComponent(CartPage);
     component = fixture.componentInstance;
+    component.shipState = 'Abia';
+    component.shipCity = 'Aba North';
+    component.shipLine = '14 Market Road';
+    component.shipPhone = '08031234567';
     fixture.detectChanges();
   };
   afterEach(() => fixture?.destroy());
@@ -223,7 +241,12 @@ describe('CartPage', () => {
           { variantId: 'a', quantity: 12 },
           { variantId: 'b', quantity: 8 },
         ],
-        { deliveryMethod: 'freight', customerNote: '' },
+        {
+          deliveryMethod: 'freight',
+          customerNote: '',
+          shippingAddress: { state: 'Abia', city: 'Aba North', line: '14 Market Road', phone: '08031234567' },
+          deliveryQuoteId: 'quote-1',
+        },
       );
       expect(cart.lines().length).toBe(0);
       expect(api.payWithPaystack).toHaveBeenCalledWith('abcdef12-0000', 50000);
