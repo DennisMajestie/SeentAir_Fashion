@@ -1,22 +1,10 @@
 import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import {
-  SeActivityComponent,
-  SeActivityEntry,
-  SeBannerComponent,
-  SeBreadcrumb,
-  SeButtonDirective,
-  SeCardComponent,
-  SeConfirmService,
-  SeKvDirective,
-  SeKvItemComponent,
-  SePageComponent,
-  SeSkeletonComponent,
-  SeStatusComponent,
-} from '@seentair/ui';
+import { SeConfirmService, SeDatePipe } from '@seentair/ui';
 import { ApiService, DeliveryCheckpoint, DeliveryLegView, Invoice } from '../api.service';
-import { orderRef, units } from '../wholesale-format';
+import { WholesaleTabBar } from '../tab-bar';
+import { PIPELINE, orderRef, units } from '../wholesale-format';
 
 /** Fallback poll cadence while the socket is down, and the slow cadence
     used while it is up. Visibility-aware, so a backgrounded tab costs nothing. */
@@ -31,6 +19,13 @@ interface TrackingEvent {
   createdAt: string;
 }
 
+interface Milestone {
+  at: string;
+  text: string;
+  actor?: string;
+  tone?: 'warning' | 'success';
+}
+
 /**
  * Order tracking for one wholesale batch: where it is now, every update the
  * courier has posted (newest first), and the freight facts. Only the
@@ -39,55 +34,162 @@ interface TrackingEvent {
  */
 @Component({
   selector: 'app-tracking',
-  imports: [
-    RouterLink,
-    FormsModule,
-    SeActivityComponent,
-    SeBannerComponent,
-    SeButtonDirective,
-    SeCardComponent,
-    SeKvDirective,
-    SeKvItemComponent,
-    SePageComponent,
-    SeSkeletonComponent,
-    SeStatusComponent,
-  ],
+  imports: [RouterLink, FormsModule, SeDatePipe, WholesaleTabBar],
   template: `
-    <se-page [title]="'Tracking ' + ref()" [breadcrumbs]="crumbs()">
-      @if (loaded()) {
-        <se-status sePageStatus kind="delivery" [value]="deliveryState()" />
-      }
-      @if (loaded()) {
-        <p sePageMeta>{{ summary() }}</p>
-      }
-      <a seButton sePageActions [routerLink]="['/orders', orderId(), 'invoice']">View invoice</a>
+    <div class="stitch">
+      <div class="bg-canvas text-light-on-surface min-h-screen pb-24 antialiased selection:bg-accent/20">
+        <!-- Header -->
+        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <a routerLink="/orders" class="w-8 h-8 rounded-full bg-light-surface border border-border flex items-center justify-center text-light-primary" aria-label="Back to orders">
+              <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+            </a>
+            <div>
+              <h1 class="text-[16px] font-bold text-light-primary">Batch Live Tracking</h1>
+              <span class="text-[11px] font-mono text-light-secondary">{{ ref() }}</span>
+            </div>
+          </div>
+          @if (loaded()) {
+            <span class="stage-badge text-[11px] font-mono px-2 py-0.5 rounded-full bg-success/15 text-success border border-success/30 font-semibold whitespace-nowrap">{{ stageBadge() }}</span>
+          }
+        </header>
 
-      <!-- A paid batch the ledger could not fully allocate. The API reports
-           awaiting_stock rather than the admin-only stock_exception, so the
-           buyer is told the truth instead of a reassuring freeze. -->
-      @if (loaded() && awaitingStock()) {
-        <se-banner tone="warning" title="Awaiting stock allocation">
-          Your payment is confirmed and the batch is booked, but the workshop cannot allocate every
-          unit yet. The Aba desk is sourcing the shortfall or scheduling the balance into production.
-          Nothing further is needed from you, and this page updates as soon as the stock is
-          allocated.
-        </se-banner>
-      }
+        <!-- Tracking Content -->
+        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full">
+          @if (loaded()) {
+            <!-- A paid batch the ledger could not fully allocate. The API reports
+                 awaiting_stock rather than the admin-only stock_exception, so the
+                 buyer is told the truth instead of a reassuring freeze. -->
+            @if (awaitingStock()) {
+              <div class="await-banner p-4 rounded-xl bg-warning/15 border border-warning/30 flex items-start gap-2.5">
+                <span class="material-symbols-outlined text-[20px] text-warning flex-shrink-0">pending</span>
+                <div>
+                  <strong class="text-[13px] font-bold text-warning block">Awaiting stock allocation</strong>
+                  <span class="text-[12px] text-light-secondary leading-normal block">
+                    Your payment is confirmed and the batch is booked, but the workshop cannot allocate every
+                    unit yet. The Aba desk is sourcing the shortfall or scheduling the balance into production.
+                    Nothing further is needed from you, and this page updates as soon as the stock is
+                    allocated.
+                  </span>
+                </div>
+              </div>
+            }
 
-      @if (loaded()) {
-        <div class="se-detail">
-          <div class="se-detail__main">
-            <se-card title="Delivery updates">
-              <se-activity [entries]="history()" emptyText="No updates posted yet." />
-            </se-card>
-            <se-card title="Returns">
+            <!-- Reassuring Current State Card -->
+            <section class="now-card bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-3">
+              <div class="flex items-start justify-between">
+                <div>
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-accent block">Live Aba Factory Floor</span>
+                  <h2 class="text-[18px] font-bold text-light-primary leading-tight mt-0.5">{{ headline() }}</h2>
+                  <span class="text-[12px] text-light-secondary mt-0.5 block">{{ summary() }}</span>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-accent/20 text-warning flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-[22px]">precision_manufacturing</span>
+                </div>
+              </div>
+
+              <!-- Linear Progress Bar -->
+              <div class="mt-2 flex flex-col gap-1.5">
+                <div class="flex justify-between text-[12px]">
+                  <span class="text-light-secondary">Batch Progress</span>
+                  <span class="font-mono font-bold text-accent">{{ stageText() }}</span>
+                </div>
+                <div class="track w-full h-2 rounded-full bg-canvas-tint overflow-hidden" role="progressbar" [attr.aria-valuenow]="fillPct()" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'Batch progress, ' + stageText()">
+                  <div class="track-fill h-full bg-accent rounded-full" [style.width.%]="fillPct()"></div>
+                </div>
+              </div>
+
+              <!-- Courier & Freight Allocation -->
+              <div class="pt-3 border-t border-border flex items-center justify-between text-[12px]">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[18px] text-light-secondary">local_shipping</span>
+                  <div>
+                    <span class="text-light-primary font-bold block">{{ carrier() }}</span>
+                    <span class="text-light-secondary font-mono text-[11px]">Waybill: {{ leg()?.trackingRef ?? 'Issued at dispatch' }}</span>
+                  </div>
+                </div>
+                <span class="text-[11px] font-semibold text-light-primary bg-canvas px-2.5 py-1 rounded-full border border-border whitespace-nowrap">{{ leg() ? legLabel(leg()!) : 'Being booked' }}</span>
+              </div>
+
+              <!-- Freight facts the buyer can act on, kept from the ledger projection. -->
+              <dl class="facts pt-3 border-t border-border grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+                <div class="col-span-2 flex justify-between gap-2">
+                  <dt class="text-light-secondary">Route</dt>
+                  <dd class="font-mono text-light-primary text-right">{{ legZone() || 'Aba workshop to consignee hub' }}</dd>
+                </div>
+                @if (riderFirstName(); as rider) {
+                  <div class="flex justify-between gap-2">
+                    <dt class="text-light-secondary">Rider</dt>
+                    <dd class="font-mono text-light-primary text-right">{{ rider }}</dd>
+                  </div>
+                }
+                <div class="flex justify-between gap-2">
+                  <dt class="text-light-secondary">Leg</dt>
+                  <dd class="font-mono text-light-primary text-right">{{ leg() ? legLabel(leg()!) : 'Being booked' }}</dd>
+                </div>
+                <div class="flex justify-between gap-2">
+                  <dt class="text-light-secondary">Order</dt>
+                  <dd class="font-mono text-light-primary text-right">{{ ref() }}</dd>
+                </div>
+                <div class="flex justify-between gap-2">
+                  <dt class="text-light-secondary">Units</dt>
+                  <dd class="font-mono text-light-primary text-right">{{ invoice() ? units(invoice()!) : '—' }}</dd>
+                </div>
+                <div class="col-span-2 flex justify-between gap-2">
+                  <dt class="text-light-secondary">Updates</dt>
+                  <dd class="text-light-primary text-right">{{ live() ? 'Live while this page stays open' : 'Checked every ' + pollSeconds() + 's' }}</dd>
+                </div>
+              </dl>
+
+              <a class="invoice-link self-end text-[11px] font-semibold text-accent hover:underline" [routerLink]="['/orders', orderId(), 'invoice']">View invoice</a>
+            </section>
+
+            <!-- Detailed Checkpoint Timeline -->
+            <section class="bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-4">
+              <h3 class="text-[14px] font-bold text-light-primary">Production &amp; Milestone History</h3>
+
+              @if (history().length) {
+                <div class="timeline relative pl-6 flex flex-col gap-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
+                  @for (e of history(); track e.at + e.text; let i = $index) {
+                    <div class="tl-step relative flex flex-col gap-1">
+                      @if (e.tone === 'warning') {
+                        <span class="tl-dot tl-warn absolute -left-6 top-0.5 w-4 h-4 rounded-full bg-warning text-on-warning text-[10px] flex items-center justify-center font-bold">!</span>
+                      } @else if (i === 0) {
+                        <span class="tl-dot tl-now absolute -left-6 top-0.5 w-4 h-4 rounded-full bg-accent ring-4 ring-accent/20 flex items-center justify-center">
+                          <span class="w-1.5 h-1.5 rounded-full bg-on-accent"></span>
+                        </span>
+                      } @else if (e.tone === 'success') {
+                        <span class="tl-dot tl-done absolute -left-6 top-0.5 w-4 h-4 rounded-full bg-success text-on-success text-[10px] flex items-center justify-center font-bold">✓</span>
+                      } @else if (e.tone === 'warning') {
+                        <span class="tl-dot tl-warn absolute -left-6 top-0.5 w-4 h-4 rounded-full bg-warning text-on-warning text-[10px] flex items-center justify-center font-bold">!</span>
+                      } @else {
+                        <span class="tl-dot tl-idle absolute -left-6 top-0.5 w-4 h-4 rounded-full bg-canvas-tint"></span>
+                      }
+                      <div class="flex items-baseline justify-between gap-2">
+                        <h4 class="text-[13px] font-bold text-light-primary">{{ e.text }}</h4>
+                        <span class="text-[10px] font-mono text-light-secondary whitespace-nowrap">{{ e.at | seDate: 'datetime' }}</span>
+                      </div>
+                      @if (e.actor) {
+                        <p class="text-[12px] text-light-secondary leading-normal">{{ e.actor }}</p>
+                      }
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-[12px] text-light-secondary">No updates posted yet.</p>
+              }
+            </section>
+
+            <!-- Returns -->
+            <section class="returns-card bg-light-surface rounded-xl p-5 border border-border flex flex-col gap-2">
+              <h3 class="text-[14px] font-bold text-light-primary">Returns</h3>
               <p class="tracking-note">
                 Return requests must be submitted within 12 hours of confirmed delivery and are
                 completed within 24 hours. Custom orders are excluded from returns.
               </p>
               @if (canRequestReturn()) {
                 @if (!showReturnForm()) {
-                  <button seButton type="button" (click)="openReturnForm()">Request return</button>
+                  <button type="button" class="self-start px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold hover:brightness-105 active:scale-[0.98] transition-all" (click)="openReturnForm()">Request return</button>
                 } @else {
                   <form class="return-form" (ngSubmit)="submitReturnRequest()">
                     <label class="return-field">
@@ -112,13 +214,13 @@ interface TrackingEvent {
                       ></textarea>
                     </label>
                     <div class="return-actions">
-                      <button seButton type="submit" [disabled]="submittingReturn()">Submit request</button>
-                      <button seButton type="button" variant="ghost" (click)="cancelReturnForm()">Cancel</button>
+                      <button type="submit" class="px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold disabled:opacity-50" [disabled]="submittingReturn()">Submit request</button>
+                      <button type="button" class="px-3.5 py-1.5 rounded-full border border-border text-[12px] font-semibold text-light-primary" (click)="cancelReturnForm()">Cancel</button>
                     </div>
                   </form>
                 }
               } @else {
-                <button seButton type="button" disabled>Request return</button>
+                <button type="button" disabled class="self-start px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold disabled:opacity-50">Request return</button>
                 @if (returnWindowElapsed()) {
                   <p class="tracking-note tracking-note--muted">Return window has elapsed (12 hours from delivery).</p>
                 } @else if (!isDeliveredSignal()) {
@@ -127,48 +229,41 @@ interface TrackingEvent {
                   <p class="tracking-note tracking-note--muted">Return requests are not available for this order.</p>
                 }
               }
-            </se-card>
-          </div>
-          <aside class="se-detail__aside">
-            <se-card title="Courier">
-              <dl seKv>
-                <div seKvItem label="Carrier">{{ carrier() }}</div>
-                <div seKvItem label="Waybill">{{ leg()?.trackingRef ?? 'Issued at dispatch' }}</div>
-                <div seKvItem label="Route">{{ legZone() || 'Aba workshop to consignee hub' }}</div>
-                @if (riderFirstName(); as rider) {
-                  <div seKvItem label="Rider">{{ rider }}</div>
-                }
-                <div seKvItem label="Leg">{{ leg() ? legLabel(leg()!) : 'Being booked' }}</div>
-              </dl>
-            </se-card>
-            <se-card title="Batch">
-              <dl seKv>
-                <div seKvItem label="Order">{{ ref() }}</div>
-                <div seKvItem label="Units" numeric>{{ invoice() ? units(invoice()!) : '—' }}</div>
-                <div seKvItem label="Updates">
-                  {{
-                    live()
-                      ? 'Live while this page stays open'
-                      : 'Checked every ' + pollSeconds() + 's'
-                  }}
+            </section>
+
+            <!-- Support Help Box -->
+            <div class="p-3.5 rounded-xl bg-canvas-tint/70 border border-border flex items-center justify-between text-[12px]">
+              <span class="text-light-secondary">Need to modify consignee delivery address?</span>
+              <a href="tel:+2348142009010" class="text-warning font-semibold hover:underline">Contact Aba Desk</a>
+            </div>
+          } @else if (failed()) {
+            <div class="load-error p-3.5 rounded-xl bg-light-surface border border-danger/30 flex items-center justify-between gap-2">
+              <div>
+                <h2 class="text-[13px] font-bold text-danger">Tracking could not be loaded</h2>
+                <span class="text-[11px] text-light-secondary">Check your connection and try again.</span>
+              </div>
+              <button type="button" class="px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold flex-shrink-0" (click)="retry()">Try again</button>
+            </div>
+          } @else {
+            <div aria-busy="true">
+              <span class="text-[11px] font-mono text-light-secondary uppercase tracking-wider block mb-2">Loading tracking…</span>
+              <div class="bg-light-surface/60 rounded-xl p-3.5 border border-dashed border-border flex gap-3.5 animate-pulse">
+                <div class="w-24 h-20 rounded-lg bg-canvas-tint/80 flex-shrink-0"></div>
+                <div class="flex-1 flex flex-col justify-between py-1">
+                  <div class="space-y-2">
+                    <div class="h-3 w-1/3 bg-canvas-tint rounded"></div>
+                    <div class="h-4 w-4/5 bg-canvas-tint rounded"></div>
+                  </div>
+                  <div class="h-5 w-24 bg-canvas-tint rounded-full"></div>
                 </div>
-              </dl>
-            </se-card>
-          </aside>
-        </div>
-      } @else if (failed()) {
-        <se-banner
-          tone="danger"
-          title="Tracking could not be loaded"
-          actionLabel="Try again"
-          (action)="retry()"
-        >
-          Check your connection and try again.
-        </se-banner>
-      } @else {
-        <div aria-busy="true"><se-skeleton shape="detail" /></div>
-      }
-    </se-page>
+              </div>
+            </div>
+          }
+        </main>
+
+        <ws-tab-bar />
+      </div>
+    </div>
   `,
   styles: [
     `
@@ -225,6 +320,7 @@ export class TrackingPage implements OnInit, OnDestroy {
   readonly loaded = signal(false);
   readonly failed = signal(false);
   readonly units = units;
+  readonly pipeline = PIPELINE;
 
   readonly showReturnForm = signal(false);
   readonly submittingReturn = signal(false);
@@ -232,14 +328,9 @@ export class TrackingPage implements OnInit, OnDestroy {
   returnDetails = '';
   readonly RETURN_WINDOW_HOURS = 12;
   private deliveryConfirmed = signal(this.getDeliveryConfirmed());
-  readonly crumbs = computed<SeBreadcrumb[]>(() => [
-    { label: 'Orders', link: '/orders' },
-    { label: this.ref(), link: `/orders/${this.orderId()}/invoice` },
-    { label: 'Tracking' },
-  ]);
   readonly leg = computed<DeliveryLegView | null>(() => this.deliveries()[0] ?? null);
 
-  /** The delivery state as `se-status kind="delivery"` knows it. */
+  /** The delivery state the page summarises around. */
   readonly deliveryState = computed(() => {
     if (/delivered|completed/.test(this.status())) return 'delivered';
     const leg = this.leg();
@@ -269,8 +360,8 @@ export class TrackingPage implements OnInit, OnDestroy {
   });
 
   /** Courier checkpoints and order events, newest first, with no staff notes. */
-  readonly history = computed<SeActivityEntry[]>(() => {
-    const entries: SeActivityEntry[] = [];
+  readonly history = computed<Milestone[]>(() => {
+    const entries: Milestone[] = [];
     for (const leg of this.deliveries()) {
       for (const cp of leg.checkpoints ?? []) {
         if (!cp.at) continue;
@@ -533,6 +624,43 @@ export class TrackingPage implements OnInit, OnDestroy {
   }
 
   readonly ref = computed(() => orderRef(this.orderId()));
+
+  /** Furthest pipeline stage this batch has reached, -1 when not matched. */
+  readonly stage = computed(() => {
+    const s = this.status().toLowerCase();
+    return PIPELINE.findIndex((p) => s.includes(p.key));
+  });
+
+  /** Header badge: the pipeline stage, or the truthful non-stage states. */
+  readonly stageBadge = computed(() => {
+    if (this.awaitingStock()) return 'AWAITING STOCK';
+    const i = this.stage();
+    if (i >= 0) return `STAGE ${i + 1} / ${PIPELINE[i].label.toUpperCase()}`;
+    return 'BATCH BOOKED';
+  });
+
+  readonly stageText = (): string =>
+    `Stage ${Math.max(this.stage(), 0) + 1} of ${PIPELINE.length}`;
+
+  readonly fillPct = computed(() =>
+    this.stage() < 0 ? 0 : ((this.stage() + 1) / PIPELINE.length) * 100,
+  );
+
+  readonly headline = computed(() => {
+    const inv = this.invoice();
+    const prefix = inv ? `${units(inv)} Units` : 'Your batch';
+    if (this.awaitingStock()) return `${prefix} Awaiting Allocation`;
+    switch (this.deliveryState()) {
+      case 'delivered':
+        return `${prefix} Delivered`;
+      case 'failed':
+        return `${prefix}: Last Attempt Failed`;
+      case 'in_transit':
+        return `${prefix} with the Courier`;
+      default:
+        return `${prefix} on the Factory Floor`;
+    }
+  });
 
   private getDeliveryConfirmedKey(): string {
     const id = this.orderId();

@@ -35,11 +35,15 @@ describe('InvoiceDetailPage', () => {
   const el = (): HTMLElement => fixture.nativeElement as HTMLElement;
   const text = (): string => (el().textContent ?? '').replace(/\s+/g, ' ');
   const kv = (label: string): string | null => {
-    const dt = Array.from(el().querySelectorAll('dt')).find((d) => d.textContent?.trim() === label);
-    return dt?.nextElementSibling?.textContent?.trim() ?? null;
+    const row = el().querySelector(`[data-kv="${label}"]`);
+    if (!row) return null;
+    const spans = row.querySelectorAll('span');
+    return spans[spans.length - 1]?.textContent?.trim() ?? null;
   };
   const button = (label: string): HTMLButtonElement | undefined =>
-    Array.from(el().querySelectorAll('button')).find((b) => b.textContent?.trim() === label);
+    Array.from(el().querySelectorAll('button')).find(
+      (b) => b.getAttribute('aria-label') === label || b.textContent?.trim() === label,
+    );
 
   async function boot(
     data: Invoice[] | 'fail' = [invoice()],
@@ -92,18 +96,18 @@ describe('InvoiceDetailPage', () => {
   it('titles the page with the order reference and both statuses beside it', async () => {
     await boot();
     expect(el().querySelector('h1')!.textContent).toContain('#AAAAAAAA');
-    const badges = Array.from(el().querySelectorAll('se-status')).map((b) => b.textContent?.trim());
-    expect(badges).toEqual(['Order received', 'Unpaid']);
-    expect(el().querySelector('.se-page__meta, [sePageMeta]')?.textContent).toContain(
-      'Pro-forma invoice',
+    const badges = Array.from(el().querySelectorAll('.status-pill')).map((b) =>
+      b.textContent?.trim(),
     );
+    expect(badges).toEqual(['Order received', 'Unpaid']);
+    expect(el().querySelector('.meta-line')?.textContent).toContain('Pro-forma invoice');
   });
 
   it('lists the lines and totals in the configured currency', async () => {
     await boot();
-    const row = el().querySelector('se-table tbody tr')!;
-    expect(row.textContent).toContain('SE-TEE-BLK-L');
-    expect(row.textContent).toContain('₦30,000.00');
+    const line = el().querySelector('.line-item')!;
+    expect(line.textContent).toContain('SE-TEE-BLK-L');
+    expect(line.textContent).toContain('₦30,000.00');
     expect(kv('Total payable')).toBe('₦120,000.00');
     expect(text()).not.toContain('NaN');
   });
@@ -111,7 +115,7 @@ describe('InvoiceDetailPage', () => {
   describe('payment', () => {
     it('states the no-part-payment rule while payment is outstanding', async () => {
       await boot();
-      expect(el().querySelector('.se-banner--warning')).not.toBeNull();
+      expect(el().querySelector('.pay-banner')).not.toBeNull();
       expect(text()).toContain('full payment upfront');
       expect(text()).toContain('no part-payments');
     });
@@ -143,9 +147,7 @@ describe('InvoiceDetailPage', () => {
       await boot([invoice()], 'fail');
       button('Pay now')!.click();
       await settle();
-      expect(el().querySelector('.se-banner--danger')!.textContent).toContain(
-        'Paystack unavailable',
-      );
+      expect(el().querySelector('.pay-error')!.textContent).toContain('Paystack unavailable');
       expect(fixture.componentInstance.paying()).toBeFalse();
     });
 
@@ -160,8 +162,8 @@ describe('InvoiceDetailPage', () => {
     it('offers no payment action once settled, and names the settlement', async () => {
       await boot([paidInvoice()]);
       expect(button('Pay now')).toBeUndefined();
-      expect(button('Print')).toBeDefined();
-      expect(el().querySelector('.se-banner--warning')).toBeNull();
+      expect(button('Print invoice')).toBeDefined();
+      expect(text()).not.toContain('Awaiting 100% Upfront Settlement');
       expect(text()).toContain('Commercial tax invoice');
       expect(kv('Total settled')).toBe('₦120,000.00');
       expect(text()).toContain('via paystack');
@@ -171,7 +173,7 @@ describe('InvoiceDetailPage', () => {
   it('never offers payment on a cancelled order, and says why', async () => {
     await boot([invoice({ status: 'cancelled', paymentStatus: 'unpaid' })]);
     expect(button('Pay now')).toBeUndefined();
-    expect(el().querySelector('.se-banner--warning')).toBeNull();
+    expect(text()).not.toContain('Awaiting 100% Upfront Settlement');
     expect(text()).toContain('This order is cancelled, so nothing is payable.');
     expect(kv('Total')).toBe('₦120,000.00');
     await fixture.componentInstance.payNow(
@@ -182,17 +184,17 @@ describe('InvoiceDetailPage', () => {
 
   it('shows the empty state with a way back when the order id does not resolve', async () => {
     await boot([]);
-    expect(el().querySelector('se-empty-state')!.textContent).toContain('Invoice not found');
-    expect(el().querySelector('se-banner')).toBeNull();
+    expect(el().querySelector('.empty-state')!.textContent).toContain('Invoice not found');
+    expect(el().querySelector('.pay-banner')).toBeNull();
   });
 
   it('shows a retryable error, not the empty state, when the load fails', async () => {
     await boot('fail');
-    expect(el().querySelector('se-empty-state')).toBeNull();
-    expect(el().querySelector('.se-banner--danger')!.textContent).toContain('Try again');
+    expect(el().querySelector('.empty-state')).toBeNull();
+    expect(el().querySelector('.load-error')!.textContent).toContain('Try again');
     api.invoices.and.returnValue(of({ data: [invoice()], total: 1 }));
     fixture.componentInstance.load();
     fixture.detectChanges();
-    expect(el().querySelector('se-table')).not.toBeNull();
+    expect(el().querySelector('.line-item')).not.toBeNull();
   });
 });

@@ -11,13 +11,13 @@ describe('OverviewPage', () => {
     configurePortal();
     fixture = TestBed.createComponent(OverviewPage);
     fixture.detectChanges();
-    expect(el().querySelector('h1')!.textContent).toBe('Welcome back, Test');
-    const metrics = el().querySelector('.se-metric-grid')!.textContent!;
+    expect(el().querySelector('h1')!.textContent).toBe('Test');
+    const metrics = el().querySelector('.metrics')!.textContent!;
     expect(metrics).toContain('₦2,777,000');
     expect(metrics).toContain('91.0% margin');
     expect(metrics).toContain('1,148');
     expect(el().textContent).toContain('₦100,000');
-    expect(el().textContent).toContain('250,000 of 1,000,000');
+    expect(el().textContent).toContain('250,000 / 1,000,000');
   });
 
   it('says plainly when there is no distribution and too little history for a chart', () => {
@@ -25,7 +25,7 @@ describe('OverviewPage', () => {
     fixture = TestBed.createComponent(OverviewPage);
     fixture.detectChanges();
     expect(el().textContent).toContain('No distributions yet');
-    expect(el().querySelector('se-bar-chart')).toBeNull();
+    expect(el().querySelector('.bar')).toBeNull();
   });
 
   it('never shows a customer name, email or address', () => {

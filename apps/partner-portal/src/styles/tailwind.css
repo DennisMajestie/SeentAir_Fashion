@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tailwind runs with preflight disabled so the design-system components and
+   the earlier screen work keep their own resets. The parts of preflight the
+   Stitch screens depend on are re-applied inside the `.stitch` root that every
+   screen template wraps its content in. */
+.stitch,
+.stitch *,
+.stitch ::before,
+.stitch ::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: #e8e1d3;
+}
+.stitch blockquote,
+.stitch dl,
+.stitch dd,
+.stitch h1,
+.stitch h2,
+.stitch h3,
+.stitch h4,
+.stitch h5,
+.stitch h6,
+.stitch hr,
+.stitch figure,
+.stitch p,
+.stitch pre {
+  margin: 0;
+}
+.stitch ul,
+.stitch ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.stitch a {
+  color: inherit;
+  text-decoration: inherit;
+}
+.stitch img,
+.stitch svg,
+.stitch video,
+.stitch canvas {
+  display: block;
+  vertical-align: middle;
+}
+.stitch img,
+.stitch video {
+  max-width: 100%;
+  height: auto;
+}
+.stitch button,
+.stitch input,
+.stitch optgroup,
+.stitch select,
+.stitch textarea {
+  font-family: inherit;
+  font-size: 100%;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+}
+.stitch button,
+.stitch select {
+  text-transform: none;
+}
+.stitch button {
+  background-color: transparent;
+  background-image: none;
+  cursor: pointer;
+  -webkit-appearance: button;
+}
+.stitch input::-webkit-outer-spin-button,
+.stitch input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.stitch input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.stitch input::placeholder,
+.stitch textarea::placeholder {
+  color: #9ca3af;
+  opacity: 1;
+}
+.stitch strong {
+  font-weight: bolder;
+}
+.stitch table {
+  border-collapse: collapse;
+}
+.stitch hr {
+  height: 0;
+  color: inherit;
+  border-top-width: 1px;
+}

@@ -1,5 +1,4 @@
-﻿import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, ElementRef, QueryList, ViewChildren, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiService } from '../api.service';
@@ -8,151 +7,206 @@ import { PortalStore } from '../portal.store';
 import { ThemeService } from '../theme.service';
 
 /**
- * Screen P1, Partner sign-in + two-step hardware verification.
+ * Screen P1 (partner sign-in) + P2 (two-step hardware verification).
  * Phase 01 (identity) is live; Phase 02 (TOTP challenge) activates when the
  * API answers `requires2fa` with a challenge token (auth/2fa/verify).
- *
- * Laid out as a split card: a decorative branded half beside the form half.
- * The card follows the app's own tokens, so it tracks the live light/dark
- * toggle the top strip exposes.
  */
 @Component({
   selector: 'app-login-page',
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   template: `
-    <div class="p1-app">
-      <header class="p1-topbar">
-        <div class="p1-topstatus">
-          <span class="p1-dot" aria-hidden="true"></span>
-          <span class="material-symbols-outlined p1-shield">shield</span>
-          <span>{{ phase() === 2 ? 'Security enclave active' : 'Partner Portal Security Enclave' }}</span>
-        </div>
-        <div class="p1-topright">
-          <span class="p1-chip">{{ phase() === 2 ? 'MFA CHALLENGE' : 'EQUITY REGISTRY' }}</span>
-          <button type="button" class="p1-iconbtn" [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" (click)="theme.toggle()">
-            <span class="material-symbols-outlined">{{ theme.theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
-          </button>
-        </div>
-      </header>
-
-      <main class="p1-main">
+    <div class="stitch">
+      <div class="bg-canvas text-light-on-surface min-h-screen flex flex-col justify-between antialiased selection:bg-accent/20">
         @if (phase() === 1) {
-          <section class="p1-hero">
-            <div class="p1-heroicon"><span class="material-symbols-outlined">account_balance</span></div>
-            <h1>SEENTAIR PARTNERS</h1>
-            <p>Equity, Dividends & Manufacturing Telemetry</p>
-          </section>
-
-          <div class="p1-notice"><span class="material-symbols-outlined">verified</span><p><strong>Authorised stakeholders only:</strong> Access is restricted to registered equity partners and factory investment syndicate members.</p></div>
-
-          <section class="p1-card">
-            <div>
-              <h2>Partner Account Access</h2>
-              <p class="p1-sub">Sign in to view financial audits and distribution ledgers</p>
+          <!-- P1 · Secured Connection Top Strip -->
+          <header class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-border/70 bg-canvas/80 backdrop-blur-md sticky top-0 z-20">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+              <span class="text-[12px] font-medium tracking-tight text-light-secondary flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px] text-accent">shield</span>
+                Partner Portal Security Enclave
+              </span>
             </div>
-            <form class="p1-form" (ngSubmit)="signIn()" novalidate>
-              <label class="p1-field"><span>Investor corporate email</span>
-                <div class="p1-inputwrap"><span class="material-symbols-outlined">mail</span><input type="email" name="email" [(ngModel)]="email" required autocomplete="email" placeholder="partner@domain.com" /></div>
-              </label>
-              <label class="p1-field">
-                <div class="p1-labelrow"><span>Partner Security Key</span><button class="p1-link" type="button" (click)="forgot()">Forgot key?</button></div>
-                <div class="p1-inputwrap">
-                  <span class="material-symbols-outlined">key</span>
-                  <input [type]="showPassword() ? 'text' : 'password'" name="password" [(ngModel)]="password" required autocomplete="current-password" placeholder="Password" />
-                  <button type="button" class="p1-affix" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'" (click)="showPassword.set(!showPassword())"><span class="material-symbols-outlined">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span></button>
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full bg-canvas-tint text-light-primary border border-border">EQUITY REGISTRY</span>
+              <button type="button" aria-label="Toggle theme" class="w-8 h-8 rounded-full flex items-center justify-center bg-light-surface border border-border text-light-secondary hover:text-light-primary" (click)="theme.toggle()">
+                <span class="material-symbols-outlined text-[16px]">{{ theme.theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
+              </button>
+            </div>
+          </header>
+
+          <!-- P1 · Main Scrollable Content -->
+          <main class="flex-1 px-4 py-5 flex flex-col gap-5 max-w-[390px] mx-auto w-full">
+
+            <!-- Hero / Title -->
+            <div class="pt-2 text-center">
+              <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-light-primary text-accent shadow-sm mb-3 border border-border">
+                <span class="material-symbols-outlined text-[26px]">account_balance</span>
+              </div>
+              <h1 class="text-[24px] font-bold tracking-tight text-light-primary">SEENTAIR PARTNERS</h1>
+              <p class="text-[13px] text-light-secondary font-medium tracking-wide uppercase mt-0.5">Equity, Dividends &amp; Manufacturing Telemetry</p>
+            </div>
+
+            <!-- Alert / Notice Area -->
+            <div class="p-3.5 rounded-xl bg-canvas-tint/70 border border-border flex items-start gap-2.5">
+              <span class="material-symbols-outlined text-accent text-[18px] mt-0.5">verified</span>
+              <div class="text-[12px] leading-relaxed text-light-primary">
+                <strong class="font-semibold text-light-primary">Authorised stakeholders only:</strong> Access is restricted to registered equity partners and factory investment syndicate members.
+              </div>
+            </div>
+
+            <!-- Split Branded Partner Card -->
+            <section class="bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-4">
+              <div>
+                <h2 class="text-[18px] font-bold text-light-primary">Partner Account Access</h2>
+                <p class="text-[13px] text-light-secondary mt-0.5">Sign in to view financial audits and distribution ledgers</p>
+              </div>
+
+              <form class="flex flex-col gap-3.5" (ngSubmit)="signIn()" novalidate>
+
+                <!-- Partner Email -->
+                <label class="flex flex-col gap-1.5">
+                  <span class="text-[13px] font-semibold text-light-primary">Investor corporate email</span>
+                  <div class="relative flex items-center">
+                    <span class="absolute left-3.5 text-light-secondary material-symbols-outlined text-[18px]">mail</span>
+                    <input type="email" name="email" [(ngModel)]="email" required autocomplete="email" placeholder="partner@domain.com" class="w-full pl-10 pr-3.5 py-3 rounded-md bg-canvas/60 border border-border text-[14px] text-light-primary focus:outline-none focus:border-accent font-normal" />
+                  </div>
+                </label>
+
+                <!-- Partner Password -->
+                <label class="flex flex-col gap-1.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[13px] font-semibold text-light-primary">Partner Security Key</span>
+                    <button type="button" class="text-[12px] text-warning font-medium hover:underline" (click)="forgot()">Forgot key?</button>
+                  </div>
+                  <div class="relative flex items-center">
+                    <span class="absolute left-3.5 text-light-secondary material-symbols-outlined text-[18px]">key</span>
+                    <input [type]="showPassword() ? 'text' : 'password'" name="password" [(ngModel)]="password" required autocomplete="current-password" placeholder="Password" class="w-full pl-10 pr-10 py-3 rounded-md bg-canvas/60 border border-border text-[14px] text-light-primary font-mono focus:outline-none focus:border-accent" />
+                    <button type="button" aria-label="Toggle password visibility" class="absolute right-3.5 text-light-secondary hover:text-light-primary" (click)="showPassword.set(!showPassword())">
+                      <span class="material-symbols-outlined text-[18px]">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
+                    </button>
+                  </div>
+                </label>
+
+                <!-- Sign in CTA -->
+                <div class="pt-2">
+                  <button type="submit" [disabled]="busy()" class="w-full py-3.5 rounded-full bg-accent text-on-accent font-semibold text-[15px] flex items-center justify-center gap-2 shadow-sm hover:brightness-105 active:scale-[0.99] transition-all disabled:opacity-60">
+                    <span>{{ busy() ? 'Signing in…' : 'Proceed to 2FA Challenge' }}</span>
+                    <span class="material-symbols-outlined text-[18px]">security</span>
+                  </button>
                 </div>
-              </label>
-              <button class="p1-btn p1-btn--primary" type="submit" [disabled]="busy()">
-                <span>{{ busy() ? 'Signing inâ€¦' : 'Proceed to 2FA Challenge' }}</span>
-                <span class="material-symbols-outlined">security</span>
-              </button>
-              @if (error()) { <p class="p1-banner p1-banner--error" role="alert">{{ error() }}</p> }
-              @if (info()) { <p class="p1-banner p1-banner--info" role="status">{{ info() }}</p> }
-            </form>
-          </section>
+                @if (error()) { <p class="p-3 rounded-md bg-danger/10 border border-danger/25 text-danger text-[12px]" role="alert">{{ error() }}</p> }
+                @if (info()) { <p class="p-3 rounded-md bg-success/10 border border-success/25 text-success text-[12px]" role="status">{{ info() }}</p> }
+              </form>
+            </section>
 
-          <section class="p1-trust">
-            <div class="tile"><span class="material-symbols-outlined">query_stats</span><strong>Factory Telemetry</strong><p>Aggregated Aba line production capacity and cut volume.</p></div>
-            <div class="tile"><span class="material-symbols-outlined">pie_chart</span><strong>Equity Registry</strong><p>Real-time cap table positions and audited distributions.</p></div>
-            <div class="tile"><span class="material-symbols-outlined">payments</span><strong>Quarterly Dividends</strong><p>Calculated on audited EBITDA covenants every 90 days.</p></div>
-            <div class="tile"><span class="material-symbols-outlined">gavel</span><strong>SEC & NDA Compliance</strong><p>All financial statements governed under confidentiality covenants.</p></div>
-          </section>
+            <!-- Pre-Auth Trust & Governance Tiles (Factual, No fake live PII) -->
+            <section class="grid grid-cols-2 gap-2.5 text-[12px]">
+              <div class="bg-light-surface/80 p-3 rounded-xl border border-border">
+                <span class="material-symbols-outlined text-[18px] text-accent mb-1">query_stats</span>
+                <strong class="font-bold text-light-primary block">Factory Telemetry</strong>
+                <p class="text-[11px] text-light-secondary mt-0.5 leading-snug">Aggregated Aba line production capacity and cut volume.</p>
+              </div>
+
+              <div class="bg-light-surface/80 p-3 rounded-xl border border-border">
+                <span class="material-symbols-outlined text-[18px] text-accent mb-1">pie_chart</span>
+                <strong class="font-bold text-light-primary block">Equity Registry</strong>
+                <p class="text-[11px] text-light-secondary mt-0.5 leading-snug">Real-time cap table positions and audited distributions.</p>
+              </div>
+
+              <div class="bg-light-surface/80 p-3 rounded-xl border border-border">
+                <span class="material-symbols-outlined text-[18px] text-accent mb-1">payments</span>
+                <strong class="font-bold text-light-primary block">Quarterly Dividends</strong>
+                <p class="text-[11px] text-light-secondary mt-0.5 leading-snug">Calculated on audited EBITDA covenants every 90 days.</p>
+              </div>
+
+              <div class="bg-light-surface/80 p-3 rounded-xl border border-border">
+                <span class="material-symbols-outlined text-[18px] text-accent mb-1">gavel</span>
+                <strong class="font-bold text-light-primary block">SEC &amp; NDA Compliance</strong>
+                <p class="text-[11px] text-light-secondary mt-0.5 leading-snug">All financial statements governed under confidentiality covenants.</p>
+              </div>
+            </section>
+
+          </main>
+
+          <!-- P1 · Regulatory Strip Footer -->
+          <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-border flex items-center justify-between text-[11px] font-mono text-light-secondary">
+            <span>SEENTAIR EQUITY LEDGER</span>
+            <span>Aba, Nigeria</span>
+          </footer>
         } @else {
-          <section class="p1-hero">
-            <div class="p1-heroicon"><span class="material-symbols-outlined">phonelink_lock</span></div>
-            <h1>Security Challenge Active</h1>
-            <p>Enter the 6-digit rotating verification code from your hardware token or authenticator app.</p>
-          </section>
+          <!-- P2 · Header -->
+          <header class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-border/70 bg-canvas/80 backdrop-blur-md sticky top-0 z-20">
+            <button type="button" class="flex items-center gap-1.5 text-[13px] font-semibold text-light-secondary hover:text-light-primary" (click)="restart()">
+              <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+              Start over
+            </button>
+            <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-accent/20 text-warning font-semibold border border-accent/30">MFA CHALLENGE</span>
+          </header>
 
-          <section class="p1-card">
-            <form class="p1-form" (ngSubmit)="verify()" novalidate>
-              <label class="p1-field"><span>6-Digit Authenticator Code</span>
-                <input class="otp" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" placeholder="??????" [(ngModel)]="code" />
-              </label>
-              <div class="p1-meta"><span><span class="material-symbols-outlined">timer</span> Codes rotate every 30s</span><span>Rate-limited attempts</span></div>
-              <button class="p1-btn p1-btn--primary" type="submit" [disabled]="busy() || code.length < 6">
-                <span>{{ busy() ? 'Verifyingâ€¦' : 'Verify & Enter Portal' }}</span>
-                <span class="material-symbols-outlined">lock_open</span>
-              </button>
-              <button type="button" class="p1-link center" (click)="restart()">Use backup recovery key / start over</button>
-              @if (error()) { <p class="p1-banner p1-banner--error" role="alert">{{ error() }}</p> }
-            </form>
-          </section>
+          <!-- P2 · Content -->
+          <main class="flex-1 px-4 py-6 flex flex-col gap-5 max-w-[390px] mx-auto w-full">
 
-          <div class="p1-notice muted-note"><p>Partner telemetry access is audited under Section 14 of the Seentair Partner Operating Covenant. Session tokens expire after 30 minutes of inactivity.</p></div>
+            <div class="text-center pt-2">
+              <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-light-primary text-accent shadow-sm mb-3 border border-border">
+                <span class="material-symbols-outlined text-[28px]">phonelink_lock</span>
+              </div>
+              <h1 class="text-[22px] font-bold text-light-primary">Security Challenge Active</h1>
+              <p class="text-[13px] text-light-secondary mt-1 max-w-[280px] mx-auto">Enter the 6-digit rotating verification code from your hardware token or authenticator app.</p>
+            </div>
+
+            <!-- P2 · Verification Card -->
+            <section class="bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-4">
+
+              <!-- 6-digit Code Input Grid -->
+              <div class="flex flex-col gap-2">
+                <label class="text-[12px] font-semibold text-light-primary text-center">6-Digit Authenticator Code</label>
+                <div class="grid grid-cols-6 gap-2">
+                  @for (d of digits; track $index; let i = $index) {
+                    <input #digit type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" [value]="digits[i]" [attr.aria-label]="'Authenticator digit ' + (i + 1)" class="w-full h-13 py-3 text-center font-mono font-bold text-[20px] bg-canvas border border-accent rounded-lg text-light-primary focus:outline-none focus:ring-2 focus:ring-accent" (input)="onDigit(i, $event)" (keydown.backspace)="onBack(i)" />
+                  }
+                </div>
+              </div>
+
+              <!-- Rotating Code Timer & Rate-limit Note -->
+              <div class="flex items-center justify-between text-[11px] font-mono text-light-secondary border-t border-border pt-3">
+                <span class="flex items-center gap-1 text-accent font-semibold">
+                  <span class="material-symbols-outlined text-[15px]">timer</span>
+                  Codes rotate every 30s
+                </span>
+                <span>Rate-limited attempts</span>
+              </div>
+
+              <!-- Verify Button -->
+              <form (ngSubmit)="verify()" novalidate>
+                <button type="submit" [disabled]="busy() || code.length < 6" class="w-full py-3.5 rounded-full bg-accent text-on-accent font-semibold text-[15px] flex items-center justify-center gap-2 shadow-sm hover:brightness-105 active:scale-[0.99] transition-all disabled:opacity-60">
+                  <span>{{ busy() ? 'Verifying…' : 'Verify & Enter Portal' }}</span>
+                  <span class="material-symbols-outlined text-[18px]">lock_open</span>
+                </button>
+              </form>
+
+              <div class="text-center">
+                <button type="button" class="text-[12px] text-light-secondary hover:text-light-primary font-medium" (click)="restart()">Use backup recovery key instead</button>
+              </div>
+              @if (error()) { <p class="p-3 rounded-md bg-danger/10 border border-danger/25 text-danger text-[12px]" role="alert">{{ error() }}</p> }
+            </section>
+
+            <!-- P2 · Trust Guard Note -->
+            <div class="p-3.5 rounded-xl bg-canvas-tint/70 border border-border text-[11px] text-light-secondary text-center leading-normal">
+              Partner telemetry access is audited under Section 14 of the Seentair Partner Operating Covenant. Session tokens expire after 30 minutes of inactivity.
+            </div>
+
+          </main>
+
+          <!-- P2 · Regulatory Strip Footer -->
+          <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-border flex items-center justify-between text-[11px] font-mono text-light-secondary">
+            <span>SESSION ID: #ST-AUTH-7719</span>
+            <span>ENCRYPTED: ED25519</span>
+          </footer>
         }
-      </main>
-
-      <footer class="p1-footer">
-        @if (phase() === 2) { <span>SESSION ID: #ST-AUTH-7719</span><span>ENCRYPTED: ED25519</span> }
-        @else { <span>SEENTAIR EQUITY LEDGER</span><span>Aba, Nigeria</span> }
-      </footer>
+      </div>
     </div>
   `,
-  styles: [`
-    :host{display:block;}
-    .p1-app{min-height:100vh;background:#f7f2ea;color:#1b1916;display:flex;flex-direction:column;font-family:'Urbanist',sans-serif;}
-    .p1-topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px 12px;border-bottom:1px solid rgba(232,225,211,.7);background:rgba(247,242,234,.9);backdrop-filter:blur(10px);}
-    .p1-topstatus,.p1-topright{display:flex;align-items:center;gap:8px;} .p1-topstatus{font-size:12px;color:#7b756a;font-weight:500;}
-    .p1-shield{font-size:14px;color:#c88a12;} .p1-dot{width:8px;height:8px;border-radius:999px;background:#c88a12;box-shadow:0 0 0 4px rgba(200,138,18,.15);}
-    .p1-chip{font:600 11px/1.2 'JetBrains Mono',monospace;padding:4px 8px;border-radius:999px;border:1px solid #e8e1d3;background:#efe3c8;color:#1b1916;}
-    .p1-iconbtn{border:1px solid #e8e1d3;background:#fffdf9;color:#7b756a;border-radius:999px;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;}
-    .material-symbols-outlined{font-size:18px;line-height:1;}
-    .p1-main{flex:1;width:100%;max-width:390px;margin:0 auto;padding:20px 16px;display:flex;flex-direction:column;gap:16px;}
-    .p1-hero{text-align:center;padding-top:4px;}
-    .p1-heroicon{width:48px;height:48px;margin:0 auto 10px;border-radius:16px;display:inline-flex;align-items:center;justify-content:center;background:#1b1916;color:#c88a12;border:1px solid #e8e1d3;}
-    .p1-hero h1{margin:0;font:700 24px/1.1 Urbanist,sans-serif;letter-spacing:-.02em;}
-    .p1-hero p{margin:4px auto 0;color:#7b756a;font-size:13px;max-width:280px;}
-    .p1-notice{display:flex;gap:10px;align-items:flex-start;padding:14px;border-radius:12px;border:1px solid #e8e1d3;background:rgba(239,227,200,.7);font-size:12px;line-height:1.5;}
-    .p1-notice .material-symbols-outlined{color:#c88a12;}
-    .p1-card{background:#fffdf9;border:1px solid #e8e1d3;border-radius:12px;padding:20px;box-shadow:0 8px 24px -4px rgba(27,25,22,.06);display:flex;flex-direction:column;gap:14px;}
-    .p1-card h2{margin:0;font:700 18px/1.2 Urbanist,sans-serif;} .p1-sub{margin:2px 0 0;color:#7b756a;font-size:13px;}
-    .p1-form{display:flex;flex-direction:column;gap:12px;}
-    .p1-field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#1b1916;}
-    .p1-labelrow{display:flex;justify-content:space-between;align-items:center;}
-    .p1-inputwrap{position:relative;display:flex;align-items:center;}
-    .p1-inputwrap>.material-symbols-outlined{position:absolute;left:12px;color:#7b756a;}
-    .p1-inputwrap input{padding-left:38px;padding-right:40px;}
-    .p1-field input{width:100%;border:1px solid #e8e1d3;background:rgba(247,242,234,.6);color:#1b1916;border-radius:10px;padding:11px 14px;font:400 14px/1.3 Urbanist,sans-serif;min-height:44px;}
-    .p1-field input:focus{outline:none;border-color:#c88a12;background:#fffdf9;}
-    .p1-field input.otp{text-align:center;letter-spacing:.25em;font:700 20px/1 'JetBrains Mono',monospace;padding:12px;}
-    .p1-affix{position:absolute;right:8px;border:0;background:none;color:#7b756a;padding:6px;}
-    .p1-link{border:0;background:none;color:#93600a;font:500 12px/1 Urbanist,sans-serif;padding:0;} .p1-link.center{text-align:center;}
-    .p1-btn{width:100%;min-height:48px;border-radius:999px;border:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 15px/1 Urbanist,sans-serif;padding:12px 16px;}
-    .p1-btn--primary{background:#c88a12;color:#1a1405;} .p1-btn:disabled{opacity:.6;}
-    .p1-banner{margin:0;padding:10px 12px;border-radius:10px;font-size:12px;}
-    .p1-banner--error{background:rgba(191,58,45,.1);color:#8f2b21;border:1px solid rgba(191,58,45,.25);}
-    .p1-banner--info{background:rgba(35,128,77,.1);color:#1d6840;border:1px solid rgba(35,128,77,.2);}
-    .p1-meta{display:flex;justify-content:space-between;gap:8px;font:500 11px/1.2 'JetBrains Mono',monospace;color:#7b756a;border-top:1px solid #e8e1d3;padding-top:10px;}
-    .p1-meta span{display:inline-flex;align-items:center;gap:4px;} .p1-meta .material-symbols-outlined{font-size:15px;color:#c88a12;}
-    .p1-trust{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-    .tile{background:rgba(255,253,249,.85);border:1px solid #e8e1d3;border-radius:12px;padding:12px;}
-    .tile .material-symbols-outlined{color:#c88a12;margin-bottom:4px;}
-    .tile strong{display:block;font-size:12px;color:#1b1916;margin-bottom:2px;} .tile p{margin:0;font-size:11px;color:#7b756a;line-height:1.4;}
-    .muted-note{background:rgba(239,227,200,.5);} .muted-note p{margin:0;color:#7b756a;}
-    .p1-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 20px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid #e8e1d3;background:rgba(239,227,200,.6);color:#7b756a;font:500 11px/1.2 'JetBrains Mono',monospace;}
-    @media (max-width:360px){.p1-trust{grid-template-columns:1fr;}}
-  `],
 })
 export class LoginPage {
   private readonly api = inject(ApiService);
@@ -168,26 +222,28 @@ export class LoginPage {
   readonly showPassword = signal(false);
   private challengeToken: string | null = null;
 
-  /**
-   * Desktop-only gate for the branded half. This app has no shared
-   * ViewportService, so it is declared here rather than pulled in from another
-   * app: the three frontends have independent node_modules and sharing a file
-   * across them would mean a new package for one boolean.
-   */
-  readonly isDesktop = signal(
-    typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches,
-  );
+  /** One cell per code digit; the joined string is the code sent to the API. */
+  readonly digits = ['', '', '', '', '', ''];
+
+  @ViewChildren('digit') cells?: QueryList<ElementRef<HTMLInputElement>>;
+
+  get code(): string {
+    return this.digits.join('');
+  }
 
   email = '';
   password = '';
-  code = '';
 
-  constructor() {
-    if (typeof window === 'undefined') return;
-    const mql = window.matchMedia('(min-width: 900px)');
-    // addEventListener rather than addListener: the deprecated signature is the
-    // one Safari and older Chrome reject.
-    mql.addEventListener('change', (e) => this.isDesktop.set(e.matches));
+  onDigit(i: number, ev: Event): void {
+    const input = ev.target as HTMLInputElement;
+    const kept = input.value.replace(/\D/g, '').slice(-1);
+    this.digits[i] = kept;
+    input.value = kept;
+    if (kept && i < 5) this.cells?.get(i + 1)?.nativeElement.focus();
+  }
+
+  onBack(i: number): void {
+    if (!this.digits[i] && i > 0) this.cells?.get(i - 1)?.nativeElement.focus();
   }
 
   signIn(): void {
@@ -232,7 +288,7 @@ export class LoginPage {
   restart(): void {
     this.phase.set(1);
     this.challengeToken = null;
-    this.code = '';
+    this.digits.fill('');
     this.error.set(null);
     this.info.set(null);
   }

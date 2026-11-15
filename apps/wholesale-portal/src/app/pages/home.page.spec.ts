@@ -102,34 +102,32 @@ describe('HomePage', () => {
   it('names the buyer, their tier and the batch minimum, and lists recent orders', () => {
     mount(of({ data: [invoice('order_received'), invoice('shipped')] }));
     expect(el().querySelector('h1')!.textContent).toBe('Test Buyer');
-    expect(el().querySelector('.se-page__description')!.textContent).toContain('Tier B');
-    expect(el().querySelector('.se-page__description')!.textContent).toContain('20-unit minimum');
-    const rows = el().querySelectorAll('se-table tbody tr');
+    expect(el().querySelector('.ws-tier')!.textContent).toContain('Tier B');
+    expect(el().querySelector('.ws-tier')!.textContent).toContain('20-unit minimum');
+    const rows = el().querySelectorAll('.order-row');
     expect(rows.length).toBe(2);
     expect(rows[0].textContent).toContain('₦120,000');
-    expect(rows[0].textContent).toContain('Order received');
-    expect(el().querySelector('.se-banner--warning')).toBeNull();
+    expect(rows[0].textContent).toContain('Paid');
+    expect(el().querySelector('.pay-alert')).toBeNull();
   });
 
   it('demands action when an order is unpaid, and offers the invoice', () => {
     mount(of({ data: [invoice('order_received', 'unpaid'), invoice('delivered')] }));
-    const banner = el().querySelector('.se-banner--warning')!;
-    expect(banner.textContent).toContain('1 of 2 orders awaiting payment');
-    expect(banner.textContent).toContain('View invoices');
+    const alert = el().querySelector('.pay-alert')!;
+    expect(alert.textContent).toContain('1 of 2 orders awaiting payment');
+    expect(alert.textContent).toContain('View');
   });
 
   it('shows a failed invoice fetch as an error, never as "no orders yet"', () => {
     mount(throwError(() => ({ error: { message: 'Database is unreachable.' } })));
-    expect(el().querySelector('.se-banner--danger')!.textContent).toContain(
-      'Database is unreachable.',
-    );
+    expect(el().querySelector('.load-error')!.textContent).toContain('Database is unreachable.');
     expect(el().textContent).not.toContain('No orders yet');
     expect(el().querySelector('h1')!.textContent).toBe('Test Buyer');
   });
 
   it('lights the track up to the furthest live stage', () => {
     mount(of({ data: [invoice('shipped'), invoice('cancelled')] }));
-    const on = el().querySelectorAll('.track__step--on');
+    const on = el().querySelectorAll('.track-on');
     expect(on.length).toBe(3);
     expect(el().querySelector('.track')!.getAttribute('aria-valuenow')).toBe('3');
   });

@@ -1,3 +1,4 @@
+import { Provider } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -43,9 +44,9 @@ export function dashboard(over: Partial<PartnerDashboard> = {}): PartnerDashboar
 }
 
 /** Puts a loaded dashboard in the store without any HTTP. */
-export function configurePortal(dash: PartnerDashboard | null = dashboard()): void {
+export function configurePortal(dash: PartnerDashboard | null = dashboard(), extraProviders: Provider[] = []): void {
   TestBed.configureTestingModule({
-    providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), ...extraProviders],
   });
   TestBed.inject(SeCurrencyService).config.set({
     currencyCode: 'NGN',

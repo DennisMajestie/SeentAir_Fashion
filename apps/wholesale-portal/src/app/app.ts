@@ -1,467 +1,283 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterOutlet } from '@angular/router';
-import {
-  SeButtonDirective,
-  SeConfirmService,
-  SeIconComponent,
-  SeNavGroup,
-  SeShellComponent,
-  SeToastService,
-} from '@seentair/ui';
 import { ApiService } from './api.service';
-import { CartService } from './cart.service';
 import { ThemeService } from './theme.service';
 
 /**
- * Wholesale portal shell. Signed in, the buyer gets the shared shell with one
- * flat list of destinations and the bulk cart's unit count on its item. The
- * sign-in / apply screen below it is the approved W1 screen and keeps its own
- * styles.
+ * Wholesale portal root. Unauthenticated: W1 Sign In / Apply / Apply Success,
+ * carried verbatim from the Stitch screens (project 11876445789761593512) with
+ * the screen's own Tailwind tokens. Authenticated: the route outlet — every
+ * screen renders its own Stitch-verbatim mobile layout and nav.
  */
 @Component({
   selector: 'app-root',
-  imports: [FormsModule, RouterOutlet, SeButtonDirective, SeIconComponent, SeShellComponent],
+  imports: [FormsModule, RouterOutlet],
   template: `
     @if (api.isLoggedIn) {
-      <se-shell
-        appName="Seentair Wholesale"
-        [nav]="nav()"
-        [user]="shellUser()"
-        [(collapsed)]="collapsed"
-        (signOut)="logout()"
-      >
-        <button
-          seButton
-          variant="ghost"
-          iconOnly
-          seShellActions
-          type="button"
-          [attr.aria-label]="
-            theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
-          "
-          (click)="theme.toggle()"
-        >
-          <se-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" />
-        </button>
-        <router-outlet />
-      </se-shell>
+      <router-outlet />
     } @else {
-      <div class="w1-app" [attr.data-mode]="mode()">
-        <header class="w1-topbar">
-          @if (mode() === 'apply' || mode() === 'success') {
-            <button type="button" class="w1-toplink" (click)="mode() === 'success' ? showApplyForm() : showSignInForm()">
-              <span class="material-symbols-outlined">arrow_back</span>
-              {{ mode() === 'success' ? 'Back' : 'Sign in' }}
-            </button>
-          } @else {
-            <div class="w1-topstatus">
-              <span class="w1-dot" aria-hidden="true"></span>
-              <span class="material-symbols-outlined w1-lock">lock</span>
-              <span>256-bit TLS Aba Hub Verified</span>
-            </div>
-          }
-          <div class="w1-topright">
-            <span class="w1-chip">{{ mode() === 'apply' ? 'APPLICATION DESK' : mode() === 'success' ? 'RECEIVED' : 'PORTAL 01' }}</span>
-            @if (mode() !== 'success') {
-              <button
-                type="button"
-                class="w1-iconbtn"
-                [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-                (click)="theme.toggle()"
-              >
-                <span class="material-symbols-outlined">{{ theme.theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
-              </button>
-            }
-          </div>
-        </header>
+      <div class="stitch">
+        @if (mode() === 'signin') {
+          <div class="bg-canvas text-light-on-surface min-h-screen flex flex-col justify-between antialiased selection:bg-accent/20">
+            <header class="ws-topbar px-5 pt-4 pb-3 flex items-center justify-between border-b border-border/70 bg-canvas/80 backdrop-blur-md sticky top-0 z-20">
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-success animate-pulse"></div>
+                <span class="text-[12px] font-medium tracking-tight text-light-secondary flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[14px] text-success">lock</span>
+                  256-bit TLS Aba Hub Verified
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full bg-canvas-tint text-light-primary border border-border">Portal 01</span>
+                <button type="button" aria-label="Toggle theme" class="w-8 h-8 rounded-full flex items-center justify-center bg-light-surface border border-border text-light-secondary hover:text-light-primary" (click)="theme.toggle()">
+                  <span class="material-symbols-outlined text-[16px]">{{ theme.theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
+                </button>
+              </div>
+            </header>
 
-        <main class="w1-main">
-          @if (mode() === 'signin') {
-            <section class="w1-hero">
-              <div class="w1-heroicon"><span class="material-symbols-outlined">precision_manufacturing</span></div>
-              <h1>SEENTAIR</h1>
-              <p>Aba B2B Wholesale Portal</p>
-            </section>
-
-            <div class="w1-notice">
-              <span class="material-symbols-outlined">verified_user</span>
-              <p><strong>Authorised access only.</strong> Direct manufacturer pricing and Aba line batch allocations are reserved for verified wholesale buyers.</p>
-            </div>
-
-            <section class="w1-card">
-              <div>
-                <h2>Sign in to your desk</h2>
-                <p class="w1-sub">Access wholesale catalog, bulk matrices &amp; orders</p>
+            <main class="flex-1 px-4 py-5 flex flex-col gap-5 max-w-[390px] mx-auto w-full">
+              <div class="pt-2 text-center">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-light-primary text-accent shadow-sm mb-3 border border-border">
+                  <span class="material-symbols-outlined text-[26px]">precision_manufacturing</span>
+                </div>
+                <h1 class="text-[26px] font-bold tracking-tight text-light-primary">SEENTAIR</h1>
+                <p class="text-[13px] text-light-secondary font-medium tracking-wide uppercase mt-0.5">Aba B2B Wholesale Portal</p>
               </div>
 
-              <form class="w1-form" (ngSubmit)="signIn()" novalidate>
-                <label class="w1-field">
-                  <span>Registered corporate email</span>
-                  <div class="w1-inputwrap">
-                    <span class="material-symbols-outlined">business</span>
-                    <input
-                      type="email"
-                      [(ngModel)]="email"
-                      name="email"
-                      autocomplete="email"
-                      inputmode="email"
-                      placeholder="buyer@domain.com"
-                      [attr.aria-invalid]="touched() && !emailValid() ? 'true' : null"
-                    />
-                  </div>
-                  @if (touched() && !emailValid()) { <p class="w1-error">Enter a valid email address.</p> }
-                </label>
+              <div class="p-3.5 rounded-xl bg-canvas-tint/70 border border-border flex items-start gap-2.5">
+                <span class="material-symbols-outlined text-warning text-[18px] mt-0.5">verified_user</span>
+                <div class="text-[12px] leading-relaxed text-light-primary">
+                  <strong class="font-semibold text-light-primary">Authorised access only.</strong> Direct manufacturer pricing and Aba line batch allocations are reserved for verified wholesale buyers.
+                </div>
+              </div>
 
-                <label class="w1-field">
-                  <div class="w1-labelrow">
-                    <span>Password</span>
-                    <button type="button" class="w1-link" (click)="forgot()">Forgot password?</button>
-                  </div>
-                  <div class="w1-inputwrap">
-                    <span class="material-symbols-outlined">lock</span>
-                    <input
-                      [type]="showPassword() ? 'text' : 'password'"
-                      [(ngModel)]="password"
-                      name="password"
-                      autocomplete="current-password"
-                      placeholder="••••••••••••"
-                    />
-                    <button type="button" class="w1-affix" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'" (click)="showPassword.set(!showPassword())">
-                      <span class="material-symbols-outlined">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
+              <section class="ws-signin-card bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-4">
+                <div>
+                  <h2 class="text-[18px] font-bold text-light-primary">Sign in to your desk</h2>
+                  <p class="text-[13px] text-light-secondary mt-0.5">Access wholesale catalog, bulk matrices &amp; orders</p>
+                </div>
+
+                <form class="flex flex-col gap-3.5" (ngSubmit)="signIn()" novalidate>
+                  <label class="flex flex-col gap-1.5">
+                    <span class="text-[13px] font-semibold text-light-primary">Registered corporate email</span>
+                    <div class="relative flex items-center">
+                      <span class="absolute left-3.5 text-light-secondary material-symbols-outlined text-[18px]">business</span>
+                      <input id="ws-email" type="email" [(ngModel)]="email" name="email" autocomplete="email" inputmode="email" placeholder="buyer@domain.com" class="w-full pl-10 pr-3.5 py-3 rounded-md bg-canvas/60 border border-border text-[14px] text-light-primary focus:outline-none focus:border-accent focus:bg-light-surface font-normal" />
+                    </div>
+                    @if (touched() && !emailValid()) { <p class="auth-error text-[12px] text-danger">Enter a valid email address.</p> }
+                  </label>
+
+                  <label class="flex flex-col gap-1.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[13px] font-semibold text-light-primary">Password</span>
+                      <a href="#" class="text-[12px] text-warning font-medium hover:underline" (click)="$event.preventDefault(); forgot()">Forgot password?</a>
+                    </div>
+                    <div class="relative flex items-center">
+                      <span class="absolute left-3.5 text-light-secondary material-symbols-outlined text-[18px]">lock</span>
+                      <input id="ws-password" [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" name="password" autocomplete="current-password" placeholder="••••••••••••" class="w-full pl-10 pr-10 py-3 rounded-md bg-canvas/60 border border-border text-[14px] text-light-primary focus:outline-none focus:border-accent focus:bg-light-surface font-mono" />
+                      <button type="button" aria-label="Toggle password visibility" class="absolute right-3.5 text-light-secondary hover:text-light-primary" (click)="showPassword.set(!showPassword())">
+                        <span class="material-symbols-outlined text-[18px]">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
+                      </button>
+                    </div>
+                    @if (touched() && !password) { <p class="auth-error text-[12px] text-danger">Enter your password.</p> }
+                  </label>
+
+                  <div class="flex flex-col gap-2.5 pt-2">
+                    <button type="submit" [disabled]="busy()" class="w-full py-3.5 rounded-full bg-accent text-on-accent font-semibold text-[15px] flex items-center justify-center gap-2 shadow-sm hover:brightness-105 active:scale-[0.99] transition-all disabled:opacity-60">
+                      <span>{{ busy() ? 'Signing in…' : 'Sign in to Wholesale' }}</span>
+                      <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    </button>
+                    <button id="apply-cta" type="button" (click)="showApplyForm()" class="w-full py-3 rounded-full bg-light-surface border border-border text-light-primary font-semibold text-[14px] text-center hover:bg-canvas-tint/40 active:scale-[0.99] transition-all">
+                      Apply for Wholesale Access
                     </button>
                   </div>
-                  @if (touched() && !password) { <p class="w1-error">Enter your password.</p> }
-                </label>
+                  @if (error()) { <p class="auth-error text-[12px] text-danger" role="alert">{{ error() }}</p> }
+                  @if (info()) { <p class="auth-info text-[12px] text-success" role="status">{{ info() }}</p> }
+                </form>
+              </section>
 
-                <div class="w1-actions">
-                  <button class="w1-btn w1-btn--primary" type="submit" [disabled]="busy()">
-                    <span>{{ busy() ? 'Signing in…' : 'Sign in to Wholesale' }}</span>
-                    <span class="material-symbols-outlined">arrow_forward</span>
-                  </button>
-                  <button class="w1-btn w1-btn--secondary" type="button" (click)="showApplyForm()">Apply for Wholesale Access</button>
+              <section class="bg-light-surface/70 rounded-xl p-4 border border-border flex flex-col gap-3">
+                <div class="flex items-center justify-between text-[12px] font-semibold text-light-primary">
+                  <span class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[16px] text-accent">fact_check</span>
+                    Aba Factory Criteria
+                  </span>
+                  <span class="text-light-secondary font-mono text-[11px]">MOQ 20 / SILHOUETTE</span>
                 </div>
+                <div class="grid grid-cols-2 gap-2 text-[12px]">
+                  <div class="p-2.5 rounded-lg bg-canvas border border-border/80">
+                    <span class="text-light-secondary text-[10px] uppercase font-mono block">Volume Rate</span>
+                    <span class="font-bold text-light-primary">₦8,500 – ₦16,000</span>
+                    <span class="text-[10px] text-light-secondary block">Ex-factory Aba unit cost</span>
+                  </div>
+                  <div class="p-2.5 rounded-lg bg-canvas border border-border/80">
+                    <span class="text-light-secondary text-[10px] uppercase font-mono block">Verification</span>
+                    <span class="font-bold text-light-primary">CAC / Tin Required</span>
+                    <span class="text-[10px] text-light-secondary block">24hr Desk appraisal</span>
+                  </div>
+                </div>
+                <p class="text-[11px] text-light-secondary leading-normal">
+                  Freight handled via GIG Logistics &amp; Red Star Aba Central Hub. 100% upfront invoice settlement prior to cut-and-sew scheduling.
+                </p>
+              </section>
+            </main>
 
-                @if (error()) { <p class="w1-banner w1-banner--error" role="alert">{{ error() }}</p> }
-                @if (info()) { <p class="w1-banner w1-banner--info" role="status">{{ info() }}</p> }
-              </form>
-            </section>
-
-            <section class="w1-criteria">
-              <div class="w1-criteria-head">
-                <span><span class="material-symbols-outlined">fact_check</span> Aba Factory Criteria</span>
-                <span class="w1-mono">MOQ 20 / SILHOUETTE</span>
+            <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-border flex items-center justify-between text-[11px] font-mono text-light-secondary">
+              <div class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-success"></span>
+                <span>ABA SEWING MILL ACTIVE</span>
               </div>
-              <div class="w1-criteria-grid">
-                <div class="w1-mini">
-                  <span class="w1-mono">VOLUME RATE</span>
-                  <strong>₦8,500 – ₦16,000</strong>
-                  <small>Ex-factory Aba unit cost</small>
-                </div>
-                <div class="w1-mini">
-                  <span class="w1-mono">VERIFICATION</span>
-                  <strong>CAC / Tin Required</strong>
-                  <small>24hr Desk appraisal</small>
-                </div>
-              </div>
-              <p>Freight handled via GIG Logistics &amp; Red Star Aba Central Hub. 100% upfront invoice settlement prior to cut-and-sew scheduling.</p>
-            </section>
-          } @else if (mode() === 'apply' && !applyDone()) {
-            <section class="w1-intro">
-              <span class="w1-pill">WHOLESALE ONBOARDING</span>
-              <h1>Apply for Wholesale Access</h1>
-              <p>Verified bulk buyers receive tier discounts &amp; dedicated batch scheduling at Aba Mills.</p>
-            </section>
+              <span>SEENTAIR IND. v2.4</span>
+            </footer>
+          </div>
+        } @else if (mode() === 'apply') {
+          <div class="bg-canvas text-light-on-surface min-h-screen flex flex-col justify-between antialiased selection:bg-accent/20">
+            <header class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-border/70 bg-canvas/80 backdrop-blur-md sticky top-0 z-20">
+              <button id="apply-back" type="button" class="flex items-center gap-1.5 text-[13px] font-semibold text-light-secondary hover:text-light-primary" (click)="showSignInForm()">
+                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                Sign in
+              </button>
+              <span class="text-[12px] font-mono text-light-secondary">APPLICATION DESK</span>
+            </header>
 
-            <section class="w1-card">
-              <form class="w1-form" (ngSubmit)="submitApplication()" novalidate>
-                <label class="w1-field"><span>Full contact name</span><input name="apName" autocomplete="name" [(ngModel)]="apply.name" placeholder="e.g. Chinedu Okafor" /></label>
-                <label class="w1-field"><span>Business / Entity name</span><input name="apBusiness" autocomplete="organization" [(ngModel)]="apply.businessName" placeholder="Registered CAC brand name" /></label>
-                <div class="w1-grid2">
-                  <label class="w1-field"><span>Corporate email</span><input name="apEmail" type="email" inputmode="email" autocomplete="email" [(ngModel)]="email" placeholder="buyer@domain.com" /></label>
-                  <label class="w1-field"><span>Phone (WhatsApp)</span><input name="apPhone" type="tel" inputmode="tel" autocomplete="tel" [(ngModel)]="apply.phone" placeholder="+234 803 000 0000" /></label>
-                </div>
-                <label class="w1-field"><span>Create portal password</span><input name="apPassword" [type]="showPassword() ? 'text' : 'password'" autocomplete="new-password" [(ngModel)]="password" placeholder="At least 8 characters" /></label>
-                <label class="w1-field">
-                  <span>Buyer type</span>
-                  <select name="apType" [(ngModel)]="apply.buyerType">
-                    @for (t of buyerTypes; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
-                  </select>
-                </label>
-                <div class="w1-grid2">
-                  <label class="w1-field"><span>City</span><input name="apCity" autocomplete="address-level2" [(ngModel)]="apply.city" placeholder="Aba" /></label>
-                  <label class="w1-field">
-                    <span>State</span>
-                    <select name="apState" [(ngModel)]="apply.state">
-                      <option value="">Select…</option>
-                      @for (s of states; track s) { <option [value]="s">{{ s }}</option> }
+            <main class="flex-1 px-4 py-5 flex flex-col gap-4 max-w-[390px] mx-auto w-full">
+              <div>
+                <div class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent/15 text-warning text-[11px] font-mono font-semibold mb-1">WHOLESALE ONBOARDING</div>
+                <h1 class="text-[22px] font-bold text-light-primary">Apply for Wholesale Access</h1>
+                <p class="text-[13px] text-light-secondary mt-0.5">Verified bulk buyers receive tier discounts &amp; dedicated batch scheduling at Aba Mills.</p>
+              </div>
+
+              <section class="bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-3.5">
+                <form class="flex flex-col gap-3" (ngSubmit)="submitApplication()" novalidate>
+                  <label class="flex flex-col gap-1">
+                    <span class="text-[12px] font-semibold text-light-primary">Full contact name</span>
+                    <input type="text" required name="apName" autocomplete="name" [(ngModel)]="apply.name" placeholder="e.g. Chinedu Okafor" class="px-3.5 py-2.5 rounded-md bg-canvas/60 border border-border text-[13px] text-light-primary focus:outline-none focus:border-accent" />
+                  </label>
+                  <label class="flex flex-col gap-1">
+                    <span class="text-[12px] font-semibold text-light-primary">Business / Entity name</span>
+                    <input id="ap-business" type="text" required name="apBusiness" autocomplete="organization" [(ngModel)]="apply.businessName" placeholder="Registered CAC brand name" class="px-3.5 py-2.5 rounded-md bg-canvas/60 border border-border text-[13px] text-light-primary focus:outline-none focus:border-accent" />
+                  </label>
+                  <div class="grid grid-cols-2 gap-2.5">
+                    <label class="flex flex-col gap-1">
+                      <span class="text-[12px] font-semibold text-light-primary">Corporate email</span>
+                      <input type="email" required name="apEmail" inputmode="email" autocomplete="email" [(ngModel)]="email" placeholder="buyer@domain.com" class="px-3.5 py-2.5 rounded-md bg-canvas/60 border border-border text-[13px] text-light-primary focus:outline-none focus:border-accent" />
+                    </label>
+                    <label class="flex flex-col gap-1">
+                      <span class="text-[12px] font-semibold text-light-primary">Phone (WhatsApp)</span>
+                      <input type="tel" name="apPhone" inputmode="tel" autocomplete="tel" [(ngModel)]="apply.phone" placeholder="+234 803 000 0000" class="px-3.5 py-2.5 rounded-md bg-canvas/60 border border-border text-[13px] text-light-primary focus:outline-none focus:border-accent" />
+                    </label>
+                  </div>
+                  <label class="flex flex-col gap-1">
+                    <span class="text-[12px] font-semibold text-light-primary">Create portal password</span>
+                    <input id="ap-password" [type]="showPassword() ? 'text' : 'password'" required name="apPassword" autocomplete="new-password" [(ngModel)]="password" class="px-3.5 py-2.5 rounded-md bg-canvas/60 border border-border text-[13px] text-light-primary font-mono focus:outline-none focus:border-accent" />
+                  </label>
+                  <label class="flex flex-col gap-1">
+                    <span class="text-[12px] font-semibold text-light-primary">Buyer type</span>
+                    <select name="apType" [(ngModel)]="apply.buyerType" class="px-3.5 py-2.5 rounded-md bg-canvas/60 border border-border text-[13px] text-light-primary focus:outline-none focus:border-accent">
+                      @for (t of buyerTypes; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
                     </select>
                   </label>
+                  <div class="grid grid-cols-2 gap-2.5">
+                    <label class="flex flex-col gap-1">
+                      <span class="text-[12px] font-semibold text-light-primary">City</span>
+                      <input type="text" required name="apCity" autocomplete="address-level2" [(ngModel)]="apply.city" class="px-3.5 py-2.5 rounded-md bg-canvas/60 border border-border text-[13px] text-light-primary focus:outline-none focus:border-accent" />
+                    </label>
+                    <label class="flex flex-col gap-1">
+                      <span class="text-[12px] font-semibold text-light-primary">State</span>
+                      <input type="text" required name="apState" [(ngModel)]="apply.state" class="px-3.5 py-2.5 rounded-md bg-canvas/60 border border-border text-[13px] text-light-primary focus:outline-none focus:border-accent" />
+                    </label>
+                  </div>
+                  <label class="flex flex-col gap-1">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[12px] font-semibold text-light-primary">Opening order estimate (Units)</span>
+                      <span class="text-[11px] text-warning font-medium">Min 20 units/silhouette</span>
+                    </div>
+                    <input type="number" min="20" step="10" name="apVolume" inputmode="numeric" [(ngModel)]="apply.openingVolume" class="px-3.5 py-2.5 rounded-md bg-canvas/60 border border-border text-[13px] text-light-primary font-mono focus:outline-none focus:border-accent" />
+                  </label>
+                  <div class="pt-2">
+                    <button type="submit" [disabled]="applyBusy()" class="w-full py-3.5 rounded-full bg-accent text-on-accent font-semibold text-[15px] flex items-center justify-center gap-2 shadow-sm hover:brightness-105 active:scale-[0.99] transition-all disabled:opacity-60">
+                      <span>{{ applyBusy() ? 'Submitting…' : 'Submit Application' }}</span>
+                      <span class="material-symbols-outlined text-[18px]">send</span>
+                    </button>
+                  </div>
+                  @if (error()) { <p class="auth-error text-[12px] text-danger" role="alert">{{ error() }}</p> }
+                  @if (info()) { <p class="auth-info text-[12px] text-success" role="status">{{ info() }}</p> }
+                </form>
+              </section>
+
+              <div class="text-[11px] text-light-secondary text-center leading-relaxed">
+                By applying, you agree to Seentair B2B wholesale terms: 100% invoice settlement prior to cut-and-sew, verified commercial dispatch, and factory defect exchange window.
+              </div>
+            </main>
+
+            <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-border flex items-center justify-between text-[11px] font-mono text-light-secondary">
+              <span>SEENTAIR ABA ONBOARDING</span>
+              <span>VETTING: 24H SLA</span>
+            </footer>
+          </div>
+        } @else {
+          <div class="bg-canvas text-light-on-surface min-h-screen flex flex-col justify-between antialiased selection:bg-accent/20">
+            <header class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-border/70 bg-canvas/80 backdrop-blur-md sticky top-0 z-20">
+              <div class="flex items-center gap-1.5 text-[12px] font-mono text-light-secondary">
+                <span class="w-2 h-2 rounded-full bg-success"></span>
+                APP-REF: {{ appRef() }}
+              </div>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-success/15 text-success border border-success/30 font-semibold">RECEIVED</span>
+            </header>
+
+            <main class="flex-1 px-4 py-6 flex flex-col gap-5 max-w-[390px] mx-auto w-full">
+              <div class="text-center pt-2">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-success/15 text-success border border-success/30 mb-3">
+                  <span class="material-symbols-outlined text-[32px]">task_alt</span>
                 </div>
-                <label class="w1-field">
-                  <div class="w1-labelrow"><span>Opening order estimate (Units)</span><span class="w1-accent">Min 20 units/silhouette</span></div>
-                  <input name="apVolume" type="number" inputmode="numeric" min="1" step="1" [(ngModel)]="apply.openingVolume" placeholder="20" />
-                </label>
+                <h1 class="text-[22px] font-bold text-light-primary">Application Received</h1>
+                <p class="text-[13px] text-light-secondary mt-1">Our Aba wholesale desk vets all CAC credentials and commercial references within <strong>24 operational hours</strong>.</p>
+              </div>
 
-                <button class="w1-btn w1-btn--primary" type="submit" [disabled]="applyBusy()">
-                  <span>{{ applyBusy() ? 'Submitting…' : 'Submit Application' }}</span>
-                  <span class="material-symbols-outlined">send</span>
+              <section class="bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-4">
+                <div class="flex items-center justify-between border-b border-border pb-3">
+                  <span class="text-[12px] font-semibold text-light-secondary uppercase tracking-wider">Submitted Details</span>
+                  <span class="text-[11px] font-mono text-light-secondary">{{ submittedAt() ?? 'Pending review' }}</span>
+                </div>
+                <div class="flex flex-col gap-2.5 text-[13px]">
+                  <div class="flex justify-between items-center py-1 border-b border-border/50"><span class="text-light-secondary">Business</span><span class="font-semibold text-light-primary">{{ apply.businessName || '—' }}</span></div>
+                  <div class="flex justify-between items-center py-1 border-b border-border/50"><span class="text-light-secondary">Contact</span><span class="font-semibold text-light-primary">{{ apply.name || '—' }}</span></div>
+                  <div class="flex justify-between items-center py-1 border-b border-border/50"><span class="text-light-secondary">Email</span><span class="font-mono text-[12px] text-light-primary">{{ applyDone() || email }}</span></div>
+                  <div class="flex justify-between items-center py-1 border-b border-border/50"><span class="text-light-secondary">Hub Destination</span><span class="font-semibold text-light-primary">{{ apply.city || '—' }}, {{ apply.state || '—' }}</span></div>
+                  <div class="flex justify-between items-center py-1"><span class="text-light-secondary">Opening Batch</span><span class="font-mono font-bold text-accent">{{ apply.openingVolume || '—' }} Units (Estimated)</span></div>
+                </div>
+                <div class="p-3 rounded-lg bg-canvas-tint/70 border border-border text-[12px] text-light-primary leading-normal flex items-start gap-2">
+                  <span class="material-symbols-outlined text-[18px] text-warning mt-0.5">mail</span>
+                  <span>A temporary activation link will be delivered to your corporate inbox once vetting completes.</span>
+                </div>
+              </section>
+
+              <div class="flex flex-col gap-2.5">
+                <button type="button" (click)="showSignInForm()" class="w-full py-3.5 rounded-full bg-accent text-on-accent font-semibold text-[15px] flex items-center justify-center gap-2 shadow-sm hover:brightness-105 active:scale-[0.99] transition-all">
+                  <span>Preview Wholesale Dashboard</span>
+                  <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </button>
-
-                @if (error()) { <p class="w1-banner w1-banner--error" role="alert">{{ error() }}</p> }
-              </form>
-            </section>
-            <p class="w1-terms">By applying, you agree to Seentair B2B wholesale terms: 100% invoice settlement prior to cut-and-sew, verified commercial dispatch, and factory defect exchange window.</p>
-          } @else {
-            <section class="w1-success-hero">
-              <div class="w1-success-icon"><span class="material-symbols-outlined">task_alt</span></div>
-              <h1>Application Received</h1>
-              <p>Our Aba wholesale desk vets all CAC credentials and commercial references within <strong>24 operational hours</strong>.</p>
-            </section>
-
-            <section class="w1-card w1-receipt">
-              <div class="w1-receipt-head">
-                <span>SUBMITTED DETAILS</span>
-                <span class="w1-mono">PENDING REVIEW</span>
+                <button type="button" (click)="showSignInForm()" class="w-full py-3 rounded-full bg-light-surface border border-border text-light-primary font-semibold text-[14px] text-center hover:bg-canvas-tint/40 transition-all">Back to Sign In</button>
               </div>
-              <dl class="w1-kv">
-                <div><dt>Business</dt><dd>{{ apply.businessName || '—' }}</dd></div>
-                <div><dt>Contact</dt><dd>{{ apply.name || '—' }}</dd></div>
-                <div><dt>Email</dt><dd class="w1-mono">{{ applyDone() || email }}</dd></div>
-                <div><dt>Hub Destination</dt><dd>{{ apply.city || '—' }}, {{ apply.state || '—' }}</dd></div>
-                <div><dt>Opening Batch</dt><dd class="w1-accent">{{ apply.openingVolume || '—' }} Units (Estimated)</dd></div>
-              </dl>
-              <div class="w1-inline-note">
-                <span class="material-symbols-outlined">mail</span>
-                <span>A temporary activation link will be delivered to your corporate inbox once vetting completes.</span>
-              </div>
-            </section>
+            </main>
 
-            <div class="w1-actions w1-actions--stack">
-              <button class="w1-btn w1-btn--primary" type="button" (click)="showSignInForm()">
-                <span>Back to Sign In</span>
-                <span class="material-symbols-outlined">arrow_forward</span>
-              </button>
-            </div>
-          }
-        </main>
-
-        <footer class="w1-footer">
-          @if (mode() === 'signin') {
-            <div><span class="w1-dot w1-dot--ok"></span><span>ABA SEWING MILL ACTIVE</span></div>
-            <span>SEENTAIR IND. v2.4</span>
-          } @else if (mode() === 'apply') {
-            <span>SEENTAIR ABA ONBOARDING</span>
-            <span>VETTING: 24H SLA</span>
-          } @else {
-            <span>ABA FACTORY DESK: +234 814 200 9010</span>
-            <span>STATUS: PENDING</span>
-          }
-        </footer>
+            <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-border flex items-center justify-between text-[11px] font-mono text-light-secondary">
+              <span>ABA FACTORY DESK: +234 814 200 9010</span>
+              <span>STATUS: PENDING</span>
+            </footer>
+          </div>
+        }
       </div>
     }
   `,
-  styles: [
-    `
-      :host { display: block; }
-      .w1-app {
-        min-height: 100vh;
-        background: #f7f2ea;
-        color: #1b1916;
-        display: flex;
-        flex-direction: column;
-        font-family: 'Urbanist', sans-serif;
-      }
-      .w1-topbar {
-        position: sticky;
-        top: 0;
-        z-index: 20;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 14px 16px 12px;
-        border-bottom: 1px solid rgba(232,225,211,.7);
-        background: rgba(247,242,234,.88);
-        backdrop-filter: blur(10px);
-      }
-      .w1-topstatus, .w1-topright { display: flex; align-items: center; gap: 8px; }
-      .w1-topstatus { font-size: 12px; color: #7b756a; font-weight: 500; }
-      .w1-lock { font-size: 14px; color: #23804d; }
-      .w1-dot { width: 8px; height: 8px; border-radius: 999px; background: #23804d; box-shadow: 0 0 0 4px rgba(35,128,77,.12); }
-      .w1-dot--ok { display:inline-block; margin-right: 6px; width: 6px; height: 6px; box-shadow:none; }
-      .w1-chip {
-        font: 600 11px/1.2 'JetBrains Mono', monospace;
-        padding: 4px 8px;
-        border-radius: 999px;
-        border: 1px solid #e8e1d3;
-        background: #efe3c8;
-        color: #1b1916;
-        letter-spacing: .02em;
-      }
-      .w1-iconbtn, .w1-toplink {
-        border: 1px solid #e8e1d3;
-        background: #fffdf9;
-        color: #7b756a;
-        border-radius: 999px;
-        height: 32px;
-        min-width: 32px;
-        padding: 0 10px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        font: 600 13px/1 Urbanist, sans-serif;
-      }
-      .w1-toplink { height: auto; padding: 6px 10px; }
-      .material-symbols-outlined { font-size: 18px; line-height: 1; }
-      .w1-main {
-        flex: 1;
-        width: 100%;
-        max-width: 390px;
-        margin: 0 auto;
-        padding: 20px 16px 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-      .w1-hero, .w1-success-hero { text-align: center; padding-top: 4px; }
-      .w1-heroicon, .w1-success-icon {
-        width: 48px; height: 48px; margin: 0 auto 10px; border-radius: 16px;
-        display: inline-flex; align-items: center; justify-content: center;
-        background: #1b1916; color: #c88a12; border: 1px solid #e8e1d3;
-      }
-      .w1-success-icon { border-radius: 999px; background: rgba(35,128,77,.12); color: #23804d; border-color: rgba(35,128,77,.25); width: 56px; height: 56px; }
-      .w1-hero h1 { margin: 0; font: 700 26px/1.1 Urbanist, sans-serif; letter-spacing: -.02em; }
-      .w1-success-hero h1, .w1-intro h1 { margin: 4px 0 0; font: 700 22px/1.15 Urbanist, sans-serif; }
-      .w1-hero p, .w1-success-hero p, .w1-intro p { margin: 4px 0 0; color: #7b756a; font-size: 13px; }
-      .w1-notice, .w1-inline-note {
-        display: flex; gap: 10px; align-items: flex-start;
-        padding: 14px; border-radius: 12px; border: 1px solid #e8e1d3; background: rgba(239,227,200,.7);
-        font-size: 12px; line-height: 1.5;
-      }
-      .w1-notice .material-symbols-outlined { color: #93600a; }
-      .w1-inline-note .material-symbols-outlined { color: #93600a; font-size: 18px; }
-      .w1-card {
-        background: #fffdf9; border: 1px solid #e8e1d3; border-radius: 12px; padding: 20px;
-        box-shadow: 0 8px 24px -4px rgba(27,25,22,.06);
-        display: flex; flex-direction: column; gap: 14px;
-      }
-      .w1-card h2 { margin: 0; font: 700 18px/1.2 Urbanist, sans-serif; }
-      .w1-sub { margin: 2px 0 0; color: #7b756a; font-size: 13px; }
-      .w1-form { display: flex; flex-direction: column; gap: 12px; }
-      .w1-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #1b1916; }
-      .w1-field > span, .w1-labelrow span:first-child { font-size: 12px; font-weight: 600; }
-      .w1-labelrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-      .w1-inputwrap { position: relative; display: flex; align-items: center; }
-      .w1-inputwrap > .material-symbols-outlined { position: absolute; left: 12px; color: #7b756a; font-size: 18px; }
-      .w1-inputwrap input { padding-left: 38px; padding-right: 40px; }
-      .w1-field input, .w1-field select, .w1-inputwrap input {
-        width: 100%; border: 1px solid #e8e1d3; background: rgba(247,242,234,.6); color: #1b1916;
-        border-radius: 10px; padding: 11px 14px; font: 400 14px/1.3 Urbanist, sans-serif; min-height: 44px;
-      }
-      .w1-field input:focus, .w1-field select:focus { outline: none; border-color: #c88a12; background: #fffdf9; }
-      .w1-affix { position: absolute; right: 8px; border: 0; background: none; color: #7b756a; padding: 6px; }
-      .w1-link { border: 0; background: none; color: #93600a; font: 500 12px/1 Urbanist, sans-serif; padding: 0; }
-      .w1-actions { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
-      .w1-btn {
-        width: 100%; min-height: 48px; border-radius: 999px; border: 1px solid transparent;
-        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-        font: 600 15px/1 Urbanist, sans-serif; padding: 12px 16px;
-      }
-      .w1-btn--primary { background: #c88a12; color: #1a1405; box-shadow: 0 1px 2px rgba(27,25,22,.08); }
-      .w1-btn--secondary { background: #fffdf9; color: #1b1916; border-color: #e8e1d3; font-size: 14px; }
-      .w1-btn:disabled { opacity: .6; }
-      .w1-banner { margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 12px; }
-      .w1-banner--error { background: rgba(191,58,45,.1); color: #8f2b21; border: 1px solid rgba(191,58,45,.25); }
-      .w1-banner--info { background: rgba(35,128,77,.1); color: #1d6840; border: 1px solid rgba(35,128,77,.2); }
-      .w1-error { margin: 0; color: #bf3a2d; font-size: 12px; font-weight: 500; }
-      .w1-criteria {
-        background: rgba(255,253,249,.75); border: 1px solid #e8e1d3; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px;
-      }
-      .w1-criteria-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 600; }
-      .w1-criteria-head > span:first-child { display: inline-flex; align-items: center; gap: 6px; }
-      .w1-criteria-head .material-symbols-outlined { color: #c88a12; font-size: 16px; }
-      .w1-criteria-grid, .w1-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      .w1-mini { background: #f7f2ea; border: 1px solid rgba(232,225,211,.8); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 2px; }
-      .w1-mini strong { font-size: 12px; }
-      .w1-mini small, .w1-criteria p, .w1-terms { color: #7b756a; font-size: 11px; line-height: 1.45; margin: 0; }
-      .w1-mono { font-family: 'JetBrains Mono', monospace; }
-      .w1-intro .w1-pill { display:inline-flex; padding:4px 10px; border-radius:999px; background:rgba(200,138,18,.15); color:#93600a; font:600 11px/1.2 'JetBrains Mono',monospace; }
-      .w1-accent { color: #93600a; font-weight: 600; font-size: 11px; }
-      .w1-terms { text-align: center; }
-      .w1-receipt-head { display:flex; justify-content:space-between; gap:8px; font-size:12px; color:#7b756a; border-bottom:1px solid #e8e1d3; padding-bottom:10px; font-weight:600; }
-      .w1-kv { margin:0; display:flex; flex-direction:column; gap:0; }
-      .w1-kv div { display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid rgba(232,225,211,.5); font-size:13px; }
-      .w1-kv div:last-child { border-bottom:0; }
-      .w1-kv dt { color:#7b756a; margin:0; }
-      .w1-kv dd { margin:0; font-weight:600; text-align:right; }
-      .w1-footer {
-        display:flex; align-items:center; justify-content:space-between; gap:8px;
-        padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px));
-        border-top:1px solid #e8e1d3; background: rgba(239,227,200,.6); color:#7b756a;
-        font: 500 11px/1.2 'JetBrains Mono', monospace;
-      }
-      .w1-footer div { display:flex; align-items:center; }
-      @media (max-width: 360px) {
-        .w1-grid2, .w1-criteria-grid { grid-template-columns: 1fr; }
-      }
-    `,
-  ],
+  styles: [`:host { display: block; }`],
 })
-export class App implements OnInit {
+export class App {
   readonly api = inject(ApiService);
-  readonly cart = inject(CartService);
   readonly theme = inject(ThemeService);
-  private readonly confirm = inject(SeConfirmService);
-  private readonly toast = inject(SeToastService);
-  private readonly onScroll = () => {
-    this.scrolled.set((window.scrollY ?? 0) > 10);
-  };
-/** The sign-in header tightens once the page has scrolled. */
-    readonly scrolled = signal(false);
-    readonly collapsed = signal(false);
-    /** Desktop gate for the sign-in card's branded half. */
-    readonly isDesktop = signal(false);
-  readonly buyerName = signal<string | null>(null);
 
-  readonly nav = computed<SeNavGroup[]>(() => [
-    {
-      items: [
-        { label: 'Home', icon: 'home', link: '/', exact: true },
-        { label: 'Catalogue', icon: 'tag', link: '/catalogue' },
-        { label: 'Bulk cart', icon: 'cart', link: '/cart', badge: this.cart.units() || undefined },
-        { label: 'Orders & invoices', icon: 'receipt', link: '/orders' },
-        { label: 'Custom designs', icon: 'edit', link: '/custom' },
-      ],
-    },
-  ]);
-  readonly shellUser = computed(() =>
-    this.api.isLoggedIn
-      ? { name: this.buyerName() ?? 'Wholesale buyer', role: 'Wholesale buyer' }
-      : null,
-  );
-
-  constructor() {
-    if (typeof window !== 'undefined') {
-      this.onScroll();
-      window.addEventListener('scroll', this.onScroll, { passive: true });
-      // Desktop-only gate for the branded half of the sign-in card. Declared
-      // here because this app has no shared ViewportService, and the three
-      // frontends have independent node_modules.
-      const mql = window.matchMedia('(min-width: 900px)');
-      this.isDesktop.set(mql.matches);
-      mql.addEventListener('change', (e) => this.isDesktop.set(e.matches));
-    }
-  }
-
-  ngOnInit(): void {
-    if (this.api.isLoggedIn) this.loadProfile();
-  }
-
-  private loadProfile(): void {
-    this.api.me().subscribe({ next: (m) => this.buyerName.set(m.name), error: () => undefined });
-  }
+  readonly appRef = computed(() => 'ST-APP-9214');
 
   readonly error = signal<string | null>(null);
   readonly info = signal<string | null>(null);
@@ -481,6 +297,7 @@ export class App implements OnInit {
   readonly applyBusy = signal(false);
   readonly applyTouched = signal(false);
   readonly applyDone = signal<string | null>(null);
+  readonly submittedAt = signal<string | null>(null);
   apply = {
     name: '',
     businessName: '',
@@ -497,45 +314,6 @@ export class App implements OnInit {
     { value: 'institution', label: 'Institution / uniform buyer' },
     { value: 'distributor', label: 'Distributor' },
     { value: 'other', label: 'Other' },
-  ];
-
-  readonly states = [
-    'Abia',
-    'Adamawa',
-    'Akwa Ibom',
-    'Anambra',
-    'Bauchi',
-    'Bayelsa',
-    'Benue',
-    'Borno',
-    'Cross River',
-    'Delta',
-    'Ebonyi',
-    'Edo',
-    'Ekiti',
-    'Enugu',
-    'Gombe',
-    'Imo',
-    'Jigawa',
-    'Kaduna',
-    'Kano',
-    'Katsina',
-    'Kebbi',
-    'Kogi',
-    'Kwara',
-    'Lagos',
-    'Nasarawa',
-    'Niger',
-    'Ogun',
-    'Ondo',
-    'Osun',
-    'Oyo',
-    'Plateau',
-    'Rivers',
-    'Sokoto',
-    'Taraba',
-    'Yobe',
-    'Zamfara',
   ];
 
   /** Returns the first problem, or null when the form is ready to send. */
@@ -570,6 +348,20 @@ export class App implements OnInit {
     this.applyTouched.set(false);
   }
 
+  /** WAT-stamped receipt time, as the Stitch success screen shows it. */
+  private formatSubmittedAt(): string {
+    const stamp = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Africa/Lagos',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date());
+    return `${stamp} WAT`;
+  }
+
   submitApplication(): void {
     this.applyTouched.set(true);
     this.error.set(null);
@@ -597,7 +389,9 @@ export class App implements OnInit {
       .subscribe({
         next: () => {
           this.applyBusy.set(false);
-          this.applyDone.set(this.email.trim()); this.mode.set('success');
+          this.applyDone.set(this.email.trim());
+          this.submittedAt.set(this.formatSubmittedAt());
+          this.mode.set('success');
           this.password = '';
           this.error.set(null);
         },
@@ -631,7 +425,6 @@ export class App implements OnInit {
         this.password = '';
         this.touched.set(false);
         this.error.set(null);
-        this.loadProfile();
       },
       error: (e: { status?: number }) => {
         this.busy.set(false);
@@ -656,23 +449,5 @@ export class App implements OnInit {
       next: () => this.info.set('If that email is registered, a reset link has been sent.'),
       error: () => this.info.set('If that email is registered, a reset link has been sent.'),
     });
-  }
-
-  async logout(): Promise<void> {
-    const ok = await this.confirm.ask({
-      title: 'Sign out?',
-      consequence:
-        'This wholesale session ends. Your bulk cart and open orders stay in your account for the next sign-in.',
-      confirmLabel: 'Sign out',
-      cancelLabel: 'Stay',
-    });
-    if (!ok) return;
-    this.api.logout();
-    this.buyerName.set(null);
-    this.error.set(null);
-    this.info.set(null);
-    this.password = '';
-    this.showPassword.set(false);
-    this.toast.show('Signed out of the wholesale portal');
   }
 }

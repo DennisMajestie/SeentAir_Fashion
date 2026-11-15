@@ -98,14 +98,13 @@ describe('MatrixPage', () => {
 
   const el = () => fixture.nativeElement as HTMLElement;
   const text = () => (el().textContent ?? '').replace(/\s+/g, ' ');
-  const inputs = () => el().querySelectorAll<HTMLInputElement>('table input');
+  const inputs = () => el().querySelectorAll<HTMLInputElement>('.matrix input');
 
   it('renders a colour × size grid from the variants with scoped headers', async () => {
     await boot();
     expect(page.sizes()).toEqual(['S', 'M']);
     expect(page.colours()).toEqual(['black', 'sand']);
-    expect(el().querySelectorAll('thead th[scope="col"]').length).toBe(4);
-    expect(el().querySelectorAll('tbody th[scope="row"]').length).toBe(2);
+    expect(el().querySelectorAll('.colour-card').length).toBe(2);
     expect(inputs().length).toBe(4);
     const first = inputs()[0];
     expect(first.getAttribute('type')).toBe('number');
@@ -117,8 +116,9 @@ describe('MatrixPage', () => {
 
   it('shows product facts and the MOQ rule in plain words', async () => {
     await boot();
-    expect(text()).toContain('₦7,650.00 per unit');
-    expect(text()).toContain('20 units across the batch');
+    expect(text()).toContain('₦7,650.00');
+    expect(text()).toContain('/unit');
+    expect(text()).toContain('MOQ: 20u');
     expect(text()).toContain('20-unit minimum per batch');
   });
 
@@ -133,7 +133,7 @@ describe('MatrixPage', () => {
     expect(text()).toContain('10 more units to reach the minimum');
     expect(text()).toContain('₦76,500.00');
     // A shortfall is a warning, never a block.
-    const add = el().querySelector<HTMLButtonElement>('.se-form__actions button[seButton]')!;
+    const add = el().querySelector<HTMLButtonElement>('.add-cta')!;
     expect(add.disabled).toBe(false);
   });
 
@@ -155,8 +155,8 @@ describe('MatrixPage', () => {
     fixture.detectChanges();
     expect(page.committedUnits()).toBe(20);
     expect(page.moqShort()).toBe(0);
-    expect(text()).toContain('MOQ met');
-    expect(el().querySelector('se-banner')).toBeNull();
+    expect(text()).toContain('Batch minimum satisfied');
+    expect(el().querySelector('.moq-short')).toBeNull();
   });
 
   it('shows stock per cell, caps the input, and never caps made-to-order', async () => {
@@ -180,7 +180,7 @@ describe('MatrixPage', () => {
     page.setQty('v1', 3);
     page.setQty('v4', 2);
     fixture.detectChanges();
-    el().querySelector<HTMLButtonElement>('.se-form__actions button[seButton]')!.click();
+    el().querySelector<HTMLButtonElement>('.add-cta')!.click();
     fixture.detectChanges();
     expect(cart.lines()).toEqual([
       jasmine.objectContaining({
@@ -218,7 +218,7 @@ describe('MatrixPage', () => {
 
   it('shows an empty state when the product is not in the catalogue', async () => {
     await boot({}, 'missing');
-    expect(el().querySelector('table')).toBeNull();
-    expect(el().querySelector('se-empty-state')!.textContent).toContain('not in your catalogue');
+    expect(el().querySelector('.matrix')).toBeNull();
+    expect(el().querySelector('.empty-state')!.textContent).toContain('not in your catalogue');
   });
 });

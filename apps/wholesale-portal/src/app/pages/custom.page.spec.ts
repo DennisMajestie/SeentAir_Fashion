@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { SeCurrencyService } from '@seentair/ui';
+import { SeCurrencyService, SeToastService } from '@seentair/ui';
 import { of, throwError } from 'rxjs';
 
 import { ApiService, CustomOrder, Pricing } from '../api.service';
@@ -26,7 +26,9 @@ function request(id: string, status: string): CustomOrder {
 describe('CustomPage', () => {
   let fixture: ComponentFixture<CustomPage>;
   let api: jasmine.SpyObj<ApiService>;
+  let toast: jasmine.SpyObj<SeToastService>;
   const el = (): HTMLElement => fixture.nativeElement as HTMLElement;
+  const text = (): string => (el().textContent ?? '').replace(/\s+/g, ' ');
 
   const mount = (requests: unknown): void => {
     api = jasmine.createSpyObj<ApiService>('ApiService', [
@@ -39,8 +41,13 @@ describe('CustomPage', () => {
       of({ moq: 20, tier: null, hasDiscount: false } as unknown as Pricing),
     );
     api.submitCustomOrder.and.returnValue(of(request('created-1', 'submitted')));
+    toast = jasmine.createSpyObj<SeToastService>('SeToastService', ['show']);
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: ApiService, useValue: api }],
+      providers: [
+        provideRouter([]),
+        { provide: ApiService, useValue: api },
+        { provide: SeToastService, useValue: toast },
+      ],
     });
     TestBed.inject(SeCurrencyService).config.set({
       currencyCode: 'NGN',
@@ -52,24 +59,37 @@ describe('CustomPage', () => {
   };
   afterEach(() => fixture?.destroy());
 
-  it('lists the requests with their reference, units and status', () => {
+  it('lists the requests as cards with reference, units, status and a way in', () => {
     mount(
       of({
         data: [request('aaaaaaaa-1111', 'quoted'), request('bbbbbbbb-2222', 'in_production')],
         total: 2,
       }),
     );
-    const rows = el().querySelectorAll('se-table tbody tr');
-    expect(rows.length).toBe(2);
-    expect(rows[0].textContent).toContain('#CR-AAAAAAAA');
-    expect(rows[0].textContent).toContain('20');
-    expect(rows[0].textContent).toContain('Quoted');
-    expect(rows[1].textContent).toContain('In production');
+    const cards = el().querySelectorAll('.request-card');
+    expect(cards.length).toBe(2);
+    expect(cards[0].textContent).toContain('#CR-AAAAAAAA');
+    expect(cards[0].textContent).toContain('20');
+    expect(cards[0].textContent).toContain('Quoted');
+    expect(cards[0].textContent).toContain('Review Quote');
+    expect(cards[1].textContent).toContain('In production');
+    expect(cards[1].textContent).toContain('View Details');
   });
 
-  it('shows the table error with a retry when the list fails', () => {
+  it('shows the empty state with a way to start when there are no requests', () => {
+    mount(of({ data: [], total: 0 }));
+    expect(el().querySelector('.empty-state')!.textContent).toContain('No custom requests yet');
+  });
+
+  it('shows a retryable error when the list fails', () => {
     mount(throwError(() => ({ error: { message: 'Desk offline' } })));
-    expect(el().querySelector('se-table')!.textContent).toContain('Desk offline');
+    expect(el().querySelector('.load-error')!.textContent).toContain('Desk offline');
+    api.customOrders.and.returnValue(
+      of({ data: [request('aaaaaaaa-1111', 'quoted')], total: 1 }),
+    );
+    fixture.componentInstance.load();
+    fixture.detectChanges();
+    expect(el().querySelector('.request-card')).not.toBeNull();
   });
 
   it('rejects an empty form with errors under the fields and does not call the API', () => {
@@ -89,11 +109,20 @@ describe('CustomPage', () => {
       'location',
       'sizes',
     ]);
-    expect(el().querySelectorAll('se-field.se-field--invalid').length).toBe(6);
-    expect(
-      el().querySelector('se-field.se-field--invalid .se-field__error')!.textContent,
-    ).toContain('fabric');
+    expect(el().querySelectorAll('.field-error').length).toBe(6);
+    expect(el().querySelector('.field-error')!.textContent).toContain('fabric');
     expect(page.formOpen()).toBeTrue();
+  });
+
+  it('keeps the sheet open until the request is accepted', () => {
+    mount(of({ data: [], total: 0 }));
+    const page = fixture.componentInstance;
+    page.openForm();
+    fixture.detectChanges();
+    expect(text()).toContain('New Custom Design Request');
+    page.formOpen.set(false);
+    fixture.detectChanges();
+    expect(text()).not.toContain('New Custom Design Request');
   });
 
   it('submits a valid form with the exact request body, then closes and reloads', () => {
@@ -124,5 +153,9 @@ describe('CustomPage', () => {
     });
     expect(page.formOpen()).toBeFalse();
     expect(api.customOrders).toHaveBeenCalledTimes(1);
+    expect(toast.show).toHaveBeenCalledWith(
+      jasmine.stringContaining('submitted for technical review'),
+      jasmine.anything(),
+    );
   });
 });

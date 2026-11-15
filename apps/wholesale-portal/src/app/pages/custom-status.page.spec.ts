@@ -84,20 +84,20 @@ describe('CustomStatusPage', () => {
   it('names the request, its status and the facts behind the decision', () => {
     mount(of({ data: [request('quoted')], total: 1 }));
     expect(el().querySelector('h1')!.textContent).toContain('#CR-ABCDEF12');
-    expect(el().querySelector('.se-page__header, header')!.textContent).toContain('Quoted');
-    expect(el().querySelector('.se-detail__aside')!.textContent).toContain('450 GSM terry');
-    expect(el().querySelector('.se-detail__main')!.textContent).toContain('₦350,000');
+    expect(el().querySelector('.stage-badge')!.textContent?.trim()).toBe('QUOTED');
+    expect(el().querySelector('.specs-card')!.textContent).toContain('450 GSM terry');
+    expect(el().querySelector('.quote-card')!.textContent).toContain('₦350,000');
     expect(el().textContent).toContain('excluded from the 12-hour returns window');
   });
 
-  it('shows a danger banner with retry when the load fails, and the empty state when not found', () => {
+  it('shows a retryable error when the load fails, and the empty state when not found', () => {
     mount(throwError(() => ({ error: { message: 'Desk offline' } })));
-    expect(el().querySelector('se-banner')!.textContent).toContain('Desk offline');
-    expect(el().querySelector('se-empty-state')).toBeNull();
+    expect(el().querySelector('.load-error')!.textContent).toContain('Desk offline');
+    expect(el().querySelector('.empty-state')).toBeNull();
     fixture.destroy();
     TestBed.resetTestingModule();
     mount(of({ data: [], total: 0 }));
-    expect(el().querySelector('se-empty-state')!.textContent).toContain('Request not found');
+    expect(el().querySelector('.empty-state')!.textContent).toContain('Request not found');
   });
 
   it('accepts the quote only after the confirmation resolves true', async () => {

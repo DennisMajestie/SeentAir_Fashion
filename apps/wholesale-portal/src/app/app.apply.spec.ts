@@ -55,12 +55,12 @@ describe('App wholesale application form', () => {
     await boot();
   });
 
-  it('opens the application form from the B2B panel instead of printing an instruction', () => {
+  it('opens the application form from the sign-in card instead of printing an instruction', () => {
     // The regression: the CTA used to call info.set(...) with "Sign in above,
     // then use Apply ... in the catalogue". Nothing was submitted and no form
     // appeared, so the only path to an application started with an account the
     // visitor did not have.
-    click('.apply-panel .cta.outline');
+    click('#apply-cta');
 
     expect(el().querySelector('#ap-business')).toBeTruthy();
     expect(el().querySelector('.auth-error, .auth-info')).toBeNull();
@@ -68,25 +68,25 @@ describe('App wholesale application form', () => {
   });
 
   it('keeps the sign-in form out of the way while applying', () => {
-    click('.apply-panel .cta.outline');
+    click('#apply-cta');
 
     expect(el().querySelector('#ws-password')).toBeNull();
-    expect(el().textContent).toContain('Apply for wholesale access.');
+    expect(el().textContent).toContain('Apply for Wholesale Access');
   });
 
   it('returns to sign in without losing the typed application', () => {
-    click('.apply-panel .cta.outline');
+    click('#apply-cta');
     fixture.componentInstance.apply.businessName = 'Okeke Fashion Boutique';
     fixture.detectChanges();
 
-    click('.apply-back .link-inline');
+    click('#apply-back');
 
     expect(el().querySelector('#ws-email')).toBeTruthy();
     expect(fixture.componentInstance.apply.businessName).toBe('Okeke Fashion Boutique');
   });
 
   it('posts the application to the public endpoint with the business details', () => {
-    click('.apply-panel .cta.outline');
+    click('#apply-cta');
     fillRequired();
     fixture.componentInstance.submitApplication();
     fixture.detectChanges();
@@ -108,7 +108,7 @@ describe('App wholesale application form', () => {
   });
 
   it('blocks submission and names the missing field rather than posting a blank application', () => {
-    click('.apply-panel .cta.outline');
+    click('#apply-cta');
     fixture.componentInstance.submitApplication();
     fixture.detectChanges();
 
@@ -119,27 +119,27 @@ describe('App wholesale application form', () => {
   it('accepts a short volume estimate, because MOQ is checked at order time', () => {
     // Guarding the form against the 20-unit minimum would hide exactly the
     // demand the tier criteria are meant to be written against.
-    click('.apply-panel .cta.outline');
+    click('#apply-cta');
     fillRequired();
     fixture.componentInstance.apply.openingVolume = '5';
     expect(fixture.componentInstance.applyError()).toBeNull();
   });
 
   it('confirms receipt and holds the password out of the DOM', () => {
-    click('.apply-panel .cta.outline');
+    click('#apply-cta');
     fillRequired();
     fixture.componentInstance.submitApplication();
     fixture.detectChanges();
     http.expectOne(`${API_BASE}/wholesale/apply`).flush({ id: 'a1', status: 'pending' });
     fixture.detectChanges();
 
-    expect(el().textContent).toContain('Application received');
+    expect(el().textContent).toContain('Application Received');
     expect(fixture.componentInstance.password).toBe('');
     expect(el().querySelector('#ap-password')).toBeNull();
   });
 
   it('surfaces the API message when the email is already registered', () => {
-    click('.apply-panel .cta.outline');
+    click('#apply-cta');
     fillRequired();
     fixture.componentInstance.submitApplication();
     fixture.detectChanges();

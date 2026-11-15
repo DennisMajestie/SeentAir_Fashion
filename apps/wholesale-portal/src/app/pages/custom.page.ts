@@ -1,285 +1,367 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import {
-  SeButtonDirective,
-  SeCardComponent,
-  SeCellDirective,
-  SeColumn,
-  SeDrawerComponent,
-  SeFieldComponent,
-  SeInputDirective,
-  SePageComponent,
-  SeStatusComponent,
-  SeTableComponent,
-  SeToastService,
-  formatDate,
-} from '@seentair/ui';
+import { Router, RouterLink } from '@angular/router';
+import { SeDatePipe, SeToastService } from '@seentair/ui';
 import { ApiService, CustomOrder, Pricing } from '../api.service';
+import { WholesaleTabBar } from '../tab-bar';
 import { customRef } from '../wholesale-format';
 
 const SIZE_KEYS = ['S', 'M', 'L', 'XL', 'XXL'] as const;
 
 /** The factory gate sequence. Facts about the process, not per-request state. */
 const ROADMAP: Array<{ label: string; detail: string }> = [
-  {
-    label: 'Technical review',
-    detail: 'Production engineers validate feasibility against factory capability.',
-  },
-  {
-    label: 'Quotation',
-    detail: 'Per-batch quote covering raw material, sewing, branding and packaging.',
-  },
-  {
-    label: 'Payment, 100% upfront',
-    detail: 'Full settlement by bank transfer or POS, desk-confirmed, before the sample run.',
-  },
-  {
-    label: 'Approval sample',
-    detail: 'You sign off a physical sample before any bulk cutting starts.',
-  },
-  {
-    label: 'Full batch production',
-    detail: 'Cutting, sewing, finishing, QC and dispatch from the Aba factory.',
-  },
+  { label: '1. Brief', detail: 'Specs & Ref' },
+  { label: '2. Quote', detail: '24hr costing' },
+  { label: '3. Sample', detail: 'Fit signoff' },
+  { label: '4. Mill Cut', detail: 'Bulk run' },
 ];
 
 type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desiredDate' | 'sizes';
 
 /**
- * Custom design requests: the buyer's requests as a table, and the request
- * form in a drawer. The request body is unchanged: sizes are serialised from
- * the size grid plus a free note, quantity is their sum.
+ * Custom design requests: the buyer's requests as cards, and the request
+ * sheet. The request body is unchanged: sizes are serialised from the size
+ * grid plus a free note, quantity is their sum.
  */
 @Component({
   selector: 'app-custom',
-  imports: [
-    FormsModule,
-    SeButtonDirective,
-    SeCardComponent,
-    SeCellDirective,
-    SeDrawerComponent,
-    SeFieldComponent,
-    SeInputDirective,
-    SePageComponent,
-    SeStatusComponent,
-    SeTableComponent,
-  ],
+  imports: [FormsModule, RouterLink, SeDatePipe, WholesaleTabBar],
   template: `
-    <se-page
-      title="Custom designs"
-      description="Bespoke silhouettes and finishes for commercial batches. Every request is reviewed and quoted by the factory; full payment is due upfront once you accept the quote, and custom orders are excluded from the 12-hour returns window."
-    >
-      <button seButton variant="primary" sePageActions type="button" (click)="openForm()">
-        New request
-      </button>
+    <div class="stitch">
+      <div class="bg-canvas text-light-on-surface min-h-screen pb-24 antialiased selection:bg-accent/20">
+        <!-- Header -->
+        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
+          <div>
+            <h1 class="text-[20px] font-bold text-light-primary tracking-tight">Custom Designs</h1>
+            <span class="text-[11px] text-light-secondary font-medium">Bespoke Mill Batches &amp; Technical Tech-Packs</span>
+          </div>
+          <button type="button" class="new-btn px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-bold flex items-center gap-1 shadow-sm hover:brightness-105 flex-shrink-0" (click)="openForm()">
+            <span class="material-symbols-outlined text-[16px]">add</span>
+            New Request
+          </button>
+        </header>
 
-      <se-card title="Your requests" flush>
-        <se-table
-          caption="Custom design requests"
-          [columns]="columns"
-          [rows]="requests()"
-          [rowId]="rowId"
-          [loading]="loading()"
-          [error]="error()"
-          (retry)="load()"
-          activatable
-          (rowActivate)="open($event)"
-          hideDensity
-          emptyHeading="No custom requests yet"
-          emptyText="Describe the garment you need and the factory will review and quote it."
-          emptyActionLabel="New request"
-          (emptyAction)="openForm()"
-        >
-          <ng-template seCell="status" let-row>
-            <se-status kind="custom_order" [value]="row.status" />
-          </ng-template>
-        </se-table>
-      </se-card>
-
-      <se-card title="How a custom batch moves">
-        <ol class="roadmap">
-          @for (stage of roadmap; track stage.label) {
-            <li>
-              <strong>{{ stage.label }}</strong>
-              <span>{{ stage.detail }}</span>
-            </li>
-          }
-        </ol>
-      </se-card>
-    </se-page>
-
-    <se-drawer title="New custom design request" [(open)]="formOpen">
-      <form class="se-form" id="custom-request-form" (ngSubmit)="submit()" novalidate>
-        <div class="se-form__section">
-          <se-field label="Fabric weight / quality" [error]="errors()['fabricQuality']">
-            <input
-              seInput
-              [(ngModel)]="form.fabricQuality"
-              name="fabricQuality"
-              placeholder="e.g. 450 GSM heavyweight french terry"
-            />
-          </se-field>
-          <se-field label="Colourways / dye notes" [error]="errors()['colours']">
-            <input
-              seInput
-              [(ngModel)]="form.colours"
-              name="colours"
-              placeholder="e.g. washed moss, industrial slate, onyx black"
-            />
-          </se-field>
-          <se-field
-            label="Design and construction"
-            hint="Silhouette, panels, print or embroidery placements, trims and stitch spec."
-            [error]="errors()['description']"
-          >
-            <textarea seInput [(ngModel)]="form.description" name="description" rows="4"></textarea>
-          </se-field>
-          <se-field
-            label="Reference image"
-            hint="Optional photo or sketch of the sample/design (JPG, PNG or WebP, up to 5 MB)."
-          >
-            <input
-              seInput
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              name="referenceImage"
-              (change)="pickPhoto($event)"
-            />
-          </se-field>
-          @if (photoUploading()) {
-            <p class="photo-note">Uploading photo…</p>
-          }
-          @if (photoError()) {
-            <p class="photo-error" role="alert">{{ photoError() }}</p>
-          }
-          @if (photoUrl(); as url) {
-            <div class="photo-preview">
-              <img [src]="url" alt="Reference image preview" />
-              <button seButton size="sm" type="button" (click)="clearPhoto()">Remove photo</button>
+        <!-- Main Content -->
+        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full">
+          <!-- Intro & Policy Notice -->
+          <section class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-warning text-[20px]">architecture</span>
+              <h2 class="text-[14px] font-bold text-light-primary">Bespoke Manufacturing Protocol</h2>
             </div>
-          }
-        </div>
+            <p class="text-[12px] text-light-secondary leading-normal">
+              All custom patterns and silhouettes are engineered and costed individually by the Aba pattern desk. <strong>Full payment is required upfront</strong> once quotes are accepted. Custom production runs are strictly excluded from standard return windows.
+            </p>
+          </section>
 
-        <div class="se-form__section">
-          <se-field label="Units per size" [hint]="moqHint()" [error]="errors()['sizes']" group>
-            <div class="sizes">
-              @for (size of sizeKeys; track size) {
-                <input
-                  seInput
-                  type="number"
-                  min="0"
-                  step="1"
-                  inputmode="numeric"
-                  [ngModel]="qtyOf(size)"
-                  (ngModelChange)="setQty(size, $event)"
-                  [name]="'size-' + size"
-                  [placeholder]="size"
-                  [attr.aria-label]="'Units size ' + size"
-                />
+          <!-- Roadmap: How a Custom Batch Moves -->
+          <section class="roadmap bg-canvas-tint/70 rounded-xl p-4 border border-border flex flex-col gap-2.5">
+            <span class="text-[11px] font-mono uppercase tracking-wider text-light-secondary font-semibold">How a Custom Batch Moves</span>
+            <div class="grid grid-cols-4 gap-1.5 text-center text-[10px]">
+              @for (stage of roadmap; track stage.label) {
+                <div class="p-2 rounded-lg bg-light-surface border border-border">
+                  <span class="font-bold text-light-primary block">{{ stage.label }}</span>
+                  <span class="text-light-secondary">{{ stage.detail }}</span>
+                </div>
               }
             </div>
-          </se-field>
-          <se-field label="Other sizes / grading notes" optional>
-            <input
-              seInput
-              [(ngModel)]="sizeNote"
-              name="sizeNote"
-              placeholder="e.g. bespoke chest 46in × 4"
-            />
-          </se-field>
-        </div>
+          </section>
 
-        <div class="se-form__section">
-          <se-field label="Delivery destination" [error]="errors()['location']">
-            <input
-              seInput
-              [(ngModel)]="form.location"
-              name="location"
-              placeholder="e.g. Onitsha Commercial Hub, Anambra State"
-            />
-          </se-field>
-          <se-field
-            label="Wanted by"
-            hint="Guides production scheduling; the factory confirms the final date with your quote."
-            [error]="errors()['desiredDate']"
-          >
-            <input seInput type="date" [(ngModel)]="form.desiredDate" name="desiredDate" />
-          </se-field>
+          @if (loading()) {
+            <div aria-busy="true">
+              <span class="text-[11px] font-mono text-light-secondary uppercase tracking-wider block mb-2">Loading your requests…</span>
+              <div class="bg-light-surface/60 rounded-xl p-3.5 border border-dashed border-border flex gap-3.5 animate-pulse">
+                <div class="w-24 h-20 rounded-lg bg-canvas-tint/80 flex-shrink-0"></div>
+                <div class="flex-1 flex flex-col justify-between py-1">
+                  <div class="space-y-2">
+                    <div class="h-3 w-1/3 bg-canvas-tint rounded"></div>
+                    <div class="h-4 w-4/5 bg-canvas-tint rounded"></div>
+                  </div>
+                  <div class="h-5 w-24 bg-canvas-tint rounded-full"></div>
+                </div>
+              </div>
+            </div>
+          } @else if (error()) {
+            <div class="load-error p-3.5 rounded-xl bg-light-surface border border-danger/30 flex items-center justify-between gap-2">
+              <div>
+                <h2 class="text-[13px] font-bold text-danger">Your requests could not be loaded</h2>
+                <span class="text-[11px] text-light-secondary">{{ error() }}</span>
+              </div>
+              <button type="button" class="px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold flex-shrink-0" (click)="load()">Try again</button>
+            </div>
+          } @else if (!requests().length) {
+            <div class="empty-state bg-light-surface p-3.5 rounded-xl border border-border flex flex-col items-center gap-1.5 text-center">
+              <span class="material-symbols-outlined text-[28px] text-light-secondary">design_services</span>
+              <strong class="text-[14px] text-light-primary">No custom requests yet</strong>
+              <p class="text-[11px] text-light-secondary">Describe the garment you need and the factory will review and quote it.</p>
+              <button type="button" class="mt-1 px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold" (click)="openForm()">New request</button>
+            </div>
+          } @else {
+            <!-- Your Requests List -->
+            <section class="flex flex-col gap-3">
+              <div class="flex items-center justify-between">
+                <h3 class="text-[15px] font-bold text-light-primary">Your Requests ({{ requests().length }})</h3>
+                <span class="text-[11px] font-mono text-light-secondary">ACTIVE TICKETS</span>
+              </div>
+
+              @for (r of requests(); track r.id) {
+                <a [routerLink]="['/custom', r.id]" class="request-card bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex flex-col gap-2.5 active:scale-[0.99] transition-all group">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="font-mono font-bold text-[13px] text-light-primary">{{ customRef(r.id) }}</span>
+                    <span class="status-pill px-2.5 py-0.5 rounded-full font-semibold text-[11px] whitespace-nowrap" [class]="pillClass(r.status)">{{ statusLabel(r.status) }}</span>
+                  </div>
+
+                  <div>
+                    <h4 class="text-[14px] font-bold text-light-primary group-hover:text-accent transition-colors">{{ r.description }}</h4>
+                    <span class="text-[12px] text-light-secondary">{{ r.fabricQuality }} • {{ r.quantity }} Units</span>
+                  </div>
+
+                  <div class="pt-2 border-t border-border flex items-center justify-between text-[11px] text-light-secondary">
+                    <span>Wanted by: <strong>{{ r.desiredDate | seDate }}</strong></span>
+                    @if (isQuoted(r.status)) {
+                      <span class="text-accent font-semibold flex items-center gap-0.5">
+                        Review Quote
+                        <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+                      </span>
+                    } @else {
+                      <span class="text-light-primary font-semibold flex items-center gap-0.5">
+                        View Details
+                        <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+                      </span>
+                    }
+                  </div>
+                </a>
+              }
+            </section>
+          }
+        </main>
+
+        <ws-tab-bar />
+      </div>
+    </div>
+
+    <!-- Request Sheet (Drawer Pattern) -->
+    @if (formOpen()) {
+      <div class="fixed inset-0 z-50 flex flex-col justify-end">
+        <div class="absolute inset-0 bg-black/40" (click)="formOpen.set(false)"></div>
+        <div class="sheet relative bg-light-surface rounded-t-[28px] border-t border-border shadow-[0_-12px_40px_rgba(27,25,22,0.18)] max-w-[390px] mx-auto w-full max-h-[92vh] flex flex-col overflow-hidden">
+          <!-- Sheet Drag Handle & Header -->
+          <div class="pt-3 pb-3 px-5 border-b border-border flex flex-col items-center relative">
+            <div class="w-12 h-1.5 rounded-full bg-border mb-3"></div>
+            <div class="flex items-center justify-between w-full">
+              <div>
+                <h2 class="text-[17px] font-bold text-light-primary">New Custom Design Request</h2>
+                <span class="text-[11px] text-light-secondary">Aba Mill Technical Desk Pattern Brief</span>
+              </div>
+              <button type="button" aria-label="Close request form" class="w-8 h-8 rounded-full bg-canvas flex items-center justify-center text-light-secondary hover:text-light-primary" (click)="formOpen.set(false)">
+                <span class="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Scrollable Form Body -->
+          <form id="custom-request-form" class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4" (ngSubmit)="submit()" novalidate>
+            <!-- Fabric Weight / Quality -->
+            <label class="flex flex-col gap-1.5">
+              <span class="text-[12px] font-semibold text-light-primary">Fabric weight &amp; quality</span>
+              <input
+                type="text"
+                placeholder="e.g. 280 GSM 100% Organic Raw Cotton Twill"
+                [(ngModel)]="form.fabricQuality"
+                name="fabricQuality"
+                class="px-3.5 py-2.5 rounded-md bg-canvas/70 border border-border text-[13px] text-light-primary focus:outline-none focus:border-accent"
+              />
+              @if (errors()['fabricQuality']; as msg) {
+                <span class="field-error text-[11px] text-danger">{{ msg }}</span>
+              }
+            </label>
+
+            <!-- Colourways & Dye Notes -->
+            <label class="flex flex-col gap-1.5">
+              <span class="text-[12px] font-semibold text-light-primary">Colourways &amp; dye specifications</span>
+              <input
+                type="text"
+                placeholder="e.g. Pantone 18-0935 TCX (Raw Ochre) + Jet Black"
+                [(ngModel)]="form.colours"
+                name="colours"
+                class="px-3.5 py-2.5 rounded-md bg-canvas/70 border border-border text-[13px] text-light-primary focus:outline-none focus:border-accent"
+              />
+              @if (errors()['colours']; as msg) {
+                <span class="field-error text-[11px] text-danger">{{ msg }}</span>
+              }
+            </label>
+
+            <!-- Design & Construction -->
+            <label class="flex flex-col gap-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[12px] font-semibold text-light-primary">Design &amp; construction tech-notes</span>
+                <span class="text-[10px] text-light-secondary">Multiline</span>
+              </div>
+              <textarea
+                rows="3"
+                placeholder="Describe silhouette, panels, print, embroidery, trims, stitch type..."
+                [(ngModel)]="form.description"
+                name="description"
+                class="px-3.5 py-2.5 rounded-md bg-canvas/70 border border-border text-[13px] text-light-primary focus:outline-none focus:border-accent resize-none leading-relaxed"
+              ></textarea>
+              <span class="text-[11px] text-light-secondary">Be specific with seam finishes and hardware placements.</span>
+              @if (errors()['description']; as msg) {
+                <span class="field-error text-[11px] text-danger">{{ msg }}</span>
+              }
+            </label>
+
+            <!-- Reference Image Upload Slot -->
+            <div class="flex flex-col gap-1.5">
+              <span class="text-[12px] font-semibold text-light-primary">Reference sample photo (Optional)</span>
+              @if (photoUrl(); as url) {
+                <div class="p-3 rounded-xl bg-canvas border border-border flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-lg bg-canvas-tint border border-border flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                      <img [src]="url" alt="Reference image preview" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="text-[12px] font-bold text-light-primary truncate max-w-[170px]">Reference photo</span>
+                      <span class="text-[10px] text-light-secondary font-mono">Uploaded &amp; verified</span>
+                    </div>
+                  </div>
+                  <button type="button" aria-label="Remove image" class="text-light-secondary hover:text-danger p-1" (click)="clearPhoto()">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                </div>
+              } @else {
+                <label class="block">
+                  <span class="sr-only">Add a reference photo</span>
+                  <div class="p-3 rounded-xl bg-canvas border border-border flex items-center gap-3 cursor-pointer">
+                    <div class="w-12 h-12 rounded-lg bg-canvas-tint border border-border flex items-center justify-center flex-shrink-0">
+                      <span class="material-symbols-outlined text-[24px] text-accent">image</span>
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="text-[12px] font-bold text-light-primary">Add a reference photo</span>
+                      <span class="text-[10px] text-light-secondary font-mono">JPG, PNG or WebP • up to 5 MB</span>
+                    </div>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    class="sr-only"
+                    (change)="pickPhoto($event)"
+                  />
+                </label>
+              }
+              @if (photoUploading()) {
+                <p class="photo-note text-[11px] text-light-secondary">Uploading photo…</p>
+              }
+              @if (photoError(); as msg) {
+                <p class="photo-error field-error text-[11px] text-danger" role="alert">{{ msg }}</p>
+              }
+              <span class="text-[10px] text-light-secondary">Supports JPG, PNG, WebP up to 5 MB.</span>
+            </div>
+
+            <!-- Units Per Size Grid -->
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[12px] font-semibold text-light-primary">Units per size breakdown</span>
+                <span class="moq-chip text-[11px] text-warning font-mono font-semibold">{{ moqChip() }}</span>
+              </div>
+              <div class="grid grid-cols-5 gap-1.5 text-center">
+                @for (size of sizeKeys; track size) {
+                  <div class="p-2 rounded-lg bg-canvas border border-border">
+                    <span class="text-[10px] font-bold text-light-secondary block">{{ size }}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputmode="numeric"
+                      [ngModel]="qtyOf(size)"
+                      (ngModelChange)="setQty(size, $event)"
+                      [name]="'size-' + size"
+                      class="w-full text-center font-mono font-bold text-[12px] bg-light-surface border border-border rounded py-0.5 mt-1"
+                      [attr.aria-label]="'Units size ' + size"
+                    />
+                  </div>
+                }
+              </div>
+              <label class="flex flex-col gap-1">
+                <span class="text-[12px] font-semibold text-light-primary">Other sizes / grading notes <span class="text-[10px] text-light-secondary font-normal">(optional)</span></span>
+                <input
+                  type="text"
+                  placeholder="e.g. bespoke chest 46in × 4"
+                  [(ngModel)]="sizeNote"
+                  name="sizeNote"
+                  class="px-3.5 py-2.5 rounded-md bg-canvas/70 border border-border text-[13px] text-light-primary focus:outline-none focus:border-accent"
+                />
+              </label>
+              <div class="flex justify-between items-center text-[11px] pt-1">
+                <span class="text-light-secondary">Total Requested Units:</span>
+                @if (totalUnits() === 0) {
+                  <span class="font-mono font-bold text-light-secondary">0 Units</span>
+                } @else if (!moqKnown()) {
+                  <span class="font-mono font-bold text-light-primary">{{ totalUnits() }} Units</span>
+                } @else if (moqShort() > 0) {
+                  <span class="font-mono font-bold text-warning">{{ totalUnits() }} Units ({{ moqShort() }} short of MOQ)</span>
+                } @else {
+                  <span class="font-mono font-bold text-success">{{ totalUnits() }} Units (Meets MOQ)</span>
+                }
+              </div>
+              @if (errors()['sizes']; as msg) {
+                <span class="field-error text-[11px] text-danger">{{ msg }}</span>
+              }
+            </div>
+
+            <!-- Destination & Wanted By Date -->
+            <div class="grid grid-cols-2 gap-2.5">
+              <label class="flex flex-col gap-1">
+                <span class="text-[12px] font-semibold text-light-primary">Delivery Hub</span>
+                <input
+                  type="text"
+                  placeholder="e.g. Lagos Central Hub"
+                  [(ngModel)]="form.location"
+                  name="location"
+                  class="px-3 py-2 rounded-md bg-canvas/70 border border-border text-[12px] text-light-primary focus:outline-none focus:border-accent"
+                />
+                @if (errors()['location']; as msg) {
+                  <span class="field-error text-[11px] text-danger">{{ msg }}</span>
+                }
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-[12px] font-semibold text-light-primary">Wanted by date</span>
+                <input
+                  type="date"
+                  [(ngModel)]="form.desiredDate"
+                  name="desiredDate"
+                  class="px-3 py-2 rounded-md bg-canvas/70 border border-border text-[12px] text-light-primary focus:outline-none focus:border-accent"
+                />
+                @if (errors()['desiredDate']; as msg) {
+                  <span class="field-error text-[11px] text-danger">{{ msg }}</span>
+                }
+              </label>
+            </div>
+
+            <!-- Policy Reminder -->
+            <div class="p-3 rounded-lg bg-canvas-tint/70 border border-border text-[11px] text-light-secondary leading-normal">
+              Aba pattern room quotes within 24 working hours. Sampling commences upon 100% upfront quote acceptance.
+            </div>
+          </form>
+
+          <!-- Sheet Footer Actions -->
+          <div class="p-4 bg-light-surface border-t border-border flex items-center gap-3">
+            <button type="button" class="w-1/3 py-3 rounded-full bg-canvas border border-border text-light-secondary font-semibold text-[13px] hover:bg-canvas-tint" (click)="formOpen.set(false)">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="custom-request-form"
+              [disabled]="busy()"
+              class="flex-1 py-3.5 rounded-full bg-accent text-on-accent font-semibold text-[14px] flex items-center justify-center gap-2 shadow-sm hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              <span>{{ busy() ? 'Submitting…' : 'Submit for Review' }}</span>
+              <span class="material-symbols-outlined text-[18px]">send</span>
+            </button>
+          </div>
         </div>
-      </form>
-      <ng-container seDrawerFooter>
-        <button seButton type="button" (click)="formOpen.set(false)">Cancel</button>
-        <button
-          seButton
-          variant="primary"
-          type="submit"
-          form="custom-request-form"
-          [loading]="busy()"
-        >
-          Submit for review
-        </button>
-      </ng-container>
-    </se-drawer>
+      </div>
+    }
   `,
-  styles: [
-    `
-      .roadmap {
-        margin: 0;
-        padding-left: var(--se-space-5);
-        display: grid;
-        gap: var(--se-space-2);
-      }
-      .roadmap li {
-        display: grid;
-        gap: var(--se-space-1);
-      }
-      .sizes {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: var(--se-space-2);
-      }
-      @media (max-width: 40rem) {
-        .sizes {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-      }
-      @media (max-width: 22rem) {
-        .sizes {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-      .roadmap span {
-        color: var(--se-color-text-muted);
-        font: var(--se-type-caption);
-      }
-      .photo-note {
-        margin: 0;
-        color: var(--se-color-text-muted);
-        font: var(--se-type-caption);
-      }
-      .photo-error {
-        margin: 0;
-        color: var(--se-color-danger-text, var(--bad));
-        font: var(--se-type-caption);
-      }
-      .photo-preview {
-        display: grid;
-        gap: var(--se-space-2);
-      }
-      .photo-preview img {
-        width: 100%;
-        max-height: 220px;
-        object-fit: cover;
-        border: 1px solid var(--line);
-        border-radius: var(--sd-r-row, 16px);
-        background: var(--surface-2);
-      }
-      .photo-preview .se-btn {
-        justify-self: start;
-      }
-    `,
-  ],
 })
 export class CustomPage implements OnInit {
   private readonly api = inject(ApiService);
@@ -298,6 +380,7 @@ export class CustomPage implements OnInit {
   readonly photoError = signal('');
   readonly sizeKeys = SIZE_KEYS;
   readonly roadmap = ROADMAP;
+  readonly customRef = customRef;
 
   /** Size-grid quantities in a signal, so totals recompute from one source. */
   readonly sizeQty = signal<Record<string, number>>({});
@@ -315,14 +398,15 @@ export class CustomPage implements OnInit {
     this.sizeKeys.reduce((n, s) => n + (this.sizeQty()[s] ?? 0), 0),
   );
 
-  readonly rowId = (r: CustomOrder) => r.id;
-  readonly columns: SeColumn<CustomOrder>[] = [
-    { key: 'ref', header: 'Request', value: (r) => customRef(r.id) },
-    { key: 'createdAt', header: 'Submitted', format: (v) => formatDate(v as string) },
-    { key: 'quantity', header: 'Units', numeric: true },
-    { key: 'desiredDate', header: 'Wanted by', format: (v) => formatDate(v as string) },
-    { key: 'status', header: 'Status' },
-  ];
+  readonly moqKnown = computed(() => (this.pricingData()?.moq ?? 0) > 0);
+  readonly moqShort = computed(() =>
+    Math.max(0, (this.pricingData()?.moq ?? 0) - this.totalUnits()),
+  );
+
+  moqChip(): string {
+    const moq = this.pricingData()?.moq ?? 0;
+    return moq > 0 ? `Min ${moq}u custom batch` : 'Batch minimum by desk';
+  }
 
   ngOnInit(): void {
     this.load();
@@ -359,16 +443,6 @@ export class CustomPage implements OnInit {
     this.formOpen.set(true);
   }
 
-  /** "12 units requested · 20-unit batch minimum (8 short)", from the API's MOQ. */
-  moqHint(): string {
-    const units = this.totalUnits();
-    const moq = this.pricingData()?.moq ?? 0;
-    const requested = `${units} ${units === 1 ? 'unit' : 'units'} requested`;
-    if (moq <= 0) return `${requested} · batch minimum confirmed by the desk`;
-    const short = Math.max(0, moq - units);
-    return `${requested} · ${moq}-unit batch minimum${short > 0 ? ` (${short} short)` : ' met'}`;
-  }
-
   qtyOf(size: string): number {
     return this.sizeQty()[size] ?? 0;
   }
@@ -376,6 +450,23 @@ export class CustomPage implements OnInit {
   setQty(size: string, raw: unknown): void {
     const n = Math.max(0, Math.floor(Number(raw) || 0));
     this.sizeQty.update((s) => ({ ...s, [size]: n }));
+  }
+
+  isQuoted(status: string): boolean {
+    return /^quoted$/.test(status.trim().toLowerCase());
+  }
+
+  statusLabel(status: string): string {
+    const words = status.replaceAll('_', ' ').trim();
+    return words ? words[0].toUpperCase() + words.slice(1) : 'Update';
+  }
+
+  pillClass(status: string): string {
+    const s = status.toLowerCase();
+    if (/rejected|cancelled|declined/.test(s)) return '!bg-danger/15 !text-danger';
+    if (/quoted|review|pending/.test(s)) return '!bg-warning/15 !text-warning';
+    if (/approved|production|sample|shipped|delivered|completed/.test(s)) return '!bg-success/15 !text-success';
+    return '';
   }
 
   /** Serialise the size grid (+ free note) into the API's sizes string. */
@@ -444,23 +535,23 @@ export class CustomPage implements OnInit {
     this.api
       .submitCustomOrder({ ...this.form, sizes, quantity: this.totalUnits(), ...(referenceImageUrl ? { referenceImageUrl } : {}) })
       .subscribe({
-      next: (created) => {
-        this.busy.set(false);
-        this.formOpen.set(false);
-        this.resetForm();
-        this.toast.show(`Request ${customRef(created.id)} submitted for technical review`, {
-          action: { label: 'View request', run: () => this.open(created) },
-        });
-        this.load();
-      },
-      error: (err) => {
-        this.busy.set(false);
-        this.toast.show(err?.error?.message ?? 'The request could not be submitted', {
-          tone: 'danger',
-          action: { label: 'Try again', run: () => this.submit() },
-        });
-      },
-    });
+        next: (created) => {
+          this.busy.set(false);
+          this.formOpen.set(false);
+          this.resetForm();
+          this.toast.show(`Request ${customRef(created.id)} submitted for technical review`, {
+            action: { label: 'View request', run: () => this.open(created) },
+          });
+          this.load();
+        },
+        error: (err) => {
+          this.busy.set(false);
+          this.toast.show(err?.error?.message ?? 'The request could not be submitted', {
+            tone: 'danger',
+            action: { label: 'Try again', run: () => this.submit() },
+          });
+        },
+      });
   }
 
   private resetForm(): void {

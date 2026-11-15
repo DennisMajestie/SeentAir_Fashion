@@ -1,136 +1,178 @@
-import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { SeMoneyPipe, SeCurrencyService } from '@seentair/ui';
+import { SeCurrencyService, SeMoneyPipe } from '@seentair/ui';
 import { PortalStore } from '../portal.store';
 
+/** Screen P3: read-only partner overview. Aggregates only, never customer data. */
 @Component({
   selector: 'app-overview-page',
   imports: [DecimalPipe, RouterLink, SeMoneyPipe],
   template: `
     @if (store.dash(); as d) {
-      <div class="p2">
-        <section class="card hero">
-          <div class="hero-top">
-            <div>
-              <span class="muted small">Welcome back,</span>
-              <h1>{{ store.firstName() }}</h1>
+      <div class="stitch">
+        <div class="flex flex-col gap-4">
+          <!-- Greeting & Data Freshness Card -->
+          <section class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)]">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="text-[12px] text-light-secondary font-medium">Welcome back,</span>
+                <h1 class="text-[18px] font-bold text-light-primary">{{ store.firstName() }}</h1>
+              </div>
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-success/15 text-success font-semibold text-[11px] border border-success/30">
+                <span class="w-1.5 h-1.5 rounded-full bg-success"></span>
+                Series A Partner
+              </span>
             </div>
-            <span class="pill ok"><span class="dot"></span> Series A Partner</span>
-          </div>
-          <div class="hero-meta">
-            <span><span class="material-symbols-outlined accent">sync</span>Live ledger aggregates</span>
-            <span class="mono">{{ store.periodLabel() }}</span>
-          </div>
-        </section>
+            <div class="mt-3 pt-3 border-t border-border flex items-center justify-between text-[11px] font-mono text-light-secondary">
+              <span class="flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px] text-accent">sync</span>
+                Aggregates from Aba Live Ledger
+              </span>
+              <span>{{ store.periodLabel() }}</span>
+            </div>
+          </section>
 
-        <section class="metrics">
-          <div class="metric card">
-            <div class="mh"><span>Revenue Recorded</span><span class="material-symbols-outlined accent">trending_up</span></div>
-            <strong>{{ d.businessOverview.totalIncome | seMoney }}</strong>
-            <small class="muted">All income entries</small>
-          </div>
-          <div class="metric card">
-            <div class="mh"><span>Net Profit</span><span class="material-symbols-outlined okc">account_balance_wallet</span></div>
-            <strong>{{ d.businessOverview.profitLoss.net | seMoney }}</strong>
-            <small class="muted">{{ marginLine() }}</small>
-          </div>
-          <div class="metric card">
-            <div class="mh"><span>Distributions</span><span class="material-symbols-outlined warnc">payments</span></div>
-            <strong>{{ d.profitSharing.length }}</strong>
-            <small class="muted">Declared periods</small>
-          </div>
-          <div class="metric card">
-            <div class="mh"><span>Finished Goods</span><span class="material-symbols-outlined muted">warehouse</span></div>
-            <strong>{{ (d.inventoryVisibility.finishedGoodsUnits | number) ?? 0 }}u</strong>
-            <small class="muted">Units in stock</small>
-          </div>
-        </section>
+          <!-- 4 Metric Cards (2x2 Grid) -->
+          <section class="metrics grid grid-cols-2 gap-2.5">
 
-        <section class="card">
-          <div class="sec-head">
-            <div><h2>Profit Declared per Period</h2><span class="muted small">Distribution history</span></div>
-            <a routerLink="/profit-sharing" class="link">Details</a>
-          </div>
-          @if (chartRows().length >= 2) {
-            <div class="chart" role="img" aria-label="Profit declared per period">
-              @for (row of chartRows(); track row.label) {
-                <div class="barcol">
-                  <span class="barval mono">{{ compact(row.value) }}</span>
-                  <div class="bar" [style.height.%]="row.pct" [class.latest]="$last"></div>
-                  <span class="barlabel mono">{{ row.label }}</span>
+            <!-- Metric 1: Revenue Recorded -->
+            <div class="bg-light-surface p-3.5 rounded-xl border border-border flex flex-col justify-between">
+              <div class="flex items-center justify-between text-light-secondary text-[11px]">
+                <span>Revenue Recorded</span>
+                <span class="material-symbols-outlined text-[16px] text-accent">trending_up</span>
+              </div>
+              <div class="mt-2">
+                <span class="text-[20px] font-bold font-mono text-light-primary leading-tight block">{{ d.businessOverview.totalIncome | seMoney }}</span>
+                <span class="text-[11px] text-light-secondary mt-0.5 block">All income entries</span>
+              </div>
+            </div>
+
+            <!-- Metric 2: Net Profit -->
+            <div class="bg-light-surface p-3.5 rounded-xl border border-border flex flex-col justify-between">
+              <div class="flex items-center justify-between text-light-secondary text-[11px]">
+                <span>Net Profit</span>
+                <span class="material-symbols-outlined text-[16px] text-success">account_balance_wallet</span>
+              </div>
+              <div class="mt-2">
+                <span class="text-[20px] font-bold font-mono text-light-primary leading-tight block">{{ d.businessOverview.profitLoss.net | seMoney }}</span>
+                <span class="text-[11px] text-light-secondary mt-0.5 block">{{ marginLine() }}</span>
+              </div>
+            </div>
+
+            <!-- Metric 3: Distributions Declared -->
+            <div class="bg-light-surface p-3.5 rounded-xl border border-border flex flex-col justify-between">
+              <div class="flex items-center justify-between text-light-secondary text-[11px]">
+                <span>Distributions Declared</span>
+                <span class="material-symbols-outlined text-[16px] text-warning">payments</span>
+              </div>
+              <div class="mt-2">
+                <span class="text-[20px] font-bold font-mono text-light-primary leading-tight block">{{ d.profitSharing.length }}</span>
+                <span class="text-[11px] text-accent font-semibold mt-0.5 block">{{ d.config.dividendsPct }}% Covenant Pool</span>
+              </div>
+            </div>
+
+            <!-- Metric 4: Finished Goods Stock -->
+            <div class="bg-light-surface p-3.5 rounded-xl border border-border flex flex-col justify-between">
+              <div class="flex items-center justify-between text-light-secondary text-[11px]">
+                <span>Finished Goods</span>
+                <span class="material-symbols-outlined text-[16px] text-light-secondary">warehouse</span>
+              </div>
+              <div class="mt-2">
+                <span class="text-[20px] font-bold font-mono text-light-primary leading-tight block">{{ d.inventoryVisibility.finishedGoodsUnits | number }}u</span>
+                <span class="text-[11px] text-light-secondary mt-0.5 block">Units in stock</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Profit Declared per Period: Mobile Bar Chart -->
+          <section class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <h2 class="text-[14px] font-bold text-light-primary">Profit Declared per Period</h2>
+                <span class="text-[11px] text-light-secondary">Distribution history</span>
+              </div>
+              <a routerLink="/profit-sharing" class="text-[12px] font-bold text-accent hover:underline">Details</a>
+            </div>
+
+            @if (chartRows().length >= 2) {
+              <!-- Bar Chart Visualization -->
+              <div class="pt-3 pb-1 flex items-end justify-between gap-3 h-32 px-2 border-b border-border/70" role="img" aria-label="Profit declared per period">
+                @for (row of chartRows(); track row.label; let i = $index) {
+                  <div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                    <span class="text-[10px] font-mono text-light-secondary" [class]="i === chartRows().length - 1 ? 'text-[10px] font-mono font-bold text-accent' : ''">{{ compact(row.value) }}</span>
+                    <div class="bar w-full bg-canvas-tint rounded-t-md" [style.height.%]="row.pct" [class.bg-accent]="i === chartRows().length - 1"></div>
+                    <span class="text-[10px] font-mono text-light-secondary" [class]="i === chartRows().length - 1 ? 'text-[10px] font-mono font-bold text-light-primary' : ''">{{ row.label }}</span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="text-[11px] text-light-secondary">Chart appears once two or more quarterly distributions are declared.</p>
+            }
+          </section>
+
+          <!-- Latest Distribution Card -->
+          <section class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex flex-col gap-3">
+            @if (store.latestDistribution(); as dist) {
+              <div class="flex items-start justify-between">
+                <div>
+                  <span class="text-[11px] font-mono uppercase text-light-secondary">{{ dist.period }} Distribution</span>
+                  <h2 class="text-[18px] font-bold text-light-primary font-mono mt-0.5">Your Dividend: {{ dist.myDividend | seMoney }}</h2>
                 </div>
-              }
-            </div>
-          } @else {
-            <p class="muted small">Chart appears once two or more quarterly distributions are declared.</p>
-          }
-        </section>
+                <span class="px-2.5 py-0.5 rounded-full bg-success/15 text-success text-[11px] font-semibold">Declared</span>
+              </div>
 
-        <section class="card">
-          <div class="sec-head"><h2>Latest Distribution</h2>@if (store.latestDistribution()) { <span class="badge ok">Declared</span> }</div>
-          @if (store.latestDistribution(); as dist) {
-            <div class="kv">
-              <div><span>Your dividend</span><strong class="mono accent">{{ dist.myDividend | seMoney }}</strong></div>
-              <div><span>Period</span><strong>{{ dist.period }}</strong></div>
-              <div><span>Total profit declared</span><strong class="mono">{{ dist.totalProfit | seMoney }}</strong></div>
-              <div><span>Dividend pool ({{ d.config.dividendsPct }}%)</span><strong class="mono">{{ dist.dividendPool | seMoney }}</strong></div>
-              <div><span>Your entitlement</span><strong class="mono">{{ d.investmentInformation.equityPercentage }}% equity</strong></div>
-            </div>
-          } @else {
-            <p class="muted small">No distributions yet. Declared quarterly from net profit ({{ store.covenantLabel() }}).</p>
-          }
-        </section>
+              <div class="grid grid-cols-2 gap-2 text-[12px] bg-canvas/60 p-2.5 rounded-lg border border-border">
+                <div>
+                  <span class="text-light-secondary block text-[11px]">Total Net Profit:</span>
+                  <strong class="font-mono text-light-primary">{{ dist.totalProfit | seMoney }}</strong>
+                </div>
+                <div>
+                  <span class="text-light-secondary block text-[11px]">Dividend Pool ({{ d.config.dividendsPct }}%):</span>
+                  <strong class="font-mono text-light-primary">{{ dist.dividendPool | seMoney }}</strong>
+                </div>
+                <div>
+                  <span class="text-light-secondary block text-[11px]">Your Entitlement:</span>
+                  <strong class="font-mono text-accent">{{ d.investmentInformation.equityPercentage }}% of Pool</strong>
+                </div>
+                <div>
+                  <span class="text-light-secondary block text-[11px]">Period:</span>
+                  <strong class="font-mono text-light-primary">{{ dist.period }}</strong>
+                </div>
+              </div>
+            } @else {
+              <p class="text-[12px] text-light-secondary">No distributions yet. Declared quarterly from net profit ({{ store.covenantLabel() }}).</p>
+            }
+          </section>
 
-        <section class="card">
-          <div class="sec-head"><h2>Your Holding</h2><a routerLink="/investment" class="link">View</a></div>
-          <div class="kv">
-            <div><span>Invested</span><strong class="mono">{{ d.investmentInformation.investedAmount | seMoney }}</strong></div>
-            <div><span>Dividends to date</span><strong class="mono okc">{{ store.lifetimeDividends() | seMoney }}</strong></div>
-            <div><span>Shares held</span><strong class="mono">{{ d.investmentInformation.shares | number }} / {{ d.investmentInformation.totalShares | number }}</strong></div>
-            <div><span>Equity</span><strong class="mono accent">{{ d.investmentInformation.equityPercentage }}%</strong></div>
-          </div>
-          <div class="quick-links">
-            <a routerLink="/inventory">Inventory</a>
-            <a routerLink="/reports">Accounts</a>
-            <a routerLink="/documents">Documents</a>
-          </div>
-        </section>
+          <!-- Your Holding Card -->
+          <section class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <h2 class="text-[14px] font-bold text-light-primary">Your Equity Holding</h2>
+              <a routerLink="/investment" class="text-[12px] font-semibold text-accent hover:underline">My Investment</a>
+            </div>
+
+            <div class="flex justify-between items-center py-1 text-[13px]">
+              <span class="text-light-secondary">Total Invested Capital:</span>
+              <span class="font-mono font-bold text-light-primary">{{ d.investmentInformation.investedAmount | seMoney }}</span>
+            </div>
+            <div class="flex justify-between items-center py-1 text-[13px] border-t border-border/60">
+              <span class="text-light-secondary">Cumulative Dividends:</span>
+              <span class="font-mono font-bold text-success">{{ store.lifetimeDividends() | seMoney }}</span>
+            </div>
+            <div class="flex justify-between items-center py-1 text-[13px] border-t border-border/60">
+              <span class="text-light-secondary">Shares Held:</span>
+              <span class="font-mono font-bold text-light-primary">{{ d.investmentInformation.shares | number }} / {{ d.investmentInformation.totalShares | number }}</span>
+            </div>
+            <div class="flex justify-between items-center py-1 text-[13px] border-t border-border/60">
+              <span class="text-light-secondary">Equity Stake:</span>
+              <span class="font-mono font-bold text-accent text-[15px]">{{ d.investmentInformation.equityPercentage }}%</span>
+            </div>
+          </section>
+        </div>
       </div>
     }
   `,
-  styles: [`
-    :host{display:block;font-family:'Urbanist',sans-serif;}
-    .p2{display:flex;flex-direction:column;gap:12px;}
-    .card{background:#fffdf9;border:1px solid #e8e1d3;border-radius:12px;padding:14px;box-shadow:0 8px 24px -4px rgba(27,25,22,.05);}
-    .hero-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;}
-    h1{margin:2px 0 0;font:700 18px/1.2 Urbanist,sans-serif;color:#1b1916;}
-    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font:600 11px/1 Urbanist,sans-serif;border:1px solid;white-space:nowrap;}
-    .pill.ok{background:rgba(35,128,77,.12);color:#23804d;border-color:rgba(35,128,77,.3);} .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
-    .hero-meta{display:flex;justify-content:space-between;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #e8e1d3;font-size:11px;color:#7b756a;}
-    .hero-meta span{display:inline-flex;align-items:center;gap:4px;} .hero-meta .material-symbols-outlined{font-size:14px;}
-    .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-    .metric{padding:12px;display:flex;flex-direction:column;gap:4px;}
-    .mh{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#7b756a;}
-    .mh .material-symbols-outlined{font-size:16px;}
-    .metric strong{font:700 17px/1.1 'JetBrains Mono',monospace;color:#1b1916;margin-top:2px;word-break:break-word;}
-    .sec-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;}
-    h2{margin:0;font:700 14px/1.2 Urbanist,sans-serif;color:#1b1916;}
-    .link{color:#c88a12;font:600 12px/1 Urbanist,sans-serif;text-decoration:none;}
-    .chart{display:flex;align-items:flex-end;justify-content:space-between;gap:6px;height:140px;padding:8px 2px 0;border-bottom:1px solid #e8e1d3;}
-    .barcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;min-width:0;}
-    .bar{width:100%;max-width:42px;border-radius:6px 6px 0 0;background:#efe3c8;min-height:6px;}
-    .bar.latest{background:#c88a12;} .barval{font-size:9px;color:#7b756a;text-align:center;} .barlabel{font-size:10px;color:#7b756a;}
-    .kv{display:flex;flex-direction:column;gap:8px;font-size:13px;}
-    .kv>div{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid rgba(232,225,211,.6);} .kv>div:last-child{border-bottom:0;}
-    .kv span{color:#7b756a;}
-    .quick-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid #e8e1d3;}
-    .quick-links a{font:600 12px/1 Urbanist,sans-serif;color:#1b1916;text-decoration:none;background:#f1ede5;padding:6px 10px;border-radius:999px;}
-    .badge{font:600 11px/1 Urbanist,sans-serif;padding:4px 8px;border-radius:999px;border:1px solid;}
-    .badge.ok{background:rgba(35,128,77,.12);color:#23804d;border-color:rgba(35,128,77,.3);}
-    .muted{color:#7b756a;} .small{font-size:11px;} .mono{font-family:'JetBrains Mono',monospace;} .accent{color:#c88a12;} .okc{color:#23804d;} .warnc{color:#93600a;}
-    @media (max-width:360px){.metrics{grid-template-columns:1fr;}}
-  `],
 })
 export class OverviewPage {
   readonly store = inject(PortalStore);
@@ -138,8 +180,12 @@ export class OverviewPage {
 
   private readonly rows = computed(() => [...(this.store.dash()?.profitSharing ?? [])].reverse().slice(-6));
   readonly chartRows = computed(() => {
-    const max = Math.max(1, ...this.rows().map(r => r.totalProfit));
-    return this.rows().map((r) => ({ label: r.period.replace(/^20/, "'"), value: r.totalProfit, pct: Math.max(8, (r.totalProfit / max) * 100) }));
+    const max = Math.max(1, ...this.rows().map((r) => r.totalProfit));
+    return this.rows().map((r) => ({
+      label: r.period.replace(/^20/, "'"),
+      value: r.totalProfit,
+      pct: Math.max(8, (r.totalProfit / max) * 100),
+    }));
   });
 
   readonly marginLine = computed(() => {

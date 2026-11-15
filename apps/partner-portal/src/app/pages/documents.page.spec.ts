@@ -12,20 +12,22 @@ describe('DocumentsPage', () => {
     configurePortal();
     fixture = TestBed.createComponent(DocumentsPage);
     fixture.detectChanges();
-    const metrics = el().querySelector('.se-metric-grid')!.textContent!;
+    const metrics = el().querySelector('.metrics')!.textContent!;
     expect(metrics).toContain('250,000 shares');
     expect(metrics).toContain('₦2,000,000');
     expect(metrics).toContain('0');
   });
 
-  it('renders the corporate vault with honest empty states', () => {
+  it('renders the corporate vault with honest pending states', () => {
     configurePortal();
     fixture = TestBed.createComponent(DocumentsPage);
     fixture.detectChanges();
-    const vault = el().querySelector('.se-detail__main')!.textContent!;
-    expect(vault).toContain('No documents yet');
-    expect(vault).toContain('No letters yet');
-    expect(vault).toContain('No filings yet');
+    const vault = el().querySelector('.vault')!.textContent!;
+    expect(vault).toContain("Shareholders' Agreement");
+    expect(vault).toContain("Managing Director's quarterly letters");
+    expect(vault).toContain('Statutory receipts');
+    expect(vault).toContain('Awaiting release');
+    expect(vault).toContain('Not yet shared');
   });
 
   it('shows a live in-platform message in the desk inbox', () => {
@@ -43,9 +45,10 @@ describe('DocumentsPage', () => {
     ]);
     fixture = TestBed.createComponent(DocumentsPage);
     fixture.detectChanges();
-    const desk = el().querySelector('.se-detail__aside')!.textContent!;
+    const desk = el().querySelector('.desk')!.textContent!;
     expect(desk).toContain('Quarterly briefing available');
     expect(desk).toContain('Terminal');
+    expect(desk).toContain('Sent');
   });
 
   it('never shows a customer name, email or address', () => {

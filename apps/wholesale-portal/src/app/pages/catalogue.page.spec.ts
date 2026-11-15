@@ -106,16 +106,16 @@ describe('CataloguePage', () => {
   }
 
   const el = () => fixture.nativeElement as HTMLElement;
-  const cards = () => el().querySelectorAll('se-card');
+  const cards = () => el().querySelectorAll('.product-card');
   const text = () => (el().textContent ?? '').replace(/\s+/g, ' ');
 
   describe('product cards', () => {
-    it('renders one card per product with an "Order in bulk" link to the matrix', async () => {
+    it('renders one card per product with a "Bulk Order" link to the matrix', async () => {
       await boot();
       expect(cards().length).toBe(2);
-      const links = el().querySelectorAll<HTMLAnchorElement>('a.product__cta');
+      const links = el().querySelectorAll<HTMLAnchorElement>('a.product-cta');
       expect(links.length).toBe(2);
-      expect(links[0].textContent).toContain('Order in bulk');
+      expect(links[0].textContent).toContain('Bulk Order');
       expect(links[0].getAttribute('href')).toBe('/catalogue/p1/matrix');
     });
 
@@ -142,26 +142,28 @@ describe('CataloguePage', () => {
         }),
       );
       expect(component.availability(component.pricing()!.data[0])).toBe('made_to_order');
-      expect(cards()[0].querySelector('se-status')!.textContent).toContain('Made to order');
+      expect(cards()[0].querySelector('.product-availability')!.textContent).toContain(
+        'Made to order',
+      );
     });
   });
 
   describe('pricing display rules', () => {
     it('shows the wholesale price, the retail strike and the discount badge on a real discount', async () => {
       await boot();
-      const price = cards()[0].querySelector('.product__price')!;
+      const price = cards()[0].querySelector('.product-price')!;
       expect(price.querySelector('strong')!.textContent).toContain('7,650.00');
       expect(price.querySelector('s')!.textContent).toContain('9,000.00');
-      expect(price.querySelector('se-badge')!.textContent).toContain('15% off retail');
+      expect(price.querySelector('.discount-badge')!.textContent).toContain('15% off retail');
     });
 
     it('hides the strike and never shows 0% when wholesale equals retail', async () => {
       await boot(
         pricing({ hasDiscount: false, tier: null, data: [product({ wholesalePrice: 9000 })] }),
       );
-      const price = cards()[0].querySelector('.product__price')!;
+      const price = cards()[0].querySelector('.product-price')!;
       expect(price.querySelector('s')).toBeNull();
-      expect(price.querySelector('se-badge')!.textContent).toContain('At retail');
+      expect(price.querySelector('.discount-badge')!.textContent).toContain('At retail');
       expect(text()).not.toContain('0% off');
     });
 
@@ -177,13 +179,13 @@ describe('CataloguePage', () => {
       await boot(Object.assign(new Error('forbidden'), { status: 403 }));
       expect(component.needsAccount()).toBe(true);
       expect(text()).toContain('Wholesale account required');
-      expect(cards().length).toBe(1);
-      expect(el().querySelector('a.product__cta')).toBeNull();
+      expect(cards().length).toBe(0);
+      expect(el().querySelector('a.product-cta')).toBeNull();
     });
 
     it('calls applyForAccount and shows the pending state', async () => {
       await boot(Object.assign(new Error('forbidden'), { status: 401 }));
-      el().querySelector<HTMLButtonElement>('se-card button')!.click();
+      el().querySelector<HTMLButtonElement>('.needs-account button')!.click();
       fixture.detectChanges();
       expect(api.applyForAccount).toHaveBeenCalledTimes(1);
       expect(component.applied()).toBe(true);
@@ -193,10 +195,10 @@ describe('CataloguePage', () => {
     it('treats any other failure as a load error with a retry, not the apply path', async () => {
       await boot(Object.assign(new Error('down'), { status: 500 }));
       expect(component.needsAccount()).toBe(false);
-      const banner = el().querySelector('se-banner')!;
+      const banner = el().querySelector('.load-error')!;
       expect(banner.textContent).toContain('could not be loaded');
       expect(banner.textContent).toContain('Try again');
-      expect(el().querySelector('se-empty-state')).toBeNull();
+      expect(el().querySelector('.empty-state')).toBeNull();
     });
   });
 
@@ -224,13 +226,15 @@ describe('CataloguePage', () => {
       fixture.detectChanges();
       expect(component.moqShort()).toBe(8);
       expect(component.moqMet()).toBe(false);
-      expect(text()).toContain('8 more units to reach the 20-unit minimum');
-      expect(text()).toContain('Review bulk order (12)');
+      expect(el().querySelector('.moq-alert')!.textContent).toContain(
+        '8 more units to reach the 20-unit minimum',
+      );
+      expect(el().querySelector('.moq-alert')!.textContent).toContain('Review bulk order (12)');
     });
 
     it('shows no warning at or above the MOQ, or with an empty cart', async () => {
       await boot();
-      expect(el().querySelector('se-banner')).toBeNull();
+      expect(el().querySelector('.moq-alert')).toBeNull();
       cart.add([
         {
           variantId: 'v1',
@@ -245,7 +249,7 @@ describe('CataloguePage', () => {
       ]);
       fixture.detectChanges();
       expect(component.moqMet()).toBe(true);
-      expect(el().querySelector('se-banner')).toBeNull();
+      expect(el().querySelector('.moq-alert')).toBeNull();
     });
   });
 
@@ -282,7 +286,7 @@ describe('CataloguePage', () => {
       component.query.set('zzzz');
       fixture.detectChanges();
       expect(cards().length).toBe(0);
-      const empty = el().querySelector('se-empty-state')!;
+      const empty = el().querySelector('.empty-state')!;
       expect(empty.textContent).toContain('No products match');
       empty.querySelector<HTMLButtonElement>('button')!.click();
       fixture.detectChanges();

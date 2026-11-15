@@ -11,19 +11,19 @@ describe('ReportsPage', () => {
     configurePortal();
     fixture = TestBed.createComponent(ReportsPage);
     fixture.detectChanges();
-    const metrics = el().querySelector('.se-metric-grid')!.textContent!;
+    const metrics = el().querySelector('.metrics')!.textContent!;
     expect(metrics).toContain('91.0%');
     expect(metrics).toContain('9.0%');
   });
 
-  it('draws the profit allocation covenant as a bar chart', () => {
+  it('draws the profit allocation covenant as bars', () => {
     configurePortal();
     fixture = TestBed.createComponent(ReportsPage);
     fixture.detectChanges();
-    const chart = el().querySelector('se-bar-chart')!;
-    expect(chart.textContent).toContain('Reinvestment');
-    expect(chart.textContent).toContain('Dividends');
-    expect(chart.textContent).toContain('Reserve');
+    const covenant = el().querySelector('.covenant')!.textContent!;
+    expect(covenant).toContain('Reinvestment');
+    expect(covenant).toContain('Dividends');
+    expect(covenant).toContain('Reserve');
   });
 
   it('lists income by ledger entry type when a breakdown is published', () => {
@@ -37,9 +37,9 @@ describe('ReportsPage', () => {
     );
     fixture = TestBed.createComponent(ReportsPage);
     fixture.detectChanges();
-    const table = el().querySelector('se-table')!.textContent!;
-    expect(table).toContain('Sales');
-    expect(table).toContain('₦2,000,000');
+    const list = el().querySelector('.income-list')!.textContent!;
+    expect(list).toContain('Sales');
+    expect(list).toContain('₦2,000,000');
   });
 
   it('renders the document shelf with honest pending states', () => {

@@ -73,8 +73,8 @@ describe('CartPage', () => {
     it('reads the minimum from the API response', () => {
       mount([line('a', 5)], of({ moq: 50, tier: null } as unknown as Pricing));
       expect(component.moq()).toBe(50);
-      expect(text('.se-banner--warning')).toContain('at least 50 units');
-      expect(text('.se-banner--warning')).toContain('Add 45 more');
+      expect(text('.moq-warning')).toContain('at least 50 units');
+      expect(text('.moq-warning')).toContain('Add 45 more');
     });
 
     it('does not invent 20 when the pricing call fails', () => {
@@ -84,8 +84,8 @@ describe('CartPage', () => {
       );
       expect(component.moq()).toBe(0);
       expect(component.moqKnown()).toBeFalse();
-      expect(el().querySelector('.se-banner--warning')).toBeNull();
-      expect(text('.se-banner--info')).toContain('Minimum being confirmed');
+      expect(el().querySelector('.moq-warning')).toBeNull();
+      expect(text('.moq-info')).toContain('Minimum being confirmed');
     });
 
     it('blocks placing the order while below the real minimum', () => {
@@ -98,7 +98,7 @@ describe('CartPage', () => {
       mount([line('a', 20)]);
       expect(component.moqMet()).toBeTrue();
       expect(placeButton().disabled).toBeFalse();
-      expect(el().querySelector('.se-banner--warning')).toBeNull();
+      expect(el().querySelector('.moq-warning')).toBeNull();
     });
 
     it('defers to the server when the minimum is unknown', () => {
@@ -112,9 +112,9 @@ describe('CartPage', () => {
   });
 
   describe('the lines are the cart', () => {
-    it('renders one table row per variant with SKU, size and colour', () => {
+    it('renders one row per variant with SKU, size and colour', () => {
       mount([line('a', 10, 2500, 'M'), line('b', 10, 2500, 'L')]);
-      const rows = el().querySelectorAll('se-table tbody tr');
+      const rows = el().querySelectorAll('.line-row');
       expect(rows.length).toBe(2);
       expect(rows[0].textContent).toContain('SE-A');
       expect(rows[0].textContent).toContain('M / black');
@@ -134,7 +134,7 @@ describe('CartPage', () => {
       expect(cart.lines().map((l) => l.variantId)).toEqual(['b']);
       fixture.detectChanges();
       (
-        el().querySelector('se-table tbody button[aria-label^="Remove"]') as HTMLButtonElement
+        el().querySelector('button[aria-label^="Remove"]') as HTMLButtonElement
       ).click();
       fixture.detectChanges();
       expect(cart.lines().length).toBe(0);
@@ -144,41 +144,41 @@ describe('CartPage', () => {
   describe('the summary reconciles with the cart', () => {
     it('shows units, subtotal and total at the same magnitude', () => {
       mount([line('a', 20, 1850000 / 20)]);
-      const kv = text('dl');
+      const kv = text('.summary-rows');
       expect(kv).toContain('20');
       expect(kv.match(/₦1,850,000\.00/g)?.length).toBe(2);
     });
 
     it('keeps the naira scale for a fractional unit price', () => {
       mount([line('a', 20, 1234.56)]);
-      expect(text('dl')).toContain('₦24,691.20');
+      expect(text('.summary-rows')).toContain('₦24,691.20');
     });
 
     it('names the applied tier rate from the API, and omits it when unknown', () => {
       mount([line('a', 20)], of({ moq: 20, tier: { name: 'Tier B', discountPercent: 20 } }));
-      expect(text('dl')).toContain('Tier B · 20% off retail');
+      expect(text('.summary-rows')).toContain('Tier B · 20% off retail');
       fixture.destroy();
       TestBed.resetTestingModule();
       mount(
         [line('a', 20)],
         throwError(() => new Error('down')),
       );
-      expect(text('dl')).not.toContain('Rate card');
+      expect(text('.summary-rows')).not.toContain('Rate card');
     });
 
     it('states the full-payment rule', () => {
       mount([line('a', 20)]);
-      expect(text('.rule')).toContain('Full payment upfront');
-      expect(text('.rule')).toContain('No part-payments');
+      expect(text('.upfront-notice')).toContain('Full 100% Upfront Payment');
+      expect(text('.upfront-notice')).toContain('non-cancellable once cut');
     });
   });
 
   describe('empty and placing states', () => {
     it('shows the empty state with a catalogue action when there is no batch', () => {
       mount([]);
-      expect(text('se-empty-state')).toContain('Your cart is empty');
-      expect(el().querySelector('se-table')).toBeNull();
-      (el().querySelector('se-empty-state button') as HTMLButtonElement).click();
+      expect(text('.empty-state')).toContain('Your cart is empty');
+      expect(el().querySelector('.line-row')).toBeNull();
+      (el().querySelector('.empty-state button') as HTMLButtonElement).click();
       expect(router.navigate).toHaveBeenCalledWith(['/catalogue']);
     });
 

@@ -1,142 +1,204 @@
 ﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import {
-  SeBannerComponent,
-  SeConfirmService,
-  SeCurrencyService,
-  SeEmptyStateComponent,
-  SeMoneyPipe,
-  SeToastService,
-} from '@seentair/ui';
+import { SeConfirmService, SeCurrencyService, SeMoneyPipe, SeToastService } from '@seentair/ui';
 import { ApiService, Pricing } from '../api.service';
 import { CartLine, CartService } from '../cart.service';
 
 /**
- * Bulk cart and checkout. The cart lines live in `CartService` (shared with
- * the catalogue and the matrix); this page edits quantities, checks the batch
- * against the account's real minimum, places the order through POST /orders
- * (the server re-prices at the buyer's tier and enforces MOQ) and then sends
- * the buyer to Paystack for the full amount. Wholesale is full payment
- * upfront: there is no part-payment path here, by design.
+ * W5 Bulk Cart & Checkout, carried verbatim from the Stitch screen. The cart
+ * lines live in `CartService` (shared with the catalogue and the matrix);
+ * this page edits quantities, checks the batch against the account's real
+ * minimum, places the order through POST /orders (the server re-prices at the
+ * buyer's tier and enforces MOQ) and then sends the buyer to Paystack for the
+ * full amount. Wholesale is full payment upfront: there is no part-payment
+ * path here, by design.
  */
 @Component({
   selector: 'app-cart',
-  imports: [
-    FormsModule,
-    RouterLink,
-    SeBannerComponent,
-    SeEmptyStateComponent,
-    SeMoneyPipe,
-  ],
+  imports: [FormsModule, RouterLink, SeMoneyPipe],
   template: `
-    <div class="w5">
-      <header class="w5-head">
-        <a routerLink="/catalogue" class="icon-btn" aria-label="Back"><span class="material-symbols-outlined">arrow_back</span></a>
-        <div>
-          <h1>Bulk Cart & Allocation</h1>
-          <span class="muted small">{{ cart.lines().length }} lines â€¢ {{ cart.units() }} total units</span>
-        </div>
-        @if (moqMet()) { <span class="badge ok">MOQs MET</span> } @else { <span class="badge warn">BELOW MOQ</span> }
-      </header>
-
-      @if (cart.lines().length === 0) {
-        <se-empty-state heading="Your cart is empty" text="Add units from the catalogue, then come back to place the batch." actionLabel="Browse catalogue" (action)="router.navigate(['/catalogue'])" />
-      } @else {
-        <div class="notice card"><span class="material-symbols-outlined warn">account_balance_wallet</span><p><strong>Full 100% Upfront Payment:</strong> Aba Mill cutting schedules lock immediately upon cleared funds. Orders are non-cancellable once cut.</p></div>
-
-        <section class="lines">
-          @for (line of cart.lines(); track line.variantId) {
-            <article class="card line">
-              <div class="line-top">
-                <div>
-                  <span class="mono muted">{{ line.sku }}</span>
-                  <h2>{{ line.productName }}</h2>
-                  <span class="accent mono">{{ line.unitPrice | seMoney: 2 }} / unit</span>
-                </div>
-                <button type="button" class="trash" aria-label="Remove item" (click)="remove(line)"><span class="material-symbols-outlined">delete</span></button>
-              </div>
-              <div class="line-mid">
-                <span class="muted small">{{ variantLabel(line) }}</span>
-                <div class="qty-wrap">
-                  <label class="sr" [for]="'q-'+line.variantId">Quantity</label>
-                  <input [id]="'q-'+line.variantId" type="number" inputmode="numeric" min="1" step="1" [ngModel]="line.quantity" (ngModelChange)="setQuantity(line, $event)" />
-                </div>
-              </div>
-              <div class="line-bot"><span class="muted small">Line total</span><strong class="mono">{{ (line.quantity * line.unitPrice) | seMoney: 2 }}</strong></div>
-            </article>
-          }
-        </section>
-
-        <section class="card form">
-          <h3><span class="material-symbols-outlined accent">local_shipping</span> Dispatch & Destination</h3>
-          <label class="field"><span>Delivery</span>
-            <select [(ngModel)]="freight" name="freight">
-              <option value="gigl">GIGL freight dispatch (tracked)</option>
-              <option value="pickup">Factory pickup, Aba workshop</option>
-            </select>
-          </label>
-          <label class="field"><span>Packing/Dispatch notes</span>
-            <textarea rows="3" [(ngModel)]="notes" name="notes" placeholder="Consignee/contact notes for desk"></textarea>
-          </label>
-        </section>
-
-        <section class="card summary">
-          @if (moqKnown() && !moqMet()) {
-            <se-banner tone="warning" title="Below the batch minimum">Add {{ moqShort() }} more units to place this batch (minimum {{ moq() }}).</se-banner>
-          } @else if (!moqKnown()) {
-            <se-banner tone="info" title="Minimum being confirmed">The server checks the batch minimum when you place the order.</se-banner>
-          }
-          <div class="rows">
-            <div><span>Units</span><span class="mono">{{ cart.units() }}</span></div>
-            <div><span>Minimum order</span><span class="mono">{{ moqKnown() ? moq() + ' units' : 'Confirmed by desk' }}</span></div>
-            @if (pricing()?.tier; as tier) { <div><span>Rate card</span><span>{{ tier.name }} â€¢ {{ tier.discountPercent }}% off</span></div> }
-            <div><span>Subtotal</span><span class="mono">{{ cart.amount() | seMoney: 2 }}</span></div>
-            <div><span>Freight</span><span class="mono">On final invoice</span></div>
-            <div class="total"><span>Total payable (100% upfront)</span><span class="mono accent">{{ cart.amount() | seMoney: 2 }}</span></div>
+    <div class="stitch">
+      <div class="bg-canvas text-light-on-surface min-h-screen pb-32 antialiased selection:bg-accent/20">
+        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <a routerLink="/catalogue" class="w-8 h-8 rounded-full bg-light-surface border border-border flex items-center justify-center text-light-primary" aria-label="Back to catalogue">
+              <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+            </a>
+            <div>
+              <h1 class="text-[17px] font-bold text-light-primary">Bulk Cart & Allocation</h1>
+              <span class="text-[11px] text-light-secondary">{{ cart.lines().length }} lines • {{ cart.units() }} total units</span>
+            </div>
           </div>
-        </section>
+          @if (cart.lines().length > 0) {
+            @if (moqMet()) {
+              <span class="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-success/15 text-success border border-success/30">MOQs MET</span>
+            } @else {
+              <span class="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/30">BELOW MOQ</span>
+            }
+          }
+        </header>
 
-        <aside class="w5-bar">
-          <div><span class="muted small">Payable in full now</span><strong>{{ cart.amount() | seMoney: 2 }}</strong></div>
-          <button type="button" class="cta" [disabled]="!moqMet()" [attr.aria-busy]="placing()" (click)="placeOrder()">
-            <span>{{ placing() ? 'Placingâ€¦' : 'Place order & pay' }}</span><span class="material-symbols-outlined">arrow_forward</span>
-          </button>
-        </aside>
-      }
+        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full">
+          @if (cart.lines().length === 0) {
+            <div class="empty-state bg-light-surface p-3.5 rounded-xl border border-border flex flex-col items-center gap-1.5 text-center">
+              <span class="material-symbols-outlined text-[28px] text-light-secondary">shopping_bag</span>
+              <strong class="text-[14px] text-light-primary">Your cart is empty</strong>
+              <p class="text-[11px] text-light-secondary">Add units from the catalogue, then come back to place the batch.</p>
+              <button type="button" class="mt-1 px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold" (click)="router.navigate(['/catalogue'])">Browse catalogue</button>
+            </div>
+          } @else {
+            <!-- Batch Settlement Notice -->
+            <div class="upfront-notice p-3.5 rounded-xl bg-canvas-tint/70 border border-border flex items-start gap-2.5">
+              <span class="material-symbols-outlined text-warning text-[18px] mt-0.5">account_balance_wallet</span>
+              <div class="text-[12px] leading-relaxed text-light-primary">
+                <strong class="font-semibold text-light-primary">Full 100% Upfront Payment:</strong> Aba Mill cutting schedules lock immediately upon cleared funds. Orders are non-cancellable once cut. No part-payments.
+              </div>
+            </div>
+
+            @for (group of groups(); track group.productId) {
+              <article class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex flex-col gap-3">
+                <div class="flex items-start justify-between border-b border-border pb-2.5">
+                  <div>
+                    <span class="text-[10px] font-mono text-light-secondary uppercase">{{ group.lines.length }} variant{{ group.lines.length === 1 ? '' : 's' }} drafted</span>
+                    <h2 class="text-[14px] font-bold text-light-primary">{{ group.productName }}</h2>
+                    <span class="text-[12px] font-mono text-accent font-semibold">{{ groupPriceLabel(group.lines) }}</span>
+                  </div>
+                  <button type="button" aria-label="Remove {{ group.productName }}" class="text-light-secondary hover:text-danger p-1" (click)="removeProduct(group.productId)">
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                </div>
+
+                <div class="flex flex-col gap-1.5 text-[12px]">
+                  @for (line of group.lines; track line.variantId) {
+                    <div class="line-row flex justify-between items-center py-1 bg-canvas/60 px-2.5 rounded-md gap-2">
+                      <span class="text-light-secondary min-w-0 truncate">{{ line.sku }} • {{ variantLabel(line) }}</span>
+                      <span class="flex items-center gap-2 flex-shrink-0">
+                        <label class="sr-only" [for]="'q-' + line.variantId">Quantity for {{ line.sku }}</label>
+                        <input
+                          [id]="'q-' + line.variantId"
+                          type="number"
+                          inputmode="numeric"
+                          min="1"
+                          step="1"
+                          class="w-14 text-center font-mono font-bold text-[12px] bg-light-surface border border-border rounded py-0.5 focus:outline-none focus:border-accent"
+                          [ngModel]="line.quantity"
+                          (ngModelChange)="setQuantity(line, $event)"
+                        />
+                        <span class="font-mono font-bold text-light-primary">{{ line.quantity * line.unitPrice | seMoney: 2 }}</span>
+                      </span>
+                    </div>
+                  }
+                </div>
+
+                <div class="pt-2 border-t border-border flex items-center justify-between text-[13px]">
+                  <span class="text-light-secondary">Subtotal ({{ group.units }} units)</span>
+                  <span class="font-mono font-bold text-light-primary">{{ group.amount | seMoney: 2 }}</span>
+                </div>
+              </article>
+            }
+
+            <!-- Delivery & Notes -->
+            <section class="bg-light-surface rounded-xl p-4 border border-border flex flex-col gap-3">
+              <h3 class="text-[13px] font-bold text-light-primary flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px] text-accent">local_shipping</span>
+                Dispatch & Destination
+              </h3>
+              <div class="p-2.5 rounded-lg bg-canvas border border-border text-[12px] flex justify-between items-center relative">
+                <div>
+                  <span class="font-bold text-light-primary block">{{ freightLabel() }}</span>
+                  <span class="text-light-secondary block">{{ freightHint() }}</span>
+                </div>
+                <span class="text-warning font-semibold text-[11px]">Edit</span>
+                <select class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" aria-label="Delivery method" [(ngModel)]="freight" name="freight">
+                  <option value="gigl">GIGL freight dispatch (tracked)</option>
+                  <option value="pickup">Factory pickup, Aba workshop</option>
+                </select>
+              </div>
+
+              <label class="flex flex-col gap-1">
+                <span class="text-[12px] font-semibold text-light-primary">Packing/Dispatch notes</span>
+                <input
+                  type="text"
+                  placeholder="e.g. Include barcoded carton labels"
+                  class="px-3 py-2 rounded-md bg-canvas border border-border text-[12px] text-light-primary focus:outline-none focus:border-accent"
+                  [(ngModel)]="notes"
+                  name="notes"
+                />
+              </label>
+            </section>
+
+            <!-- Order Cost Summary Breakdown -->
+            <section class="bg-light-surface rounded-xl p-4 border border-border flex flex-col gap-2 text-[13px]">
+              @if (moqKnown() && !moqMet()) {
+                <div class="moq-warning p-2.5 rounded-lg bg-[#fff7eb] border border-warning/30 text-[12px]">
+                  <strong class="font-semibold text-warning block">Below the batch minimum</strong>
+                  <span class="text-light-secondary">Add {{ moqShort() }} more units: the batch minimum is at least {{ moq() }} units.</span>
+                </div>
+              } @else if (!moqKnown()) {
+                <div class="moq-info p-2.5 rounded-lg bg-canvas border border-border text-[12px]">
+                  <strong class="font-semibold text-light-primary block">Minimum being confirmed</strong>
+                  <span class="text-light-secondary">The server checks the batch minimum when you place the order.</span>
+                </div>
+              }
+
+              <div class="summary-rows flex flex-col gap-2">
+                <div class="flex justify-between text-light-secondary">
+                  <span>Units</span>
+                  <span class="font-mono text-light-primary">{{ cart.units() }}</span>
+                </div>
+                <div class="flex justify-between text-light-secondary">
+                  <span>Minimum order</span>
+                  <span class="font-mono text-light-primary">{{ moqKnown() ? moq() + ' units' : 'Confirmed by desk' }}</span>
+                </div>
+                @if (pricing()?.tier; as tier) {
+                  <div class="flex justify-between text-light-secondary">
+                    <span>Rate card</span>
+                    <span class="font-mono text-success">{{ tier.name }} · {{ tier.discountPercent }}% off retail</span>
+                  </div>
+                }
+                <div class="flex justify-between text-light-secondary">
+                  <span>Subtotal</span>
+                  <span class="font-mono text-light-primary">{{ cart.amount() | seMoney: 2 }}</span>
+                </div>
+                <div class="flex justify-between text-light-secondary">
+                  <span>Freight & Handling</span>
+                  <span class="font-mono text-light-primary">On final invoice</span>
+                </div>
+                <div class="pt-2 border-t border-border flex justify-between items-baseline font-bold">
+                  <span class="text-light-primary text-[15px]">Total Payable (100% Upfront)</span>
+                  <span class="font-mono text-[18px] text-accent">{{ cart.amount() | seMoney: 2 }}</span>
+                </div>
+              </div>
+            </section>
+          }
+        </main>
+
+        @if (cart.lines().length > 0) {
+          <!-- Sticky Bottom Checkout Action -->
+          <aside aria-label="Checkout action" class="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto bg-light-surface border-t border-border px-4 py-3 flex items-center justify-between shadow-[0_-8px_20px_rgba(27,25,22,0.06)] z-30">
+            <div>
+              <span class="text-[11px] text-light-secondary block font-medium">Payable in full now</span>
+              <span class="font-mono font-bold text-[18px] text-light-primary">{{ cart.amount() | seMoney: 2 }}</span>
+            </div>
+            <button
+              type="button"
+              class="place px-6 py-3.5 rounded-full bg-accent text-on-accent font-semibold text-[14px] flex items-center gap-2 shadow-sm hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
+              [disabled]="!moqMet()"
+              [attr.aria-busy]="placing()"
+              (click)="placeOrder()"
+            >
+              <span>{{ placing() ? 'Placing…' : 'Place order & pay' }}</span>
+              <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+            </button>
+          </aside>
+        }
+      </div>
     </div>
   `,
   styles: [`
-    :host{display:block;font-family:'Urbanist',sans-serif;}
-    .w5{display:flex;flex-direction:column;gap:12px;padding-bottom:96px;}
-    .w5-head{display:flex;align-items:center;gap:8px;}
-    .w5-head h1{margin:0;font:700 17px/1.2 Urbanist,sans-serif;color:#1b1916;}
-    .icon-btn{width:32px;height:32px;border-radius:999px;border:1px solid #e8e1d3;background:#fffdf9;display:inline-flex;align-items:center;justify-content:center;color:#1b1916;text-decoration:none;flex:none;}
-    .badge{margin-left:auto;padding:4px 8px;border-radius:999px;font:600 11px/1 'JetBrains Mono',monospace;border:1px solid;}
-    .badge.ok{background:rgba(35,128,77,.12);color:#23804d;border-color:rgba(35,128,77,.3);} .badge.warn{background:rgba(147,96,10,.12);color:#93600a;border-color:rgba(147,96,10,.3);}
-    .card{background:#fffdf9;border:1px solid #e8e1d3;border-radius:12px;padding:14px;box-shadow:0 8px 24px -4px rgba(27,25,22,.05);}
-    .notice{display:flex;gap:10px;align-items:flex-start;background:rgba(239,227,200,.6);} .notice p{margin:0;font-size:12px;line-height:1.45;}
-    .notice .material-symbols-outlined{font-size:18px;} .warn{color:#93600a;}
-    .lines{display:flex;flex-direction:column;gap:10px;}
-    .line{display:flex;flex-direction:column;gap:8px;}
-    .line-top{display:flex;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid #e8e1d3;}
-    .line-top h2{margin:2px 0;font:700 14px/1.2 Urbanist,sans-serif;}
-    .trash{border:0;background:none;color:#7b756a;padding:4px;} .trash:hover{color:#bf3a2d;}
-    .line-mid{display:flex;justify-content:space-between;align-items:center;gap:8px;}
-    .qty-wrap input{width:76px;text-align:center;border:1px solid #e8e1d3;border-radius:8px;padding:8px;font:700 13px/1 'JetBrains Mono',monospace;background:#f7f2ea;color:#1b1916;}
-    .line-bot{display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid #e8e1d3;font-size:13px;}
-    .form h3{margin:0 0 8px;font:700 13px/1.2 Urbanist,sans-serif;display:flex;align-items:center;gap:6px;}
-    .field{display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:12px;font-weight:600;color:#1b1916;}
-    .field select,.field textarea{border:1px solid #e8e1d3;background:#f7f2ea;border-radius:10px;padding:10px 12px;font:400 13px/1.3 Urbanist,sans-serif;color:#1b1916;}
-    .summary .rows{display:flex;flex-direction:column;gap:8px;margin-top:8px;font-size:13px;}
-    .summary .rows>div{display:flex;justify-content:space-between;gap:8px;color:#7b756a;} .summary .rows>div span:last-child{color:#1b1916;}
-    .summary .total{padding-top:8px;border-top:1px solid #e8e1d3;font-weight:700;color:#1b1916 !important;} .summary .total span:first-child{font-size:15px;}
-    .w5-bar{position:fixed;left:0;right:0;bottom:0;max-width:390px;margin:0 auto;background:#fffdf9;border-top:1px solid #e8e1d3;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 -8px 20px rgba(27,25,22,.06);z-index:30;}
-    .w5-bar strong{display:block;font:700 18px/1.1 'JetBrains Mono',monospace;color:#1b1916;}
-    .w5-bar .cta{border:0;border-radius:999px;background:#c88a12;color:#1a1405;padding:14px 18px;font:600 14px/1 Urbanist,sans-serif;display:inline-flex;align-items:center;gap:8px;}
-    .w5-bar .cta:disabled{opacity:.5;}
-    .muted{color:#7b756a;} .small{font-size:11px;} .mono{font-family:'JetBrains Mono',monospace;} .accent{color:#c88a12;}
-    .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+    :host { display: block; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   `],
 })
 export class CartPage implements OnInit {
@@ -151,9 +213,23 @@ export class CartPage implements OnInit {
   freight: 'gigl' | 'pickup' = 'gigl';
   notes = '';
 
-  readonly tierLine = computed(() => {
-    const t = this.pricing()?.tier;
-    return t ? `${t.name} wholesale rate â€¢ ${t.discountPercent}% off retail` : '';
+  /** Cart lines grouped per product, like the Stitch screen's line items. */
+  readonly groups = computed(() => {
+    const byProduct = new Map<string, { productId: string; productName: string; lines: CartLine[] }>();
+    for (const l of this.cart.lines()) {
+      const g = byProduct.get(l.productId) ?? {
+        productId: l.productId,
+        productName: l.productName,
+        lines: [],
+      };
+      g.lines.push(l);
+      byProduct.set(l.productId, g);
+    }
+    return [...byProduct.values()].map((g) => ({
+      ...g,
+      units: g.lines.reduce((n, l) => n + l.quantity, 0),
+      amount: g.lines.reduce((n, l) => n + l.quantity * l.unitPrice, 0),
+    }));
   });
 
   ngOnInit(): void {
@@ -162,6 +238,23 @@ export class CartPage implements OnInit {
 
   variantLabel(line: CartLine): string {
     return [line.size || 'One size', line.colour || 'Standard'].join(' / ');
+  }
+
+  /** One per-unit price when every variant of the product shares it. */
+  groupPriceLabel(lines: CartLine[]): string {
+    const prices = [...new Set(lines.map((l) => l.unitPrice))];
+    if (prices.length === 1) return `${this.currency.format(prices[0], 2)} / unit`;
+    return 'Per-variant rates';
+  }
+
+  freightLabel(): string {
+    return this.freight === 'pickup' ? 'Factory pickup, Aba workshop' : 'GIGL freight dispatch';
+  }
+
+  freightHint(): string {
+    return this.freight === 'pickup'
+      ? 'Collect at the factory desk'
+      : 'Tracked dispatch from the Aba hub';
   }
 
   /**
@@ -201,6 +294,11 @@ export class CartPage implements OnInit {
 
   remove(line: CartLine): void {
     this.cart.lines.set(this.cart.lines().filter((l) => l.variantId !== line.variantId));
+  }
+
+  /** Removes every drafted variant of one product. */
+  removeProduct(productId: string): void {
+    this.cart.lines.set(this.cart.lines().filter((l) => l.productId !== productId));
   }
 
   async placeOrder(): Promise<void> {

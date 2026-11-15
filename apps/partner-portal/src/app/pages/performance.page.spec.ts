@@ -11,11 +11,12 @@ describe('PerformancePage', () => {
     configurePortal();
     fixture = TestBed.createComponent(PerformancePage);
     fixture.detectChanges();
-    expect(el().querySelector('h1')!.textContent).toContain('Operational & financial performance');
-    const metrics = el().querySelector('.se-metric-grid')!.textContent!;
-    expect(metrics).toContain('₦2,777,000');
+    expect(el().querySelector('h1, .hero')!.textContent).toContain('Recorded income');
+    const metrics = el().querySelector('.metrics')!.textContent!;
     expect(metrics).toContain('₦250,000');
+    expect(metrics).toContain('₦2,527,000');
     expect(metrics).toContain('91.0%');
+    expect(el().textContent).toContain('₦2,777,000');
   });
 
   it('lists income by ledger entry type when the ledger reports a breakdown', () => {
@@ -29,17 +30,18 @@ describe('PerformancePage', () => {
     );
     fixture = TestBed.createComponent(PerformancePage);
     fixture.detectChanges();
-    const table = el().querySelector('se-table')!.textContent!;
-    expect(table).toContain('Sales');
-    expect(table).toContain('₦2,000,000');
-    expect(table).toContain('Wholesale');
+    const list = el().querySelector('.income-list')!.textContent!;
+    expect(list).toContain('Sales');
+    expect(list).toContain('₦2,000,000');
+    expect(list).toContain('Wholesale');
   });
 
   it('renders an honest empty state when there is no income breakdown', () => {
     configurePortal();
     fixture = TestBed.createComponent(PerformancePage);
     fixture.detectChanges();
-    expect(el().querySelector('se-empty-state')).not.toBeNull();
+    expect(el().querySelector('.income-row')).toBeNull();
+    expect(el().textContent).toContain('No income entries yet');
     expect(el().textContent).toContain('Not yet published');
   });
 

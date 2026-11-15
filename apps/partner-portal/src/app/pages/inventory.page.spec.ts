@@ -12,9 +12,9 @@ describe('InventoryPage', () => {
     configurePortal();
     fixture = TestBed.createComponent(InventoryPage);
     fixture.detectChanges();
-    const metrics = el().querySelector('.se-metric-grid')!.textContent!;
-    expect(metrics).toContain('1,148 units');
-    expect(metrics).toContain('Not yet valued');
+    const hero = el().querySelector('.hero')!.textContent!;
+    expect(hero).toContain('1,148 units');
+    expect(hero).toContain('Not yet valued');
   });
 
   it('lists a live stock row from the event-sourced summary with a status badge', () => {
@@ -24,17 +24,17 @@ describe('InventoryPage', () => {
     ]);
     fixture = TestBed.createComponent(InventoryPage);
     fixture.detectChanges();
-    const table = el().querySelectorAll('se-table')[1].textContent!;
-    expect(table).toContain('Unlabelled item');
-    expect(table).toContain('12');
-    expect(table).toContain('In stock');
+    const register = el().querySelector('.register')!.textContent!;
+    expect(register).toContain('Unlabelled item');
+    expect(register).toContain('12');
+    expect(register).toContain('In stock');
   });
 
   it('shows honest empty states when nothing is recorded', () => {
     configurePortal();
     fixture = TestBed.createComponent(InventoryPage);
     fixture.detectChanges();
-    expect(el().textContent).toContain('No variant-level stock yet');
+    expect(el().textContent).toContain('Line items appear per SKU');
     expect(el().textContent).toContain('Not yet published');
   });
 

@@ -40,9 +40,9 @@ describe('OrdersPage', () => {
   let router: Router;
   let toast: SeToastService;
   const el = (): HTMLElement => fixture.nativeElement as HTMLElement;
-  const rows = (): HTMLElement[] => Array.from(el().querySelectorAll('se-table tbody tr'));
+  const rows = (): HTMLElement[] => Array.from(el().querySelectorAll('.order-card'));
   const action = (row: Element, label: string): HTMLButtonElement | null =>
-    row.querySelector(`button[aria-label^="${label}:"]`);
+    row.querySelector(`button[aria-label^="${label}"]`);
 
   const mount = (invoices: unknown): void => {
     api = jasmine.createSpyObj<ApiService>('ApiService', ['invoices', 'reorder']);
@@ -66,7 +66,7 @@ describe('OrdersPage', () => {
   afterEach(() => fixture?.destroy());
 
   describe('the log', () => {
-    it('renders one row per order with ref, units, total, status and payment', () => {
+    it('renders one card per order with ref, units, total, status and payment', () => {
       mount(
         of({
           data: [invoice('aaaaaaaa', 'order_received', 'unpaid'), invoice('bbbbbbbb', 'shipped')],
@@ -77,21 +77,21 @@ describe('OrdersPage', () => {
       expect(first).toContain('#AAAAAAAA');
       expect(first).toContain('6');
       expect(first).toContain('₦120,000');
-      expect(rows()[0].querySelector('se-status[kind="order"]')).not.toBeNull();
-      expect(rows()[0].querySelector('se-status[kind="payment"]')).not.toBeNull();
+      expect(first).toContain('Order received');
+      expect(first).toContain('Awaiting 100% payment');
       expect(el().textContent).not.toContain('2222-3333');
     });
 
     it('describes the account the same way Home does', () => {
       mount(of({ data: [invoice('a', 'order_received', 'unpaid'), invoice('b', 'shipped')] }));
-      const description = el().querySelector('.se-page__description')!.textContent ?? '';
+      const description = el().querySelector('.summary-line')!.textContent ?? '';
       expect(description).toContain('2 orders');
       expect(description).toContain('2 open');
       expect(description).toContain('1 in transit');
       expect(description).toContain('Awaiting payment');
     });
 
-    it('opens the invoice when a row is activated', () => {
+    it('opens the invoice when a card is activated', () => {
       mount(of({ data: [invoice('a', 'shipped')] }));
       component.openInvoice(component.invoices()[0]);
       expect(router.navigate).toHaveBeenCalledWith([
@@ -171,10 +171,10 @@ describe('OrdersPage', () => {
           ],
         }),
       );
-      const banner = el().querySelector('.se-banner--warning')!;
+      const banner = el().querySelector('.pay-banner')!;
       expect(banner.textContent).toContain('2 of 3 orders awaiting payment');
       expect(banner.textContent).toContain('full payment upfront');
-      (banner.querySelector('button') as HTMLButtonElement).click();
+      (banner as HTMLButtonElement).click();
       expect(router.navigate).toHaveBeenCalledWith([
         '/orders',
         'b-2222-3333-4444-555555555555',
@@ -184,7 +184,7 @@ describe('OrdersPage', () => {
 
     it('stays hidden when nothing is owed, or the unpaid order is cancelled', () => {
       mount(of({ data: [invoice('a', 'shipped'), invoice('b', 'cancelled', 'unpaid')] }));
-      expect(el().querySelector('.se-banner--warning')).toBeNull();
+      expect(el().querySelector('.pay-banner')).toBeNull();
     });
   });
 
@@ -222,11 +222,9 @@ describe('OrdersPage', () => {
       mount(three());
       component.query.set('nothing-matches');
       fixture.detectChanges();
-      expect(el().querySelector('se-empty-state')!.textContent).toContain('No orders match');
-      expect(el().querySelector('.se-filter-bar, se-filter-bar')!.textContent).toContain(
-        '0 of 3 orders',
-      );
-      (el().querySelector('se-empty-state button') as HTMLButtonElement).click();
+      expect(el().querySelector('.empty-state')!.textContent).toContain('No orders match');
+      expect(el().querySelector('.count-line')!.textContent).toContain('0 of 3 orders');
+      (el().querySelector('.empty-state button') as HTMLButtonElement).click();
       fixture.detectChanges();
       expect(component.query()).toBe('');
       expect(rows().length).toBe(3);
@@ -236,25 +234,23 @@ describe('OrdersPage', () => {
   describe('load states', () => {
     it('shows the empty state with a catalogue action for a new account', () => {
       mount(of({ data: [], total: 0 }));
-      expect(el().querySelector('se-empty-state')!.textContent).toContain('No orders yet');
-      expect(el().querySelector('.se-banner--danger')).toBeNull();
-      (el().querySelector('se-empty-state button') as HTMLButtonElement).click();
+      expect(el().querySelector('.empty-state')!.textContent).toContain('No orders yet');
+      expect(el().querySelector('.load-error')).toBeNull();
+      (el().querySelector('.empty-state button') as HTMLButtonElement).click();
       expect(router.navigate).toHaveBeenCalledWith(['/catalogue']);
-      expect(
-        (el().querySelector('se-page button[type="button"]') as HTMLButtonElement).disabled,
-      ).toBeTrue();
+      expect((el().querySelector('.export-btn') as HTMLButtonElement).disabled).toBeTrue();
     });
 
     it('shows a failure with Try again, never the empty state', () => {
       mount(throwError(() => ({ error: { message: 'Database is unreachable.' } })));
-      expect(el().querySelector('se-empty-state')).toBeNull();
-      const banner = el().querySelector('.se-banner--danger')!;
+      expect(el().querySelector('.empty-state')).toBeNull();
+      const banner = el().querySelector('.load-error')!;
       expect(banner.textContent).toContain('Database is unreachable.');
       api.invoices.and.returnValue(of({ data: [invoice('a', 'shipped')], total: 1 }));
       (banner.querySelector('button') as HTMLButtonElement).click();
       fixture.detectChanges();
       expect(rows().length).toBe(1);
-      expect(el().querySelector('.se-banner--danger')).toBeNull();
+      expect(el().querySelector('.load-error')).toBeNull();
     });
   });
 

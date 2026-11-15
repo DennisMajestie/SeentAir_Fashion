@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { SeCurrencyService } from '@seentair/ui';
+import { SeConfirmService, SeCurrencyService } from '@seentair/ui';
 import { Observable, of, throwError } from 'rxjs';
 
 import { ApiService, DeliveryLegView, WholesaleTracking } from '../api.service';
@@ -16,6 +16,7 @@ describe('Wholesale TrackingPage', () => {
   let fixture: ComponentFixture<TrackingPage>;
   let element: HTMLElement;
   let api: jasmine.SpyObj<ApiService>;
+  let confirm: jasmine.SpyObj<SeConfirmService>;
 
   const ORDER_ID = 'b1b1b1b1-some-uuid';
 
@@ -55,16 +56,21 @@ describe('Wholesale TrackingPage', () => {
   });
 
   const configure = (loggedIn: boolean, tracking: () => Observable<WholesaleTracking>) => {
-    api = jasmine.createSpyObj<ApiService>('ApiService', ['tracking', 'invoices', 'orderStream'], {
-      isLoggedIn: loggedIn,
-    });
+    api = jasmine.createSpyObj<ApiService>(
+      'ApiService',
+      ['tracking', 'invoices', 'orderSocketStream'],
+      { isLoggedIn: loggedIn },
+    );
     api.tracking.and.callFake(tracking);
     api.invoices.and.returnValue(of({ data: [], total: 0 }));
-    api.orderStream.and.returnValue(new Promise<void>(() => undefined));
+    api.orderSocketStream.and.returnValue(new Promise<void>(() => undefined));
+    confirm = jasmine.createSpyObj<SeConfirmService>('SeConfirmService', ['ask', 'askWithReason']);
+    confirm.ask.and.resolveTo(true);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         { provide: ApiService, useValue: api },
+        { provide: SeConfirmService, useValue: confirm },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ id: ORDER_ID }) } },
@@ -102,12 +108,16 @@ describe('Wholesale TrackingPage', () => {
     return dt?.nextElementSibling?.textContent?.trim() ?? null;
   };
 
-  afterEach(() => fixture?.destroy());
+  afterEach(() => {
+    localStorage.clear();
+    fixture?.destroy();
+  });
 
-  it('puts the delivery state beside the title with one plain sentence', async () => {
+  it('puts the pipeline stage beside the title with one plain sentence', async () => {
     await mount(reducedLeg);
-    expect(element.querySelector('h1')!.textContent).toContain('#B1B1B1B1');
-    expect(element.querySelector('se-status')!.textContent?.trim()).toBe('In transit');
+    expect(element.querySelector('h1')!.textContent!.trim()).toBe('Batch Live Tracking');
+    expect(text()).toContain('#B1B1B1B1');
+    expect(element.querySelector('.stage-badge')!.textContent?.trim()).toBe('STAGE 3 / SHIPPED');
     expect(text()).toContain('with the courier and on its way');
     expect(text()).toContain('within 12 hours');
     expect(text()).toContain('Custom orders are excluded from returns');
@@ -116,8 +126,8 @@ describe('Wholesale TrackingPage', () => {
   describe('against the reduced customer shape', () => {
     beforeEach(async () => mount(reducedLeg));
 
-    it('shows the checkpoint as an activity entry', () => {
-      const entries = element.querySelectorAll('se-activity li');
+    it('shows the checkpoint as a timeline entry', () => {
+      const entries = element.querySelectorAll('.tl-step');
       expect(entries.length).toBe(2);
       expect(entries[0].textContent).toContain('On track');
       expect(entries[0].textContent).toContain('GIGL courier');
@@ -128,9 +138,9 @@ describe('Wholesale TrackingPage', () => {
       expect(text()).not.toContain('null');
     });
 
-    it('falls back to the hub copy rather than an empty route cell', () => {
+    it('falls back to the hub copy rather than an empty route value', () => {
       expect(kv('Route')).toBe('Aba workshop to consignee hub');
-      expect(kv('Waybill')).toBe('GIGL-1');
+      expect(text()).toContain('Waybill: GIGL-1');
     });
 
     it('shows the rider first name only', () => {
@@ -153,9 +163,10 @@ describe('Wholesale TrackingPage', () => {
     });
 
     it('lists checkpoints newest first and flags a delay', () => {
-      const entries = element.querySelectorAll('se-activity li');
+      const entries = element.querySelectorAll('.tl-step');
       expect(entries[0].textContent).toContain('Delayed');
       expect(entries[1].textContent).toContain('On track');
+      expect(entries[0].querySelector('.tl-warn')).not.toBeNull();
     });
   });
 
@@ -191,13 +202,15 @@ describe('Wholesale TrackingPage', () => {
 
   it('reads as delivered once the order status says so', async () => {
     await mount({ ...reducedLeg, status: 'delivered' }, 'delivered');
-    expect(element.querySelector('se-status')!.textContent?.trim()).toBe('Delivered');
+    expect(element.querySelector('.stage-badge')!.textContent?.trim()).toBe(
+      'STAGE 4 / DELIVERED',
+    );
     expect(kv('Leg')).toBe('Handed over');
   });
 
-  it('labels the section "Delivery updates"', async () => {
+  it('labels the timeline "Production & Milestone History"', async () => {
     await mount(reducedLeg);
-    expect(text()).toContain('Delivery updates');
+    expect(text()).toContain('Production & Milestone History');
     expect(text()).not.toContain('Corridor');
   });
 
@@ -210,21 +223,21 @@ describe('Wholesale TrackingPage', () => {
         ['/'],
         jasmine.objectContaining({ queryParams: jasmine.objectContaining({ reason: 'session' }) }),
       );
-      expect(element.querySelector('.se-banner--danger')).toBeNull();
+      expect(element.querySelector('.load-error')).toBeNull();
     });
 
     it('still reports a genuine failure while signed in, with a retry', async () => {
       configure(true, () => throwError(() => ({ status: 500 })));
       spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
       await render();
-      expect(element.querySelector('se-empty-state')).toBeNull();
-      const banner = element.querySelector('.se-banner--danger')!;
+      expect(element.querySelector('.empty-state')).toBeNull();
+      const banner = element.querySelector('.load-error')!;
       expect(banner.textContent).toContain('Try again');
       api.tracking.and.returnValue(of(trackingWith(reducedLeg)));
       fixture.componentInstance.retry();
       await tick();
       fixture.detectChanges();
-      expect(element.querySelector('se-activity')).not.toBeNull();
+      expect(element.querySelector('.tl-step')).not.toBeNull();
     });
   });
 
@@ -253,7 +266,7 @@ describe('Wholesale TrackingPage', () => {
     it('shows it as a warning banner, not a neutral state', async () => {
       await mount(null, 'awaiting_stock');
 
-      expect(element.querySelector('.se-banner--warning')).not.toBeNull();
+      expect(element.querySelector('.await-banner')).not.toBeNull();
     });
 
     it('never leaks the raw internal token', async () => {

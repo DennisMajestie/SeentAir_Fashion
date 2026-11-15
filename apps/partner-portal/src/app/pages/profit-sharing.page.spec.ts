@@ -7,34 +7,26 @@ describe('ProfitSharingPage', () => {
   const el = (): HTMLElement => fixture.nativeElement as HTMLElement;
   afterEach(() => fixture?.destroy());
 
-  it('shows the latest distribution figures from the dashboard', () => {
-    configurePortal();
-    fixture = TestBed.createComponent(ProfitSharingPage);
-    fixture.detectChanges();
-    const metrics = el().querySelector('.se-metric-grid')!.textContent!;
-    expect(metrics).toContain('₦1,000,000');
-    expect(metrics).toContain('₦400,000');
-    expect(metrics).toContain('₦100,000');
-  });
-
   it('breaks the pool down by the 40/40/20 covenant', () => {
     configurePortal();
     fixture = TestBed.createComponent(ProfitSharingPage);
     fixture.detectChanges();
-    const detail = el().querySelector('.se-detail')!.textContent!;
-    expect(detail).toContain('Capital reinvestment (40%)');
-    expect(detail).toContain('₦400,000');
-    expect(detail).toContain('Strategic reserve (20%)');
-    expect(detail).toContain('₦200,000');
+    const legend = el().querySelector('.covenant-legend')!.textContent!;
+    expect(legend).toContain('40% Reinvest');
+    expect(legend).toContain('40% Dividend');
+    expect(legend).toContain('20% Reserve');
   });
 
-  it('lists declared periods in the payout ledger', () => {
+  it('lists declared periods with pool and entitlement figures', () => {
     configurePortal();
     fixture = TestBed.createComponent(ProfitSharingPage);
     fixture.detectChanges();
-    const table = el().querySelector('se-table')!.textContent!;
-    expect(table).toContain('2026-Q3');
-    expect(table).toContain('Declared');
+    const card = el().querySelector('.payout-card')!.textContent!;
+    expect(card).toContain('2026-Q3');
+    expect(card).toContain('Declared');
+    expect(card).toContain('₦400,000');
+    expect(card).toContain('₦100,000');
+    expect(card).toContain('₦1,000,000');
   });
 
   it('shows an honest empty state when no distributions are declared', () => {
@@ -42,6 +34,15 @@ describe('ProfitSharingPage', () => {
     fixture = TestBed.createComponent(ProfitSharingPage);
     fixture.detectChanges();
     expect(el().textContent).toContain('No distributions yet');
+  });
+
+  it('shows cumulative realized yield against invested capital', () => {
+    configurePortal();
+    fixture = TestBed.createComponent(ProfitSharingPage);
+    fixture.detectChanges();
+    const yieldCard = Array.from(el().querySelectorAll('section')).find((s) => s.textContent!.includes('Cumulative realized yield'))!;
+    expect(yieldCard.textContent).toContain('₦100,000');
+    expect(yieldCard.textContent).toContain('5.0% cash-on-cash');
   });
 
   it('never shows a customer name, email or address', () => {

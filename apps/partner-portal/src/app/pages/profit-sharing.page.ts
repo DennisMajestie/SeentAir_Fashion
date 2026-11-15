@@ -1,115 +1,130 @@
-import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { SeMoneyPipe } from '@seentair/ui';
 import { PortalStore } from '../portal.store';
 
-interface PayoutRow { id: string; period: string; totalProfit: number; dividendPool: number; myDividend: number; }
+interface PayoutRow {
+  id: string;
+  period: string;
+  totalProfit: number;
+  dividendPool: number;
+  myDividend: number;
+}
 
+/** Screen P8: declared dividend distributions under the operating covenant. */
 @Component({
   selector: 'app-profit-sharing-page',
-  imports: [DecimalPipe, SeMoneyPipe],
+  imports: [RouterLink, SeMoneyPipe],
   template: `
     @if (store.dash(); as d) {
-      <div class="pg">
-        <section class="card hero">
-          <div class="eyebrow">Profit Sharing & Dividends</div>
-          <h1>Dividends</h1>
-          <p class="muted">Quarterly distribution allocation for ordinary share equity partners, declared from audited net profit.</p>
-          <span class="chip">{{ store.covenantLabel() }} covenant</span>
-        </section>
-
-        @if (store.latestDistribution(); as latest) {
-          <section class="metrics">
-            <div class="metric card"><span>Latest profit declared</span><strong>{{ latest.totalProfit | seMoney }}</strong><small>{{ latest.period }} · board approved</small></div>
-            <div class="metric card"><span>Dividend pool</span><strong>{{ latest.dividendPool | seMoney }}</strong><small>{{ d.config.dividendsPct }}% of quarterly net</small></div>
-            <div class="metric card"><span>Your dividend</span><strong class="accent">{{ latest.myDividend | seMoney }}</strong><small>{{ d.investmentInformation.equityPercentage }}% entitlement</small></div>
-            <div class="metric card"><span>Lifetime dividends</span><strong>{{ store.lifetimeDividends() | seMoney }}</strong><small>{{ cashOnCashHint() }}</small></div>
-          </section>
-
-          <section class="card">
-            <div class="sec-head"><h2>Allocation break-up</h2><span class="muted small">{{ latest.period }}</span></div>
-            <div class="kv">
-              <div><span>Capital reinvestment ({{ d.config.reinvestmentPct }}%)</span><strong class="mono">{{ reinvestment(latest.totalProfit) | seMoney }}</strong></div>
-              <div><span>Dividend payout pool ({{ d.config.dividendsPct }}%)</span><strong class="mono">{{ latest.dividendPool | seMoney }}</strong></div>
-              <div><span>Strategic reserve ({{ d.config.reservePct }}%)</span><strong class="mono">{{ reserve(latest.totalProfit) | seMoney }}</strong></div>
-              <div><span>Total profit declared</span><strong class="mono accent">{{ latest.totalProfit | seMoney }}</strong></div>
+      <div class="stitch">
+        <div class="flex flex-col gap-4">
+          <!-- Covenant Allocation Model Island Card -->
+          <section class="bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-3.5 relative overflow-hidden">
+            <div>
+              <span class="text-[11px] font-mono uppercase tracking-wider text-light-secondary font-semibold block">Statutory net profit allocation model</span>
+              <h2 class="text-[16px] font-bold text-light-primary mt-0.5">{{ d.config.reinvestmentPct }}/{{ d.config.dividendsPct }}/{{ d.config.reservePct }} covenant distribution rules</h2>
             </div>
-          </section>
 
-          <section class="card">
-            <div class="sec-head"><h2>Your account</h2></div>
-            <div class="kv">
-              <div><span>Your dividend</span><strong class="mono accent">{{ latest.myDividend | seMoney }}</strong></div>
-              <div><span>Equity entitlement</span><strong class="mono">{{ d.investmentInformation.equityPercentage }}%</strong></div>
-              <div><span>Shares held</span><strong class="mono">{{ d.investmentInformation.shares | number }} / {{ d.investmentInformation.totalShares | number }}</strong></div>
-              @if (cashOnCash() !== null) { <div><span>Cash-on-cash</span><strong class="mono">{{ cashOnCash() | number:'1.0-1' }}%</strong></div> }
-              <div><span>Settlement</span><strong>Advised per remittance</strong></div>
+            <!-- Segmented Visual Allocation Bar -->
+            <div class="covenant-bar flex items-center gap-1.5 h-3.5 rounded-full bg-canvas-tint overflow-hidden p-0.5 border border-border/60">
+              <div class="h-full bg-warning rounded-full" [style.width.%]="d.config.reinvestmentPct" title="Factory reinvestment: {{ d.config.reinvestmentPct }}%"></div>
+              <div class="h-full bg-accent rounded-full" [style.width.%]="d.config.dividendsPct" title="Partner dividends: {{ d.config.dividendsPct }}%"></div>
+              <div class="h-full bg-light-secondary rounded-full" [style.width.%]="d.config.reservePct" title="Strategic reserve: {{ d.config.reservePct }}%"></div>
             </div>
+
+            <!-- Legend -->
+            <div class="covenant-legend grid grid-cols-3 gap-2 text-[11px] pt-1">
+              <div class="p-2.5 rounded-lg bg-canvas border border-border text-center shadow-xs">
+                <span class="font-bold font-mono text-warning block text-[13px]">{{ d.config.reinvestmentPct }}% Reinvest</span>
+                <span class="text-light-secondary text-[10px]">Factory operations</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-canvas border border-border text-center shadow-xs">
+                <span class="font-bold font-mono text-accent block text-[13px]">{{ d.config.dividendsPct }}% Dividend</span>
+                <span class="text-light-secondary text-[10px]">Equity syndicate</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-canvas border border-border text-center shadow-xs">
+                <span class="font-bold font-mono text-light-secondary block text-[13px]">{{ d.config.reservePct }}% Reserve</span>
+                <span class="text-light-secondary text-[10px]">Liquidity buffer</span>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-light-secondary leading-normal">
+              Under the shareholder covenant, {{ d.config.dividendsPct }}% of certified net quarterly profit is ring-fenced for cash dividends. {{ d.config.founderSharePct }}% of that pool accrues to the founder, and each partner receives their equity percentage of the pool. Distribution occurs on declaration, subject to approval-gated fund movement.
+            </p>
           </section>
-        } @else {
-          <section class="card"><p class="muted">No distributions yet. Dividends are declared quarterly from audited net profit ({{ store.covenantLabel() }}).</p></section>
-        }
 
-        <section class="card">
-          <div class="sec-head"><h2>How profit sharing works</h2></div>
-          <p class="copy muted">Under the shareholder covenant, <strong>{{ d.config.dividendsPct }}%</strong> of certified net quarterly profit is ring-fenced for cash dividends. <strong>{{ d.config.founderSharePct }}%</strong> of that pool accrues to the founder and each partner receives their equity percentage of the pool. <strong>{{ d.config.reinvestmentPct }}%</strong> is reinvested and <strong>{{ d.config.reservePct }}%</strong> enters the strategic reserve. Distribution occurs on declaration, subject to approval-gated fund movement.</p>
-        </section>
+          <!-- Distribution Ledger Stack -->
+          <section class="flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-[15px] font-bold text-light-primary">Distribution history</h3>
+              <span class="text-[11px] font-mono text-light-secondary">DECLARED PER REMITTANCE</span>
+            </div>
 
-        <section class="card">
-          <div class="sec-head"><h2>Historical payout ledger</h2></div>
-          @if (payoutRows().length) {
-            <div class="list">
-              @for (row of payoutRows(); track row.id) {
-                <div class="prow">
-                  <div class="dtop"><span class="rtitle">{{ row.period }}</span><span class="chip ok sm">Declared</span></div>
-                  <div class="kv tight">
-                    <div><span>Net certified profit</span><strong class="mono">{{ row.totalProfit | seMoney }}</strong></div>
-                    <div><span>Dividend pool</span><strong class="mono">{{ row.dividendPool | seMoney }}</strong></div>
-                    <div><span>Your payout</span><strong class="mono accent">{{ row.myDividend | seMoney }}</strong></div>
+            @for (row of payoutRows(); track row.id) {
+              <article class="payout-card bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex flex-col gap-3">
+                <div class="flex items-center justify-between border-b border-border pb-2.5">
+                  <div>
+                    <strong class="font-bold text-light-primary block text-[14px]">{{ row.period }} Dividend Distribution</strong>
+                    <span class="text-[11px] text-light-secondary font-mono">Declared from audited net profit</span>
+                  </div>
+                  <span class="px-2.5 py-0.5 rounded-full bg-success/15 text-success font-semibold text-[11px] border border-success/30">Declared</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-[12px] bg-canvas p-2.5 rounded-lg border border-border">
+                  <div>
+                    <span class="text-light-secondary block text-[11px] font-mono">Dividend pool ({{ d.config.dividendsPct }}%):</span>
+                    <strong class="font-mono text-light-primary text-[13px]">{{ row.dividendPool | seMoney }}</strong>
+                  </div>
+                  <div>
+                    <span class="text-light-secondary block text-[11px] font-mono">Your {{ d.investmentInformation.equityPercentage }}% Entitlement:</span>
+                    <strong class="font-mono text-accent text-[14px]">{{ row.myDividend | seMoney }}</strong>
                   </div>
                 </div>
-              }
+
+                <div class="flex justify-between items-center text-[11px] text-light-secondary pt-1">
+                  <span>Net certified profit: <strong class="font-mono text-light-primary">{{ row.totalProfit | seMoney }}</strong></span>
+                  <a routerLink="/reports" class="text-warning font-semibold hover:underline flex items-center gap-0.5">
+                    View audit
+                    <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                  </a>
+                </div>
+              </article>
+            } @empty {
+              <div class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)]">
+                <p class="text-[12px] text-light-secondary">No distributions yet. Dividends are declared quarterly from audited net profit ({{ store.covenantLabel() }}).</p>
+              </div>
+            }
+          </section>
+
+          <!-- Cumulative Yield Metric Card -->
+          <section class="p-4 rounded-xl bg-canvas-tint/70 border border-border flex items-center justify-between text-[12px] shadow-xs">
+            <div>
+              <span class="text-light-secondary font-mono text-[11px] block">Cumulative realized yield to date</span>
+              <strong class="font-mono text-[16px] text-light-primary block mt-0.5">{{ store.lifetimeDividends() | seMoney }}</strong>
+              <span class="text-[10px] text-success font-semibold">{{ cashOnCashHint() }}</span>
             </div>
-          } @else {
-            <p class="muted small">Payout ledger populates as quarterly distributions are declared.</p>
-          }
-          <button type="button" class="action" (click)="print()">Print statement</button>
-        </section>
+            <div class="w-10 h-10 rounded-full bg-accent/20 text-warning flex items-center justify-center flex-shrink-0 shadow-xs">
+              <span class="material-symbols-outlined text-[24px]">workspace_premium</span>
+            </div>
+          </section>
+        </div>
       </div>
     }
   `,
-  styles: [`
-    :host{display:block;font-family:'Urbanist',sans-serif;}
-    .pg{display:flex;flex-direction:column;gap:12px;} .card{background:#fffdf9;border:1px solid #e8e1d3;border-radius:12px;padding:14px;box-shadow:0 8px 24px -4px rgba(27,25,22,.05);}
-    .eyebrow{font:700 10px/1 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#c88a12;margin-bottom:4px;}
-    h1{margin:0;font:700 20px/1.2 Urbanist,sans-serif;} h2{margin:0;font:700 14px/1.2 Urbanist,sans-serif;} p{margin:6px 0 0;font-size:13px;}
-    .chip{display:inline-block;margin-top:8px;font:600 11px/1 Urbanist,sans-serif;padding:5px 9px;border-radius:999px;background:#f1ede5;border:1px solid #e8e1d3;}
-    .chip.ok{background:rgba(35,128,77,.12);color:#23804d;border-color:rgba(35,128,77,.25);} .chip.sm{margin:0;padding:4px 8px;font-size:10px;}
-    .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-    .metric{display:flex;flex-direction:column;gap:4px;padding:12px;} .metric span{color:#7b756a;font-size:11px;} .metric strong{font:700 16px/1.1 'JetBrains Mono',monospace;color:#1b1916;}
-    .sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;}
-    .list,.kv{display:flex;flex-direction:column;gap:8px;} .kv.tight{gap:4px;margin-top:8px;}
-    .kv>div,.dtop{display:flex;justify-content:space-between;gap:10px;} .kv>div{padding:5px 0;border-bottom:1px solid rgba(232,225,211,.6);font-size:13px;} .kv>div:last-child{border-bottom:0;}
-    .prow{padding:10px 0;border-bottom:1px solid rgba(232,225,211,.6);} .prow:last-child{border-bottom:0;padding-bottom:0;}
-    .rtitle{font:700 13px/1 Urbanist,sans-serif;} .copy strong{color:#1b1916;}
-    .action{margin-top:12px;width:100%;padding:12px;border-radius:12px;border:1px solid #e8e1d3;background:#1b1916;color:#fffdf9;font:700 13px/1 Urbanist,sans-serif;}
-    .muted{color:#7b756a;} .small{font-size:11px;} .mono{font-family:'JetBrains Mono',monospace;} .accent{color:#c88a12;}
-    @media (max-width:360px){.metrics{grid-template-columns:1fr;}}
-  `],
 })
 export class ProfitSharingPage {
   readonly store = inject(PortalStore);
 
   readonly payoutRows = computed<PayoutRow[]>(() => (this.store.dash()?.profitSharing ?? []).map((row) => ({ id: row.period, ...row })));
 
-  private covenant(total: number, pct: number): number { return Math.round(((total * pct) / 100) * 100) / 100; }
-  reinvestment(total: number): number { return this.covenant(total, this.store.dash()?.config.reinvestmentPct ?? 40); }
-  reserve(total: number): number { return this.covenant(total, this.store.dash()?.config.reservePct ?? 20); }
   cashOnCash(): number | null {
     const invested = this.store.dash()?.investmentInformation.investedAmount ?? 0;
     if (!invested) return null;
     return (this.store.lifetimeDividends() / invested) * 100;
   }
-  cashOnCashHint(): string { const c = this.cashOnCash(); return c === null ? 'Return on invested capital' : `${c.toFixed(1)}% cash-on-cash return`; }
-  print(): void { window.print(); }
+  cashOnCashHint(): string {
+    const c = this.cashOnCash();
+    return c === null ? 'Return on invested capital' : `${c.toFixed(1)}% cash-on-cash return`;
+  }
 }

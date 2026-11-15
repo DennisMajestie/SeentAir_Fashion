@@ -1,18 +1,13 @@
 ﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import {
-  SeBannerComponent,
-  SeEmptyStateComponent,
-  SeMoneyPipe,
-  SeStatusComponent,
-  SeToastService,
-} from '@seentair/ui';
+import { SeMoneyPipe, SeToastService } from '@seentair/ui';
 import { ApiService, Pricing, PricingProduct, PricingVariant } from '../api.service';
 import { CartService } from '../cart.service';
 
 /**
- * Bulk order form: a colour Ã— size quantity grid for one product.
+ * W4 Bulk Order Form Matrix, carried verbatim from the Stitch screen: a
+ * colour × size quantity grid for one product.
  *
  * The grid writes into the shared cart; the MOQ counts this form plus the
  * other products already drafted, and the server re-checks it on commit.
@@ -20,145 +15,186 @@ import { CartService } from '../cart.service';
  */
 @Component({
   selector: 'app-matrix',
-  imports: [
-    FormsModule,
-    RouterLink,
-    SeBannerComponent,
-    SeEmptyStateComponent,
-    SeMoneyPipe,
-    SeStatusComponent,
-  ],
+  imports: [FormsModule, RouterLink, SeMoneyPipe],
   template: `
-    <div class="w4">
-      <header class="w4-head">
-        <div class="w4-head-left">
-          <a routerLink="/catalogue" class="icon-btn" aria-label="Back"><span class="material-symbols-outlined">arrow_back</span></a>
-          <div>
-            <div class="crumbs"><span>Catalogue</span><span>/</span><span class="mono">#{{ (product()?.id || '').slice(0,6) || 'SKU' }}</span></div>
-            <h1>Bulk Order Matrix</h1>
-          </div>
-        </div>
-        @if (moqKnown()) { <span class="pill mono">MOQ: {{ moq() }}u</span> }
-      </header>
-
-      @if (loadError()) {
-        <se-banner tone="danger" title="The product could not be loaded" actionLabel="Try again" (action)="load()">{{ loadError() }}</se-banner>
-      } @else if (loading()) {
-        <div class="card muted small">Loading productâ€¦</div>
-      } @else if (product(); as prod) {
-        <section class="card w4-product">
-          <div class="thumb">@if (prod.imageUrl) { <img [src]="prod.imageUrl" alt="" /> } @else { <span class="material-symbols-outlined">styler</span> }</div>
-          <div class="copy">
-            <h2>{{ prod.name }}</h2>
-            <p class="muted small">{{ prod.category ?? 'Aba Mill Line' }}</p>
-            <div class="price-line">
-              <span class="price">{{ prod.wholesalePrice | seMoney: 2 }}</span>
-              <span class="retail">{{ prod.retailPrice | seMoney: 2 }} Retail</span>
-            </div>
-            <se-status kind="stock" [value]="availability(prod)" />
-          </div>
-        </section>
-
-        <section class="card w4-moq">
-          <div class="row">
-            <span class="title"><span class="material-symbols-outlined accent">pie_chart</span> Silhouette Batch MOQ</span>
-            <span class="mono" [class.ok]="moqShort() <= 0" [class.warn]="moqShort() > 0">{{ committedUnits() }} / {{ moqKnown() ? moq() : 'â€”' }} Units</span>
-          </div>
-          <div class="bar"><div class="fill" [style.width.%]="moqKnown() ? (moq() ? Math.min(100, (committedUnits()/moq())*100) : 100) : 0"></div></div>
-          <p class="muted small">@if (moqShort() > 0) { {{ moqShort() }} more units to meet minimum (includes {{ otherUnits() }} in cart). } @else { Batch minimum satisfied. Ready for Aba line queue scheduling. }</p>
-          @if (moqShort() > 0) { <button type="button" class="link" (click)="autoFill()">Spread {{ moqShort() }} units across grid</button> }
-        </section>
-
-        <section class="w4-matrix">
-          <div class="sec-head"><h3>Size & Variant Breakdown</h3><span class="mono muted">STEPPER</span></div>
-          @for (colour of colours(); track colour) {
-            <div class="card colour-card">
-              <div class="colour-head">
-                <span class="colour-name">{{ colour }}</span>
-                <span class="mono muted">Subtotal: {{ colourSum(colour) }} units</span>
+    <div class="stitch">
+      <div class="bg-canvas text-light-on-surface min-h-screen pb-28 antialiased selection:bg-accent/20">
+        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <a routerLink="/catalogue" class="w-8 h-8 rounded-full bg-light-surface border border-border flex items-center justify-center text-light-primary" aria-label="Back to catalogue">
+              <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+            </a>
+            <div>
+              <div class="flex items-center gap-1 text-[11px] text-light-secondary">
+                <span>Catalogue</span>
+                <span>/</span>
+                <span class="font-mono text-light-primary">#{{ (product()?.id || '').slice(0, 6) || 'SKU' }}</span>
               </div>
-              <div class="size-grid">
-                @for (size of sizes(); track size) {
-                  <div class="size-cell">
-                    <span class="sz">{{ size }}</span>
-                    @if (variantFor(colour, size); as v) {
-                      <input
-                        type="number" min="0" step="1" inputmode="numeric"
-                        [max]="stockCap(v)"
-                        [ngModel]="qtyOf(v.id)"
-                        (ngModelChange)="setQty(v.id, $event)"
-                        [attr.aria-label]="colour + ' size ' + size"
-                      />
-                      @if (stockNote(v); as note) { <span class="stock">{{ note }}</span> }
-                    } @else {
-                      <span class="na">â€”</span>
-                    }
+              <h1 class="text-[14px] font-bold text-light-primary">Bulk Order Matrix</h1>
+            </div>
+          </div>
+          @if (moqKnown()) {
+            <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-canvas-tint text-light-primary border border-border">MOQ: {{ moq() }}u</span>
+          }
+        </header>
+
+        <main class="px-4 py-4 flex flex-col gap-4 max-w-[390px] mx-auto w-full">
+          @if (loadError()) {
+            <div class="load-error p-3.5 rounded-xl bg-light-surface border border-danger/30 flex items-center justify-between gap-2">
+              <div>
+                <h2 class="text-[13px] font-bold text-danger">The product could not be loaded</h2>
+                <span class="text-[11px] text-light-secondary">{{ loadError() }}</span>
+              </div>
+              <button type="button" class="px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold flex-shrink-0" (click)="load()">Try again</button>
+            </div>
+          } @else if (loading()) {
+            <div aria-busy="true">
+              <span class="text-[11px] font-mono text-light-secondary uppercase tracking-wider block mb-2">Loading product…</span>
+              <div class="bg-light-surface/60 rounded-xl p-3.5 border border-dashed border-border flex gap-3.5 animate-pulse">
+                <div class="w-16 h-20 rounded-lg bg-canvas-tint/80 flex-shrink-0"></div>
+                <div class="flex-1 flex flex-col justify-between py-1">
+                  <div class="space-y-2">
+                    <div class="h-3 w-1/3 bg-canvas-tint rounded"></div>
+                    <div class="h-4 w-4/5 bg-canvas-tint rounded"></div>
                   </div>
+                  <div class="h-5 w-24 bg-canvas-tint rounded-full"></div>
+                </div>
+              </div>
+            </div>
+          } @else if (product(); as prod) {
+            <!-- Product Summary Card -->
+            <section class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex gap-3.5 items-center">
+              <div class="w-16 h-20 rounded-lg bg-canvas-tint flex items-center justify-center flex-shrink-0 border border-border overflow-hidden">
+                @if (prod.imageUrl) {
+                  <img [src]="prod.imageUrl" alt="" class="w-full h-full object-cover" />
+                } @else {
+                  <span class="material-symbols-outlined text-[32px] text-light-secondary">styler</span>
                 }
               </div>
+              <div class="flex-1">
+                <h2 class="text-[15px] font-bold text-light-primary">{{ prod.name }}</h2>
+                <p class="text-[12px] text-light-secondary">
+                  @if (moqKnown()) {
+                    {{ prod.category ?? 'Aba Mill Line' }} • {{ moq() }}-unit minimum per batch
+                  } @else {
+                    {{ prod.category ?? 'Aba Mill Line' }}
+                  }
+                </p>
+                <div class="mt-1 flex items-baseline gap-2 flex-wrap">
+                  <span class="font-mono font-bold text-accent text-[16px]">{{ prod.wholesalePrice | seMoney: 2 }}</span>
+                  <span class="text-[10px] font-normal text-light-secondary">/unit</span>
+                  <span class="text-[11px] text-light-secondary line-through">{{ prod.retailPrice | seMoney: 2 }} Retail</span>
+                  @if (pricingData()?.hasDiscount) {
+                    <span class="text-[10px] text-success font-semibold">{{ discountPct() }}% Wholesale</span>
+                  }
+                  <span
+                    class="text-[10px] font-semibold"
+                    [class.text-success]="availability(prod) === 'in_stock'"
+                    [class.text-warning]="availability(prod) === 'made_to_order'"
+                    [class.text-danger]="availability(prod) === 'out_of_stock'"
+                  >
+                    {{ availabilityLabel(prod) }}
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            <!-- MOQ Progress Tracker -->
+            <div class="p-3.5 rounded-xl bg-light-surface border border-border flex flex-col gap-2">
+              <div class="flex items-center justify-between text-[12px]">
+                <span class="font-semibold text-light-primary flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px] text-accent">pie_chart</span>
+                  Silhouette Batch MOQ
+                </span>
+                <span class="font-mono font-bold" [class.text-success]="moqShort() <= 0" [class.text-warning]="moqShort() > 0">
+                  {{ committedUnits() }} / {{ moqKnown() ? moq() : '—' }} Units{{ moqKnown() && moqShort() <= 0 ? ' Met' : '' }}
+                </span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-border overflow-hidden">
+                <div class="h-full rounded-full" [class.bg-success]="moqShort() <= 0" [class.bg-accent]="moqShort() > 0" [style.width.%]="fillPercent()"></div>
+              </div>
+              @if (moqShort() > 0) {
+                <span class="moq-short text-[11px] text-light-secondary">{{ moqShort() }} more units to reach the minimum (includes {{ otherUnits() }} in cart).</span>
+                <button type="button" class="self-start text-[12px] font-semibold text-warning underline-offset-2" (click)="autoFill()">Spread {{ moqShort() }} units across grid</button>
+              } @else {
+                <span class="moq-met text-[11px] text-light-secondary">Batch minimum satisfied. Ready for Aba line queue scheduling.</span>
+              }
+            </div>
+
+            <!-- Variant Matrix: Colourways x Sizes -->
+            <section class="matrix flex flex-col gap-3">
+              <div class="flex items-center justify-between">
+                <h3 class="text-[14px] font-bold text-light-primary">Size & Variant Breakdown</h3>
+                <span class="text-[11px] text-light-secondary font-mono">STEPPER CONTROLS</span>
+              </div>
+
+              @for (colour of colours(); track colour) {
+                <div class="colour-card bg-light-surface rounded-xl p-3.5 border border-border flex flex-col gap-3">
+                  <div class="flex items-center justify-between border-b border-border pb-2">
+                    <span class="text-[13px] font-bold text-light-primary">{{ colour }}</span>
+                    <span class="font-mono text-[11px] text-light-secondary">Subtotal: {{ colourSum(colour) }} units</span>
+                  </div>
+
+                  <div class="grid grid-cols-4 gap-2 text-center">
+                    @for (size of sizes(); track size) {
+                      <div class="p-2 rounded-lg bg-canvas border border-border flex flex-col items-center">
+                        <span class="text-[11px] font-bold text-light-secondary">{{ size }}</span>
+                        @if (variantFor(colour, size); as v) {
+                          <input
+                            type="number" min="0" step="1" inputmode="numeric"
+                            class="w-10 text-center font-mono font-bold text-[13px] bg-light-surface border border-border rounded py-0.5 mt-1 focus:outline-none focus:border-accent"
+                            [max]="stockCap(v)"
+                            [ngModel]="qtyOf(v.id)"
+                            (ngModelChange)="setQty(v.id, $event)"
+                            [attr.aria-label]="colour + ' size ' + size"
+                          />
+                          @if (stockNote(v); as note) {
+                            <span class="stock text-[10px] text-light-secondary">{{ note }}</span>
+                          }
+                        } @else {
+                          <span class="na text-light-secondary mt-1">—</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </section>
+
+            <!-- Notes on Trims & Labelling -->
+            <div class="p-3 rounded-lg bg-canvas-tint/70 border border-border text-[11px] text-light-secondary leading-normal">
+              Default packaging: Folded in biodegradable Aba mill polybags with barcoded size labels. Custom neck tags can be requested via Custom Orders.
+            </div>
+          } @else {
+            <div class="empty-state bg-light-surface p-3.5 rounded-xl border border-border flex flex-col items-center gap-1.5 text-center">
+              <span class="material-symbols-outlined text-[28px] text-light-secondary">inventory_2</span>
+              <strong class="text-[14px] text-light-primary">Product not in your catalogue</strong>
+              <p class="text-[11px] text-light-secondary">It may have been removed or is not priced for your tier.</p>
+              <button type="button" class="mt-1 px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold" (click)="router.navigate(['/catalogue'])">Back to catalogue</button>
             </div>
           }
-        </section>
+        </main>
 
-        <div class="note card muted small">Default packaging: Folded in biodegradable Aba mill polybags with barcoded size labels. Custom neck tags can be requested via Custom Orders.</div>
-
-        <aside class="w4-bar" aria-label="Order summary">
+        <!-- Sticky Bottom Checkout Bar -->
+        <aside aria-label="Order summary" class="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto bg-light-surface border-t border-border px-4 py-3 flex items-center justify-between shadow-[0_-8px_20px_rgba(27,25,22,0.06)] z-30">
           <div>
-            <span class="muted small">{{ formUnits() }} Units Total</span>
-            <strong>{{ formAmount() | seMoney: 2 }}</strong>
+            <span class="text-[11px] text-light-secondary block font-medium">{{ formUnits() }} Units Total</span>
+            <span class="font-mono font-bold text-[18px] text-light-primary leading-tight">{{ formAmount() | seMoney: 2 }}</span>
           </div>
-          <button type="button" class="cta" [disabled]="formUnits() === 0" (click)="addToOrder()">
-            <span>Add to Bulk Cart</span><span class="material-symbols-outlined">shopping_bag</span>
+          <button
+            type="button"
+            class="add-cta px-6 py-3.5 rounded-full bg-accent text-on-accent font-semibold text-[14px] flex items-center gap-2 shadow-sm hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none"
+            [disabled]="formUnits() === 0"
+            (click)="addToOrder()"
+          >
+            <span>Add to Bulk Cart</span>
+            <span class="material-symbols-outlined text-[18px]">shopping_bag</span>
           </button>
         </aside>
-      } @else {
-        <se-empty-state heading="Product not in your catalogue" text="It may have been removed or is not priced for your tier." actionLabel="Back to catalogue" (action)="router.navigate(['/catalogue'])" />
-      }
+      </div>
     </div>
   `,
-  styles: [`
-    :host{display:block;font-family:'Urbanist',sans-serif;}
-    .w4{display:flex;flex-direction:column;gap:12px;padding-bottom:92px;}
-    .w4-head{display:flex;justify-content:space-between;align-items:center;gap:8px;position:sticky;top:0;z-index:5;background:rgba(247,242,234,.92);backdrop-filter:blur(8px);padding:8px 0;margin:-4px 0 0;}
-    .w4-head-left{display:flex;align-items:center;gap:8px;min-width:0;}
-    .icon-btn{width:32px;height:32px;border-radius:999px;border:1px solid #e8e1d3;background:#fffdf9;display:inline-flex;align-items:center;justify-content:center;color:#1b1916;text-decoration:none;flex:none;}
-    .crumbs{display:flex;gap:4px;font-size:11px;color:#7b756a;align-items:center;}
-    .w4-head h1{margin:0;font:700 14px/1.2 Urbanist,sans-serif;color:#1b1916;}
-    .pill{padding:4px 8px;border-radius:999px;background:#efe3c8;border:1px solid #e8e1d3;color:#1b1916;font-size:11px;}
-    .mono{font-family:'JetBrains Mono',monospace;}
-    .card{background:#fffdf9;border:1px solid #e8e1d3;border-radius:12px;padding:14px;box-shadow:0 8px 24px -4px rgba(27,25,22,.05);}
-    .w4-product{display:flex;gap:14px;align-items:center;}
-    .thumb{width:64px;height:80px;border-radius:10px;background:rgba(239,227,200,.6);border:1px solid #e8e1d3;display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden;color:#7b756a;}
-    .thumb img{width:100%;height:100%;object-fit:cover;}
-    .copy h2{margin:0;font:700 15px/1.25 Urbanist,sans-serif;}
-    .copy p{margin:2px 0 4px;}
-    .price-line{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;}
-    .price{font:700 16px/1 'JetBrains Mono',monospace;color:#c88a12;}
-    .retail{font-size:11px;color:#7b756a;text-decoration:line-through;}
-    .w4-moq .row{display:flex;justify-content:space-between;gap:8px;font-size:12px;align-items:center;}
-    .w4-moq .title{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:#1b1916;}
-    .w4-moq .material-symbols-outlined{font-size:16px;} .accent{color:#c88a12;} .ok{color:#23804d;font-weight:700;} .warn{color:#93600a;font-weight:700;}
-    .bar{height:8px;border-radius:999px;background:#e8e1d3;overflow:hidden;margin:8px 0;}
-    .fill{height:100%;background:#23804d;border-radius:999px;}
-    .w4-moq p{margin:0;} .link{margin-top:6px;border:0;background:none;color:#93600a;font:600 12px/1 Urbanist,sans-serif;padding:0;}
-    .sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
-    .sec-head h3{margin:0;font:700 14px/1.2 Urbanist,sans-serif;}
-    .w4-matrix{display:flex;flex-direction:column;gap:10px;}
-    .colour-head{display:flex;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid #e8e1d3;margin-bottom:10px;font-size:13px;}
-    .colour-name{font-weight:700;color:#1b1916;}
-    .size-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
-    .size-cell{padding:8px;border-radius:10px;background:#f7f2ea;border:1px solid #e8e1d3;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;}
-    .sz{font:700 11px/1 Urbanist,sans-serif;color:#7b756a;}
-    .size-cell input{width:100%;max-width:52px;text-align:center;font:700 13px/1 'JetBrains Mono',monospace;background:#fffdf9;border:1px solid #e8e1d3;border-radius:6px;padding:4px 2px;color:#1b1916;}
-    .stock{font-size:10px;color:#7b756a;} .na{color:#7b756a;}
-    .note{font-size:11px;line-height:1.4;background:rgba(239,227,200,.5);}
-    .w4-bar{position:fixed;left:0;right:0;bottom:0;max-width:390px;margin:0 auto;background:#fffdf9;border-top:1px solid #e8e1d3;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 -8px 20px rgba(27,25,22,.06);z-index:30;}
-    .w4-bar strong{display:block;font:700 18px/1.1 'JetBrains Mono',monospace;color:#1b1916;}
-    .w4-bar .cta{border:0;border-radius:999px;background:#c88a12;color:#1a1405;padding:14px 18px;font:600 14px/1 Urbanist,sans-serif;display:inline-flex;align-items:center;gap:8px;}
-    .w4-bar .cta:disabled{opacity:.5;}
-    .muted{color:#7b756a;} .small{font-size:12px;}
-    @media (max-width:360px){.size-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
-  `],
+  styles: [`:host { display: block; }`],
 })
 export class MatrixPage implements OnInit {
   private readonly api = inject(ApiService);
@@ -206,11 +242,23 @@ export class MatrixPage implements OnInit {
     this.moqKnown() ? Math.max(0, this.moq() - this.committedUnits()) : 0,
   );
 
+  readonly discountPct = computed(() => {
+    const t = this.pricingData()?.tier;
+    return t ? Math.round(t.discountPercent * 10) / 10 : 0;
+  });
+
   readonly sizes = computed(() => distinct(this.product()?.variants ?? [], (v) => v.size || 'OS'));
   readonly colours = computed(() =>
     distinct(this.product()?.variants ?? [], (v) => v.colour || 'standard'),
   );
   readonly Math = Math;
+
+  /** Width of the MOQ bar, in percent. */
+  fillPercent(): number {
+    if (!this.moqKnown()) return 0;
+    if (this.moq() === 0) return 100;
+    return Math.min(100, (this.committedUnits() / this.moq()) * 100);
+  }
 
   ngOnInit(): void {
     this.load();
@@ -246,15 +294,16 @@ export class MatrixPage implements OnInit {
     });
   }
 
-  tierName(): string {
-    return this.pricingData()?.tier?.name ?? 'Standard';
-  }
-
   availability(prod: PricingProduct): string {
     const states = prod.variants.map((v) => v.availabilityStatus);
     if (states.includes('in_stock')) return 'in_stock';
     if (states.includes('made_to_order')) return 'made_to_order';
     return 'out_of_stock';
+  }
+
+  availabilityLabel(prod: PricingProduct): string {
+    const a = this.availability(prod);
+    return a === 'in_stock' ? 'In stock' : a === 'made_to_order' ? 'Made to order' : 'Out of stock';
   }
 
   qtyOf(variantId: string): number {

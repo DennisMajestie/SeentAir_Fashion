@@ -1,26 +1,19 @@
 ﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import {
-  SeBannerComponent,
-  SeButtonDirective,
-  SeCardComponent,
-  SeEmptyStateComponent,
-  SeFilter,
-  SeFilterValue,
-  SeMoneyPipe,
-  SeToastService,
-} from '@seentair/ui';
+import { SeFilter, SeFilterValue, SeMoneyPipe, SeToastService } from '@seentair/ui';
 import { AvailabilityStatus, Pricing, PricingProduct } from '../api.service';
 import { ApiService } from '../api.service';
 import { CartService } from '../cart.service';
 import { InfiniteScrollDirective } from '../infinite-scroll.directive';
+import { WholesaleTabBar } from '../tab-bar';
 
 /**
- * Wholesale catalogue: one card per product with the account's wholesale
- * price, the retail comparison when a real discount exists, availability, and
- * the route into the bulk order form. Quantities are entered on the matrix;
- * the cart (`CartService`) is the one running total, shown against the MOQ.
+ * W3 Catalogue, carried verbatim from the Stitch screen. One card per product
+ * with the account's wholesale price, the retail comparison when a real
+ * discount exists, availability, and the route into the bulk order form.
+ * Quantities are entered on the matrix; the cart (`CartService`) is the one
+ * running total, shown against the MOQ.
  *
  * Rules the API enforces and this screen relies on:
  *  - `moq` is global, not per account or tier.
@@ -31,155 +24,195 @@ import { InfiniteScrollDirective } from '../infinite-scroll.directive';
  */
 @Component({
   selector: 'app-catalogue',
-  imports: [
-    RouterLink,
-    FormsModule,
-    SeBannerComponent,
-    SeButtonDirective,
-    SeCardComponent,
-    SeEmptyStateComponent,
-    SeMoneyPipe,
-    InfiniteScrollDirective,
-  ],
+  imports: [RouterLink, FormsModule, SeMoneyPipe, InfiniteScrollDirective, WholesaleTabBar],
   template: `
-    <div class="w3">
-      <header class="w3-head cardless">
-        <div class="w3-head-top">
-          <div>
-            <h1>Catalogue</h1>
-            <span class="muted small">Aba Factory Line • {{ pricing()?.total ?? 0 }} products</span>
+    <div class="stitch">
+      <div class="bg-canvas text-light-on-surface min-h-screen pb-24 antialiased selection:bg-accent/20">
+        <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30">
+          <div class="flex items-center justify-between mb-2.5">
+            <div>
+              <h1 class="text-[20px] font-bold text-light-primary tracking-tight">Catalogue</h1>
+              <span class="text-[11px] text-light-secondary">Aba Factory Line • {{ pricing()?.total ?? 0 }} Active Silhouettes</span>
+            </div>
+            <a routerLink="/cart" class="w-9 h-9 rounded-full bg-light-surface border border-border flex items-center justify-center text-light-primary relative" aria-label="Bulk cart">
+              <span class="material-symbols-outlined text-[18px]">shopping_bag</span>
+              @if (cart.units() > 0) {
+                <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-on-accent text-[10px] font-bold flex items-center justify-center">{{ cart.units() }}</span>
+              }
+            </a>
           </div>
-          <a routerLink="/cart" class="cart-btn" aria-label="Bulk cart">
-            <span class="material-symbols-outlined">shopping_bag</span>
-            @if (cart.units() > 0) { <span class="count">{{ cart.units() }}</span> }
-          </a>
-        </div>
 
-        @if (pricing()) {
-          <div class="w3-controls">
-            <label class="search">
-              <span class="material-symbols-outlined">search</span>
-              <input type="search" [ngModel]="query()" (ngModelChange)="query.set($event)" placeholder="Search cuts, fabric, SKU..." />
-            </label>
-            <label class="filter">
-              <span class="material-symbols-outlined">tune</span>
-              <select [ngModel]="filterValue()['category'] || ''" (ngModelChange)="filterValue.set({ category: $event || undefined })">
+          <!-- Search + Filter Controls -->
+          <div class="flex items-center gap-2">
+            <div class="relative flex-1 flex items-center">
+              <span class="absolute left-3 text-light-secondary material-symbols-outlined text-[18px]">search</span>
+              <input
+                type="search"
+                placeholder="Search cuts, fabric GSM, ref..."
+                class="w-full pl-9 pr-3 py-2 rounded-full bg-light-surface border border-border text-[13px] text-light-primary focus:outline-none focus:border-accent"
+                [ngModel]="query()"
+                (ngModelChange)="query.set($event)"
+              />
+            </div>
+            <label class="relative px-3 py-2 rounded-full bg-light-surface border border-border flex items-center gap-1 text-[12px] font-semibold text-light-primary cursor-pointer">
+              <span class="material-symbols-outlined text-[16px]">tune</span>
+              {{ category() ?? 'Filter' }}
+              <select
+                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                aria-label="Category filter"
+                [ngModel]="category() || ''"
+                (ngModelChange)="filterValue.set($event ? { category: $event } : {})"
+              >
                 <option value="">All categories</option>
-                @for (c of categories(); track c.name) { <option [value]="c.name">{{ c.name }} ({{ c.count }})</option> }
+                @for (c of categories(); track c.name) {
+                  <option [value]="c.name">{{ c.name }} ({{ c.count }})</option>
+                }
               </select>
             </label>
           </div>
-          <div class="chips">
-            <button type="button" class="chip" [class.on]="!category()" (click)="filterValue.set({})">All Items</button>
+
+          <!-- Category Pills -->
+          <div class="flex items-center gap-1.5 overflow-x-auto pt-2.5 no-scrollbar text-[12px]">
+            <button type="button" class="px-3 py-1 rounded-full whitespace-nowrap" [class]="category() ? 'bg-light-surface border border-border text-light-secondary' : 'bg-light-primary text-light-on-primary font-semibold'" (click)="filterValue.set({})">
+              All Items
+            </button>
             @for (c of categories(); track c.name) {
-              <button type="button" class="chip" [class.on]="category() === c.name" (click)="filterValue.set({ category: c.name })">{{ c.name }}</button>
+              <button type="button" class="px-3 py-1 rounded-full whitespace-nowrap" [class]="category() === c.name ? 'bg-light-primary text-light-on-primary font-semibold' : 'bg-light-surface border border-border text-light-secondary'" (click)="filterValue.set({ category: c.name })">
+                {{ c.name }}
+              </button>
             }
           </div>
-          <p class="muted small w3-sum">{{ filtered().length }} of {{ pricing()?.total ?? all().length }} products</p>
-        }
-      </header>
+          <p class="text-[11px] text-light-secondary pt-1.5 px-1">{{ description() }}</p>
+        </header>
 
-      @if (needsAccount()) {
-        <se-card title="Wholesale account required">
-          <p>Wholesale ordering needs an approved account; the minimum order quantity applies.</p>
-          @if (applied()) {
-            <se-banner tone="success" title="Application submitted">Pending review. We will notify you once a tier is assigned.</se-banner>
-          } @else {
-            <button seButton variant="primary" type="button" [loading]="applying()" (click)="apply()">Apply for a wholesale account</button>
-          }
-        </se-card>
-      } @else if (loadError()) {
-        <se-banner tone="danger" title="The catalogue could not be loaded" actionLabel="Try again" (action)="load()">{{ loadError() }}</se-banner>
-      } @else if (loading()) {
-        <div aria-busy="true" class="card muted small">Loading catalogueâ€¦</div>
-      } @else if (pricing(); as p) {
-        @if (cart.units() > 0 && !moqMet()) {
-          <se-banner tone="warning" [title]="moqShort() + ' more units to reach the ' + moq() + '-unit minimum'">
-            Your bulk order holds {{ cart.units() }} units worth {{ cart.amount() | seMoney: 2 }}.
-          </se-banner>
-        }
-
-        @if (filtered().length === 0) {
-          <se-empty-state heading="No products match" text="Try a different search or clear the category filter." actionLabel="Clear filters" (action)="clearFilters()" />
-        } @else {
-          <div class="w3-list">
-            @for (product of filtered(); track product.id) {
-              <article class="w3-card">
-                <div class="thumb">
-                  @if (product.imageUrl) {
-                    <img [src]="product.imageUrl" alt="" loading="lazy" />
-                  } @else {
-                    <span class="material-symbols-outlined">styler</span>
-                  }
-                  <span class="gsm">{{ product.variants.length }} vars</span>
+        <main class="px-4 py-4 flex flex-col gap-3.5 max-w-[390px] mx-auto w-full">
+          @if (needsAccount()) {
+            <section class="needs-account bg-light-surface rounded-xl p-4 border border-border flex flex-col gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-full bg-accent/20 text-warning flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-[18px]">lock</span>
+                </span>
+                <h2 class="text-[14px] font-bold text-light-primary">Wholesale account required</h2>
+              </div>
+              <p class="text-[12px] text-light-secondary">Wholesale ordering needs an approved account; the minimum order quantity applies.</p>
+              @if (applied()) {
+                <div class="p-2.5 rounded-lg bg-success/10 text-success text-[12px] font-semibold flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                  Application submitted: pending review.
                 </div>
-                <div class="body">
-                  <div class="topline">
-                    <span class="mono muted">{{ product.category ?? 'Aba Line' }}</span>
-                    <span class="moq">MOQ: {{ p.moq }}u</span>
+              } @else {
+                <button type="button" class="self-start px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold disabled:opacity-60" [disabled]="applying()" (click)="apply()">
+                  {{ applying() ? 'Submitting…' : 'Apply for a wholesale account' }}
+                </button>
+              }
+            </section>
+          } @else if (loadError()) {
+            <div class="load-error p-3.5 rounded-xl bg-light-surface border border-danger/30 flex items-center justify-between gap-2">
+              <div>
+                <h2 class="text-[13px] font-bold text-danger">The catalogue could not be loaded</h2>
+                <span class="text-[11px] text-light-secondary">{{ loadError() }}</span>
+              </div>
+              <button type="button" class="px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold flex-shrink-0" (click)="load()">Try again</button>
+            </div>
+          } @else if (loading()) {
+            <div class="pt-2" aria-busy="true">
+              <span class="text-[11px] font-mono text-light-secondary uppercase tracking-wider block mb-2">Live Factory Queue Skeleton</span>
+              <div class="bg-light-surface/60 rounded-xl p-3.5 border border-dashed border-border flex gap-3.5 animate-pulse">
+                <div class="w-24 h-24 rounded-lg bg-canvas-tint/80 flex-shrink-0"></div>
+                <div class="flex-1 flex flex-col justify-between py-1">
+                  <div class="space-y-2">
+                    <div class="h-3 w-1/3 bg-canvas-tint rounded"></div>
+                    <div class="h-4 w-4/5 bg-canvas-tint rounded"></div>
                   </div>
-                  <h2>{{ product.name }}</h2>
-                  <p class="muted small">SKU {{ primarySku(product) }} • {{ availability(product).replace('_',' ') }}</p>
-                  <div class="price-row">
-                    <div>
-                      @if (hasDiscount()) { <span class="retail">Retail {{ product.retailPrice | seMoney: 2 }}</span> }
-                      <div class="price">{{ product.wholesalePrice | seMoney: 2 }} <span>/ unit</span></div>
-                    </div>
-                    <a class="cta" [routerLink]="['/catalogue', product.id, 'matrix']">Bulk Order</a>
+                  <div class="h-5 w-24 bg-canvas-tint rounded-full"></div>
+                </div>
+              </div>
+            </div>
+          } @else if (pricing(); as p) {
+            @if (cart.units() > 0 && !moqMet()) {
+              <div class="moq-alert p-3.5 rounded-xl bg-[#fff7eb] border border-warning/30 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-8 h-8 rounded-full bg-warning/20 text-warning flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-[18px]">error</span>
+                  </span>
+                  <div>
+                    <h2 class="text-[13px] font-bold text-warning">{{ moqShort() }} more units to reach the {{ moq() }}-unit minimum</h2>
+                    <span class="text-[11px] text-light-secondary">Your bulk order holds {{ cart.units() }} units worth {{ cart.amount() | seMoney: 2 }}.</span>
                   </div>
                 </div>
-              </article>
+                <a routerLink="/cart" class="text-[12px] font-bold text-warning flex items-center gap-0.5 flex-shrink-0">
+                  Review bulk order ({{ cart.units() }})
+                  <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                </a>
+              </div>
             }
-          </div>
 
-          @if (hasMore()) {
-            @if (loadingMore()) {
-              <p class="muted small center">Loading moreâ€¦</p>
+            @if (filtered().length === 0) {
+              <div class="empty-state bg-light-surface p-3.5 rounded-xl border border-border flex flex-col items-center gap-1.5 text-center">
+                <strong class="text-[14px] text-light-primary">No products match</strong>
+                <p class="text-[11px] text-light-secondary">Try a different search or clear the category filter.</p>
+                <button type="button" class="mt-1 px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold" (click)="clearFilters()">Clear filters</button>
+              </div>
             } @else {
-              <div class="sentinel" appInfiniteScroll (nearEnd)="loadMore()" aria-hidden="true"></div>
+              @for (product of filtered(); track product.id) {
+                <article class="product-card bg-light-surface rounded-xl p-3.5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex gap-3.5">
+                  <div class="w-24 h-28 rounded-lg bg-canvas-tint/70 border border-border flex flex-col items-center justify-center flex-shrink-0 relative overflow-hidden">
+                    @if (product.imageUrl) {
+                      <img [src]="product.imageUrl" alt="" loading="lazy" class="w-full h-full object-cover" />
+                    } @else {
+                      <span class="material-symbols-outlined text-[34px] text-light-secondary">styler</span>
+                      <span class="sr-only">No image yet</span>
+                    }
+                    <span class="absolute bottom-1 bg-light-primary/80 text-light-on-primary text-[9px] font-mono px-1.5 py-0.2 rounded">{{ product.variants.length }} vars</span>
+                  </div>
+
+                  <div class="flex-1 flex flex-col justify-between">
+                    <div>
+                      <div class="flex items-start justify-between">
+                        <span class="text-[10px] font-mono uppercase text-light-secondary">{{ product.category ?? 'Aba Line' }}</span>
+                        <span class="text-[10px] font-bold text-success bg-success/10 px-1.5 py-0.2 rounded whitespace-nowrap">MOQ: {{ p.moq }}u</span>
+                      </div>
+                      <h2 class="text-[14px] font-bold text-light-primary mt-0.5 leading-snug">{{ product.name }}</h2>
+                      <span class="product-availability text-[11px] text-light-secondary">SKU {{ primarySku(product) }} • {{ availabilityLabel(product) }}</span>
+                    </div>
+
+                    <div class="product-price pt-1.5 border-t border-border flex items-end justify-between">
+                      <div>
+                        @if (hasDiscount()) {
+                          <s class="text-[10px] text-light-secondary block">Retail {{ product.retailPrice | seMoney: 2 }}</s>
+                          <span class="discount-badge text-[10px] font-bold text-success bg-success/10 px-1.5 py-0.2 rounded">{{ discountPct() }}% off retail</span>
+                        } @else {
+                          <span class="discount-badge text-[10px] font-bold text-light-secondary bg-canvas-tint px-1.5 py-0.2 rounded">At retail</span>
+                        }
+                        <div class="font-mono font-bold text-light-primary text-[15px]"><strong>{{ product.wholesalePrice | seMoney: 2 }}</strong> <span class="text-[10px] font-normal text-light-secondary">/unit</span></div>
+                      </div>
+                      <a [routerLink]="['/catalogue', product.id, 'matrix']" class="product-cta px-3 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold hover:brightness-105 whitespace-nowrap">
+                        Bulk Order
+                      </a>
+                    </div>
+                  </div>
+                </article>
+              }
+
+              @if (hasMore()) {
+                @if (loadingMore()) {
+                  <p class="text-[11px] text-light-secondary text-center">Loading more…</p>
+                } @else {
+                  <div class="sentinel" appInfiniteScroll (nearEnd)="loadMore()" aria-hidden="true"></div>
+                }
+                <p class="text-[11px] text-light-secondary text-center">Showing {{ all().length }} of {{ total() }} products</p>
+              }
             }
-            <p class="muted small center">Showing {{ all().length }} of {{ total() }} products</p>
           }
-        }
-      }
+        </main>
+
+        <ws-tab-bar />
+      </div>
     </div>
   `,
   styles: [`
-    :host{display:block;font-family:'Urbanist',sans-serif;}
-    .w3{display:flex;flex-direction:column;gap:12px;padding-bottom:12px;}
-    .w3-head{display:flex;flex-direction:column;gap:10px;}
-    .w3-head-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
-    .w3-head h1{margin:0;font:700 20px/1.1 Urbanist,sans-serif;color:#1b1916;}
-    .muted{color:#7b756a;} .small{font-size:11px;} .mono{font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;}
-    .cart-btn{position:relative;width:36px;height:36px;border-radius:999px;border:1px solid #e8e1d3;background:#fffdf9;display:inline-flex;align-items:center;justify-content:center;color:#1b1916;text-decoration:none;}
-    .cart-btn .count{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#c88a12;color:#1a1405;font:700 10px/16px Urbanist,sans-serif;text-align:center;}
-    .w3-controls{display:flex;gap:8px;}
-    .search,.filter{display:flex;align-items:center;gap:6px;border:1px solid #e8e1d3;background:#fffdf9;border-radius:999px;padding:8px 12px;color:#7b756a;}
-    .search{flex:1;} .search input{border:0;background:transparent;outline:0;width:100%;font:400 13px/1.2 Urbanist,sans-serif;color:#1b1916;}
-    .filter select{border:0;background:transparent;outline:0;font:600 12px/1 Urbanist,sans-serif;color:#1b1916;max-width:110px;}
-    .material-symbols-outlined{font-size:18px;}
-    .chips{display:flex;gap:6px;overflow:auto;padding-bottom:2px;}
-    .chip{flex:0 0 auto;border:1px solid #e8e1d3;background:#fffdf9;color:#7b756a;border-radius:999px;padding:6px 12px;font:500 12px/1 Urbanist,sans-serif;}
-    .chip.on{background:#1b1916;color:#fff;border-color:#1b1916;font-weight:600;}
-    .w3-sum{margin:0;}
-    .w3-list{display:flex;flex-direction:column;gap:14px;}
-    .w3-card{display:flex;gap:14px;padding:14px;background:#fffdf9;border:1px solid #e8e1d3;border-radius:12px;box-shadow:0 8px 24px -4px rgba(27,25,22,.05);}
-    .thumb{width:96px;height:112px;border-radius:10px;background:rgba(239,227,200,.6);border:1px solid #e8e1d3;display:flex;align-items:center;justify-content:center;position:relative;flex:none;overflow:hidden;color:#7b756a;}
-    .thumb img{width:100%;height:100%;object-fit:cover;}
-    .thumb .gsm{position:absolute;bottom:4px;background:rgba(27,25,22,.8);color:#fff;font:500 9px/1 'JetBrains Mono',monospace;padding:2px 6px;border-radius:4px;}
-    .body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:4px;}
-    .topline{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;}
-    .moq{font:700 10px/1 Urbanist,sans-serif;color:#23804d;background:rgba(35,128,77,.1);padding:2px 6px;border-radius:4px;white-space:nowrap;}
-    .body h2{margin:2px 0 0;font:700 14px/1.25 Urbanist,sans-serif;color:#1b1916;}
-    .body p{margin:0;}
-    .price-row{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;padding-top:6px;border-top:1px solid #e8e1d3;margin-top:2px;}
-    .retail{display:block;font-size:10px;color:#7b756a;text-decoration:line-through;}
-    .price{font:700 15px/1.1 'JetBrains Mono',monospace;color:#1b1916;}
-    .price span{font:400 10px/1 Urbanist,sans-serif;color:#7b756a;}
-    .cta{background:#c88a12;color:#1a1405;text-decoration:none;border-radius:999px;padding:7px 12px;font:600 12px/1 Urbanist,sans-serif;white-space:nowrap;}
-    .center{text-align:center;margin:4px 0;}
-    .sentinel{height:1px;}
-    .card{background:#fffdf9;border:1px solid #e8e1d3;border-radius:12px;padding:16px;}
+    :host { display: block; }
+    .sentinel { height: 1px; }
   `],
 })
 export class CataloguePage implements OnInit {
@@ -314,6 +347,11 @@ export class CataloguePage implements OnInit {
     if (states.includes('in_stock')) return 'in_stock';
     if (states.includes('made_to_order')) return 'made_to_order';
     return 'out_of_stock';
+  }
+
+  availabilityLabel(product: PricingProduct): string {
+    const a = this.availability(product);
+    return a === 'in_stock' ? 'In stock' : a === 'made_to_order' ? 'Made to order' : 'Out of stock';
   }
 
   apply(): void {
