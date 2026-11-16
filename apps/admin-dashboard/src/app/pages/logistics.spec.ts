@@ -15,6 +15,7 @@ const SETTINGS = {
   pricesIncludeVat: true,
   deliveryTaxable: true,
   couponsEnabled: false,
+  supportWhatsappUrl: null,
 };
 
 const OLD_APIS = [

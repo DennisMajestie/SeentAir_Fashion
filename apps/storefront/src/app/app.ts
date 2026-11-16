@@ -6,6 +6,7 @@ import { MobileHeaderComponent } from './mobile-header.component';
 import { MobileBottomNavComponent } from './mobile-bottom-nav.component';
 import { DesktopShellComponent } from './desktop-shell.component';
 import { PromisesRowComponent } from './promises-row.component';
+import { WhatsappFloatComponent } from './whatsapp-float.component';
 import { ViewportService } from './viewport.service';
 import { ChromeService } from './chrome.service';
 
@@ -23,6 +24,7 @@ import { ChromeService } from './chrome.service';
     MobileBottomNavComponent,
     DesktopShellComponent,
     PromisesRowComponent,
+    WhatsappFloatComponent,
   ],
   template: `
     <!--
@@ -64,6 +66,12 @@ import { ChromeService } from './chrome.service';
     </main>
     @if (!chrome.immersive() && !viewport.isDesktop()) {
       <app-mobile-tabs />
+    }
+    @if (!chrome.immersive()) {
+      <!-- Floating WhatsApp assistance button; self-hiding while the dashboard
+           has no link published. Hidden on immersive routes for the same
+           reason the rest of the chrome is. -->
+      <app-whatsapp-float />
     }
     @if (!chrome.immersive() && viewport.isDesktop()) {
       <footer class="site-footer">

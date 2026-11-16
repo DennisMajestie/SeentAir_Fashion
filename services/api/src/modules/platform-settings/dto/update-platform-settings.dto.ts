@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -53,6 +54,18 @@ export class UpdatePlatformSettingsDto {
   @IsOptional()
   @IsBoolean()
   couponsEnabled?: boolean;
+
+  /**
+   * The WhatsApp link customers use for assistance. Must be an http(s) URL
+   * (wa.me / wa.link both qualify); an empty string clears it.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  @Matches(/^https:\/\/\S+$/i, {
+    message: 'supportWhatsappUrl must be a https link (for example https://wa.me/234…)',
+  })
+  supportWhatsappUrl?: string | null;
 
   @IsString()
   @MaxLength(500)

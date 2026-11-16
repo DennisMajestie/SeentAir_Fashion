@@ -85,9 +85,21 @@ export interface ShippingSettings {
   pricesIncludeVat: boolean;
   deliveryTaxable: boolean;
   couponsEnabled: boolean;
+  /** WhatsApp link customers use for assistance; null until set. */
+  supportWhatsappUrl: string | null;
 }
 
-/** A settings edit. Every field is optional; the API requires the reason. Sending null clears freeDeliveryThreshold. */
+/** GET /users/roles answers the full dot-matrix row the backend serves. */
+export interface RoleMatrixRow {
+  id: string;
+  name: string;
+  permissions: Array<{ id?: string; module: string; accessLevel: string }>;
+  accessLevels: string[];
+  version: string;
+  memberCount: number;
+}
+
+/** A settings edit. Every field is optional; the API requires the reason. Sending null clears freeDeliveryThreshold (and an empty string clears the WhatsApp link). */
 export interface ShippingSettingsUpdate {
   shippingEnabled?: boolean;
   freeDeliveryThreshold?: number | null;
@@ -97,6 +109,7 @@ export interface ShippingSettingsUpdate {
   pricesIncludeVat?: boolean;
   deliveryTaxable?: boolean;
   couponsEnabled?: boolean;
+  supportWhatsappUrl?: string | null;
   reason: string;
 }
 
@@ -661,28 +674,28 @@ endProductSale(id: string): Observable<unknown> {
   changeRole(id: string, role: string): Observable<unknown> {
     return this.http.patch(`${API_BASE}/users/${id}/role`, { role });
   }
-  rolesMatrix(): Observable<
-    Array<{
-      id: string;
-      name: string;
-      permissions: Array<{ id?: string; module: string; accessLevel: string }>;
-    }>
-  > {
-    return this.http.get<
-      Array<{
-        id: string;
-        name: string;
-        permissions: Array<{ id?: string; module: string; accessLevel: string }>;
-      }>
-    >(`${API_BASE}/users/roles`);
+  rolesMatrix(): Observable<RoleMatrixRow[]> {
+    return this.http.get<RoleMatrixRow[]>(`${API_BASE}/users/roles`);
   }
+  /**
+   * Replaces a role's whole permission set. The API is optimistic-concurrent:
+   * send the version the matrix was loaded with, and the write is rejected
+   * when someone else changed the role in the meantime. `reason` lands in the
+   * audit log.
+   */
   updateRolePermissions(
     role: string,
     permissions: Array<{ module: string; accessLevel: string }>,
-  ): Observable<unknown> {
-    return this.http.put(`${API_BASE}/users/roles/${encodeURIComponent(role)}/permissions`, {
-      permissions,
-    });
+    options?: { baseVersion?: string; reason?: string },
+  ): Observable<RoleMatrixRow> {
+    return this.http.put<RoleMatrixRow>(
+      `${API_BASE}/users/roles/${encodeURIComponent(role)}/permissions`,
+      {
+        permissions,
+        ...(options?.baseVersion !== undefined ? { baseVersion: options.baseVersion } : {}),
+        ...(options?.reason !== undefined ? { reason: options.reason } : {}),
+      },
+    );
   }
 
   // --- Logistics ---

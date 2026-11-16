@@ -21,6 +21,12 @@ export interface EffectiveSettings {
   deliveryTaxable: boolean;
   /** Master coupon switch. Off until an operator turns it on. */
   couponsEnabled: boolean;
+  /**
+   * WhatsApp Business link for customer assistance, or null while unset.
+   * Published verbatim to /config/public; a null keeps the storefront's
+   * floating button hidden rather than advertising a dead contact route.
+   */
+  supportWhatsappUrl: string | null;
 }
 
 const SETTINGS_ROW_ID = 1;
@@ -62,6 +68,7 @@ export class PlatformSettingsService {
       pricesIncludeVat: row.pricesIncludeVat,
       deliveryTaxable: row.deliveryTaxable,
       couponsEnabled: row.couponsEnabled && !this.killSwitched('COUPONS_KILL_SWITCH'),
+      supportWhatsappUrl: row.supportWhatsappUrl ?? null,
     };
   }
 
@@ -104,6 +111,13 @@ export class PlatformSettingsService {
     if (dto.pricesIncludeVat !== undefined) row.pricesIncludeVat = dto.pricesIncludeVat;
     if (dto.deliveryTaxable !== undefined) row.deliveryTaxable = dto.deliveryTaxable;
     if (dto.couponsEnabled !== undefined) row.couponsEnabled = dto.couponsEnabled;
+    if (dto.supportWhatsappUrl !== undefined) {
+      // An empty string is how the dashboard clears the link.
+      row.supportWhatsappUrl =
+        dto.supportWhatsappUrl === null || dto.supportWhatsappUrl.trim() === ''
+          ? null
+          : dto.supportWhatsappUrl.trim();
+    }
     row.updatedBy = actor.id;
 
     const saved = await this.repo.save(row);

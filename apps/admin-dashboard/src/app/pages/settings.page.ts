@@ -98,6 +98,27 @@ import { ApiService, ShippingSettings } from '../api.service';
                 <option [ngValue]="false">Disabled</option>
               </select>
             </se-field>
+            <se-field
+              label="WhatsApp support link"
+              optional
+              hint="wa.me or wa.link URL shown as the floating WhatsApp button on the storefront"
+            >
+              <input
+                seInput
+                type="url"
+                name="whatsapp"
+                placeholder="https://wa.me/2348000000000"
+                [(ngModel)]="form.supportWhatsappUrl"
+              />
+            </se-field>
+            @if (current.supportWhatsappUrl) {
+              <p>
+                Live on the storefront:
+                <a [href]="current.supportWhatsappUrl" target="_blank" rel="noopener">{{
+                  current.supportWhatsappUrl
+                }}</a>
+              </p>
+            }
             @if (canWrite()) {
               <se-field
                 label="Reason for change"
@@ -159,6 +180,7 @@ export class SettingsPage implements OnInit {
     pricesIncludeVat: false,
     deliveryTaxable: false,
     couponsEnabled: false,
+    supportWhatsappUrl: '' as string | null,
   };
 
   ngOnInit(): void {
@@ -183,6 +205,7 @@ export class SettingsPage implements OnInit {
           pricesIncludeVat: settings.pricesIncludeVat,
           deliveryTaxable: settings.deliveryTaxable,
           couponsEnabled: settings.couponsEnabled,
+          supportWhatsappUrl: settings.supportWhatsappUrl ?? '',
         };
       },
       error: () => this.error.set('Settings could not be loaded.'),
@@ -197,8 +220,14 @@ export class SettingsPage implements OnInit {
     }
     this.reasonError.set('');
     this.saving.set(true);
+    const whatsapp = (this.form.supportWhatsappUrl ?? '').trim();
     this.api
-      .updateShippingSettings({ ...this.form, reason: this.reason.trim() })
+      .updateShippingSettings({
+        ...this.form,
+        // An empty field clears the link; a filled one is stored trimmed.
+        supportWhatsappUrl: whatsapp === '' ? null : whatsapp,
+        reason: this.reason.trim(),
+      })
       .subscribe({
         next: (settings) => {
           this.settings.set(settings);

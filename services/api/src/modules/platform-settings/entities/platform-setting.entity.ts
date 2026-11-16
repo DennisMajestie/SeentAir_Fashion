@@ -56,6 +56,14 @@ export class PlatformSetting {
   @Column({ name: 'coupons_enabled', type: 'boolean', default: false })
   couponsEnabled: boolean;
 
+  /**
+   * The WhatsApp Business link customers are offered for assistance (wa.me or
+   * wa.link form). Null until an operator sets it; the storefront hides its
+   * floating button while it is null so no dead contact route is advertised.
+   */
+  @Column({ name: 'support_whatsapp_url', type: 'varchar', length: 512, nullable: true })
+  supportWhatsappUrl: string | null;
+
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 

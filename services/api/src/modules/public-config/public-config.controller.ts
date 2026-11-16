@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 
 /** What a frontend needs to know before it can print an amount of money. */
 export interface PublicConfig {
@@ -14,6 +15,12 @@ export interface PublicConfig {
    * date. Public and harmless, and it is the only clock the countdown trusts.
    */
   serverNow: string;
+  /**
+   * The WhatsApp Business link customers are offered for assistance, or null
+   * while the operator has not set one. Null is a signal to hide the contact
+   * affordance entirely, never a license to guess a number.
+   */
+  supportWhatsappUrl: string | null;
 }
 
 /**
@@ -29,16 +36,21 @@ export interface PublicConfig {
 @ApiTags('Configuration')
 @Controller('config')
 export class PublicConfigController {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly settings: PlatformSettingsService,
+  ) {}
 
   @Public()
   @Get('public')
-  get(): PublicConfig {
+  async get(): Promise<PublicConfig> {
+    const effective = await this.settings.get();
     return {
       currencyCode: this.config.getOrThrow<string>('business.currencyCode'),
       currencySymbol: this.config.getOrThrow<string>('business.currencySymbol'),
       locale: this.config.getOrThrow<string>('business.locale'),
       serverNow: new Date().toISOString(),
+      supportWhatsappUrl: effective.supportWhatsappUrl,
     };
   }
 }

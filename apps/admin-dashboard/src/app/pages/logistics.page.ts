@@ -205,6 +205,15 @@ export interface ZoneRow {
                 {{ s.couponsEnabled ? 'On' : 'Off' }}
               </se-badge>
             </div>
+            <div seKvItem label="WhatsApp support link">
+              @if (s.supportWhatsappUrl) {
+                <a [href]="s.supportWhatsappUrl" target="_blank" rel="noopener">{{
+                  s.supportWhatsappUrl
+                }}</a>
+              } @else {
+                Not set — add it on Settings
+              }
+            </div>
           </dl>
           @if (canWrite) {
             <button seButton type="button" (click)="openSettings()">Edit settings</button>
