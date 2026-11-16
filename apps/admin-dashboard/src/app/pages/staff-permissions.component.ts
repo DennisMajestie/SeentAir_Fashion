@@ -175,7 +175,7 @@ function errorStatus(error: unknown): number | undefined {
                     }
                   </span>
                   @if (roleConfig(role.name).readOnly) {
-                    <se-icon name="lock" label="Read-only role" />
+                    <se-icon name="shield" label="Read-only role" />
                   }
                   @if (changesForRole(role.name).length > 0) {
                     <span class="sd-dirty-count">{{ changesForRole(role.name).length }}</span>
@@ -200,7 +200,7 @@ function errorStatus(error: unknown): number | undefined {
                       <span>{{ role.memberCount }} {{ role.memberCount === 1 ? 'person' : 'people' }}</span>
                     }
                   </span>
-                  <se-icon name="lock" label="Read-only role" />
+                  <se-icon name="shield" label="Read-only role" />
                   @if (changesForRole(role.name).length > 0) {
                     <span class="sd-dirty-count">{{ changesForRole(role.name).length }}</span>
                   }

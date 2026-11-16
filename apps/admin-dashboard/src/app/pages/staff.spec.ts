@@ -24,6 +24,9 @@ const matrix = [
       { module: 'retail_orders', accessLevel: 'full' },
       { module: 'staff_access', accessLevel: 'view' },
     ],
+    accessLevels: ['view', 'full'],
+    version: 'v1',
+    memberCount: 3,
   },
 ];
 
@@ -42,7 +45,7 @@ describe('StaffAdminPage', () => {
     ]);
     api.users.and.returnValue(users as never);
     api.rolesMatrix.and.returnValue(of(matrix));
-    api.updateRolePermissions.and.returnValue(of({}));
+    api.updateRolePermissions.and.returnValue(of({ ...matrix[0] }));
     api.changeRole.and.returnValue(of({}));
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: ApiService, useValue: api }],

@@ -59,8 +59,10 @@ h1,h2,h3{letter-spacing:-.01em}
 .se-banner .se-btn{min-height:36px;padding:0 16px;border:1px solid var(--line-2)!important;background:transparent;color:var(--text);font-size:13px}
 .se-banner .se-btn:hover{background:var(--well);border-color:var(--hair)!important}
 
-/* auth & page-level alignment */
-.auth-shell,.auth-main,.auth-screen{background:radial-gradient(80% 70% at 0% 0%, var(--sd-tint), transparent 55%), var(--sd-page)!important;color:var(--text)!important;font-family:var(--font)!important;}
+/* auth & page-level alignment. `.auth-screen` is deliberately NOT here: the
+   split-card contract (login-polish.spec) requires the sign-in screen to paint
+   no background image at all. */
+.auth-shell,.auth-main{background:radial-gradient(80% 70% at 0% 0%, var(--sd-tint), transparent 55%), var(--sd-page)!important;color:var(--text)!important;font-family:var(--font)!important;}
 .auth-card,.auth-panel,.apply-panel,.phase-card{border-radius:22px!important;box-shadow:var(--sd-shadow)!important;border:1px solid var(--line)!important;background:var(--sd-card)!important;}
 .ws-header,.auth-topstrip{backdrop-filter:saturate(1.2) blur(8px);}
 .se-page__title,.page-title,h1.page-title{font-size:clamp(1.4rem,2vw,1.9rem);font-weight:700;letter-spacing:-.02em;}

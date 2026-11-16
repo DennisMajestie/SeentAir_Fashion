@@ -525,50 +525,13 @@ $ops-gold-ink: var(--acid-ink);
      too - the vertical rhythm moves to .auth-col, the only thing that needs
      it. */
   padding-block: 0;
-  background-color: var(--photo-base);
-  background-image: url('/assets/form-bg.jpg');
-  background-size: cover;
-  background-position: center 26%;
-  background-repeat: no-repeat;
+  background-color: var(--photo-base); /* The split-card redesign retired the full-bleed
+     photograph and its scrim: the screen paints one flat, opaque base and the
+     branded half carries the imagery. Kept as a custom property (not the body
+     token) so the other --photo-* channels keep meaning "on the photo base". */
   color: var(--photo-ink);
   font-family:
-    'Inter', sans-serif; /* Scrim: the horizontal wash is heaviest under the left-hand
-       column and lifts toward the right so the photograph still
-       reads; the vertical pass keeps the fine print legible.
-
-       Kept deliberately light. The three layers compound, so the
-       left edge is roughly 1 - (0.70 x 0.48 x 0.66) = 0.76 covered
-       while the right side falls to single digits - the photograph
-       has to survive the right-hand two thirds of the screen or the
-       whole point of the full-bleed treatment is lost. */
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background:
-      radial-gradient(
-        ellipse 62% 74% at 24% 48%,
-        rgb(var(--photo-wash) / 0.28) 0%,
-        rgb(var(--photo-wash) / 0.12) 62%,
-        transparent 100%
-      ),
-      linear-gradient(
-        90deg,
-        rgb(var(--photo-wash) / 0.52) 0%,
-        rgb(var(--photo-wash) / 0.46) 30%,
-        rgb(var(--photo-wash) / 0.3) 45%,
-        rgb(var(--photo-wash) / 0.1) 70%,
-        rgb(var(--photo-wash) / 0.04) 100%
-      ),
-      linear-gradient(
-        180deg,
-        rgb(var(--photo-wash) / 0.3) 0%,
-        rgb(var(--photo-wash) / 0.04) 26%,
-        rgb(var(--photo-wash) / 0.38) 100%
-      );
-  }
+    'Inter', sans-serif;
 } /* The wordmark bar.
 
    The ops header sits behind api.isLoggedIn, so before this the sign-in
