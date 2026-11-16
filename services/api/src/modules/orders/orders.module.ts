@@ -16,6 +16,7 @@ import { ProcessedWebhookEvent } from './entities/processed-webhook-event.entity
 import { CheckoutShippingModule } from '../checkout-shipping/checkout-shipping.module';
 import { CouponsModule } from '../coupons/coupons.module';
 import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
+import { MessagingModule } from '../messaging/messaging.module';
 import { OrderStatusBusModule } from './order-status.bus.module';
 import { OrderExpiryService } from './order-expiry.service';
 import { OrdersController } from './orders.controller';
@@ -46,6 +47,8 @@ import { RealtimeGateway } from './realtime.gateway';
     CheckoutShippingModule,
     CouponsModule,
     PlatformSettingsModule,
+    // RealtimeGateway fans conversation activity out to the same socket server.
+    MessagingModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService, PaystackService, OrderExpiryService, RealtimeGateway],

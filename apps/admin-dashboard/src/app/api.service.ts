@@ -67,6 +67,43 @@ export interface Approval {
   createdAt: string;
 }
 
+// --- Messaging (conversations inbox) ---
+export interface ConversationSummary {
+  id: string;
+  customerId: string | null;
+  customerName?: string | null;
+  guestName: string | null;
+  guestEmail: string | null;
+  guestPhone: string | null;
+  channel: 'in_platform' | 'whatsapp' | 'sms' | 'email';
+  status: 'open' | 'pending' | 'closed';
+  relatedOrderId: string | null;
+  subject: string | null;
+  assigneeId: string | null;
+  lastMessageAt: string | null;
+  lastMessagePreview: string | null;
+  unreadStaff: number;
+  unreadCustomer: number;
+  createdAt: string;
+}
+
+export interface ConversationMessage {
+  id: string;
+  conversationId: string;
+  direction: 'in' | 'out';
+  authorUserId: string | null;
+  authorName: string | null;
+  body: string;
+  attachmentUrl: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface ConversationDetail {
+  conversation: ConversationSummary;
+  messages: ConversationMessage[];
+}
+
 export interface Batch {
   id: string;
   quantity: number;
@@ -931,6 +968,48 @@ endProductSale(id: string): Observable<unknown> {
     return this.http.post(`${API_BASE}/notifications/send`, body);
   }
 
+  // --- Messaging (conversations inbox) ---
+  unreadMessages(): Observable<{ count: number }> {
+    return this.http.get<{ count: number }>(`${API_BASE}/messaging/unread`);
+  }
+
+  threads(options?: {
+    status?: string;
+    unreadOnly?: boolean;
+    page?: number;
+    limit?: number;
+  }): Observable<{ data: ConversationSummary[]; total: number }> {
+    const params = new URLSearchParams();
+    if (options?.status) params.set('status', options.status);
+    if (options?.unreadOnly) params.set('unreadOnly', 'true');
+    if (options?.page) params.set('page', String(options.page));
+    if (options?.limit) params.set('limit', String(options.limit));
+    const q = params.toString();
+    return this.http.get<{ data: ConversationSummary[]; total: number }>(
+      `${API_BASE}/messaging/threads${q ? `?${q}` : ''}`,
+    );
+  }
+
+  threadDetail(id: string): Observable<ConversationDetail> {
+    return this.http.get<ConversationDetail>(`${API_BASE}/messaging/conversations/${id}`);
+  }
+
+  replyToThread(id: string, body: string): Observable<unknown> {
+    return this.http.post(`${API_BASE}/messaging/threads/${id}/messages`, { body });
+  }
+
+  markThreadRead(id: string): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(`${API_BASE}/messaging/threads/${id}/read`, {});
+  }
+
+  updateThread(
+    id: string,
+    patch: { status?: string; assigneeId?: string | null },
+  ): Observable<unknown> {
+    return this.http.patch(`${API_BASE}/messaging/threads/${id}`, patch);
+  }
+
+  // --- Messaging (conversations inbox) ---
   // --- Approvals history ---
   approvalsHistory(status?: string): Observable<{ data: Approval[]; total: number }> {
     const q = status ? `?status=${status}` : '';

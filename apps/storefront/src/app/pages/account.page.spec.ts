@@ -20,6 +20,7 @@ describe('AccountPage favourites', () => {
       logout: () => undefined,
       myOrders: () => of({ data: [], total: 0 }),
       notifications: () => of({ data: [] }),
+      myThreads: () => of([]),
       wishlist: () => of([]),
       ...overrides,
     }) as unknown as ApiService;

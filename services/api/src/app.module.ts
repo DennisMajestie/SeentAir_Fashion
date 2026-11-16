@@ -38,6 +38,7 @@ import { CouponsModule } from './modules/coupons/coupons.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { HelpModule } from './modules/help/help.module';
 import { BusinessModule } from './modules/business/business.module';
+import { MessagingModule } from './modules/messaging/messaging.module';
 
 @Module({
   imports: [
@@ -84,8 +85,9 @@ import { BusinessModule } from './modules/business/business.module';
     CheckoutShippingModule,
   CustomersModule,
   CouponsModule,
-  HelpModule,
-  BusinessModule,
+    HelpModule,
+    BusinessModule,
+    MessagingModule,
   ],
   providers: [
     // Order matters: rate-limit, then authenticate, then authorize, then audit.

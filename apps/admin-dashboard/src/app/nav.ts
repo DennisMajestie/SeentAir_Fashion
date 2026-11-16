@@ -52,6 +52,13 @@ const GROUPS: { title?: string; items: NavEntry[] }[] = [
       { label: 'Returns', icon: 'undo', link: '/returns', modules: ['returns'] },
       { label: 'Custom orders', icon: 'edit', link: '/custom-orders', modules: ['custom_orders'] },
       { label: 'Wholesale', icon: 'users', link: '/wholesale', modules: ['wholesale_orders'] },
+      {
+        label: 'Inbox',
+        icon: 'message',
+        link: '/inbox',
+        modules: ['communication'],
+        badge: 'inbox',
+      },
       { label: 'Messages', icon: 'message', link: '/messages', modules: ['communication'] },
       { label: 'Help Center', icon: 'file', link: '/help', modules: ['communication'] },
       { label: 'Help tickets', icon: 'message', link: '/help/tickets', modules: ['communication'] },

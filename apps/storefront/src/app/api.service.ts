@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, of, tap } from 'rxjs';
 import { API_BASE, TokenStore } from './auth-token.store';
@@ -216,6 +216,38 @@ export interface TokenPair {
   accessToken: string;
 }
 
+// --- Messaging ---
+export interface ChatThread {
+  id: string;
+  subject: string | null;
+  status: 'open' | 'pending' | 'closed';
+  lastMessagePreview: string | null;
+  lastMessageAt: string | null;
+  unreadCustomer: number;
+  createdAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  direction: 'in' | 'out';
+  authorName: string | null;
+  body: string;
+  attachmentUrl: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface ChatThreadDetail {
+  conversation: {
+    id: string;
+    subject: string | null;
+    status: 'open' | 'pending' | 'closed';
+    lastMessagePreview: string | null;
+    unreadCustomer: number;
+  };
+  messages: ChatMessage[];
+}
+
 /**
  * One delivery checkpoint as the API projects it for a customer: status and
  * time only. `zone` and `note` are deliberately absent from this type - the
@@ -299,6 +331,54 @@ export class ApiService {
   // --- Wishlist (account-scoped; the local copy is merged in on sign-in) ---
   wishlist(): Observable<Array<{ product: Product; addedAt: string }>> {
     return this.http.get<Array<{ product: Product; addedAt: string }>>(`${API_BASE}/wishlist`);
+  }
+
+  // --- Messaging (chat with the team) ---
+  myThreads(): Observable<ChatThread[]> {
+    return this.http.post<ChatThread[]>(`${API_BASE}/messaging/conversations/mine`, {});
+  }
+
+  startThread(body: string, subject?: string): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${API_BASE}/messaging/conversations`, {
+      body,
+      subject: subject || undefined,
+    });
+  }
+
+  threadDetail(id: string, guestToken?: string): Observable<ChatThreadDetail> {
+    return this.http.get<ChatThreadDetail>(`${API_BASE}/messaging/conversations/${id}`, {
+      headers: guestToken ? new HttpHeaders().set('X-Guest-Token', guestToken) : undefined,
+    });
+  }
+
+  sendMessage(id: string, body: string, guestToken?: string): Observable<unknown> {
+    return this.http.post(
+      `${API_BASE}/messaging/conversations/${id}/messages`,
+      { body },
+      {
+        headers: guestToken ? new HttpHeaders().set('X-Guest-Token', guestToken) : undefined,
+      },
+    );
+  }
+
+  markThreadRead(id: string, guestToken?: string): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(
+      `${API_BASE}/messaging/conversations/${id}/read`,
+      {},
+      {
+        headers: guestToken ? new HttpHeaders().set('X-Guest-Token', guestToken) : undefined,
+      },
+    );
+  }
+
+  startGuestThread(
+    name: string,
+    body: string,
+  ): Observable<{ conversation: { id: string }; guestToken: string }> {
+    return this.http.post<{ conversation: { id: string }; guestToken: string }>(
+      `${API_BASE}/messaging/guest/conversations`,
+      { name, body },
+    );
   }
 
   addToWishlist(productId: string): Observable<unknown> {

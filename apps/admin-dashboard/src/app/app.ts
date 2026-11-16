@@ -649,9 +649,14 @@ export class App implements OnInit, OnDestroy {
   readonly profileFailed = signal(false);
   /** Requests waiting for this person's decision; the Approvals badge. */
   private readonly pendingApprovals = signal(0);
+  /** Customer messages not read yet; the Inbox badge. */
+  private readonly pendingMessages = signal(0);
   /** The sidebar for this role: only what the role can open. */
   readonly nav = computed(() =>
-    navFor(this.me()?.access ?? null, { approvals: this.pendingApprovals() }),
+    navFor(this.me()?.access ?? null, {
+      approvals: this.pendingApprovals(),
+      inbox: this.pendingMessages(),
+    }),
   );
   readonly shellUser = computed(() => {
     const me = this.me();
@@ -772,6 +777,7 @@ export class App implements OnInit, OnDestroy {
       next: (profile) => {
         this.me.set(profile);
         this.loadApprovalCount(profile);
+        this.loadMessageCount(profile);
       },
       error: () => {
         this.me.set(null);
@@ -787,6 +793,16 @@ export class App implements OnInit, OnDestroy {
     this.api.pendingApprovals().subscribe({
       next: (rows) => this.pendingApprovals.set(rows.length),
       error: () => this.pendingApprovals.set(0),
+    });
+  }
+
+  /** The Inbox badge, for any role with communication access (view included). */
+  private loadMessageCount(profile: Me): void {
+    const level = profile.access?.['communication'];
+    if (!level || level === 'none') return;
+    this.api.unreadMessages().subscribe({
+      next: (res) => this.pendingMessages.set(res.count),
+      error: () => this.pendingMessages.set(0),
     });
   }
 

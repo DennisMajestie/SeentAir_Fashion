@@ -5,6 +5,7 @@ import { map } from 'rxjs';
 import { offerFor } from '../pricing';
 import { ApiService, Order } from '../api.service';
 import { WishlistService, WishItem } from '../wishlist.service';
+import { ChatService } from '../chat.service';
 
 /**
  * Public saved-products surface for both guests and signed-in shoppers.
@@ -84,6 +85,33 @@ import { WishlistService, WishItem } from '../wishlist.service';
               <span class="muted small">{{ n.sentAt | date: 'medium' }}</span>
               <p class="small">{{ n.message }}</p>
             </div>
+          }
+        }
+
+        <h2 id="messages">Messages</h2>
+        @if (chat.threads().length === 0) {
+          <p class="muted">
+            No conversations yet.
+            <button type="button" class="chat-open-link" (click)="openChat()">
+              Start a conversation
+            </button>
+          </p>
+        } @else {
+          @for (t of chat.threads(); track t.id) {
+            <button type="button" class="order-row chat-thread-row" (click)="openChat(t.id)">
+              <span>
+                <strong>{{ t.subject ?? 'Conversation' }}</strong>
+                @if (t.lastMessagePreview) {
+                  <span class="muted small"> · {{ t.lastMessagePreview }}</span>
+                }
+              </span>
+              <span>
+                @if (t.unreadCustomer > 0) {
+                  <span class="status chat-unread">{{ t.unreadCustomer }} new</span>
+                }
+                <span class="muted small">{{ t.lastMessageAt | date: 'medium' }}</span>
+              </span>
+            </button>
           }
         }
 
@@ -305,6 +333,30 @@ import { WishlistService, WishItem } from '../wishlist.service';
         cursor: pointer;
       }
 
+      .chat-open-link {
+        border: 0;
+        background: none;
+        color: var(--primary-fill);
+        text-decoration: underline;
+        cursor: pointer;
+        font: inherit;
+        padding: 0;
+      }
+
+      .chat-thread-row {
+        justify-content: space-between;
+        text-align: left;
+      }
+
+      .chat-unread {
+        background: var(--primary-fill);
+        color: #16161a;
+        border-radius: 999px;
+        padding: 0.1rem 0.55rem;
+        font-size: var(--type-caption);
+        margin-right: 0.4rem;
+      }
+
       @media (max-width: 520px) {
         .saved-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -330,6 +382,7 @@ import { WishlistService, WishItem } from '../wishlist.service';
 export class AccountPage implements OnInit {
   readonly api = inject(ApiService);
   private readonly wishlist = inject(WishlistService);
+  readonly chat = inject(ChatService);
 
   /** The account's saved products, shown alongside orders and notifications. */
   readonly wishlistItems = signal<WishItem[]>([]);
@@ -345,7 +398,10 @@ export class AccountPage implements OnInit {
   >([]);
 
   ngOnInit(): void {
-    if (this.api.isLoggedIn) this.loadOrders();
+    if (this.api.isLoggedIn) {
+      this.loadOrders();
+      this.chat.refresh();
+    }
     if (this.api.isLoggedIn) {
       this.wishlistLoading.set(true);
       this.api
@@ -377,6 +433,13 @@ export class AccountPage implements OnInit {
     this.orders.set([]);
     this.notifications.set([]);
     this.wishlistItems.set([]);
+    this.chat.dismissPanel();
+  }
+
+  /** Opens the chat panel, optionally straight onto one thread. */
+  openChat(threadId?: string): void {
+    if (threadId) this.chat.openThread(threadId);
+    else this.chat.showPanel();
   }
 
   private loadOrders(): void {

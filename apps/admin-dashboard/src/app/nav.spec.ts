@@ -38,7 +38,7 @@ const labels = (access: Record<string, string> | null): string[] =>
 
 describe('navFor', () => {
   it('gives the owner every screen', () => {
-    expect(labels(OWNER).length).toBe(27);
+    expect(labels(OWNER).length).toBe(28);
   });
 
   it('only offers settings when the role has full logistics access', () => {

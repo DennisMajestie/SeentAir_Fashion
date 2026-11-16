@@ -16,9 +16,12 @@ import { AuthenticatedUser, JwtPayload } from '../../common/interfaces';
 import { RoleName } from '../../common/enums';
 import { OrderStatusBus } from './order-status.bus';
 import { OrdersService } from './orders.service';
+import { MessagingService } from '../messaging/messaging.service';
+import { MessagingBus } from '../messaging/messaging-bus';
 
 const ADMIN_ROOM = 'admin:live';
 const ORDER_ROOM_PREFIX = 'order:';
+const CONVERSATION_ROOM_PREFIX = 'conversation:';
 const ADMIN_ROLES = new Set<RoleName>([
   RoleName.BUSINESS_OWNER_ADMIN,
   RoleName.MANAGEMENT,
@@ -36,6 +39,11 @@ interface RealtimeSocket extends Socket {
 
 interface OrderSubscriptionRequest {
   orderId?: unknown;
+  guestToken?: unknown;
+}
+
+interface ConversationSubscriptionRequest {
+  conversationId?: unknown;
   guestToken?: unknown;
 }
 
@@ -80,12 +88,22 @@ export class RealtimeGateway
     private readonly config: ConfigService,
     private readonly orders: OrdersService,
     private readonly orderStatusBus: OrderStatusBus,
+    private readonly messagingBus: MessagingBus,
+    private readonly messaging: MessagingService,
   ) {}
 
   onModuleInit(): void {
     this.subscriptions.add(
       this.orderStatusBus.events().subscribe(({ orderId, at }) => {
         this.server?.to(this.orderRoom(orderId)).emit('order:updated', { orderId, at });
+        this.publishAdminDataChanged();
+      }),
+    );
+    this.subscriptions.add(
+      this.messagingBus.events().subscribe(({ conversationId, at }) => {
+        this.server
+          ?.to(this.conversationRoom(conversationId))
+          .emit('conversation:updated', { conversationId, at });
         this.publishAdminDataChanged();
       }),
     );
@@ -162,5 +180,38 @@ export class RealtimeGateway
 
   private orderRoom(orderId: string): string {
     return `${ORDER_ROOM_PREFIX}${orderId}`;
+  }
+
+  private conversationRoom(conversationId: string): string {
+    return `${CONVERSATION_ROOM_PREFIX}${conversationId}`;
+  }
+
+  @SubscribeMessage('conversation:subscribe')
+  async subscribeConversation(
+    @ConnectedSocket() client: RealtimeSocket,
+    @MessageBody() request: ConversationSubscriptionRequest,
+  ): Promise<OrderSubscriptionAck> {
+    if (
+      !isUuid(request?.conversationId) ||
+      (request.guestToken !== undefined && typeof request.guestToken !== 'string')
+    ) {
+      return { ok: false };
+    }
+
+    try {
+      const guestToken =
+        typeof request.guestToken === 'string' ? request.guestToken : undefined;
+      await this.messaging.getDetail(request.conversationId, client.data.user, guestToken);
+      await client.join(this.conversationRoom(request.conversationId));
+      return { ok: true };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        this.logger.error(
+          'Unexpected failure while authorizing a conversation live-update subscription',
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+      return { ok: false };
+    }
   }
 }

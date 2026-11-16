@@ -161,6 +161,11 @@ export const routes: Routes = [
     title: 'Seentair Ops: Messages',
   },
   {
+    path: 'inbox',
+    loadComponent: () => import('./pages/inbox.page').then((m) => m.InboxPage),
+    title: 'Seentair Ops: Inbox',
+  },
+  {
     path: 'audit',
     loadComponent: () => import('./pages/audit.page').then((m) => m.AuditPage),
     title: 'Seentair Ops: Audit log',

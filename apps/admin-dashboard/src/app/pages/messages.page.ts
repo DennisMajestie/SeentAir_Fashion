@@ -76,10 +76,9 @@ export function threadsFrom(orders: readonly AdminOrder[]): CustomerThread[] {
 }
 
 /**
- * Customer support desk. There is no inbound messaging yet (live chat and
- * WhatsApp are future integrations), so the desk is built on what is real:
- * customers with recent orders, and an order update that goes out as an
- * in-platform notification tied to one of their orders.
+ * Customer support desk built on what is real: customers with recent orders,
+ * and an order update that goes out as an in-platform notification tied to one
+ * of their orders. Live conversations live in the Inbox.
  */
 @Component({
   selector: 'app-messages',
@@ -102,7 +101,7 @@ export function threadsFrom(orders: readonly AdminOrder[]): CustomerThread[] {
   template: `
     <se-page
       title="Messages"
-      description="Send an order update to a customer. It arrives as an in-app notification on their order; inbound chat and WhatsApp are not connected yet."
+      description="Send an order update to a customer. It arrives as an in-app notification on their order; live conversations are in the Inbox."
     >
       <div class="se-metric-grid">
         <se-metric-card label="Customers" [value]="threads().length" hint="with recent orders" />
