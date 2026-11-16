@@ -60,8 +60,16 @@ describe('MessagingService', () => {
   const usersService = { findById: jest.fn(async (id: string) => ({ id, name: 'Ada Staff' })) };
   const userRepo = {
     find: jest.fn(async () => [{ id: 'customer-1', name: 'Chidi Okoro' }]),
+    findOne: jest.fn(async () => null),
   };
   const audit = { record: jest.fn(async () => undefined) };
+  let whatsappConfigured = false;
+  const whatsapp = {
+    get configured() {
+      return whatsappConfigured;
+    },
+    sendText: jest.fn(async () => ({ providerRef: 'wamid-out-1' })),
+  };
 
   const staffUser = { id: 'staff-1', email: 'a@seentair.com', role: RoleName.SALES };
   const customerUser = { id: 'customer-1', email: 'c@x.com', role: RoleName.CUSTOMER };
@@ -75,10 +83,12 @@ describe('MessagingService', () => {
     bus,
     usersService as never,
     audit as never,
+    whatsapp as never,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    whatsappConfigured = false;
     conversationRepo.findOne.mockReset();
     conversationRepo.save.mockImplementation(async (value) => value);
     conversationRepo.create.mockImplementation((value) => value);
@@ -279,6 +289,102 @@ describe('MessagingService', () => {
 
   it('sums unread staff counters for the inbox badge, excluding closed threads', async () => {
     await expect(service.unreadForStaff()).resolves.toBe(3);
+  });
+
+  describe('WhatsApp channel', () => {
+    const whatsappThread = (): Conversation =>
+      ownConversation({
+        customerId: null,
+        guestName: 'Ada Obi',
+        guestPhone: '2348012345678',
+        channel: 'whatsapp' as never,
+      });
+
+    it('records an inbound webhook message on the thread already open for that phone', async () => {
+      const conversation = whatsappThread();
+      conversation.unreadStaff = 1;
+      conversationRepo.findOne.mockResolvedValue(conversation);
+
+      await service.receiveWhatsappMessage('2348012345678', 'How much for 20 tees?', 'wamid-1', 'Ada');
+
+      expect(conversationRepo.findOne).toHaveBeenCalledWith({
+        where: { channel: 'whatsapp', guestPhone: '2348012345678' },
+      });
+      expect(transactionManager.save).toHaveBeenCalledWith(
+        Message,
+        expect.objectContaining({
+          conversationId: 'conv-1',
+          direction: MessageDirection.IN,
+          body: 'How much for 20 tees?',
+          authorName: 'Ada',
+          providerRef: 'wamid-1',
+        }),
+      );
+      expect(conversation.unreadStaff).toBe(2);
+    });
+
+    it('opens a new guest thread for a phone the business has never chatted with', async () => {
+      conversationRepo.findOne.mockResolvedValue(null);
+      conversationRepo.create.mockImplementation((value) => ({
+        id: 'conv-new',
+        unreadStaff: 0,
+        unreadCustomer: 0,
+        ...value,
+      }));
+
+      const conversation = await service.receiveWhatsappMessage(
+        '2348012345678',
+        'Hi',
+        'wamid-2',
+        'Chidi',
+      );
+
+      expect(conversationRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          guestName: 'Chidi',
+          guestPhone: '2348012345678',
+          channel: 'whatsapp',
+          status: ConversationStatus.OPEN,
+        }),
+      );
+      expect(transactionManager.save).toHaveBeenCalledWith(
+        Message,
+        expect.objectContaining({
+          direction: MessageDirection.IN,
+          body: 'Hi',
+          authorName: 'Chidi',
+          providerRef: 'wamid-2',
+        }),
+      );
+      expect(conversation.guestName).toBe('Chidi');
+    });
+
+    it('delivers a staff reply through the Cloud API when configured', async () => {
+      whatsappConfigured = true;
+      conversationRepo.findOne.mockResolvedValue(whatsappThread());
+
+      const message = await service.sendStaffMessage(
+        'conv-1',
+        { body: 'Yes, 20 tees is 120,000.' },
+        staffUser,
+      );
+
+      expect(whatsapp.sendText).toHaveBeenCalledWith('2348012345678', 'Yes, 20 tees is 120,000.');
+      expect(message.providerRef).toBe('wamid-out-1');
+    });
+
+    it('records the reply without providerRef when the provider is unconfigured', async () => {
+      conversationRepo.findOne.mockResolvedValue(whatsappThread());
+
+      const message = await service.sendStaffMessage(
+        'conv-1',
+        { body: 'Yes, 20 tees is 120,000.' },
+        staffUser,
+      );
+
+      expect(whatsapp.sendText).not.toHaveBeenCalled();
+      expect(message.providerRef).toBeNull();
+    });
   });
 });
 

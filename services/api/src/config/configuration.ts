@@ -97,6 +97,17 @@ export default () => ({
     termiiBaseUrl: process.env.TERMII_BASE_URL ?? 'https://api.ng.termii.com',
     senderId: process.env.SMS_SENDER_ID ?? 'Seentair',
   },
+  whatsapp: {
+    // WhatsApp Cloud API (Meta Graph). Empty values mean "not configured";
+    // the adapter then reports skipped sends and the webhook rejects
+    // subscriptions rather than faking a working channel.
+    token: process.env.WHATSAPP_TOKEN ?? '',
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? '',
+    appSecret: process.env.WHATSAPP_APP_SECRET ?? '',
+    verifyToken: process.env.WHATSAPP_VERIFY_TOKEN ?? '',
+    baseUrl: process.env.WHATSAPP_BASE_URL ?? 'https://graph.facebook.com',
+    graphVersion: process.env.WHATSAPP_GRAPH_VERSION ?? 'v21.0',
+  },
   returns: {
     // Confirmed policy (appendix 10): request within 12h of receipt,
     // physical return within 24h of the request. Configuration, not hardcoded.

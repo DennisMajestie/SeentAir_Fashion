@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes } from 'crypto';
 import { In, DataSource, Repository } from 'typeorm';
@@ -10,6 +10,7 @@ import { UsersService } from '../users/users.service';
 import { Conversation, ConversationChannel, ConversationStatus } from './conversation.entity';
 import { Message, MessageDirection } from './message.entity';
 import { MessagingBus } from './messaging-bus';
+import { WhatsAppAdapter } from './whatsapp.adapter';
 import {
   ConversationsQueryDto,
   CreateConversationDto,
@@ -43,6 +44,7 @@ export class MessagingService {
     private readonly bus: MessagingBus,
     private readonly usersService: UsersService,
     private readonly audit: AuditService,
+    private readonly whatsapp: WhatsAppAdapter,
   ) {}
 
   /** ---------------- opening threads ---------------- */
@@ -185,6 +187,7 @@ export class MessagingService {
     const conversation = await this.conversationRepo.findOne({ where: { id: conversationId } });
     if (!conversation) throw notFound(conversationId);
     const author = await this.usersService.findById(user.id);
+    const providerRef = await this.deliverViaWhatsapp(conversation, dto.body);
     const message = await this.appendMessage(
       conversation,
       MessageDirection.OUT,
@@ -192,6 +195,7 @@ export class MessagingService {
       user.id,
       author.name ?? null,
       dto.attachmentUrl ?? null,
+      providerRef,
     );
     // A staff reply reopens a closed thread and moves it back to the shared queue.
     await this.conversationRepo.update(conversationId, {
@@ -222,6 +226,7 @@ export class MessagingService {
     authorUserId: string | null,
     authorName: string | null,
     attachmentUrl: string | null = null,
+    providerRef: string | null = null,
   ): Promise<Message> {
     const preview = body.length > 140 ? `${body.slice(0, 137)}...` : body;
     const now = new Date();
@@ -234,6 +239,7 @@ export class MessagingService {
         authorName,
         body,
         attachmentUrl,
+        providerRef,
       });
       const bump: Partial<Conversation> = {
         lastMessageAt: now,
@@ -252,6 +258,94 @@ export class MessagingService {
 
     this.bus.emit(conversation.id);
     return saved;
+  }
+
+  /** ---------------- WhatsApp channel ---------------- */
+
+  /**
+   * Best-effort Cloud API delivery for threads whose channel is WhatsApp.
+   * Unconfigured provider or a Graph error still leaves the message recorded
+   * in-thread (providerRef null) - recorded, never silently dropped.
+   */
+  private async deliverViaWhatsapp(
+    conversation: Conversation,
+    body: string,
+  ): Promise<string | null> {
+    if (conversation.channel !== ConversationChannel.WHATSAPP) return null;
+    if (!this.whatsapp.configured) return null;
+    const phone = await this.recipientPhone(conversation);
+    if (!phone) return null;
+    try {
+      const { providerRef } = await this.whatsapp.sendText(phone, body);
+      return providerRef;
+    } catch (error) {
+      new Logger(MessagingService.name).warn(
+        `WhatsApp delivery failed for conversation ${conversation.id}: ${String(error)}`,
+      );
+      return null;
+    }
+  }
+
+  /** The phone a WhatsApp reply should reach: guest first, then the account's phone. */
+  private async recipientPhone(conversation: Conversation): Promise<string | null> {
+    if (conversation.guestPhone) return conversation.guestPhone;
+    if (!conversation.customerId) return null;
+    const user = await this.userRepo.findOne({
+      where: { id: conversation.customerId },
+      select: { id: true, phone: true },
+    });
+    return user?.phone ?? null;
+  }
+
+  /**
+   * Inbound WhatsApp webhook message. Routes to the thread already open for
+   * that phone (guest thread by guestPhone, else an account by phone); with
+   * no thread at all it opens one as a guest. A closed thread reopens - the
+   * customer reached out first, so the queue picks it back up.
+   */
+  async receiveWhatsappMessage(
+    fromPhone: string,
+    body: string,
+    providerRef: string | null,
+    profileName: string | null,
+  ): Promise<Conversation> {
+    let conversation = await this.conversationRepo.findOne({
+      where: { channel: ConversationChannel.WHATSAPP, guestPhone: fromPhone },
+    });
+    if (!conversation) {
+      const account = await this.userRepo.findOne({
+        where: { phone: fromPhone },
+        select: { id: true, name: true },
+      });
+      if (account) {
+        conversation = await this.conversationRepo.findOne({
+          where: { channel: ConversationChannel.WHATSAPP, customerId: account.id },
+        });
+        if (conversation) profileName ??= account.name;
+      }
+    }
+    if (!conversation) {
+      conversation = await this.createConversation({
+        customerId: null,
+        guestTokenHash: null,
+        guestName: profileName ?? fromPhone,
+        guestPhone: fromPhone,
+        channel: ConversationChannel.WHATSAPP,
+      });
+    } else if (conversation.status === ConversationStatus.CLOSED) {
+      await this.conversationRepo.update(conversation.id, { status: ConversationStatus.OPEN });
+      conversation.status = ConversationStatus.OPEN;
+    }
+    await this.appendMessage(
+      conversation,
+      MessageDirection.IN,
+      body,
+      null,
+      profileName ?? conversation.guestName ?? conversation.customerName ?? null,
+      null,
+      providerRef,
+    );
+    return conversation;
   }
 
   /** ---------------- read receipts ---------------- */
