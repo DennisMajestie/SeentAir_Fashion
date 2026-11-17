@@ -135,6 +135,97 @@ export class ProductionService {
     };
   }
 
+  /**
+   * Production planning suggestions (appendix 02: "batch quantity is
+   * influenced mainly by previous sales and current orders"). Per variant:
+   * what sold in the window, what is still owed on paid open orders, what is
+   * on hand, what is already in production - and the suggested run size
+   * demand minus everything already covered. Derived on every read.
+   */
+  async planning(): Promise<{
+    windowDays: number;
+    variants: Array<{
+      variantId: string;
+      sku: string;
+      productName: string;
+      soldLastWindow: number;
+      openOrderUnits: number;
+      stockOnHand: number;
+      inProduction: number;
+      suggested: number;
+    }>;
+  }> {
+    const windowDays = Math.max(1, this.config.get<number>('production.planningWindowDays') ?? 30);
+
+    const salesRows: Array<{ variant_id: string; sku: string; product_name: string; sold: string }> =
+      await this.dataSource.query(
+        `SELECT oi.variant_id, v.sku, p.name AS product_name,
+                COALESCE(SUM(oi.quantity), 0) AS sold
+           FROM order_items oi
+           JOIN orders o ON o.id = oi.order_id
+           JOIN product_variants v ON v.id = oi.variant_id
+           JOIN products p ON p.id = v.product_id
+          WHERE o.payment_status = 'paid'
+            AND o.status <> 'cancelled'
+            AND o.created_at >= now() - make_interval(days => $1)
+          GROUP BY oi.variant_id, v.sku, p.name`,
+        [windowDays],
+      );
+
+    const openRows: Array<{ variant_id: string; open_units: string }> = await this.dataSource.query(
+      `SELECT oi.variant_id, COALESCE(SUM(oi.quantity), 0) AS open_units
+         FROM order_items oi
+         JOIN orders o ON o.id = oi.order_id
+        WHERE o.payment_status = 'paid'
+          AND o.status IN ('order_received', 'processing', 'stock_exception')
+        GROUP BY oi.variant_id`,
+    );
+
+    const wipRows: Array<{ variant_id: string; units: string }> = await this.dataSource.query(
+      `SELECT b.variant_id, COALESCE(SUM(b.quantity), 0) AS units
+         FROM production_batches b
+        WHERE b.completed_date IS NULL
+          AND b.cancelled_at IS NULL
+        GROUP BY b.variant_id`,
+    );
+
+    const stockRows: Array<{ item_id: string; units: string }> = await this.dataSource.query(
+      `SELECT item_id, COALESCE(SUM(quantity_delta), 0) AS units
+         FROM inventory_movements
+        WHERE item_type = 'variant'
+        GROUP BY item_id`,
+    );
+
+    const sold = new Map(salesRows.map((r) => [r.variant_id, parseInt(r.sold ?? '0', 10) || 0]));
+    const open = new Map(openRows.map((r) => [r.variant_id, parseInt(r.open_units ?? '0', 10) || 0]));
+    const wip = new Map(wipRows.map((r) => [r.variant_id, parseInt(r.units ?? '0', 10) || 0]));
+    const stock = new Map(stockRows.map((r) => [r.item_id, parseInt(r.units ?? '0', 10) || 0]));
+
+    const variants = salesRows
+      .map((r) => {
+        const soldLastWindow = sold.get(r.variant_id) ?? 0;
+        const openOrderUnits = open.get(r.variant_id) ?? 0;
+        const stockOnHand = stock.get(r.variant_id) ?? 0;
+        const inProduction = wip.get(r.variant_id) ?? 0;
+        return {
+          variantId: r.variant_id,
+          sku: r.sku,
+          productName: r.product_name,
+          soldLastWindow,
+          openOrderUnits,
+          stockOnHand,
+          inProduction,
+          suggested: Math.max(0, soldLastWindow + openOrderUnits - stockOnHand - inProduction),
+        };
+      })
+      // Only variants with demand are suggestions; no demand, no run.
+      .filter((v) => v.soldLastWindow > 0 || v.openOrderUnits > 0)
+      .sort((a, b) => b.suggested - a.suggested || b.soldLastWindow - a.soldLastWindow)
+      .slice(0, 50);
+
+    return { windowDays, variants };
+  }
+
   /** Starting production is approval-gated at the API layer (appendix 19). */
   async create(dto: CreateBatchDto, actorId: string): Promise<ProductionBatch> {
     await this.approvalsService.assertApproved(

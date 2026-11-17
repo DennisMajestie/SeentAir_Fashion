@@ -136,6 +136,18 @@ export interface PayrollRun {
   postedAt: string | null;
 }
 
+/** Planning suggestion: sales + open orders vs stock and WIP, per variant. */
+export interface PlanningRow {
+  variantId: string;
+  sku: string;
+  productName: string;
+  soldLastWindow: number;
+  openOrderUnits: number;
+  stockOnHand: number;
+  inProduction: number;
+  suggested: number;
+}
+
 /** What checkout charges for delivery and tax. Mirrors the API's EffectiveSettings. */
 export interface ShippingSettings {
   shippingEnabled: boolean;
@@ -407,6 +419,13 @@ export class ApiService {
   /** WIP snapshot aggregated server-side over every active run, not a page. */
   wip(): Observable<WipSummary> {
     return this.http.get<WipSummary>(`${API_BASE}/production-batches/wip`);
+  }
+
+  /** Planning suggestions from recent sales + open orders vs stock and WIP. */
+  planning(): Observable<{ windowDays: number; variants: PlanningRow[] }> {
+    return this.http.get<{ windowDays: number; variants: PlanningRow[] }>(
+      `${API_BASE}/production-batches/planning`,
+    );
   }
 
   batch(id: string): Observable<Record<string, unknown>> {

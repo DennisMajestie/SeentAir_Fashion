@@ -60,11 +60,13 @@ describe('ProductionPage', () => {
       'createApproval',
       'createBatch',
       'wip',
+      'planning',
     ]);
     api.batches.and.returnValue(batches as never);
     api.wip.and.returnValue(
       of({ stages: [], totalUnits: 0, activeBatches: 0, materials: [] }) as never,
     );
+    api.planning.and.returnValue(of({ windowDays: 30, variants: [] }) as never);
     api.products.and.returnValue(of({ data: [], total: 0 }) as never);
     api.batchCost.and.returnValue(of({ totalCost: 45000 }));
     api.qcRejections.and.returnValue(of([{ quantity: 2 }]));
@@ -87,7 +89,9 @@ describe('ProductionPage', () => {
 
   it('lists batches in the shared table with the stage from the shared mapping', () => {
     mount(two());
-    const rows = el().querySelectorAll('se-table tbody tr');
+    const rows = ([...el().querySelectorAll('se-table')][0] as HTMLElement).querySelectorAll(
+      'tbody tr',
+    );
     expect(rows.length).toBe(2);
     expect(rows[0].textContent).toContain('#AAAAAAAA');
     expect(rows[0].querySelector('se-status')!.textContent).toContain('Sewing');
@@ -138,6 +142,59 @@ describe('ProductionPage', () => {
     expect(cards[0].textContent).toContain('Listed only');
   });
 
+  it('plans a batch straight from a planning suggestion, prefilled with the units', () => {
+    mount(two());
+    api.planning.and.returnValue(
+      of({
+        windowDays: 30,
+        variants: [
+          {
+            variantId: 'v-1',
+            sku: 'TEE-BLK-M',
+            productName: 'Black Tee',
+            soldLastWindow: 50,
+            openOrderUnits: 12,
+            stockOnHand: 8,
+            inProduction: 30,
+            suggested: 24,
+          },
+        ],
+      }) as never,
+    );
+    fixture.componentInstance.load();
+    fixture.detectChanges();
+
+    const tables = [...el().querySelectorAll('se-table')];
+    const plan = tables.find((t) => t.textContent!.includes('Planning suggestions'))!;
+    expect(plan.textContent).toContain('TEE-BLK-M');
+    expect(plan.textContent).toContain('24');
+
+    fixture.componentInstance.planFrom({
+      variantId: 'v-1',
+      sku: 'TEE-BLK-M',
+      productName: 'Black Tee',
+      soldLastWindow: 50,
+      openOrderUnits: 12,
+      stockOnHand: 8,
+      inProduction: 30,
+      suggested: 24,
+    });
+    fixture.detectChanges();
+    const page = fixture.componentInstance;
+    expect(page.nb.variantId).toBe('v-1');
+    expect(page.nb.quantity).toBe(24);
+    expect(page.starting()).toBe(true);
+  });
+
+  it('shows an empty plan without demand instead of a broken table', () => {
+    mount(two());
+    const plan = [...el().querySelectorAll('se-table')].find((t) =>
+      t.textContent!.includes('Planning suggestions'),
+    )!;
+    expect(plan.textContent).toContain('No suggestions right now');
+    expect(plan.textContent).not.toContain('Plan batch');
+  });
+
   it('shows a failed load as an error with a retry, never as "no batches"', () => {
     mount(throwError(() => ({ error: { message: 'Database is unreachable.' } })));
     const banner = el().querySelector('.se-banner--danger')!;
@@ -164,7 +221,8 @@ describe('ProductionPage', () => {
     const buttons = [...el().querySelectorAll('button')].map((b) => b.textContent ?? '');
     expect(buttons.some((text) => /Start batch|Move to/.test(text))).toBeFalse();
     expect(el().querySelector('se-drawer')).toBeNull();
-    expect(el().querySelectorAll('se-table tbody tr').length).toBe(2);
+    const batchesTable = [...el().querySelectorAll('se-table')][0] as HTMLElement;
+    expect(batchesTable.querySelectorAll('tbody tr').length).toBe(2);
   });
 
   it('refuses to start a batch with nothing filled in, and says why', () => {

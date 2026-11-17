@@ -166,5 +166,7 @@ export default () => ({
     )
       .split(',')
       .map((s) => s.trim()),
+    // How much sales history the planning suggestions look back over.
+    planningWindowDays: parseInt(process.env.PRODUCTION_PLANNING_WINDOW_DAYS ?? '30', 10),
   },
 });

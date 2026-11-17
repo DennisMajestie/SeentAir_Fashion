@@ -22,7 +22,7 @@ import {
   SeToastService,
 } from '@seentair/ui';
 import { AccessService } from '../access.service';
-import { ApiService, Batch, WipSummary } from '../api.service';
+import { ApiService, Batch, PlanningRow, WipSummary } from '../api.service';
 import { urlFilters } from '../url-filters';
 import { batchRef, moveCopy, nextStage, num, stageLabel, units } from './production-format';
 
@@ -133,6 +133,20 @@ interface ProductOpt {
           <se-status kind="production" [value]="row.stage" />
         </ng-template>
         <ng-template seCell="planned" let-row>{{ row.plannedDate | seDate }}</ng-template>
+      </se-table>
+
+      <se-table
+        caption="Planning suggestions"
+        [columns]="planningColumns"
+        [rows]="planning()"
+        [loading]="planningLoading()"
+        [pageSize]="10"
+        [hideDensity]="true"
+        [actions]="planningActions()"
+        emptyHeading="No suggestions right now"
+        emptyText="Suggestions appear once paid orders and sales create demand beyond stock and production."
+      >
+        <ng-template seCell="sku" let-row>{{ row.sku }}</ng-template>
       </se-table>
 
       @if (canWrite()) {
@@ -321,6 +335,15 @@ export class ProductionPage implements OnInit {
       // hint then says so instead of silently pretending it is complete.
       error: () => this.wip.set(null),
     });
+    // Planning suggestions: recent sales + open orders vs stock and WIP.
+    this.api.planning().subscribe({
+      next: (p) => {
+        this.planning.set(p.variants);
+        this.planningWindow.set(p.windowDays);
+        this.planningLoading.set(false);
+      },
+      error: () => this.planningLoading.set(false),
+    });
   }
 
   /** Reads back what was recorded against each batch: its cost and its QC rejects. */
@@ -380,6 +403,53 @@ export class ProductionPage implements OnInit {
     const rest = mats.length - 1;
     return rest > 0 ? `${head} · +${rest} more` : head;
   });
+
+  // ---- planning suggestions ----
+  readonly planning = signal<PlanningRow[]>([]);
+  readonly planningWindow = signal(30);
+  readonly planningLoading = signal(true);
+  readonly planningColumns: SeColumn<PlanningRow>[] = [
+    { key: 'sku', header: 'SKU', sortable: true, value: (r) => r.sku },
+    { key: 'productName', header: 'Product', value: (r) => r.productName },
+    {
+      key: 'soldLastWindow',
+      header: 'Sold 30d',
+      numeric: true,
+      sortable: true,
+      value: (r) => r.soldLastWindow,
+    },
+    { key: 'openOrderUnits', header: 'Open', numeric: true, value: (r) => r.openOrderUnits },
+    { key: 'stockOnHand', header: 'Stock', numeric: true, value: (r) => r.stockOnHand },
+    { key: 'inProduction', header: 'WIP', numeric: true, value: (r) => r.inProduction },
+    {
+      key: 'suggested',
+      header: 'Suggested',
+      numeric: true,
+      sortable: true,
+      value: (r) => r.suggested,
+    },
+  ];
+  /** Only variants with demand appear as suggestions; nothing to plan otherwise. */
+  readonly hasDemand = computed(() => this.planning().length > 0);
+  readonly planningActions = computed<SeRowAction<PlanningRow>[]>(() => [
+    {
+      label: 'Plan batch',
+      hidden: () => !this.canWrite(),
+      run: (row) => this.planFrom(row),
+    },
+  ]);
+
+  /** Fills the start-batch drawer from a suggestion; approval still gates the start. */
+  planFrom(row: PlanningRow): void {
+    this.nb = {
+      variantId: row.variantId,
+      quantity: row.suggested > 0 ? row.suggested : null,
+      plannedDate: '',
+      approvalRequestId: '',
+    };
+    this.startErrors.set({ variant: '', quantity: '', approval: '' });
+    this.starting.set(true);
+  }
   readonly completedUnits = computed(() =>
     this.batches()
       .filter((b) => b.stage === this.lastStage())

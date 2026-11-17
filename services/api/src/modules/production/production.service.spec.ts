@@ -75,6 +75,9 @@ describe('ProductionService', () => {
     unit: string;
     quantity: string;
   }> = [];
+  const dataSourceQuery = jest.fn<Promise<Array<Record<string, string>>>, [string, ...unknown[]]>(
+    async () => wipMaterialRows,
+  );
   const dataSource = {
     transaction: jest.fn(async (fn: (m: unknown) => Promise<unknown>) =>
       fn({
@@ -83,8 +86,13 @@ describe('ProductionService', () => {
         query: jest.fn(async () => [{ count: '1' }]),
       }),
     ),
-    query: jest.fn(async () => wipMaterialRows),
+    query: dataSourceQuery,
   };
+  // planning() replaces this implementation per test; everything else reads
+  // whatever the current WIP material rows hold.
+  beforeEach(() => {
+    dataSourceQuery.mockImplementation(async () => wipMaterialRows);
+  });
   const config = {
     get: jest.fn((key: string) => (key === 'production.stages' ? STAGES : undefined)),
   };
@@ -155,6 +163,72 @@ describe('ProductionService', () => {
     expect(wip.totalUnits).toBe(10);
     expect(wip.activeBatches).toBe(1);
     expect(wip.materials).toEqual([]);
+  });
+
+  it('plans batches from paid sales and open orders minus stock and WIP', async () => {
+    dataSourceQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('payment_status')) {
+        return sql.includes('make_interval')
+          ? [
+              { variant_id: 'v1', sku: 'TEE-BLK-M', product_name: 'Black Tee', sold: '50' },
+              { variant_id: 'v2', sku: 'TEE-WHT-M', product_name: 'White Tee', sold: '10' },
+            ]
+          : [
+              { variant_id: 'v1', open_units: '12' },
+              { variant_id: 'v2', open_units: '0' },
+            ];
+      }
+      if (sql.includes('production_batches')) {
+        return [{ variant_id: 'v1', units: '30' }];
+      }
+      if (sql.includes('inventory_movements')) {
+        return [
+          { item_id: 'v1', units: '8' },
+          { item_id: 'v2', units: '40' },
+        ];
+      }
+      return [];
+    });
+
+    const plan = await service.planning();
+
+    expect(plan.windowDays).toBe(30);
+    expect(plan.variants).toEqual([
+      {
+        variantId: 'v1',
+        sku: 'TEE-BLK-M',
+        productName: 'Black Tee',
+        soldLastWindow: 50,
+        openOrderUnits: 12,
+        stockOnHand: 8,
+        inProduction: 30,
+        suggested: 24,
+      },
+      {
+        variantId: 'v2',
+        sku: 'TEE-WHT-M',
+        productName: 'White Tee',
+        soldLastWindow: 10,
+        openOrderUnits: 0,
+        stockOnHand: 40,
+        inProduction: 0,
+        suggested: 0,
+      },
+    ]);
+  });
+
+  it('drops variants with no demand from the plan', async () => {
+    dataSourceQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('payment_status')) {
+        return sql.includes('make_interval')
+          ? [{ variant_id: 'v2', sku: 'TEE-WHT-M', product_name: 'White Tee', sold: '0' }]
+          : [{ variant_id: 'v2', open_units: '0' }];
+      }
+      return [];
+    });
+
+    const plan = await service.planning();
+    expect(plan.variants).toEqual([]);
   });
 
   it('refuses to create a batch without an approved PRODUCTION_START request', async () => {

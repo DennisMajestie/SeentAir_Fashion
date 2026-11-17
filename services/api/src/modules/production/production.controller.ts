@@ -33,6 +33,13 @@ export class ProductionController {
     return this.productionService.wip();
   }
 
+  /** Planning suggestions from recent sales + open orders vs stock and WIP. */
+  @Get('planning')
+  @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.VIEW)
+  planning() {
+    return this.productionService.planning();
+  }
+
   @Get(':id')
   @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.VIEW)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
