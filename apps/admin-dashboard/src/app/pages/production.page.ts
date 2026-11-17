@@ -22,7 +22,7 @@ import {
   SeToastService,
 } from '@seentair/ui';
 import { AccessService } from '../access.service';
-import { ApiService, Batch } from '../api.service';
+import { ApiService, Batch, WipSummary } from '../api.service';
 import { urlFilters } from '../url-filters';
 import { batchRef, moveCopy, nextStage, num, stageLabel, units } from './production-format';
 
@@ -67,6 +67,11 @@ interface ProductOpt {
 
       <div class="se-metric-grid">
         <se-metric-card label="Units in production" [value]="activeUnits()" [hint]="activeHint()" />
+        <se-metric-card
+          label="Materials issued to WIP"
+          [value]="wipMaterials()"
+          [hint]="wipMaterialsHint()"
+        />
         <se-metric-card
           label="Units completed"
           [value]="completedUnits()"
@@ -308,6 +313,14 @@ export class ProductionPage implements OnInit {
         }
       },
     });
+    // The WIP snapshot is aggregated server-side over every active run, so the
+    // "units in production" metric stays right even past the listed page.
+    this.api.wip().subscribe({
+      next: (w) => this.wip.set(w),
+      // Without the snapshot the metrics fall back to the listed batches; the
+      // hint then says so instead of silently pretending it is complete.
+      error: () => this.wip.set(null),
+    });
   }
 
   /** Reads back what was recorded against each batch: its cost and its QC rejects. */
@@ -339,10 +352,33 @@ export class ProductionPage implements OnInit {
   private readonly active = computed(() =>
     this.batches().filter((b) => b.stage !== this.lastStage()),
   );
-  readonly activeUnits = computed(() => this.active().reduce((s, b) => s + b.quantity, 0));
+  /** Server-side WIP snapshot; null when the endpoint failed, metrics then fall back. */
+  readonly wip = signal<WipSummary | null>(null);
+  readonly activeUnits = computed(
+    () => this.wip()?.totalUnits ?? this.active().reduce((s, b) => s + b.quantity, 0),
+  );
   readonly activeHint = computed(() => {
-    const n = this.active().length;
-    return `In ${n} ${n === 1 ? 'batch' : 'batches'}`;
+    const wip = this.wip();
+    if (!wip) {
+      const n = this.active().length;
+      return `Listed only — in ${n} ${n === 1 ? 'batch' : 'batches'}`;
+    }
+    const parts = wip.stages
+      .filter((s) => s.units > 0)
+      .map((s) => `${stageLabel(s.stage)} ${s.units}`);
+    const batches = wip.activeBatches;
+    const tail = `in ${batches} ${batches === 1 ? 'batch' : 'batches'}`;
+    return parts.length > 0 ? `${parts.join(' · ')} — ${tail}` : `Nothing on the floor — ${tail}`;
+  });
+  /** Raw materials already consumed into active runs — the WIP materials line. */
+  readonly wipMaterials = computed(() => this.wip()?.materials.length ?? 0);
+  readonly wipMaterialsHint = computed(() => {
+    const mats = this.wip()?.materials ?? [];
+    if (mats.length === 0) return 'No materials issued yet';
+    const first = mats[0];
+    const head = `${first.materialName} ${first.quantity} ${first.unit}`;
+    const rest = mats.length - 1;
+    return rest > 0 ? `${head} · +${rest} more` : head;
   });
   readonly completedUnits = computed(() =>
     this.batches()

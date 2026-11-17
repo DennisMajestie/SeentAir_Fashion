@@ -26,6 +26,13 @@ export class ProductionController {
     return this.productionService.findAll(query.page ?? 1, query.limit ?? 20, query.stage);
   }
 
+  /** Work-in-progress snapshot: units per stage + materials issued into runs. */
+  @Get('wip')
+  @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.VIEW)
+  wip() {
+    return this.productionService.wip();
+  }
+
   @Get(':id')
   @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.VIEW)
   findOne(@Param('id', ParseUUIDPipe) id: string) {

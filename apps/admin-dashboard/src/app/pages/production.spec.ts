@@ -59,8 +59,12 @@ describe('ProductionPage', () => {
       'moveBatch',
       'createApproval',
       'createBatch',
+      'wip',
     ]);
     api.batches.and.returnValue(batches as never);
+    api.wip.and.returnValue(
+      of({ stages: [], totalUnits: 0, activeBatches: 0, materials: [] }) as never,
+    );
     api.products.and.returnValue(of({ data: [], total: 0 }) as never);
     api.batchCost.and.returnValue(of({ totalCost: 45000 }));
     api.qcRejections.and.returnValue(of([{ quantity: 2 }]));
@@ -90,6 +94,48 @@ describe('ProductionPage', () => {
     expect(rows[1].querySelector('se-status')!.textContent).toContain('Quality check');
     expect(rows[0].textContent).toContain('₦45,000');
     expect(el().querySelector('h1')!.textContent).toBe('Production');
+  });
+
+  it('reads work in progress from the server snapshot, per stage and material', () => {
+    mount(two());
+    api.wip.and.returnValue(
+      of({
+        stages: [
+          { stage: 'planned', batches: 2, units: 120 },
+          { stage: 'cutting', batches: 1, units: 40 },
+          { stage: 'sewing', batches: 3, units: 95 },
+        ],
+        totalUnits: 255,
+        activeBatches: 6,
+        materials: [
+          { materialId: 'm1', materialName: 'Ankara cotton', unit: 'yards', quantity: 30 },
+          { materialId: 'm2', materialName: 'Thread', unit: 'rolls', quantity: 12 },
+        ],
+      }) as never,
+    );
+    fixture.componentInstance.load();
+    fixture.detectChanges();
+
+    const cards = [...el().querySelectorAll('se-metric-card')];
+    expect(cards[0].textContent).toContain('255');
+    expect(cards[0].textContent).toContain('Cutting 40');
+    expect(cards[0].textContent).toContain('in 6 batches');
+    expect(cards[1].textContent).toContain('Materials issued to WIP');
+    expect(cards[1].textContent).toContain('2');
+    expect(cards[1].textContent).toContain('Ankara cotton 30 yards');
+    expect(cards[1].textContent).toContain('+1 more');
+  });
+
+  it('falls back to the listed batches and says so when the WIP snapshot fails', () => {
+    mount(two());
+    api.wip.and.returnValue(throwError(() => ({ status: 500 })) as never);
+    fixture.componentInstance.load();
+    fixture.detectChanges();
+
+    const cards = [...el().querySelectorAll('se-metric-card')];
+    // Both listed batches are still in production: 40 + 40 units.
+    expect(cards[0].textContent).toContain('80');
+    expect(cards[0].textContent).toContain('Listed only');
   });
 
   it('shows a failed load as an error with a retry, never as "no batches"', () => {

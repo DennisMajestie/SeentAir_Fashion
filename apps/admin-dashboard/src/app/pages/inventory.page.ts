@@ -233,11 +233,10 @@ export class InventoryAdminPage implements OnInit {
       }
       this.labels.set(labels);
     });
-    this.api.batches().subscribe((res) => {
-      const last = res.stages[res.stages.length - 1];
-      this.wipUnits.set(
-        res.data.filter((b) => b.stage !== last).reduce((sum, b) => sum + b.quantity, 0),
-      );
+    this.api.wip().subscribe({
+      next: (w) => this.wipUnits.set(w.totalUnits),
+      // Without the WIP snapshot the metric stays at zero rather than lying.
+      error: () => undefined,
     });
     this.api
       .returns()

@@ -33,7 +33,17 @@ describe('ProductionService', () => {
     create: jest.fn((v) => v),
     save: jest.fn(async (v) => v),
     findAndCount: jest.fn(async () => [[], 0]),
+    createQueryBuilder: jest.fn(() => wipQb),
   };
+  const wipQb = {
+    select: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    groupBy: jest.fn().mockReturnThis(),
+    getRawMany: jest.fn(async () => wipStageRows),
+  };
+  let wipStageRows: Array<{ stage: string; batches: string; units: string }> = [];
   const rejectionQb = {
     select: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
@@ -59,6 +69,12 @@ describe('ProductionService', () => {
   const approvalsService = { assertApproved: jest.fn() };
   const inventoryService = { record: jest.fn() };
   const catalogueService = { findVariantById: jest.fn(async () => ({ id: 'v1' })) };
+  let wipMaterialRows: Array<{
+    material_id: string;
+    material_name: string;
+    unit: string;
+    quantity: string;
+  }> = [];
   const dataSource = {
     transaction: jest.fn(async (fn: (m: unknown) => Promise<unknown>) =>
       fn({
@@ -67,6 +83,7 @@ describe('ProductionService', () => {
         query: jest.fn(async () => [{ count: '1' }]),
       }),
     ),
+    query: jest.fn(async () => wipMaterialRows),
   };
   const config = {
     get: jest.fn((key: string) => (key === 'production.stages' ? STAGES : undefined)),
@@ -75,6 +92,8 @@ describe('ProductionService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     rejectionSum = '0';
+    wipStageRows = [];
+    wipMaterialRows = [];
     batch = {
       id: 'b1',
       quantity: 100,
@@ -98,6 +117,44 @@ describe('ProductionService', () => {
       ],
     }).compile();
     service = moduleRef.get(ProductionService);
+  });
+
+  it('summarizes WIP per stage, excluding completed and cancelled runs', async () => {
+    wipStageRows = [
+      { stage: 'Production Planned', batches: '2', units: '120' },
+      { stage: 'Cutting', batches: '1', units: '40' },
+      { stage: 'Sewing', batches: '3', units: '95' },
+    ];
+    wipMaterialRows = [
+      { material_id: 'm1', material_name: 'Ankara cotton', unit: 'yards', quantity: '30' },
+      { material_id: 'm2', material_name: 'Thread', unit: 'rolls', quantity: '12' },
+    ];
+
+    const wip = await service.wip();
+
+    expect(wip.stages).toEqual([
+      { stage: 'Production Planned', batches: 2, units: 120 },
+      { stage: 'Cutting', batches: 1, units: 40 },
+      { stage: 'Sewing', batches: 3, units: 95 },
+    ]);
+    expect(wip.totalUnits).toBe(255);
+    expect(wip.activeBatches).toBe(6);
+    expect(wip.materials).toEqual([
+      { materialId: 'm1', materialName: 'Ankara cotton', unit: 'yards', quantity: 30 },
+      { materialId: 'm2', materialName: 'Thread', unit: 'rolls', quantity: 12 },
+    ]);
+  });
+
+  it('omits stages with nothing in them and never counts the completion stage', async () => {
+    wipStageRows = [{ stage: 'Quality Control', batches: '1', units: '10' }];
+
+    const wip = await service.wip();
+
+    // 'Completed' is the last configured stage and cannot hold WIP.
+    expect(wip.stages).toEqual([{ stage: 'Quality Control', batches: 1, units: 10 }]);
+    expect(wip.totalUnits).toBe(10);
+    expect(wip.activeBatches).toBe(1);
+    expect(wip.materials).toEqual([]);
   });
 
   it('refuses to create a batch without an approved PRODUCTION_START request', async () => {

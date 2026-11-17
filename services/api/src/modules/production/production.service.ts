@@ -71,6 +71,70 @@ export class ProductionService {
     return batch;
   }
 
+  /**
+   * Work-in-progress visibility (inventory appendix 11): units sitting on the
+   * factory floor per stage, plus the raw materials already issued into those
+   * runs. Derived from the batch rows and the material_usages ledger on every
+   * read - never a stored counter that can drift from the truth.
+   */
+  async wip(): Promise<{
+    stages: Array<{ stage: string; batches: number; units: number }>;
+    totalUnits: number;
+    activeBatches: number;
+    materials: Array<{ materialId: string; materialName: string; unit: string; quantity: number }>;
+  }> {
+    const rows: Array<{ stage: string; batches: string; units: string }> = await this.batchRepo
+      .createQueryBuilder('b')
+      .select('b.stage', 'stage')
+      .addSelect('COUNT(*)', 'batches')
+      .addSelect('SUM(b.quantity)', 'units')
+      .where('b.completed_date IS NULL')
+      .andWhere('b.cancelled_at IS NULL')
+      .groupBy('b.stage')
+      .getRawMany();
+
+    const unitsByStage = new Map(rows.map((r) => [r.stage, parseInt(r.units ?? '0', 10) || 0]));
+    const batchesByStage = new Map(rows.map((r) => [r.stage, parseInt(r.batches ?? '0', 10) || 0]));
+    // Every stage except the completion stage can hold WIP.
+    const stages = this.stages
+      .slice(0, -1)
+      .map((stage) => ({
+        stage,
+        batches: batchesByStage.get(stage) ?? 0,
+        units: unitsByStage.get(stage) ?? 0,
+      }))
+      .filter((s) => s.units > 0 || s.batches > 0);
+
+    const materialRows: Array<{
+      material_id: string;
+      material_name: string;
+      unit: string;
+      quantity: string;
+    }> = await this.dataSource.query(
+      `SELECT mu.material_id, rm.name AS material_name, rm.unit,
+              SUM(mu.quantity_used) AS quantity
+         FROM material_usages mu
+         JOIN raw_materials rm ON rm.id = mu.material_id
+         JOIN production_batches b ON b.id = mu.batch_id
+        WHERE b.completed_date IS NULL
+          AND b.cancelled_at IS NULL
+        GROUP BY mu.material_id, rm.name, rm.unit
+        ORDER BY quantity DESC`,
+    );
+
+    return {
+      stages,
+      totalUnits: stages.reduce((sum, s) => sum + s.units, 0),
+      activeBatches: stages.reduce((sum, s) => sum + s.batches, 0),
+      materials: materialRows.map((r) => ({
+        materialId: r.material_id,
+        materialName: r.material_name,
+        unit: r.unit,
+        quantity: parseInt(r.quantity ?? '0', 10) || 0,
+      })),
+    };
+  }
+
   /** Starting production is approval-gated at the API layer (appendix 19). */
   async create(dto: CreateBatchDto, actorId: string): Promise<ProductionBatch> {
     await this.approvalsService.assertApproved(

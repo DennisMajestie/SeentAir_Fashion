@@ -58,7 +58,7 @@ describe('stock screens', () => {
       lowStockMaterials: [material],
       materialsValuation: [{ id: 'm1', lastUnitCost: 200, currentValue: 800 }],
       inventorySummary: summary,
-      batches: { data: [], stages: ['planned'] },
+      wip: { stages: [], totalUnits: 0, activeBatches: 0, materials: [] },
       returns: { data: [], total: 0 },
       movements: { data: [movement], total: 1, currentQuantity: 4 },
       suppliers: [supplier],

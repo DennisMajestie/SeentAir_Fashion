@@ -112,6 +112,19 @@ export interface Batch {
   plannedDate: string | null;
 }
 
+/** Work-in-progress snapshot: server-side aggregation over every active run. */
+export interface WipSummary {
+  stages: Array<{ stage: string; batches: number; units: number }>;
+  totalUnits: number;
+  activeBatches: number;
+  materials: Array<{
+    materialId: string;
+    materialName: string;
+    unit: string;
+    quantity: number;
+  }>;
+}
+
 /** What checkout charges for delivery and tax. Mirrors the API's EffectiveSettings. */
 export interface ShippingSettings {
   shippingEnabled: boolean;
@@ -378,6 +391,11 @@ export class ApiService {
     return this.http.get<{ data: Batch[]; stages: string[] }>(
       `${API_BASE}/production-batches?limit=100`,
     );
+  }
+
+  /** WIP snapshot aggregated server-side over every active run, not a page. */
+  wip(): Observable<WipSummary> {
+    return this.http.get<WipSummary>(`${API_BASE}/production-batches/wip`);
   }
 
   batch(id: string): Observable<Record<string, unknown>> {
