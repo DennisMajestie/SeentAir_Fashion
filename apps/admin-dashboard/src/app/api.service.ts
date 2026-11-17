@@ -148,6 +148,20 @@ export interface PlanningRow {
   suggested: number;
 }
 
+/** Revenue minus recorded production cost per product (appendix 16). */
+export interface ProductProfitability {
+  products: Array<{
+    productId: string;
+    productName: string;
+    unitsSold: number;
+    revenue: number;
+    costOfUnitsSold: number | null;
+    margin: number | null;
+    marginPct: number | null;
+  }>;
+  withRecordedCost: boolean;
+}
+
 /** What checkout charges for delivery and tax. Mirrors the API's EffectiveSettings. */
 export interface ShippingSettings {
   shippingEnabled: boolean;
@@ -380,6 +394,12 @@ export class ApiService {
     return this.http.get<
       Array<{ sku: string; productName: string; unitsSold: number; revenue: number }>
     >(`${API_BASE}/analytics/best-sellers?limit=${limit}&direction=${direction}`);
+  }
+
+  productProfitability(limit = 8): Observable<ProductProfitability> {
+    return this.http.get<ProductProfitability>(
+      `${API_BASE}/analytics/product-profitability?limit=${limit}`,
+    );
   }
 
   pendingApprovals(): Observable<Approval[]> {

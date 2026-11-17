@@ -181,9 +181,101 @@ export class AnalyticsService {
     };
   }
 
+  /**
+   * Product profitability (appendix 16): revenue per product across paid
+   * orders, minus the production cost allocated to the units sold. Cost per
+   * unit comes from completed batches with recorded costs; products without a
+   * recorded cost report margin as null rather than pretending it is zero.
+   */
+  async productProfitability(limit = 20) {
+    const revenueRows: Array<{
+      product_id: string;
+      product_name: string;
+      units: string;
+      revenue: string;
+    }> = await this.orderItemRepo
+      .createQueryBuilder('item')
+      .innerJoin(
+        'item.order',
+        'o',
+        'o.payment_status = :paid AND o.status != :cancelled',
+        { paid: PaymentStatus.PAID, cancelled: OrderStatus.CANCELLED },
+      )
+      .innerJoin('item.variant', 'v')
+      .innerJoin('v.product', 'p')
+      .select('p.id', 'product_id')
+      .addSelect('p.name', 'product_name')
+      .addSelect('SUM(item.quantity)', 'units')
+      .addSelect('SUM(item.quantity * item.unit_price)', 'revenue')
+      .groupBy('p.id')
+      .addGroupBy('p.name')
+      .getRawMany();
+
+    const costRows: Array<{ product_id: string; cost: string; units: string }> =
+      await this.productionCostRepo
+        .createQueryBuilder('pc')
+        .innerJoin('pc.batch', 'b')
+        .innerJoin('b.variant', 'v')
+        .innerJoin('v.product', 'p')
+        .select('p.id', 'product_id')
+        .addSelect(
+          'SUM(pc.material_cost + pc.sewing_cost + pc.branding_cost + pc.packaging_cost)',
+          'cost',
+        )
+        .addSelect('SUM(b.quantity)', 'units')
+        .where('b.completed_date IS NOT NULL')
+        .andWhere('b.cancelled_at IS NULL')
+        .groupBy('p.id')
+        .getRawMany();
+
+    const costByProduct = new Map(
+      costRows.map((r) => [
+        r.product_id,
+        {
+          cost: parseFloat(r.cost) || 0,
+          units: parseInt(r.units ?? '0', 10) || 0,
+        },
+      ]),
+    );
+
+    const products = revenueRows
+      .map((r) => {
+        const unitsSold = parseInt(r.units ?? '0', 10) || 0;
+        const revenue = parseFloat(r.revenue) || 0;
+        const recorded = costByProduct.get(r.product_id);
+        if (!recorded || recorded.units <= 0) {
+          return {
+            productId: r.product_id,
+            productName: r.product_name,
+            unitsSold,
+            revenue,
+            costOfUnitsSold: null,
+            margin: null,
+            marginPct: null,
+          };
+        }
+        const costPerUnit = recorded.cost / recorded.units;
+        const costOfUnitsSold = Math.round(unitsSold * costPerUnit * 100) / 100;
+        const margin = Math.round((revenue - costOfUnitsSold) * 100) / 100;
+        const marginPct = revenue > 0 ? Math.round((margin / revenue) * 1000) / 10 : null;
+        return {
+          productId: r.product_id,
+          productName: r.product_name,
+          unitsSold,
+          revenue,
+          costOfUnitsSold,
+          margin,
+          marginPct,
+        };
+      })
+      .sort((a, b) => (b.margin ?? -Infinity) - (a.margin ?? -Infinity) || b.revenue - a.revenue)
+      .slice(0, limit);
+
+    return { products, withRecordedCost: costRows.length > 0 };
+  }
+
   /** Top (or bottom) selling variants by units across paid orders. */
-  async sellers(limit = 10, direction: 'best' | 'slow' = 'best') {
-    const rows: Array<{
+  async sellers(limit = 10, direction: 'best' | 'slow' = 'best') {    const rows: Array<{
       variant_id: string;
       sku: string;
       product_name: string;

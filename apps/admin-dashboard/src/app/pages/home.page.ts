@@ -67,6 +67,15 @@ interface SellerRow {
   unitsSold: number;
   revenue: number;
 }
+interface ProfitRow {
+  productId: string;
+  productName: string;
+  unitsSold: number;
+  revenue: number;
+  costOfUnitsSold: number | null;
+  margin: number | null;
+  marginPct: number | null;
+}
 
 function sellerImagesBySku(products: Array<Record<string, unknown>>): Record<string, string> {
   const images: Record<string, string> = {};
@@ -900,6 +909,43 @@ const GAUGE_TICKS = 84;
             </article>
           }
 
+          @if (access.can('analytics') && seesMoney()) {
+            <article class="sd-card sd-profit">
+              <div class="sd-card__hd">
+                <div>
+                  <h2>Product profitability</h2>
+                  <p class="sd-card__sub">Revenue minus recorded production cost</p>
+                </div>
+                <a class="sd-card__link" routerLink="/accounting">Books</a>
+              </div>
+              @if (profitability().length > 0) {
+                <div class="sd-rows">
+                  @for (p of profitability(); track p.productId) {
+                    <div class="sd-row">
+                      <span class="sd-row__tx">
+                        <b>{{ p.productName }}</b>
+                        <small>{{ plural(p.unitsSold, 'unit') }} sold</small>
+                      </span>
+                      <span class="sd-row__amt">
+                        <b>{{ money(p.revenue) }}</b>
+                        @if (p.margin !== null) {
+                          <small>{{ p.marginPct }}% margin</small>
+                        } @else {
+                          <small>No cost recorded</small>
+                        }
+                      </span>
+                    </div>
+                  }
+                </div>
+                @if (!profitCosted()) {
+                  <p class="sd-empty">Margins show once batch costs are recorded.</p>
+                }
+              } @else {
+                <p class="sd-empty">No paid sales have been recorded yet.</p>
+              }
+            </article>
+          }
+
           @if (access.can('logistics')) {
             <article class="sd-card sd-deliveries">
               <div class="sd-card__hd">
@@ -997,6 +1043,8 @@ export class HomePage implements OnDestroy {
   readonly bestSellers = signal<SellerRow[]>([]);
   readonly slowMovers = signal<SellerRow[]>([]);
   readonly sellerImages = signal<Record<string, string>>({});
+  readonly profitability = signal<ProfitRow[]>([]);
+  readonly profitCosted = signal(false);
 
   // ---- what this role sees: decided once from its access ----
   /** Sales and profit are money: shown to roles that can see payments or the books. */
@@ -1168,6 +1216,15 @@ export class HomePage implements OnDestroy {
       this.api.lowStock().subscribe({ next: (l) => this.lowStock.set(l), ...quiet });
       this.api.bestSellers('best').subscribe({ next: (b) => this.bestSellers.set(b), ...quiet });
       this.api.bestSellers('slow').subscribe({ next: (b) => this.slowMovers.set(b), ...quiet });
+      if (this.seesMoney()) {
+        this.api.productProfitability().subscribe({
+          next: (r) => {
+            this.profitability.set(r.products);
+            this.profitCosted.set(r.withRecordedCost);
+          },
+          ...quiet,
+        });
+      }
     }
     if (this.seesApprovals()) {
       this.api.pendingApprovals().subscribe({ next: (a) => this.pending.set(a), ...quiet });

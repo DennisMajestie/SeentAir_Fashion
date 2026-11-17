@@ -30,6 +30,13 @@ export class AnalyticsController {
     return this.analyticsService.sellers(query.limit ?? 10, query.direction ?? 'best');
   }
 
+  /** Revenue vs recorded production cost per product (appendix 16). */
+  @Get('product-profitability')
+  @RequireAccess(ModuleName.ANALYTICS, AccessLevel.VIEW)
+  productProfitability(@Query('limit') limit = '20') {
+    return this.analyticsService.productProfitability(Math.min(parseInt(limit, 10) || 20, 100));
+  }
+
   @Get('low-stock')
   @RequireAccess(ModuleName.ANALYTICS, AccessLevel.VIEW)
   lowStock(@Query('variantThreshold') variantThreshold = '10') {

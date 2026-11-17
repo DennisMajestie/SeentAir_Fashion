@@ -80,6 +80,7 @@ describe('HomePage', () => {
       'dashboard',
       'lowStock',
       'bestSellers',
+      'productProfitability',
       'pendingApprovals',
       'auditLog',
       'batches',
@@ -99,6 +100,7 @@ describe('HomePage', () => {
       }),
     );
     api.bestSellers.and.returnValue(of([]));
+    api.productProfitability.and.returnValue(of({ products: [], withRecordedCost: true }));
     api.pendingApprovals.and.returnValue(
       of([
         {
@@ -184,6 +186,54 @@ describe('HomePage', () => {
         'assets/products/product_02.png',
         'assets/products/product_03.png',
       ]);
+    });
+
+    it('ranks products by margin and flags ones without recorded cost', () => {
+      mount(OWNER);
+      api.productProfitability.and.returnValue(
+        of({
+          products: [
+            {
+              productId: 'p1',
+              productName: 'Black Tee',
+              unitsSold: 10,
+              revenue: 120000,
+              costOfUnitsSold: 37500,
+              margin: 82500,
+              marginPct: 68.8,
+            },
+            {
+              productId: 'p2',
+              productName: 'Hoodie',
+              unitsSold: 4,
+              revenue: 90000,
+              costOfUnitsSold: null,
+              margin: null,
+              marginPct: null,
+            },
+          ],
+          withRecordedCost: false,
+        }),
+      );
+
+      (fixture.componentInstance as unknown as { loadSupporting: () => void }).loadSupporting();
+      fixture.detectChanges();
+
+      const profitText = (
+        el().querySelector('.sd-profit') as HTMLElement
+      ).textContent!.replace(/\s+/g, ' ');
+      expect(profitText).toContain('Product profitability');
+      expect(profitText).toContain('Black Tee');
+      expect(profitText).toContain('68.8% margin');
+      expect(profitText).toContain('Hoodie');
+      expect(profitText).toContain('No cost recorded');
+      expect(profitText).toContain('Margins show once batch costs are recorded.');
+    });
+
+    it('keeps profitability empty for a role that cannot see money', () => {
+      mount(INVENTORY);
+      expect(api.productProfitability).not.toHaveBeenCalled();
+      expect(el().querySelector('.sd-profit')).toBeNull();
     });
 
     it('answers the five questions, in order, each as one linked card', () => {

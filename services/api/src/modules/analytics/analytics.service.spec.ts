@@ -17,9 +17,9 @@ describe('AnalyticsService inventory valuation', () => {
   let service: AnalyticsService;
 
   const orderRepo = { createQueryBuilder: jest.fn() };
-  const orderItemRepo = {};
+  const orderItemRepo = { createQueryBuilder: jest.fn() };
   const batchRepo = { find: jest.fn(), createQueryBuilder: jest.fn() };
-  const productionCostRepo = { find: jest.fn() };
+  const productionCostRepo = { find: jest.fn(), createQueryBuilder: jest.fn() };
   const variantRepo = { find: jest.fn() };
   const approvalRepo = { count: jest.fn() };
   const materialRepo = {};
@@ -53,13 +53,19 @@ describe('AnalyticsService inventory valuation', () => {
   });
 
   it('returns paid sales totals for the current month alongside the daily dashboard totals', async () => {
-    const paidOrderStats = jest.spyOn(service as any, 'paidOrderStats');
-    paidOrderStats
+    const internals = service as unknown as {
+      paidOrderStats: jest.Mock;
+      groupPaidOrdersBy: jest.Mock;
+      pendingApprovalsTrend: jest.Mock;
+      lowStockTrend: jest.Mock;
+    };
+    const paidOrderStats = jest
+      .spyOn(internals, 'paidOrderStats')
       .mockResolvedValueOnce({ orders: 2, revenue: 150 })
       .mockResolvedValueOnce({ orders: 9, revenue: 1250 });
-    jest.spyOn(service as any, 'groupPaidOrdersBy').mockResolvedValue([]);
-    jest.spyOn(service as any, 'pendingApprovalsTrend').mockResolvedValue([]);
-    jest.spyOn(service as any, 'lowStockTrend').mockResolvedValue([]);
+    jest.spyOn(internals, 'groupPaidOrdersBy').mockResolvedValue([]);
+    jest.spyOn(internals, 'pendingApprovalsTrend').mockResolvedValue([]);
+    jest.spyOn(internals, 'lowStockTrend').mockResolvedValue([]);
     accountingService.report.mockResolvedValue({});
     approvalRepo.count.mockResolvedValue(0);
     materialsService.lowStock.mockResolvedValue([]);
@@ -456,6 +462,74 @@ describe('AnalyticsService inventory valuation', () => {
       stockInValue: null,
       stockOutValue: 0,
       stockValue: null,
+    });
+  });
+
+  describe('product profitability', () => {
+    const qbChain = (rows: unknown) => ({
+      innerJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn(async () => rows),
+    });
+
+    it('allocates recorded production cost to units sold and ranks by margin', async () => {
+      const revenueQb = qbChain([
+        {
+          product_id: 'p1',
+          product_name: 'Black Tee',
+          units: '10',
+          revenue: '120000',
+        },
+        { product_id: 'p2', product_name: 'Hoodie', units: '4', revenue: '90000' },
+      ]);
+      const costQb = qbChain([{ product_id: 'p1', cost: '45000', units: '12' }]);
+      orderItemRepo.createQueryBuilder = jest.fn(() => revenueQb);
+      productionCostRepo.createQueryBuilder = jest.fn(() => costQb);
+
+      const result = await service.productProfitability();
+
+      // Hoodie sold more units... but has no recorded cost, so its margin is
+      // unknown and Black Tee (margin 82500) ranks first.
+      expect(result.products).toEqual([
+        {
+          productId: 'p1',
+          productName: 'Black Tee',
+          unitsSold: 10,
+          revenue: 120000,
+          costOfUnitsSold: 37500,
+          margin: 82500,
+          marginPct: 68.8,
+        },
+        {
+          productId: 'p2',
+          productName: 'Hoodie',
+          unitsSold: 4,
+          revenue: 90000,
+          costOfUnitsSold: null,
+          margin: null,
+          marginPct: null,
+        },
+      ]);
+      expect(result.withRecordedCost).toBe(true);
+    });
+
+    it('says when no cost has been recorded at all', async () => {
+      const revenueQb = qbChain([
+        { product_id: 'p2', product_name: 'Hoodie', units: '4', revenue: '90000' },
+      ]);
+      const costQb = qbChain([]);
+      orderItemRepo.createQueryBuilder = jest.fn(() => revenueQb);
+      productionCostRepo.createQueryBuilder = jest.fn(() => costQb);
+
+      const result = await service.productProfitability();
+
+      expect(result.withRecordedCost).toBe(false);
+      expect(result.products[0].margin).toBeNull();
     });
   });
 
