@@ -1,9 +1,20 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
-import { AccessLevel, ModuleName } from '../../common/enums';
+import { AccessLevel, ApprovalActionType, ModuleName, RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
+import { ApprovalsService } from '../approvals/approvals.service';
 import { ProductionQueryDto } from './dto/production-query.dto';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { RecordCostDto } from './dto/record-cost.dto';
@@ -18,7 +29,10 @@ import { ProductionService } from './production.service';
 @ApiBearerAuth()
 @Controller('production-batches')
 export class ProductionController {
-  constructor(private readonly productionService: ProductionService) {}
+  constructor(
+    private readonly productionService: ProductionService,
+    private readonly approvalsService: ApprovalsService,
+  ) {}
 
   @Get()
   @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.VIEW)
@@ -49,8 +63,25 @@ export class ProductionController {
   /** Production starts are approval-gated at the API layer (appendix 19). */
   @Post()
   @RequireAccess(ModuleName.MANUFACTURING, AccessLevel.FULL)
-  create(@Body() dto: CreateBatchDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.productionService.create(dto, user.id);
+  async create(@Body() dto: CreateBatchDto, @CurrentUser() user: AuthenticatedUser) {
+    let approvalRequestId = dto.approvalRequestId;
+    if (!approvalRequestId) {
+      if (user.role !== RoleName.BUSINESS_OWNER_ADMIN) {
+        throw new BadRequestException(
+          'Production starts require an approved request (approvalRequestId)',
+        );
+      }
+      // The owner is the top approval authority, so their own start is approved
+      // on creation. Still record the request: the gate below stays in force and
+      // the audit trail shows who authorised the run.
+      const approval = await this.approvalsService.create(
+        user,
+        ApprovalActionType.PRODUCTION_START,
+        { variantId: dto.variantId, quantity: dto.quantity },
+      );
+      approvalRequestId = approval.id;
+    }
+    return this.productionService.create({ ...dto, approvalRequestId }, user.id);
   }
 
   @Patch(':id/stage')

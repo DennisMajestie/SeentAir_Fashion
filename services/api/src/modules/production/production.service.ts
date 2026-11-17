@@ -228,8 +228,14 @@ export class ProductionService {
 
   /** Starting production is approval-gated at the API layer (appendix 19). */
   async create(dto: CreateBatchDto, actorId: string): Promise<ProductionBatch> {
+    const approvalRequestId = dto.approvalRequestId;
+    if (!approvalRequestId) {
+      throw new BadRequestException(
+        'Production starts require an approved request (approvalRequestId)',
+      );
+    }
     await this.approvalsService.assertApproved(
-      dto.approvalRequestId,
+      approvalRequestId,
       ApprovalActionType.PRODUCTION_START,
     );
     const variant = await this.catalogueService.findVariantById(dto.variantId);
@@ -238,7 +244,7 @@ export class ProductionService {
       quantity: dto.quantity,
       stage: this.stages[0],
       plannedDate: dto.plannedDate ?? null,
-      approvalRequestId: dto.approvalRequestId,
+      approvalRequestId,
       createdBy: actorId,
     });
     return this.batchRepo.save(batch);

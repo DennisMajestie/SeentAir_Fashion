@@ -13,7 +13,8 @@ export class CreateBatchDto {
   @IsDateString()
   plannedDate?: string;
 
-  /** Production starts require an approved request (appendix 19). */
+  /** Production starts require an approved request (appendix 19). The owner's own start is auto-approved by the controller. */
+  @IsOptional()
   @IsUUID()
-  approvalRequestId: string;
+  approvalRequestId?: string;
 }
