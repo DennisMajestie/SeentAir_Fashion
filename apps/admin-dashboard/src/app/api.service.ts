@@ -125,6 +125,17 @@ export interface WipSummary {
   }>;
 }
 
+export interface PayrollRun {
+  id: string;
+  periodMonth: string;
+  lines: Array<{ name: string; amount: number; note?: string }>;
+  totalAmount: number;
+  status: string;
+  approvalRequestId: string;
+  ledgerEntryId: string | null;
+  postedAt: string | null;
+}
+
 /** What checkout charges for delivery and tax. Mirrors the API's EffectiveSettings. */
 export interface ShippingSettings {
   shippingEnabled: boolean;
@@ -712,6 +723,14 @@ endProductSale(id: string): Observable<unknown> {
   }
   recordLedgerEntry(body: Record<string, unknown>): Observable<unknown> {
     return this.http.post(`${API_BASE}/accounting/ledger`, body);
+  }
+
+  /** One monthly payroll run: lines as paid, approval ref, ledger entry. */
+  payrollRuns(): Observable<{ data: PayrollRun[]; total: number }> {
+    return this.http.get<{ data: PayrollRun[]; total: number }>(`${API_BASE}/payroll/runs?limit=50`);
+  }
+  createPayrollRun(body: Record<string, unknown>): Observable<unknown> {
+    return this.http.post(`${API_BASE}/payroll/runs`, body);
   }
 
   // --- Staff ---

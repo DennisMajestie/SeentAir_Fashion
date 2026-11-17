@@ -1072,3 +1072,24 @@ $ops-gold-ink: var(--acid-ink);
 .order-total {
   width: 100%;
 }
+
+/* Payroll run composer: one row per staff line, name + amount + remove. */
+.payroll-lines {
+  display: grid;
+  gap: 10px;
+}
+.payroll-lines__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.payroll-line {
+  display: grid;
+  grid-template-columns: 1fr 140px auto;
+  gap: 8px;
+  align-items: center;
+}
+.payroll-lines__total {
+  margin: 0;
+  text-align: right;
+}

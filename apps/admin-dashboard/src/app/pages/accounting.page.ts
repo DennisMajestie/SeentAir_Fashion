@@ -18,7 +18,7 @@ import {
   SeToastService,
 } from '@seentair/ui';
 import { AccessService } from '../access.service';
-import { ApiService } from '../api.service';
+import { ApiService, PayrollRun } from '../api.service';
 import { downloadCsv } from '../csv.util';
 import { orderRef } from './order-format';
 import { urlFilters } from '../url-filters';
@@ -60,6 +60,32 @@ const EMPTY_ENTRY = () => ({
   amount: null as number | null,
   category: '',
   approvalRequestId: '',
+});
+
+/** '2026-10' -> 'Oct 2026' — built locally so tests stay locale-stable. */
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+export const monthLabel = (period: string): string => {
+  const [year, month] = period.split('-').map(Number);
+  return MONTHS[month - 1] ? `${MONTHS[month - 1]} ${year}` : period;
+};
+
+const EMPTY_PAYROLL = () => ({
+  periodMonth: '',
+  approvalRequestId: '',
+  lines: [{ name: '', amount: null as number | null }],
 });
 
 /**
@@ -123,6 +149,34 @@ const EMPTY_ENTRY = () => ({
           [summary]="summary()"
         />
         <ng-template seCell="entryDate" let-row>{{ row.entryDate | seDate }}</ng-template>
+      </se-table>
+
+      <se-table
+        caption="Payroll runs"
+        [columns]="payrollColumns"
+        [rows]="payrollRows()"
+        [loading]="payrollLoading()"
+        [error]="payrollError()"
+        (retry)="loadPayroll()"
+        [pageSize]="10"
+        [hideDensity]="true"
+        emptyHeading="No payroll runs yet"
+        emptyText="Start a run to pay the team for a month; the total posts to the ledger as payroll."
+      >
+        @if (canWrite) {
+          <button
+            seButton
+            seTableToolbar
+            variant="primary"
+            type="button"
+            (click)="openPayroll()"
+          >
+            Start payroll
+          </button>
+        }
+        <ng-template seCell="periodMonth" let-row>{{ monthLabel(row.periodMonth) }}</ng-template>
+        <ng-template seCell="paid" let-row>{{ names(row) }}</ng-template>
+        <ng-template seCell="postedAt" let-row>{{ row.postedAt | seDate }}</ng-template>
       </se-table>
 
       @if (canWrite) {
@@ -208,6 +262,97 @@ const EMPTY_ENTRY = () => ({
             }
           </ng-container>
         </se-drawer>
+
+        <se-drawer title="Start payroll" [(open)]="startingPayroll">
+          <form class="se-form" id="payroll-form" (ngSubmit)="startPayroll()">
+            <se-field
+              label="Month"
+              hint="The month being paid, not today's month."
+              [error]="payrollErrors()['periodMonth']"
+            >
+              <input seInput type="month" [(ngModel)]="payroll.periodMonth" name="periodMonth" />
+            </se-field>
+            <div class="payroll-lines">
+              <div class="payroll-lines__head">
+                <span>Staff lines</span>
+                <button seButton size="sm" type="button" (click)="addLine()">Add line</button>
+              </div>
+              @if (payrollRows().length > 0) {
+                <button seButton variant="ghost" type="button" (click)="copyLastLines()">
+                  Copy last run's lines
+                </button>
+              }
+              @for (line of payroll.lines; track $index) {
+                <div class="payroll-line">
+                  <input
+                    seInput
+                    placeholder="Staff name"
+                    [(ngModel)]="line.name"
+                    [name]="'payroll-name-' + $index"
+                  />
+                  <input
+                    seInput
+                    type="number"
+                    min="1"
+                    placeholder="Amount"
+                    [(ngModel)]="line.amount"
+                    [name]="'payroll-amount-' + $index"
+                  />
+                  @if (payroll.lines.length > 1) {
+                    <button seButton variant="ghost" type="button" (click)="removeLine($index)">
+                      Remove
+                    </button>
+                  }
+                </div>
+              }
+              <p class="payroll-lines__total">Total {{ currency.format(total()) }}</p>
+            </div>
+            <se-field
+              label="Approval"
+              [hint]="
+                payroll.approvalRequestId
+                  ? 'Requested. Management decides in the approvals queue; post the run once it is approved.'
+                  : 'Paying staff is a fund movement and needs Management approval first.'
+              "
+              [error]="payrollErrors()['approval']"
+            >
+              <input
+                seInput
+                readonly
+                [value]="
+                  payroll.approvalRequestId
+                    ? 'Request ' + payroll.approvalRequestId.slice(0, 8)
+                    : 'Not requested yet'
+                "
+                name="payrollApproval"
+              />
+            </se-field>
+          </form>
+          <ng-container seDrawerFooter>
+            <button seButton type="button" (click)="startingPayroll.set(false)">Cancel</button>
+            @if (!payroll.approvalRequestId) {
+              <button
+                seButton
+                variant="primary"
+                type="button"
+                [loading]="payrollSaving()"
+                (click)="requestPayrollApproval()"
+              >
+                Request approval
+              </button>
+            } @else {
+              <button
+                seButton
+                variant="primary"
+                type="submit"
+                form="payroll-form"
+                [loading]="payrollSaving()"
+              >
+                Post payroll
+              </button>
+            }
+          </ng-container>
+        </se-drawer>
       }
     </se-page>
   `,
@@ -288,6 +433,7 @@ export class AccountingAdminPage implements OnInit {
   ngOnInit(): void {
     this.loadReports();
     this.loadLedger();
+    this.loadPayroll();
   }
 
   private loadReports(): void {
@@ -398,6 +544,165 @@ export class AccountingAdminPage implements OnInit {
         error: (err) => {
           this.saving.set(false);
           this.errors.set({
+            approval:
+              err?.error?.message ?? 'Not approved yet. Check the approvals queue and try again.',
+          });
+        },
+      });
+  }
+
+  // ---- payroll runs ----
+  readonly payrollRows = signal<PayrollRun[]>([]);
+  readonly payrollLoading = signal(true);
+  readonly payrollError = signal('');
+  readonly startingPayroll = signal(false);
+  readonly payrollSaving = signal(false);
+  readonly payrollErrors = signal<Record<string, string>>({});
+  readonly monthLabel = monthLabel;
+  readonly names = (row: PayrollRun): string => row.lines.map((l) => l.name).join(', ');
+  payroll = EMPTY_PAYROLL();
+
+  readonly payrollColumns: SeColumn<PayrollRun>[] = [
+    { key: 'periodMonth', header: 'Month', sortable: true, value: (r) => r.periodMonth },
+    { key: 'paid', header: 'Paid' },
+    {
+      key: 'staff',
+      header: 'Staff',
+      numeric: true,
+      value: (r) => r.lines.length,
+    },
+    {
+      key: 'totalAmount',
+      header: 'Total',
+      numeric: true,
+      sortable: true,
+      value: (r) => Number(r.totalAmount) || 0,
+      format: (v) => this.currency.format(v as number),
+    },
+    { key: 'status', header: 'Status', value: (r) => typeLabel(r.status) },
+    { key: 'postedAt', header: 'Posted', value: (r) => r.postedAt ?? '' },
+  ];
+
+  loadPayroll(): void {
+    this.api.payrollRuns().subscribe({
+      next: (res) => {
+        this.payrollRows.set(res.data);
+        this.payrollLoading.set(false);
+        this.payrollError.set('');
+      },
+      error: (err) => {
+        this.payrollLoading.set(false);
+        // A failed refresh must not wipe a list that is already on screen.
+        if (this.payrollRows().length === 0) {
+          this.payrollError.set(
+            err?.error?.message ?? 'The server did not respond. Nothing has been changed.',
+          );
+        }
+      },
+    });
+  }
+
+  readonly total = computed(() =>
+    this.payroll.lines.reduce((sum, l) => sum + (Number(l.amount) || 0), 0),
+  );
+
+  openPayroll(): void {
+    this.payroll = EMPTY_PAYROLL();
+    this.payrollErrors.set({});
+    this.startingPayroll.set(true);
+  }
+
+  addLine(): void {
+    this.payroll.lines.push({ name: '', amount: null });
+  }
+
+  removeLine(index: number): void {
+    this.payroll.lines.splice(index, 1);
+  }
+
+  /** Last month's lines as the starting point for this month's run. */
+  copyLastLines(): void {
+    const last = this.payrollRows()[0];
+    if (!last) return;
+    this.payroll.lines = last.lines.map((l) => ({ name: l.name, amount: l.amount }));
+  }
+
+  private validatePayroll(): boolean {
+    const errors: Record<string, string> = {};
+    if (!/^\d{4}-\d{2}$/.test(this.payroll.periodMonth)) {
+      errors['periodMonth'] = 'Pick the month being paid.';
+    }
+    if (this.payroll.lines.length === 0) {
+      errors['periodMonth'] = errors['periodMonth'] ?? 'Add at least one staff line.';
+    }
+    for (const line of this.payroll.lines) {
+      if (!line.name.trim()) errors['periodMonth'] = 'Give every line a staff name.';
+      if (!line.amount || Number(line.amount) <= 0) {
+        errors['periodMonth'] = 'Give every line an amount.';
+      }
+    }
+    this.payrollErrors.set(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  /** Asking for approval changes nothing yet, so no dialog. */
+  requestPayrollApproval(): void {
+    if (!this.validatePayroll()) return;
+    this.payrollSaving.set(true);
+    this.api
+      .createApproval('fund_movement', {
+        type: 'payroll',
+        amount: this.total(),
+        category: `payroll ${this.payroll.periodMonth}`,
+        periodMonth: this.payroll.periodMonth,
+      })
+      .subscribe({
+        next: (r) => {
+          this.payrollSaving.set(false);
+          this.payroll.approvalRequestId = r.id;
+          this.toast.show('Approval requested. Management decides in the approvals queue.');
+        },
+        error: (err) => {
+          this.payrollSaving.set(false);
+          this.payrollErrors.set({
+            approval: err?.error?.message ?? 'The approval could not be requested.',
+          });
+        },
+      });
+  }
+
+  /** Posting payroll moves money on the books, so it is confirmed. */
+  async startPayroll(): Promise<void> {
+    if (!this.validatePayroll()) return;
+    const amount = this.currency.format(this.total());
+    const ok = await this.confirm.ask({
+      title: `Post payroll for ${monthLabel(this.payroll.periodMonth)}?`,
+      consequence: `A payroll ledger entry of ${amount} is recorded against approval ${this.payroll.approvalRequestId.slice(0, 8)} and changes the profit report. It is audited and cannot be deleted.`,
+      confirmLabel: 'Post payroll',
+    });
+    if (!ok) return;
+    this.payrollSaving.set(true);
+    this.api
+      .createPayrollRun({
+        periodMonth: this.payroll.periodMonth,
+        approvalRequestId: this.payroll.approvalRequestId,
+        lines: this.payroll.lines.map((l) => ({
+          name: l.name.trim(),
+          amount: Number(l.amount),
+        })),
+      })
+      .subscribe({
+        next: () => {
+          this.payrollSaving.set(false);
+          this.startingPayroll.set(false);
+          this.toast.show(`Payroll for ${monthLabel(this.payroll.periodMonth)} posted`);
+          this.loadPayroll();
+          this.loadReports();
+          this.loadLedger();
+        },
+        error: (err) => {
+          this.payrollSaving.set(false);
+          this.payrollErrors.set({
             approval:
               err?.error?.message ?? 'Not approved yet. Check the approvals queue and try again.',
           });

@@ -26,9 +26,13 @@ describe('AccountingAdminPage', () => {
       'report',
       'createApproval',
       'recordLedgerEntry',
+      'payrollRuns',
+      'createPayrollRun',
     ]);
     api.ledger.and.returnValue(ledger as never);
     api.report.and.returnValue(of({ total: 1000, profit: 500, loss: 0 }) as never);
+    api.payrollRuns.and.returnValue(of({ data: [], total: 0 }) as never);
+    api.createPayrollRun.and.returnValue(of({}) as never);
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: ApiService, useValue: api }],
     });
@@ -104,5 +108,64 @@ describe('AccountingAdminPage', () => {
     mount(of({ data: [entry], total: 1 }), 'view');
     expect(el().textContent).not.toContain('Record entry');
     expect(el().textContent).toContain('Export CSV');
+    expect(el().textContent).not.toContain('Start payroll');
+  });
+
+  it('lists payroll runs with the month label, staff and total', () => {
+    mount(of({ data: [], total: 0 }));
+    api.payrollRuns.and.returnValue(
+      of({
+        data: [
+          {
+            id: 'r1',
+            periodMonth: '2026-10',
+            lines: [
+              { name: 'Ngozi Adichie', amount: 90000 },
+              { name: 'Tunde Bakare', amount: 60000 },
+            ],
+            totalAmount: 150000,
+            status: 'posted',
+            approvalRequestId: 'apr-1',
+            ledgerEntryId: 'e1',
+            postedAt: '2026-10-31',
+          },
+        ],
+        total: 1,
+      }) as never,
+    );
+    fixture.componentInstance.loadPayroll();
+    fixture.detectChanges();
+    const tables = [...el().querySelectorAll('se-table')];
+    const payroll = tables.find((t) => t.textContent!.includes('Payroll runs'))!;
+    expect(payroll.textContent).toContain('Oct 2026');
+    expect(payroll.textContent).toContain('Ngozi Adichie, Tunde Bakare');
+    expect(payroll.textContent).toContain('2');
+    expect(payroll.textContent).toContain('Posted');
+  });
+
+  it('posts a payroll run and reloads the page data', async () => {
+    mount(of({ data: [], total: 0 }));
+    const page = fixture.componentInstance;
+    page.payroll = {
+      periodMonth: '2026-10',
+      approvalRequestId: 'apr-9',
+      lines: [
+        { name: 'Ngozi Adichie', amount: 90000 },
+        { name: 'Tunde Bakare', amount: 60000 },
+      ],
+    };
+    spyOn(TestBed.inject(SeConfirmService), 'ask').and.resolveTo(true);
+    await page.startPayroll();
+
+    expect(api.createPayrollRun).toHaveBeenCalledWith({
+      periodMonth: '2026-10',
+      approvalRequestId: 'apr-9',
+      lines: [
+        { name: 'Ngozi Adichie', amount: 90000 },
+        { name: 'Tunde Bakare', amount: 60000 },
+      ],
+    });
+    expect(api.payrollRuns).toHaveBeenCalledTimes(2);
+    expect(api.report).toHaveBeenCalledTimes(10);
   });
 });
