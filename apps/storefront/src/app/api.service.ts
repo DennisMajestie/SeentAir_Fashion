@@ -509,6 +509,31 @@ export class ApiService {
     );
   }
 
+  /** Loyalty balance and recent point movements for the signed-in shopper. */
+  loyaltyWallet(): Observable<{
+    points: number;
+    lifetimePoints: number;
+    history: Array<{
+      id: string;
+      points: number;
+      reason: string;
+      note: string;
+      createdAt: string;
+    }>;
+  }> {
+    return this.http.get<{
+      points: number;
+      lifetimePoints: number;
+      history: Array<{
+        id: string;
+        points: number;
+        reason: string;
+        note: string;
+        createdAt: string;
+      }>;
+    }>(`${API_BASE}/loyalty/mine`);
+  }
+
   verifyEmail(token: string): Observable<{ message: string; ordersClaimed: number }> {
     return this.http.post<{ message: string; ordersClaimed: number }>(
       `${API_BASE}/auth/verify-email`,

@@ -40,6 +40,12 @@ interface RoiRow {
   roi: number | null;
 }
 
+interface LoyaltyRow {
+  customerId: string;
+  points: number;
+  lifetimePoints: number;
+}
+
 const EMPTY_CAMPAIGN = () => ({
   name: '',
   type: 'campaign',
@@ -134,6 +140,44 @@ const EMPTY_CAMPAIGN = () => ({
         </ng-template>
       </se-table>
 
+      <div class="se-metric-grid" aria-label="Loyalty program">
+        <se-metric-card
+          label="Loyalty points outstanding"
+          [value]="totalLoyaltyPoints()"
+          hint="Across all shoppers"
+        />
+        <se-metric-card
+          label="Loyalty members"
+          [value]="loyaltyAccounts().length"
+          hint="Shoppers with a balance"
+        />
+      </div>
+
+      @if (loyaltyAccounts().length > 0) {
+        <se-table
+          caption="Loyalty balances"
+          [columns]="loyaltyColumns"
+          [rows]="loyaltyAccounts()"
+          emptyHeading="No loyalty balances yet"
+          emptyText="Points appear here once a shopper pays for an order."
+        />
+      }
+
+      @if (canWrite) {
+        <form class="se-form" (ngSubmit)="adjustLoyalty()">
+          <se-field label="Customer ID" [error]="loyaltyErrors()['customerId']">
+            <input seInput [(ngModel)]="loyaltyForm.customerId" name="loyaltyCustomer" />
+          </se-field>
+          <se-field label="Points" [error]="loyaltyErrors()['points']">
+            <input seInput type="number" [(ngModel)]="loyaltyForm.points" name="loyaltyPoints" />
+          </se-field>
+          <se-field label="Note" [error]="loyaltyErrors()['note']">
+            <input seInput [(ngModel)]="loyaltyForm.note" name="loyaltyNote" />
+          </se-field>
+          <button seButton type="submit">Adjust points</button>
+        </form>
+      }
+
       @if (canWrite) {
         <se-drawer title="Add campaign" [(open)]="adding">
           <form class="se-form" id="campaign-form" (ngSubmit)="create()">
@@ -210,6 +254,11 @@ export class MarketingAdminPage implements OnInit {
     spend: 0,
     roi: null,
   });
+  readonly loyaltyAccounts = signal<LoyaltyRow[]>([]);
+  readonly totalLoyaltyPoints = () =>
+    this.loyaltyAccounts().reduce((sum, a) => sum + a.points, 0);
+  loyaltyForm = { customerId: '', points: 0, note: '' };
+  readonly loyaltyErrors = signal<Record<string, string>>({});
   /** True only until the first answer arrives. */
   readonly loading = signal(true);
   readonly error = signal('');
@@ -267,6 +316,39 @@ export class MarketingAdminPage implements OnInit {
     { key: 'run', header: 'Status', value: (c) => campaignRun(c) },
   ];
 
+  readonly loyaltyColumns: SeColumn<LoyaltyRow>[] = [
+    { key: 'customerId', header: 'Customer' },
+    { key: 'points', header: 'Points', numeric: true },
+    { key: 'lifetimePoints', header: 'Lifetime points', numeric: true },
+  ];
+
+  adjustLoyalty(): void {
+    const f = this.loyaltyForm;
+    const errors: Record<string, string> = {};
+    if (!f.customerId.trim()) errors['customerId'] = 'Enter the shopper ID.';
+    if (!Number.isInteger(Number(f.points)) || Number(f.points) === 0) {
+      errors['points'] = 'Enter a non-zero whole number of points.';
+    }
+    if (!f.note.trim()) errors['note'] = 'Say why the balance is changing.';
+    this.loyaltyErrors.set(errors);
+    if (Object.keys(errors).length > 0) return;
+    this.api.adjustLoyalty(f.customerId.trim(), Number(f.points), f.note.trim()).subscribe({
+      next: () => {
+        this.toast.show(`Adjusted loyalty points for ${f.customerId.trim()}`);
+        this.loyaltyForm = { customerId: '', points: 0, note: '' };
+        this.loadLoyalty();
+      },
+      error: (err) => this.toast.show(err?.error?.message ?? 'Could not adjust points.'),
+    });
+  }
+
+  private loadLoyalty(): void {
+    this.api.loyaltyAccounts().subscribe({
+      next: (accounts) => this.loyaltyAccounts.set(accounts),
+      error: () => undefined,
+    });
+  }
+
   runBadge(c: CampaignRow) {
     return CAMPAIGN_RUN_BADGE[campaignRun(c)];
   }
@@ -308,6 +390,7 @@ export class MarketingAdminPage implements OnInit {
       },
       error: () => undefined,
     });
+    this.loadLoyalty();
   }
 
   openAdd(): void {

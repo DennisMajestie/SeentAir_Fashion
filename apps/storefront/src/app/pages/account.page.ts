@@ -130,6 +130,27 @@ import { ChatService } from '../chat.service';
           }
         }
       </section>
+
+      <section class="loyalty-panel" aria-labelledby="loyalty-title">
+        <header class="loyalty-heading">
+          <h2 id="loyalty-title">Loyalty points</h2>
+          <p class="loyalty-balance">{{ loyalty().points }} points available</p>
+        </header>
+        <p class="loyalty-lifetime">{{ loyalty().lifetimePoints }} earned all time</p>
+        @if (loyalty().history.length > 0) {
+          <ul class="loyalty-history">
+            @for (entry of loyalty().history; track entry.id) {
+              <li>
+                <span>{{ entry.reason === 'order_paid' ? 'Paid order' : 'Adjustment' }}</span>
+                <span>{{ entry.note }}</span>
+                <b>{{ entry.points > 0 ? '+' : '' }}{{ entry.points }}</b>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="muted">Earn points on every paid order.</p>
+        }
+      </section>
     }
   `,
   styles: [
@@ -139,10 +160,35 @@ import { ChatService } from '../chat.service';
       }
 
       .saved-page,
-      .account-details {
+      .account-details,
+      .loyalty-panel {
         width: min(1120px, 100%);
         margin-inline: auto;
         padding-bottom: 3rem;
+      }
+
+      .loyalty-panel {
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        padding-top: 1.5rem;
+      }
+
+      .loyalty-balance {
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
+
+      .loyalty-history {
+        list-style: none;
+        margin: 1rem 0 0;
+        padding: 0;
+      }
+
+      .loyalty-history li {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
       }
 
       .saved-heading {
@@ -396,11 +442,26 @@ export class AccountPage implements OnInit {
   readonly notifications = signal<
     Array<{ id: string; type: string; message: string; sentAt: string }>
   >([]);
+  readonly loyalty = signal<{
+    points: number;
+    lifetimePoints: number;
+    history: Array<{
+      id: string;
+      points: number;
+      reason: string;
+      note: string;
+      createdAt: string;
+    }>;
+  }>({ points: 0, lifetimePoints: 0, history: [] });
 
   ngOnInit(): void {
     if (this.api.isLoggedIn) {
       this.loadOrders();
       this.chat.refresh();
+      this.api.loyaltyWallet().subscribe({
+        next: (wallet) => this.loyalty.set(wallet),
+        error: () => undefined,
+      });
     }
     if (this.api.isLoggedIn) {
       this.wishlistLoading.set(true);
@@ -433,6 +494,7 @@ export class AccountPage implements OnInit {
     this.orders.set([]);
     this.notifications.set([]);
     this.wishlistItems.set([]);
+    this.loyalty.set({ points: 0, lifetimePoints: 0, history: [] });
     this.chat.dismissPanel();
   }
 

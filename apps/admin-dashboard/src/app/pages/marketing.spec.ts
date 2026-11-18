@@ -37,18 +37,27 @@ describe('MarketingAdminPage', () => {
     api = jasmine.createSpyObj<ApiService>('ApiService', [
       'campaigns',
       'createCampaign',
-      'dashboard',
-      'campaignRoi',
-    ]);
+      'dashboard',
+      'campaignRoi',
+      'loyaltyAccounts',
+      'adjustLoyalty',
+    ]);
     api.campaigns.and.returnValue(campaigns as never);
     api.dashboard.and.returnValue(
       of({
         marketingSourcePerformance: [{ source: 'instagram', orders: 12, revenue: 90000 }],
       }) as never,
     );
-    api.campaignRoi.and.returnValue(
-      of({ campaigns: [], attributedRevenue: 0, spend: 0, roi: null }) as never,
-    );
+    api.campaignRoi.and.returnValue(
+      of({ campaigns: [], attributedRevenue: 0, spend: 0, roi: null }) as never,
+    );
+    api.loyaltyAccounts.and.returnValue(
+      of([
+        { customerId: 'u1', points: 24, lifetimePoints: 64 },
+        { customerId: 'u2', points: 8, lifetimePoints: 8 },
+      ]) as never,
+    );
+    api.adjustLoyalty.and.returnValue(of({}) as never);
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: ApiService, useValue: api }],
     });
@@ -156,6 +165,21 @@ describe('MarketingAdminPage', () => {
     expect(api.createCampaign).toHaveBeenCalledWith(
       jasmine.objectContaining({ name: 'Boost', spend: 25000 }),
     );
+  });
+
+  it('shows loyalty balances and sends manual adjustments with a reason', () => {
+    mount(of([]));
+    expect(el().textContent).toContain('Loyalty points outstanding');
+    expect(el().textContent).toContain('32');
+    expect(el().textContent).toContain('Loyalty members');
+
+    const page = fixture.componentInstance;
+    page.loyaltyForm.customerId = 'u1';
+    page.loyaltyForm.points = -4;
+    page.loyaltyForm.note = 'Goodwill';
+    page.adjustLoyalty();
+
+    expect(api.adjustLoyalty).toHaveBeenCalledWith('u1', -4, 'Goodwill');
   });
 
   it('offers no add button to a role without full marketing access', () => {

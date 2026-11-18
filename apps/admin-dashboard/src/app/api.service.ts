@@ -1125,6 +1125,17 @@ endProductSale(id: string): Observable<unknown> {
     }>(`${API_BASE}/campaigns/roi`);
   }
 
+  loyaltyAccounts(): Observable<
+    Array<{ customerId: string; points: number; lifetimePoints: number }>
+  > {
+    return this.http.get<Array<{ customerId: string; points: number; lifetimePoints: number }>>(
+      `${API_BASE}/loyalty/accounts`,
+    );
+  }
+  adjustLoyalty(customerId: string, points: number, note: string): Observable<unknown> {
+    return this.http.post(`${API_BASE}/loyalty/adjust`, { customerId, points, note });
+  }
+
   // --- Tech packs (make-ready specs with revision history) ---
   techPacks(): Observable<Array<Record<string, unknown>>> {
     return this.http.get<Array<Record<string, unknown>>>(`${API_BASE}/tech-packs?limit=100`);

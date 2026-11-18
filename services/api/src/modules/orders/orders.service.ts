@@ -16,6 +16,7 @@ import { matchState } from '../checkout-shipping/nigerian-states';
 import { QuoteVerificationService } from '../checkout-shipping/quote-verification.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { CouponType } from '../coupons/entities/coupon.entity';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { computeTotals } from './order-totals';
 import { AuthenticatedUser } from '../../common/interfaces';
@@ -302,6 +303,7 @@ export class OrdersService {
     private readonly platformSettings: PlatformSettingsService,
     private readonly quoteVerification: QuoteVerificationService,
     private readonly coupons: CouponsService,
+    private readonly loyalty: LoyaltyService,
     private readonly inventoryService: InventoryService,
     private readonly permissionsService: PermissionsService,
     private readonly usersService: UsersService,
@@ -1507,6 +1509,7 @@ export class OrdersService {
     // the payment itself: a confirmed payment must never leave a reservation
     // hanging, and an abandoned reservation must never outlive the payment.
     await this.coupons.confirm(manager, orderId);
+    await this.loyalty.awardForPaidOrder(manager, order);
     const actorId = recordedBy ?? order.customer?.id ?? null;
     // Lock every line's item up front, in the ledger's sorted order, so two
     // multi-line orders sharing items cannot deadlock (see InventoryService.lockItems).

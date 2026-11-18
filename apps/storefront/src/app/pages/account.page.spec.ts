@@ -22,6 +22,7 @@ describe('AccountPage favourites', () => {
       notifications: () => of({ data: [] }),
       myThreads: () => of([]),
       wishlist: () => of([]),
+      loyaltyWallet: () => of({ points: 0, lifetimePoints: 0, history: [] }),
       ...overrides,
     }) as unknown as ApiService;
 
@@ -111,6 +112,31 @@ describe('AccountPage favourites', () => {
 
     expect(element.textContent).toContain('Harmattan Hoodie');
     expect(element.textContent).not.toContain('Local Jacket');
+  });
+
+  it('shows the shopper loyalty balance and recent point movements', () => {
+    setUp({
+      isLoggedIn: true,
+      loyaltyWallet: () =>
+        of({
+          points: 24,
+          lifetimePoints: 64,
+          history: [
+            {
+              id: 'e1',
+              points: 24,
+              reason: 'order_paid',
+              note: 'Paid order',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        }),
+    });
+
+    expect(element.textContent).toContain('Loyalty points');
+    expect(element.textContent).toContain('24 points available');
+    expect(element.textContent).toContain('64 earned all time');
+    expect(element.textContent).toContain('Paid order');
   });
 
   it('links saved items to their product pages', () => {
