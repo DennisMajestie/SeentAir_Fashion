@@ -10,7 +10,18 @@ export class UpdateLoyaltyReasons1792000000300 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      ALTER TYPE "loyalty_entries_reason_enum" RENAME VALUE 'order_paid' TO 'order_delivered'
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM pg_enum e
+          JOIN pg_type t ON t.oid = e.enumtypid
+          WHERE t.typname = 'loyalty_entries_reason_enum'
+            AND e.enumlabel = 'order_paid'
+        ) THEN
+          ALTER TYPE "loyalty_entries_reason_enum"
+            RENAME VALUE 'order_paid' TO 'order_delivered';
+        END IF;
+      END $$;
     `);
     await queryRunner.query(`
       ALTER TYPE "loyalty_entries_reason_enum" ADD VALUE IF NOT EXISTS 'return_reversal' BEFORE 'admin_adjust'
@@ -22,7 +33,18 @@ export class UpdateLoyaltyReasons1792000000300 implements MigrationInterface {
       DELETE FROM "loyalty_entries" WHERE "reason" = 'return_reversal'
     `);
     await queryRunner.query(`
-      ALTER TYPE "loyalty_entries_reason_enum" RENAME VALUE 'order_delivered' TO 'order_paid'
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM pg_enum e
+          JOIN pg_type t ON t.oid = e.enumtypid
+          WHERE t.typname = 'loyalty_entries_reason_enum'
+            AND e.enumlabel = 'order_delivered'
+        ) THEN
+          ALTER TYPE "loyalty_entries_reason_enum"
+            RENAME VALUE 'order_delivered' TO 'order_paid';
+        END IF;
+      END $$;
     `);
   }
 }

@@ -4,6 +4,7 @@
  *   SMOKE_API_BASE=https://host/api/v1 \
  *   SMOKE_ADMIN_EMAIL=... SMOKE_ADMIN_PASSWORD=... \
  *   SMOKE_VARIANT_ID=<uuid of an in-stock variant> \
+ *   SMOKE_CUSTOMER_ID=<uuid of a seeded customer, for the return leg> \
  *   SMOKE_CUSTOMER_EMAIL=... SMOKE_CUSTOMER_PASSWORD=... \
  *   SMOKE_RUN_WHOLESALE=true \
  *   npm run test:smoke
@@ -60,16 +61,26 @@ async function retailFlow(admin) {
       items: [{ variantId: VARIANT_ID, quantity: 1 }],
       channel: 'retail',
       source: 'smoke',
+      ...(process.env.SMOKE_CUSTOMER_ID
+        ? { customerId: process.env.SMOKE_CUSTOMER_ID }
+        : {}),
+      shippingAddress: {
+        state: 'Lagos',
+        city: 'Lagos',
+        line: '1 Smoke Street',
+        phone: '+2348000000000',
+      },
     },
   });
   check(order?.id, 'order was not created');
 
-  const paid = await api(`/orders/${order.id}/payment`, {
+  await api(`/orders/${order.id}/payment`, {
     method: 'POST',
     token: admin,
     body: { method: 'bank_transfer', amount: order.totalAmount },
   });
-  check(paid?.paymentStatus === 'paid', 'payment did not mark the order paid');
+  const paidOrder = await api(`/orders/${order.id}`, { token: admin });
+  check(paidOrder?.paymentStatus === 'paid', 'payment did not mark the order paid');
 
   for (const status of ['processing', 'shipped', 'delivered']) {
     await api(`/orders/${order.id}/status`, {
