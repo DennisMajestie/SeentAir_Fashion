@@ -10,6 +10,7 @@
     "lint": "eslint \"src/**/*.ts\"",
     "test": "jest",
     "test:e2e": "jest --config test/jest-e2e.json",
+    "test:smoke": "node scripts/smoke-e2e.js",
     "typeorm": "node scripts/run-cli.js --register ts-node/register typeorm/cli.js -d src/database/data-source.ts",
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
