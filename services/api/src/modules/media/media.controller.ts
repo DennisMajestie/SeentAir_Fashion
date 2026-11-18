@@ -64,7 +64,6 @@ export class MediaController {
       throw new BadRequestException('No file was uploaded');
     }
     const fileBuffer = fs.readFileSync(file.path);
-    const ext = path.extname(file.originalname).toLowerCase();
     const key = `products/${path.basename(file.path)}`;
     const url = await this.media.uploadFile(key, fileBuffer, file.mimetype);
     // Clean up temp file

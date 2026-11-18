@@ -2,7 +2,6 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
-  Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, EntityManager, IsNull } from 'typeorm';
@@ -65,10 +64,10 @@ function makeHarness(
   const txRefreshTokenRepo = {
     update: jest.fn(async () => ({ affected: 1 })),
   };
-  const txUserRepo = { findOne: jest.fn(async (params: any) => {
+  const txUserRepo = { findOne: jest.fn(async (params: { where?: { id?: string } }) => {
       if (params.where?.id === 'user-id') return { id: 'user-id', name: 'Test User', role: RoleName.SALES, status: UserStatus.DISABLED };
       return null;
-    }), createQueryBuilder: jest.fn(() => builder), save: jest.fn(async (u: any) => u) };
+    }), createQueryBuilder: jest.fn(() => builder), save: jest.fn(async (u: unknown) => u) };
   const manager = {
     query: jest.fn(async () => undefined),
     getRepository: jest.fn((entity: unknown) => {

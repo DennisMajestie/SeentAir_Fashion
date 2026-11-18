@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import gsap from 'gsap';
+import { downloadCsv } from '../csv.util';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import {
@@ -75,6 +76,7 @@ interface ProfitRow {
   costOfUnitsSold: number | null;
   margin: number | null;
   marginPct: number | null;
+  costBasis: 'recorded' | 'estimated' | 'unknown';
 }
 
 function sellerImagesBySku(products: Array<Record<string, unknown>>): Record<string, string> {
@@ -916,11 +918,42 @@ const GAUGE_TICKS = 84;
                   <h2>Product profitability</h2>
                   <p class="sd-card__sub">Revenue minus recorded production cost</p>
                 </div>
-                <a class="sd-card__link" routerLink="/accounting">Books</a>
+                <button seButton type="button" (click)="exportProfitability()">Export CSV</button>
+              </div>
+              <div class="sd-seg" role="group" aria-label="Profitability range">
+                <label>
+                  From
+                  <input
+                    seInput
+                    type="date"
+                    [(ngModel)]="profitFrom"
+                    (ngModelChange)="loadProfitability()"
+                    name="profitFrom"
+                  />
+                </label>
+                <label>
+                  To
+                  <input
+                    seInput
+                    type="date"
+                    [(ngModel)]="profitTo"
+                    (ngModelChange)="loadProfitability()"
+                    name="profitTo"
+                  />
+                </label>
+                <select
+                  seInput
+                  aria-label="Sort profitability"
+                  [(ngModel)]="profitSort"
+                  name="profitSort"
+                >
+                  <option value="margin">Margin</option>
+                  <option value="revenue">Revenue</option>
+                </select>
               </div>
               @if (profitability().length > 0) {
                 <div class="sd-rows">
-                  @for (p of profitability(); track p.productId) {
+                  @for (p of sortedProfitability(); track p.productId) {
                     <div class="sd-row">
                       <span class="sd-row__tx">
                         <b>{{ p.productName }}</b>
@@ -931,7 +964,10 @@ const GAUGE_TICKS = 84;
                         @if (p.margin !== null) {
                           <small>{{ p.marginPct }}% margin</small>
                         } @else {
-                          <small>No cost recorded</small>
+                          <small>Cost unavailable</small>
+                        }
+                        @if (p.costBasis === 'estimated') {
+                          <small>Estimated cost</small>
                         }
                       </span>
                     </div>
@@ -1045,6 +1081,15 @@ export class HomePage implements OnDestroy {
   readonly sellerImages = signal<Record<string, string>>({});
   readonly profitability = signal<ProfitRow[]>([]);
   readonly profitCosted = signal(false);
+  readonly sortedProfitability = computed(() => {
+    const rows = [...this.profitability()];
+    return this.profitSort === 'revenue'
+      ? rows.sort((a, b) => b.revenue - a.revenue)
+      : rows.sort((a, b) => (b.margin ?? -Infinity) - (a.margin ?? -Infinity));
+  });
+  profitFrom = '';
+  profitTo = '';
+  profitSort: 'margin' | 'revenue' = 'margin';
 
   // ---- what this role sees: decided once from its access ----
   /** Sales and profit are money: shown to roles that can see payments or the books. */
@@ -1209,6 +1254,32 @@ export class HomePage implements OnDestroy {
     });
   }
 
+  /** Profitability is a separate query so its date range can be changed alone. */
+  loadProfitability(): void {
+    this.api
+      .productProfitability(8, this.profitFrom || undefined, this.profitTo || undefined)
+      .subscribe({
+        next: (r) => {
+          this.profitability.set(r.products);
+          this.profitCosted.set(r.withRecordedCost);
+        },
+        error: () => undefined,
+      });
+  }
+
+  exportProfitability(): void {
+    downloadCsv(`sceentair-product-profitability-${new Date().toISOString().slice(0, 10)}.csv`,
+      this.sortedProfitability().map((p) => ({
+        Product: p.productName,
+        'Units sold': p.unitsSold,
+        Revenue: p.revenue,
+        'Cost of units sold': p.costOfUnitsSold ?? '',
+        Margin: p.margin ?? '',
+        'Margin %': p.marginPct ?? '',
+        'Cost basis': p.costBasis,
+      })));
+  }
+
   /** Everything beyond the summary, each asked for only if the role may see it. */
   private loadSupporting(): void {
     const quiet = { error: () => undefined };
@@ -1217,13 +1288,7 @@ export class HomePage implements OnDestroy {
       this.api.bestSellers('best').subscribe({ next: (b) => this.bestSellers.set(b), ...quiet });
       this.api.bestSellers('slow').subscribe({ next: (b) => this.slowMovers.set(b), ...quiet });
       if (this.seesMoney()) {
-        this.api.productProfitability().subscribe({
-          next: (r) => {
-            this.profitability.set(r.products);
-            this.profitCosted.set(r.withRecordedCost);
-          },
-          ...quiet,
-        });
+        this.loadProfitability();
       }
     }
     if (this.seesApprovals()) {

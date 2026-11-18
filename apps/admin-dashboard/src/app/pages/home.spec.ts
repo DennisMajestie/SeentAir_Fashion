@@ -201,6 +201,7 @@ describe('HomePage', () => {
               costOfUnitsSold: 37500,
               margin: 82500,
               marginPct: 68.8,
+              costBasis: 'recorded',
             },
             {
               productId: 'p2',
@@ -210,6 +211,7 @@ describe('HomePage', () => {
               costOfUnitsSold: null,
               margin: null,
               marginPct: null,
+              costBasis: 'unknown',
             },
           ],
           withRecordedCost: false,
@@ -226,7 +228,7 @@ describe('HomePage', () => {
       expect(profitText).toContain('Black Tee');
       expect(profitText).toContain('68.8% margin');
       expect(profitText).toContain('Hoodie');
-      expect(profitText).toContain('No cost recorded');
+      expect(profitText).toContain('Cost unavailable');
       expect(profitText).toContain('Margins show once batch costs are recorded.');
     });
 

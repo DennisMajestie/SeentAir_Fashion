@@ -8,9 +8,7 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CustomersService } from './customers.service';
-import { CustomerAggregate } from './dto/customer-aggregate.dto';
 
 @ApiTags('Customers')
 @ApiBearerAuth()

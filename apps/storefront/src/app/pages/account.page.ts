@@ -141,14 +141,20 @@ import { ChatService } from '../chat.service';
           <ul class="loyalty-history">
             @for (entry of loyalty().history; track entry.id) {
               <li>
-                <span>{{ entry.reason === 'order_paid' ? 'Paid order' : 'Adjustment' }}</span>
+                <span>{{
+                entry.reason === 'order_delivered'
+                  ? 'Delivered order'
+                  : entry.reason === 'return_reversal'
+                    ? 'Return reversed'
+                    : 'Adjustment'
+              }}</span>
                 <span>{{ entry.note }}</span>
                 <b>{{ entry.points > 0 ? '+' : '' }}{{ entry.points }}</b>
               </li>
             }
           </ul>
         } @else {
-          <p class="muted">Earn points on every paid order.</p>
+          <p class="muted">Earn points when your order is delivered.</p>
         }
       </section>
     }

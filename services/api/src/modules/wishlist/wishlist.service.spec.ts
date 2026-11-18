@@ -100,7 +100,7 @@ describe('WishlistService.merge', () => {
   });
 
   it('collapses a list that repeats the same product locally', async () => {
-    const { service, itemRepo } = harness([uuid('a')]);
+    const { service } = harness([uuid('a')]);
 
     const out = await service.merge('u1', [uuid('a'), uuid('a'), uuid('a')]);
 

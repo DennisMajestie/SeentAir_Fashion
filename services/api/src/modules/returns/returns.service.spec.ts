@@ -6,6 +6,7 @@ import { RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { MovementType } from '../inventory/inventory-movement.entity';
 import { InventoryService } from '../inventory/inventory.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 import { Order, OrderChannel, OrderStatus } from '../orders/entities/order.entity';
 import { PermissionsService } from '../users/permissions.service';
 import { ReturnRequest, ReturnStatus } from './return-request.entity';
@@ -29,6 +30,7 @@ describe('ReturnsService', () => {
   const orderRepo = { findOne: jest.fn(async () => order), save: jest.fn(async (v) => v) };
   const eventRepoLike = { create: jest.fn((v) => v), save: jest.fn(async (v) => v) };
   const inventoryService = { record: jest.fn() };
+  const loyaltyService = { reverseForOrder: jest.fn(async () => undefined) };
   const managerRepos = new Map<string, unknown>();
   const dataSource = {
     transaction: jest.fn(async (fn: (m: unknown) => Promise<unknown>) =>
@@ -67,6 +69,7 @@ describe('ReturnsService', () => {
         { provide: getRepositoryToken(ReturnRequest), useValue: returnRepo },
         { provide: getRepositoryToken(Order), useValue: orderRepo },
         { provide: InventoryService, useValue: inventoryService },
+        { provide: LoyaltyService, useValue: loyaltyService },
         { provide: PermissionsService, useValue: { getAccessLevel: jest.fn() } },
         { provide: ConfigService, useValue: config },
         { provide: getDataSourceToken(), useValue: dataSource },

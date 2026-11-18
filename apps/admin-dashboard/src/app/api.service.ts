@@ -158,6 +158,7 @@ export interface ProductProfitability {
     costOfUnitsSold: number | null;
     margin: number | null;
     marginPct: number | null;
+    costBasis: 'recorded' | 'estimated' | 'unknown';
   }>;
   withRecordedCost: boolean;
 }
@@ -396,9 +397,12 @@ export class ApiService {
     >(`${API_BASE}/analytics/best-sellers?limit=${limit}&direction=${direction}`);
   }
 
-  productProfitability(limit = 8): Observable<ProductProfitability> {
+  productProfitability(limit = 8, from?: string, to?: string): Observable<ProductProfitability> {
+    const q = new URLSearchParams({ limit: String(limit) });
+    if (from) q.set('from', from);
+    if (to) q.set('to', to);
     return this.http.get<ProductProfitability>(
-      `${API_BASE}/analytics/product-profitability?limit=${limit}`,
+      `${API_BASE}/analytics/product-profitability?${q.toString()}`,
     );
   }
 

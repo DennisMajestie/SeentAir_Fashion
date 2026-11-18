@@ -1010,6 +1010,9 @@ export class OrdersService {
     order.status = status;
     if (status === OrderStatus.DELIVERED) order.deliveredAt = new Date();
     const saved = await this.orderRepo.save(order);
+    if (status === OrderStatus.DELIVERED) {
+      await this.loyalty.awardForDeliveredOrder(this.orderRepo.manager, saved);
+    }
     await this.eventRepo.save(
       this.eventRepo.create({
         order: saved,
@@ -1509,7 +1512,6 @@ export class OrdersService {
     // the payment itself: a confirmed payment must never leave a reservation
     // hanging, and an abandoned reservation must never outlive the payment.
     await this.coupons.confirm(manager, orderId);
-    await this.loyalty.awardForPaidOrder(manager, order);
     const actorId = recordedBy ?? order.customer?.id ?? null;
     // Lock every line's item up front, in the ledger's sorted order, so two
     // multi-line orders sharing items cannot deadlock (see InventoryService.lockItems).

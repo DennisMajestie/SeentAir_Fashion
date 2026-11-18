@@ -39,15 +39,15 @@ describe('LoyaltyService', () => {
     service = moduleRef.get(LoyaltyService);
   });
 
-  it('awards one point per N1,000 on a paid customer order', async () => {
-    await service.awardForPaidOrder(manager, {
+  it('awards one point per N1,000 on a delivered customer order', async () => {
+    await service.awardForDeliveredOrder(manager, {
       id: 'o1',
       totalAmount: 24500,
       customer: { id: 'u1' },
     } as never);
 
     expect(entries.findOne).toHaveBeenCalledWith({
-      where: { orderId: 'o1', reason: LoyaltyEntryReason.ORDER_PAID },
+      where: { orderId: 'o1', reason: LoyaltyEntryReason.ORDER_DELIVERED },
     });
     expect(accounts.increment).toHaveBeenCalledWith({ id: 'a1' }, 'points', 24);
     expect(accounts.increment).toHaveBeenCalledWith({ id: 'a1' }, 'lifetimePoints', 24);
@@ -59,7 +59,7 @@ describe('LoyaltyService', () => {
   it('never awards the same order twice', async () => {
     entries.findOne.mockResolvedValueOnce({ id: 'e1' });
 
-    await service.awardForPaidOrder(manager, {
+    await service.awardForDeliveredOrder(manager, {
       id: 'o1',
       totalAmount: 50000,
       customer: { id: 'u1' },
@@ -70,7 +70,7 @@ describe('LoyaltyService', () => {
   });
 
   it('does not create an account for a guest order', async () => {
-    await service.awardForPaidOrder(manager, {
+    await service.awardForDeliveredOrder(manager, {
       id: 'o2',
       totalAmount: 50000,
       customer: null,
@@ -78,5 +78,21 @@ describe('LoyaltyService', () => {
 
     expect(accounts.increment).not.toHaveBeenCalled();
     expect(entries.save).not.toHaveBeenCalled();
+  });
+
+  it('reverses the award once when an order is returned', async () => {
+    entries.findOne
+      .mockResolvedValueOnce(null as unknown)
+      .mockResolvedValueOnce({ id: 'a1', customerId: 'u1', points: 24, orderId: 'o1' } as never);
+
+    await service.reverseForOrder(manager, 'o1');
+
+    expect(accounts.increment).toHaveBeenCalledWith({ id: 'a1' }, 'points', -24);
+    expect(entries.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        points: -24,
+        reason: LoyaltyEntryReason.RETURN_REVERSAL,
+      }),
+    );
   });
 });

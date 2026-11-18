@@ -2,7 +2,8 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 
 
 /** Why a loyalty balance moved. Order awards are idempotent per order. */
 export enum LoyaltyEntryReason {
-  ORDER_PAID = 'order_paid',
+  ORDER_DELIVERED = 'order_delivered',
+  RETURN_REVERSAL = 'return_reversal',
   ADMIN_ADJUST = 'admin_adjust',
 }
 

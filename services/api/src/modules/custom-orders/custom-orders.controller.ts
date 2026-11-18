@@ -8,13 +8,11 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
-import type { Request } from 'express';
 import { randomUUID } from 'crypto';
 import { diskStorage } from 'multer';
 import type { File } from 'multer';

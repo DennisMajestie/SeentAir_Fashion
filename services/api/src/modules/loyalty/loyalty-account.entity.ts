@@ -11,8 +11,8 @@ import {
 import { User } from '../users/entities/user.entity';
 
 /**
- * A shopper's loyalty balance. Points are earned on paid orders (1 point per
- * N1,000 spent) and can be adjusted by marketing staff; every change has an
+ * A shopper's loyalty balance. Points are earned on delivered orders (1 point per
+ * N1,000 spent), reversed on return, and can be adjusted by marketing staff; every change has an
  * entry in loyalty_entries so the balance is explainable (appendix 15).
  */
 @Index('IDX_loyalty_account_customer', ['customerId'], { unique: true })

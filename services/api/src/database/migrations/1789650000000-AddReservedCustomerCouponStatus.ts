@@ -28,7 +28,7 @@ export class AddReservedCustomerCouponStatus1789650000000 implements MigrationIn
     );
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
+  public async down(_queryRunner: QueryRunner): Promise<void> {
     // Postgres cannot drop a value from an enum without rebuilding the type,
     // which needs every dependent column recreated. Rebuilding customer_coupon
     // would touch live redemption history, so this is deliberately not done.

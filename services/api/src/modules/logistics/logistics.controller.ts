@@ -4,7 +4,6 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { AddCheckpointDto } from './dto/add-checkpoint.dto';
 import { UpdateDeliveryStatusDto } from './dto/update-delivery-status.dto';

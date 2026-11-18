@@ -12,6 +12,7 @@ import { ACCESS_RANK, AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { InventoryItemType, MovementType } from '../inventory/inventory-movement.entity';
 import { InventoryService } from '../inventory/inventory.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 import { OrderStatusEvent } from '../orders/entities/order-status-event.entity';
 import { Order, OrderChannel, OrderStatus } from '../orders/entities/order.entity';
 import { PermissionsService } from '../users/permissions.service';
@@ -25,6 +26,7 @@ export class ReturnsService {
     @InjectRepository(ReturnRequest) private readonly returnRepo: Repository<ReturnRequest>,
     @InjectRepository(Order) private readonly orderRepo: Repository<Order>,
     private readonly inventoryService: InventoryService,
+    private readonly loyalty: LoyaltyService,
     private readonly permissionsService: PermissionsService,
     private readonly config: ConfigService,
     @InjectDataSource() private readonly dataSource: DataSource,
@@ -166,6 +168,7 @@ export class ReturnsService {
         const order = request.order;
         order.status = OrderStatus.RETURNED;
         await manager.getRepository(Order).save(order);
+        await this.loyalty.reverseForOrder(manager, order.id);
         await manager.getRepository(OrderStatusEvent).save(
           manager.getRepository(OrderStatusEvent).create({
             order,

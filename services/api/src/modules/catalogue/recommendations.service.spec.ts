@@ -30,7 +30,7 @@ describe('RecommendationsService', () => {
     const result = await service.forProduct('p1');
 
     expect(dataSource.query).toHaveBeenCalledTimes(1);
-    expect(dataSource.query.mock.calls[0][1]).toEqual(['p1', 4]);
+    expect(dataSource.query.mock.calls[0][1]).toEqual(['p1', 4, 2]);
     expect(result).toEqual([
       { productId: 'p2', score: 5 },
       { productId: 'p3', score: 2 },

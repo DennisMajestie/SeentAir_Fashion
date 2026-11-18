@@ -491,8 +491,14 @@ describe('AnalyticsService inventory valuation', () => {
       orderItemRepo.createQueryBuilder = jest.fn(() => revenueQb);
       productionCostRepo.createQueryBuilder = jest.fn(() => costQb);
 
-      const result = await service.productProfitability();
+      const result = await service.productProfitability(undefined, '2026-01-01', '2026-01-31');
 
+      expect(revenueQb.andWhere).toHaveBeenCalledWith('o.created_at >= :from', {
+        from: '2026-01-01',
+      });
+      expect(revenueQb.andWhere).toHaveBeenCalledWith('o.created_at < :toExclusive', {
+        toExclusive: '2026-02-01T00:00:00.000Z',
+      });
       // Hoodie sold more units... but has no recorded cost, so its margin is
       // unknown and Black Tee (margin 82500) ranks first.
       expect(result.products).toEqual([
@@ -504,6 +510,7 @@ describe('AnalyticsService inventory valuation', () => {
           costOfUnitsSold: 37500,
           margin: 82500,
           marginPct: 68.8,
+          costBasis: 'recorded',
         },
         {
           productId: 'p2',
@@ -513,6 +520,7 @@ describe('AnalyticsService inventory valuation', () => {
           costOfUnitsSold: null,
           margin: null,
           marginPct: null,
+          costBasis: 'unknown',
         },
       ]);
       expect(result.withRecordedCost).toBe(true);

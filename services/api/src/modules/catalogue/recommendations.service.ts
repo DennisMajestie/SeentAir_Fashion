@@ -1,6 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
+/** A pair needs at least this many paid orders before we call it an affinity. */
+const MIN_SUPPORT = 2;
+
 /** Purchase-based suggestions: what other shoppers bought in the same order. */
 @Injectable()
 export class RecommendationsService {
@@ -23,9 +26,14 @@ export class RecommendationsService {
            WHERE v2.product_id = $1
          )
        GROUP BY p.id
+       HAVING COUNT(*) >= $3
+         AND EXISTS (
+           SELECT 1 FROM product_variants v3
+           WHERE v3.product_id = p.id AND v3.availability_status = 'in_stock'
+         )
        ORDER BY score DESC, p.id
        LIMIT $2`,
-      [productId, limit],
+      [productId, limit, MIN_SUPPORT],
     );
     if (rows.length > 0) {
       return rows.map((r) => ({ productId: r.product_id, score: parseInt(r.score, 10) || 0 }));
@@ -40,6 +48,10 @@ export class RecommendationsService {
          AND o.status != 'cancelled'
          AND p.id != $1
        GROUP BY p.id
+       HAVING EXISTS (
+         SELECT 1 FROM product_variants v2
+         WHERE v2.product_id = p.id AND v2.availability_status = 'in_stock'
+       )
        ORDER BY score DESC, p.id
        LIMIT $2`,
       [productId, limit],

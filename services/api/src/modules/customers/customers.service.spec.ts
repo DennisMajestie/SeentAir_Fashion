@@ -5,7 +5,7 @@ import { Customer } from './entities/customer.entity';
 
 describe('CustomersService — aggregate endpoint', () => {
   let service: CustomersService;
-  let customerRepo: any;
+  let customerRepo: { findOne: jest.Mock; manager: { createQueryBuilder: jest.Mock } };
 
   const customer = {
     id: 'c1',
@@ -75,9 +75,9 @@ describe('CustomersService — aggregate endpoint', () => {
     customerRepo = {
       findOne: jest.fn(async () => customer),
       manager: { createQueryBuilder: jest.fn(() => qb) },
-    } as any;
+    };
 
-    service = new CustomersService(customerRepo as any);
+    service = new CustomersService(customerRepo as unknown as Repository<Customer>);
   });
 
   it('aggregates lifetime spend, month spend, and outstanding balance', async () => {

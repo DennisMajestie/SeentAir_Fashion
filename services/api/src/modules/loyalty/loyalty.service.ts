@@ -17,18 +17,46 @@ export class LoyaltyService {
     private readonly entryRepo: Repository<LoyaltyEntry>,
   ) {}
 
-  /** Called inside the payment transaction, just after coupons are confirmed. */
-  async awardForPaidOrder(manager: EntityManager, order: Order): Promise<void> {
+  /** Called after an order reaches DELIVERED, inside the status flow. */
+  async awardForDeliveredOrder(manager: EntityManager, order: Order): Promise<void> {
     const customerId = order.customer?.id;
     if (!customerId) return;
     const entryRepo = manager.getRepository(LoyaltyEntry);
     const already = await entryRepo.findOne({
-      where: { orderId: order.id, reason: LoyaltyEntryReason.ORDER_PAID },
+      where: { orderId: order.id, reason: LoyaltyEntryReason.ORDER_DELIVERED },
     });
     if (already) return;
     const points = Math.floor(Number(order.totalAmount ?? 0) * POINTS_PER_NAIRA);
     if (points <= 0) return;
-    await this.apply(manager, customerId, points, LoyaltyEntryReason.ORDER_PAID, order.id, 'Paid order');
+    await this.apply(
+      manager,
+      customerId,
+      points,
+      LoyaltyEntryReason.ORDER_DELIVERED,
+      order.id,
+      'Delivered order',
+    );
+  }
+
+  /** A returned order gives its points back, once (appendix 15). */
+  async reverseForOrder(manager: EntityManager, orderId: string): Promise<void> {
+    const entryRepo = manager.getRepository(LoyaltyEntry);
+    const reversal = await entryRepo.findOne({
+      where: { orderId, reason: LoyaltyEntryReason.RETURN_REVERSAL },
+    });
+    if (reversal) return;
+    const award = await entryRepo.findOne({
+      where: { orderId, reason: LoyaltyEntryReason.ORDER_DELIVERED },
+    });
+    if (!award || award.points <= 0) return;
+    await this.apply(
+      manager,
+      award.customerId,
+      -award.points,
+      LoyaltyEntryReason.RETURN_REVERSAL,
+      orderId,
+      'Returned order',
+    );
   }
 
   async wallet(customerId: string) {

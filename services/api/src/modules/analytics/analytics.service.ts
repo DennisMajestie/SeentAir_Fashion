@@ -187,13 +187,8 @@ export class AnalyticsService {
    * unit comes from completed batches with recorded costs; products without a
    * recorded cost report margin as null rather than pretending it is zero.
    */
-  async productProfitability(limit = 20) {
-    const revenueRows: Array<{
-      product_id: string;
-      product_name: string;
-      units: string;
-      revenue: string;
-    }> = await this.orderItemRepo
+  async productProfitability(limit = 20, from?: string, to?: string) {
+    const revenueQb = this.orderItemRepo
       .createQueryBuilder('item')
       .innerJoin(
         'item.order',
@@ -202,7 +197,23 @@ export class AnalyticsService {
         { paid: PaymentStatus.PAID, cancelled: OrderStatus.CANCELLED },
       )
       .innerJoin('item.variant', 'v')
-      .innerJoin('v.product', 'p')
+      .innerJoin('v.product', 'p');
+    if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) {
+      revenueQb.andWhere('o.created_at >= :from', { from });
+    }
+    if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) {
+      const nextDay = new Date(`${to}T00:00:00.000Z`);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+      revenueQb.andWhere('o.created_at < :toExclusive', {
+        toExclusive: nextDay.toISOString(),
+      });
+    }
+    const revenueRows: Array<{
+      product_id: string;
+      product_name: string;
+      units: string;
+      revenue: string;
+    }> = await revenueQb
       .select('p.id', 'product_id')
       .addSelect('p.name', 'product_name')
       .addSelect('SUM(item.quantity)', 'units')
@@ -252,6 +263,7 @@ export class AnalyticsService {
             costOfUnitsSold: null,
             margin: null,
             marginPct: null,
+            costBasis: 'unknown',
           };
         }
         const costPerUnit = recorded.cost / recorded.units;
@@ -266,6 +278,7 @@ export class AnalyticsService {
           costOfUnitsSold,
           margin,
           marginPct,
+          costBasis: 'recorded',
         };
       })
       .sort((a, b) => (b.margin ?? -Infinity) - (a.margin ?? -Infinity) || b.revenue - a.revenue)

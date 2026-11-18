@@ -125,8 +125,8 @@ describe('AccountPage favourites', () => {
             {
               id: 'e1',
               points: 24,
-              reason: 'order_paid',
-              note: 'Paid order',
+              reason: 'order_delivered',
+              note: 'Delivered order',
               createdAt: '2026-01-01T00:00:00.000Z',
             },
           ],
@@ -136,7 +136,7 @@ describe('AccountPage favourites', () => {
     expect(element.textContent).toContain('Loyalty points');
     expect(element.textContent).toContain('24 points available');
     expect(element.textContent).toContain('64 earned all time');
-    expect(element.textContent).toContain('Paid order');
+    expect(element.textContent).toContain('Delivered order');
   });
 
   it('links saved items to their product pages', () => {
