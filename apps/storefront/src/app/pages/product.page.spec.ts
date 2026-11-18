@@ -61,15 +61,39 @@ async function setup(p: Product) {
   // ngOnInit fires on first detect and issues the two requests.
   fixture.detectChanges();
 
-  http.expectOne((r) => r.url.includes('/products/p1') && !r.url.includes('reviews')).flush(p);
+  http
+    .expectOne(
+      (r) =>
+        r.url.includes('/products/p1') &&
+        !r.url.includes('reviews') &&
+        !r.url.includes('recommendations'),
+    )
+    .flush(p);
   const reviews = http.match((r) => r.url.includes('reviews'));
   reviews.forEach((r) => r.flush({ data: [], total: 0 }));
   fixture.detectChanges();
-  return { fixture, page: fixture.componentInstance as ProductPage };
+  return { fixture, page: fixture.componentInstance as ProductPage, http };
 }
 
 describe('ProductPage gallery', () => {
   afterEach(() => TestBed.resetTestingModule());
+
+  it('shows purchase-based recommendations for the product on screen', async () => {
+    const { fixture, http } = await setup(product());
+    const other = product({ id: 'p2', name: 'Matching Hoodie' });
+
+    http.expectOne((r) => r.url.includes('/products?page=1')).flush({
+      data: [product(), other],
+      total: 2,
+    });
+    http.expectOne((r) => r.url.includes('/recommendations')).flush([
+      { productId: 'p2', score: 5 },
+    ]);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Customers also bought');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Matching Hoodie');
+  });
 
   it('leads with the photo of the variant that is actually selected', async () => {
     const { page } = await setup(product());

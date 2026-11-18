@@ -371,6 +371,17 @@ interface GalleryShot {
            ones: same collection first, then anything else in stock. The exact
            card styling is still open until the second reference arrives, so
            this reuses the shop card, which is already correct and linked. -->
+      @if (boughtTogether().length > 0) {
+        <section class="p-rel">
+          <h2 class="p-rel__h">Customers also bought</h2>
+          <div class="p-rel__grid">
+            @for (r of boughtTogether(); track r.id) {
+              <app-product-card [product]="r" />
+            }
+          </div>
+        </section>
+      }
+
       @if (related().length > 0) {
         <section class="p-rel">
           <h2 class="p-rel__h">Suggested for You</h2>
@@ -602,6 +613,7 @@ export class ProductPage implements OnInit {
 
   /** "Suggested for You": real catalogue rows, never invented ones. */
   readonly related = signal<Product[]>([]);
+  readonly boughtTogether = signal<Product[]>([]);
 
   /**
    * Same collection first, then the rest of the catalogue, minus the piece on
@@ -610,13 +622,24 @@ export class ProductPage implements OnInit {
    * that does not exist.
    */
   private loadRelated(current: Product): void {
-    this.api.products(1, 50).subscribe(({ data }) => {
+    forkJoin({
+      catalogue: this.api.products(1, 50),
+      bought: this.api.recommendations(current.id),
+    }).subscribe(({ catalogue, bought }) => {
+      const data = catalogue.data;
       const others = data.filter((p) => p.id !== current.id);
       const sameCollection = others.filter(
         (p) => p.collection && current.collection && p.collection.id === current.collection.id,
       );
       const rest = others.filter((p) => !sameCollection.includes(p));
       this.related.set([...sameCollection, ...rest].slice(0, 6));
+      const byId = new Map(data.map((p) => [p.id, p]));
+      this.boughtTogether.set(
+        bought
+          .map((r) => byId.get(r.productId))
+          .filter((p): p is Product => !!p && p.id !== current.id)
+          .slice(0, 4),
+      );
     });
   }
 
@@ -663,6 +686,7 @@ export class ProductPage implements OnInit {
     this.product.set(null);
     this.reviews.set([]);
     this.related.set([]);
+    this.boughtTogether.set([]);
     this.size.set(null);
     this.colour.set(null);
     this.shotIndex.set(0);

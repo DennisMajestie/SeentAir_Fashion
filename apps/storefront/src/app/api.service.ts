@@ -302,6 +302,13 @@ export class ApiService {
     return this.http.get<Product>(`${API_BASE}/products/${id}`);
   }
 
+  /** Purchase-based suggestions for a product page ("Customers also bought"). */
+  recommendations(id: string): Observable<Array<{ productId: string; score: number }>> {
+    return this.http.get<Array<{ productId: string; score: number }>>(
+      `${API_BASE}/products/${id}/recommendations`,
+    );
+  }
+
   /** The full review list for one product — used by the product page. */
   reviews(
     productId: string,
