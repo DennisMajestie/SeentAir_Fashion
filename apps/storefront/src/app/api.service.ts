@@ -462,6 +462,8 @@ export class ApiService {
     deliveryMethod?: DeliveryMethod,
     quoteId?: string,
     customerCouponId?: string,
+    campaignId?: string,
+    pointsToRedeem?: number,
   ): Observable<Order> {
     return this.http.post<Order>(`${API_BASE}/orders`, {
       items,
@@ -475,6 +477,8 @@ export class ApiService {
       // A coupon the shopper is spending, named by its wallet row. Ignored by
       // the API while the coupon feature is off or for a guest order.
       ...(customerCouponId ? { customerCouponId } : {}),
+      ...(campaignId ? { campaignId } : {}),
+      ...(pointsToRedeem ? { pointsToRedeem } : {}),
     });
   }
 
@@ -715,8 +719,12 @@ export class ApiService {
     variantId: string,
     quantity: number,
     reason: string,
+    token?: string,
   ): Observable<unknown> {
-    return this.http.post(`${API_BASE}/returns`, { orderId, variantId, quantity, reason });
+    // A guest has no session bearer token, so the emailed tracking token proves
+    // ownership the same way it does for reviews, tracking and payment.
+    const query = token ? `?token=${encodeURIComponent(token)}` : '';
+    return this.http.post(`${API_BASE}/returns${query}`, { orderId, variantId, quantity, reason });
   }
 
   submitReview(

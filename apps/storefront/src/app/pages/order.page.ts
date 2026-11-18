@@ -969,7 +969,7 @@ export class OrderPage implements OnInit, OnDestroy {
       this.returnError.set('A reason is required for returns.');
       return;
     }
-    this.api.requestReturn(order.id, variantId, quantity, reason).subscribe({
+    this.api.requestReturn(order.id, variantId, quantity, reason, this.guestToken).subscribe({
       next: () =>
         this.returnMessage.set(
           'Return requested: send the item back via a logistics company within 24 hours and keep the tracking number.',

@@ -114,6 +114,10 @@ export default () => ({
     requestWindowHours: parseInt(process.env.RETURN_REQUEST_WINDOW_HOURS ?? '12', 10),
     completionWindowHours: parseInt(process.env.RETURN_COMPLETION_WINDOW_HOURS ?? '24', 10),
   },
+  loyalty: {
+    // One point per N1,000 paid by default: 1 point redeems for N1.
+    pointsPerNaira: parseFloat(process.env.LOYALTY_POINTS_PER_NAIRA ?? '0.001'),
+  },
   gigl: {
     apiKey: process.env.GIGL_API_KEY ?? '',
     baseUrl: process.env.GIGL_BASE_URL ?? 'https://api.giglogistics.com',

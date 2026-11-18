@@ -19,7 +19,7 @@ export class CreateLoyalty1792000000200 implements MigrationInterface {
       )
     `);
     await queryRunner.query(`
-      CREATE TYPE "loyalty_entries_reason_enum" AS ENUM ('order_delivered', 'return_reversal', 'admin_adjust')
+      CREATE TYPE "loyalty_entries_reason_enum" AS ENUM ('order_delivered', 'return_reversal', 'redeemed', 'admin_adjust')
     `);
     await queryRunner.query(`
       CREATE TABLE "loyalty_entries" (

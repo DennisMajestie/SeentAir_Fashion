@@ -70,9 +70,10 @@ export class MarketingService {
          WHERE o.payment_status = 'paid'
            AND o.status != 'cancelled'
            AND o.created_at::date BETWEEN $1 AND $2
-           AND (LOWER(o.source) = LOWER($3)
+           AND (o.campaign_id = $5
+                OR LOWER(o.source) = LOWER($3)
                 OR ($4::text IS NOT NULL AND LOWER(o.source) = LOWER($4)))`,
-        [c.startDate, c.endDate, c.name, c.channel],
+        [c.startDate, c.endDate, c.name, c.channel, c.id],
       );
       const orders = parseInt(String(agg[0]?.orders ?? '0'), 10) || 0;
       const revenue = Math.round((parseFloat(String(agg[0]?.revenue ?? '0')) || 0) * 100) / 100;
@@ -92,9 +93,29 @@ export class MarketingService {
     const attributedRevenue =
       Math.round(rows.reduce((sum, r) => sum + r.revenue, 0) * 100) / 100;
     const totalSpend = Math.round(rows.reduce((sum, r) => sum + r.spend, 0) * 100) / 100;
+
+    // Revenue with no tracked campaign id is reported on its own, so untagged
+    // sales are never mistaken for campaign success (plan item 12).
+    let unattributedRevenue = 0;
+    if (campaigns.length > 0) {
+      const start = campaigns.reduce((min, c) => (c.startDate < min ? c.startDate : min), campaigns[0].startDate);
+      const end = campaigns.reduce((max, c) => (c.endDate > max ? c.endDate : max), campaigns[0].endDate);
+      const untagged = await this.dataSource.query(
+        `SELECT COALESCE(SUM(o.total_amount), 0) AS revenue
+         FROM orders o
+         WHERE o.payment_status = 'paid'
+           AND o.status != 'cancelled'
+           AND o.campaign_id IS NULL
+           AND o.created_at::date BETWEEN $1 AND $2`,
+        [start, end],
+      );
+      unattributedRevenue = Math.round((parseFloat(String(untagged[0]?.revenue ?? '0')) || 0) * 100) / 100;
+    }
+
     return {
       campaigns: rows,
       attributedRevenue,
+      unattributedRevenue,
       spend: totalSpend,
       roi:
         totalSpend > 0

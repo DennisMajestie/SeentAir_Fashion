@@ -88,6 +88,7 @@ describe('CheckoutPage — split steps', () => {
                 totals: null,
               }),
             claimCoupon: () => of({ wallet: null, alreadyHeld: false }),
+            loyaltyWallet: () => of({ points: 0, lifetimePoints: 0, history: [] }),
             createOrder,
             payWithPaystack,
           },

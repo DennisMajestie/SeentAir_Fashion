@@ -4,6 +4,7 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 
 export enum LoyaltyEntryReason {
   ORDER_DELIVERED = 'order_delivered',
   RETURN_REVERSAL = 'return_reversal',
+  REDEEMED = 'redeemed',
   ADMIN_ADJUST = 'admin_adjust',
 }
 

@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
@@ -8,6 +13,7 @@ import { MovementType } from '../inventory/inventory-movement.entity';
 import { InventoryService } from '../inventory/inventory.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { Order, OrderChannel, OrderStatus } from '../orders/entities/order.entity';
+import { OrdersService } from '../orders/orders.service';
 import { PermissionsService } from '../users/permissions.service';
 import { ReturnRequest, ReturnStatus } from './return-request.entity';
 import { ReturnsService } from './returns.service';
@@ -28,6 +34,9 @@ describe('ReturnsService', () => {
     findAndCount: jest.fn(async () => [[], 0]),
   };
   const orderRepo = { findOne: jest.fn(async () => order), save: jest.fn(async (v) => v) };
+  const ordersService = {
+    findById: jest.fn(async (_id: string, _user?: AuthenticatedUser, _token?: string) => order),
+  };
   const eventRepoLike = { create: jest.fn((v) => v), save: jest.fn(async (v) => v) };
   const inventoryService = { record: jest.fn() };
   const loyaltyService = { reverseForOrder: jest.fn(async () => undefined) };
@@ -70,6 +79,7 @@ describe('ReturnsService', () => {
         { provide: getRepositoryToken(Order), useValue: orderRepo },
         { provide: InventoryService, useValue: inventoryService },
         { provide: LoyaltyService, useValue: loyaltyService },
+        { provide: OrdersService, useValue: ordersService },
         { provide: PermissionsService, useValue: { getAccessLevel: jest.fn() } },
         { provide: ConfigService, useValue: config },
         { provide: getDataSourceToken(), useValue: dataSource },
@@ -102,6 +112,26 @@ describe('ReturnsService', () => {
 
   it('only the ordering customer can request', async () => {
     await expect(service.create(dto, staff)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('accepts a guest who proves ownership with the emailed tracking token', async () => {
+    order.customer = null;
+    const result = await service.create(dto, undefined, 'the-emailed-token');
+    expect(ordersService.findById).toHaveBeenCalledWith('o1', undefined, 'the-emailed-token');
+    expect(result).toEqual(expect.objectContaining({ status: ReturnStatus.REQUESTED }));
+  });
+
+  it('a tokenless guest never reaches the return write', async () => {
+    ordersService.findById.mockRejectedValueOnce(new NotFoundException('Order o1 not found'));
+    await expect(service.create(dto, undefined)).rejects.toThrow(NotFoundException);
+    expect(returnRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('a signed-in caller cannot widen access by attaching a guest token', async () => {
+    await expect(service.create(dto, staff, 'the-emailed-token')).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(ordersService.findById).toHaveBeenCalledWith('o1', staff, 'the-emailed-token');
   });
 
   it('undelivered orders cannot be returned', async () => {

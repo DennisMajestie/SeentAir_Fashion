@@ -93,15 +93,18 @@ describe('MarketingService', () => {
         endDate: '2026-12-31',
       },
     ]);
-    dataSource.query.mockResolvedValueOnce([{ orders: '6', revenue: '180000' }]);
+    dataSource.query
+      .mockResolvedValueOnce([{ orders: '6', revenue: '180000' }])
+      .mockResolvedValueOnce([{ revenue: '90000' }]);
 
     const result = await service.roi();
 
-    expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('payment_status'), [
+    expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('campaign_id'), [
       '2026-12-01',
       '2026-12-31',
       'Xmas drop',
       'instagram',
+      'c1',
     ]);
     expect(result.campaigns).toEqual([
       {
@@ -116,6 +119,7 @@ describe('MarketingService', () => {
       },
     ]);
     expect(result.attributedRevenue).toBe(180000);
+    expect(result.unattributedRevenue).toBe(90000);
     expect(result.spend).toBe(40000);
     expect(result.roi).toBe(350);
   });
@@ -132,12 +136,15 @@ describe('MarketingService', () => {
         endDate: '2026-12-31',
       },
     ]);
-    dataSource.query.mockResolvedValueOnce([{ orders: '0', revenue: '0' }]);
+    dataSource.query
+      .mockResolvedValueOnce([{ orders: '0', revenue: '0' }])
+      .mockResolvedValueOnce([{ revenue: '0' }]);
 
     const result = await service.roi();
 
     expect(result.campaigns[0].roi).toBeNull();
     expect(result.roi).toBeNull();
     expect(result.attributedRevenue).toBe(0);
+    expect(result.unattributedRevenue).toBe(0);
   });
 });

@@ -453,6 +453,7 @@ export class OrdersService {
       claimedAt: null,
       channel,
       source: dto.source ?? null,
+      campaignId: dto.campaignId ?? null,
       shippingAddress: dto.shippingAddress ?? null,
       deliveryMethod: dto.deliveryMethod ?? null,
       customerNote: dto.customerNote?.trim() || null,
@@ -563,6 +564,10 @@ export class OrdersService {
           })
         : null;
 
+      const redeemedPoints = buyer && (dto.pointsToRedeem ?? 0) > 0
+        ? await this.loyalty.redeem(manager, buyer.id, dto.pointsToRedeem!, saved.id)
+        : 0;
+
       // A free-delivery coupon waives the fee; an item coupon comes off the
       // goods. computeTotals keeps the two apart so the VAT base is right.
       const itemDiscount = reserved && reserved.type !== CouponType.FREE_DELIVERY
@@ -571,11 +576,16 @@ export class OrdersService {
       const deliveryDiscount = reserved && reserved.type === CouponType.FREE_DELIVERY
         ? reserved.discountKobo / 100
         : 0;
+      const subtotalBeforeDiscounts = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+      const redemptionDiscount = Math.min(
+        redeemedPoints,
+        Math.max(0, subtotalBeforeDiscounts - itemDiscount),
+      );
 
       const totals = computeTotals({
         lines: items.map((i) => ({ unitPrice: i.unitPrice, quantity: i.quantity })),
         deliveryFee,
-        itemDiscount,
+        itemDiscount: itemDiscount + redemptionDiscount,
         deliveryDiscount,
         settings: {
           vatEnabled: settings.vatEnabled,

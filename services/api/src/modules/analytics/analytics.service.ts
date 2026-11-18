@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Not, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import { ApprovalStatus } from '../../common/enums';
 import { AccountingService } from '../accounting/accounting.service';
 import { ApprovalRequest } from '../approvals/approval-request.entity';
@@ -68,6 +68,7 @@ export class AnalyticsService {
     @InjectRepository(RawMaterial) private readonly materialRepo: Repository<RawMaterial>,
     @InjectRepository(InventoryMovement)
     private readonly movementRepo: Repository<InventoryMovement>,
+    @InjectDataSource() private readonly dataSource: DataSource,
     private readonly accountingService: AccountingService,
     private readonly inventoryService: InventoryService,
     private readonly materialsService: MaterialsService,
@@ -239,6 +240,27 @@ export class AnalyticsService {
         .groupBy('p.id')
         .getRawMany();
 
+    const estimateRows: Array<{ product_id: string; cost: string }> =
+      await this.dataSource.query(
+        `SELECT v.product_id AS product_id,
+                SUM(pbi.quantity * latest.unit_cost) AS cost
+         FROM product_bom_items pbi
+         JOIN product_variants v ON v.id = pbi.variant_id
+         LEFT JOIN LATERAL (
+           SELECT mp.cost / NULLIF(mp.quantity, 0) AS unit_cost
+           FROM material_purchases mp
+           WHERE mp.material_id = pbi.material_id
+           ORDER BY mp.purchased_at DESC
+           LIMIT 1
+         ) latest ON TRUE
+         GROUP BY v.product_id
+         HAVING BOOL_AND(latest.unit_cost IS NOT NULL)`,
+      );
+
+    const estimateByProduct = new Map(
+      estimateRows.map((r) => [r.product_id, parseFloat(r.cost) || 0]),
+    );
+
     const costByProduct = new Map(
       costRows.map((r) => [
         r.product_id,
@@ -255,15 +277,31 @@ export class AnalyticsService {
         const revenue = parseFloat(r.revenue) || 0;
         const recorded = costByProduct.get(r.product_id);
         if (!recorded || recorded.units <= 0) {
+          const estimate = estimateByProduct.get(r.product_id);
+          if (estimate === undefined || estimate <= 0) {
+            return {
+              productId: r.product_id,
+              productName: r.product_name,
+              unitsSold,
+              revenue,
+              costOfUnitsSold: null,
+              margin: null,
+              marginPct: null,
+              costBasis: 'unknown',
+            };
+          }
+          const costOfUnitsSold = Math.round(unitsSold * estimate * 100) / 100;
+          const margin = Math.round((revenue - costOfUnitsSold) * 100) / 100;
+          const marginPct = revenue > 0 ? Math.round((margin / revenue) * 1000) / 10 : null;
           return {
             productId: r.product_id,
             productName: r.product_name,
             unitsSold,
             revenue,
-            costOfUnitsSold: null,
-            margin: null,
-            marginPct: null,
-            costBasis: 'unknown',
+            costOfUnitsSold,
+            margin,
+            marginPct,
+            costBasis: 'estimated',
           };
         }
         const costPerUnit = recorded.cost / recorded.units;

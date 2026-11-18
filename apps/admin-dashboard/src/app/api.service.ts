@@ -1112,6 +1112,7 @@ endProductSale(id: string): Observable<unknown> {
       roi: number | null;
     }>;
     attributedRevenue: number;
+    unattributedRevenue: number;
     spend: number;
     roi: number | null;
   }> {
@@ -1124,6 +1125,7 @@ endProductSale(id: string): Observable<unknown> {
         roi: number | null;
       }>;
       attributedRevenue: number;
+      unattributedRevenue: number;
       spend: number;
       roi: number | null;
     }>(`${API_BASE}/campaigns/roi`);
@@ -1136,8 +1138,18 @@ endProductSale(id: string): Observable<unknown> {
       `${API_BASE}/loyalty/accounts`,
     );
   }
-  adjustLoyalty(customerId: string, points: number, note: string): Observable<unknown> {
-    return this.http.post(`${API_BASE}/loyalty/adjust`, { customerId, points, note });
+  adjustLoyalty(
+    customerId: string,
+    points: number,
+    note: string,
+    approvalRequestId: string,
+  ): Observable<unknown> {
+    return this.http.post(`${API_BASE}/loyalty/adjust`, {
+      customerId,
+      points,
+      note,
+      approvalRequestId,
+    });
   }
 
   // --- Tech packs (make-ready specs with revision history) ---

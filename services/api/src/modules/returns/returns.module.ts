@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { InventoryModule } from '../inventory/inventory.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { OrdersModule } from '../orders/orders.module';
 import { OrderStatusEvent } from '../orders/entities/order-status-event.entity';
 import { Order } from '../orders/entities/order.entity';
 import { UsersModule } from '../users/users.module';
@@ -14,6 +15,7 @@ import { ReturnsService } from './returns.service';
     TypeOrmModule.forFeature([ReturnRequest, Order, OrderStatusEvent]),
     InventoryModule,
     LoyaltyModule,
+    OrdersModule,
     UsersModule,
   ],
   controllers: [ReturnsController],

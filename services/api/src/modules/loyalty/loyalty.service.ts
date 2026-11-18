@@ -1,12 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { ApprovalActionType } from '../../common/enums';
+import { ApprovalsService } from '../approvals/approvals.service';
 import { Order } from '../orders/entities/order.entity';
 import { LoyaltyAccount } from './loyalty-account.entity';
 import { LoyaltyEntry, LoyaltyEntryReason } from './loyalty-entry.entity';
-
-/** One point earned per N1,000 paid, i.e. roughly 1% back on a order. */
-const POINTS_PER_NAIRA = 1 / 1000;
 
 @Injectable()
 export class LoyaltyService {
@@ -15,7 +15,13 @@ export class LoyaltyService {
     private readonly accountRepo: Repository<LoyaltyAccount>,
     @InjectRepository(LoyaltyEntry)
     private readonly entryRepo: Repository<LoyaltyEntry>,
+    private readonly config: ConfigService,
+    private readonly approvals: ApprovalsService,
   ) {}
+
+  private get pointsPerNaira(): number {
+    return this.config.get<number>('loyalty.pointsPerNaira') ?? 0.001;
+  }
 
   /** Called after an order reaches DELIVERED, inside the status flow. */
   async awardForDeliveredOrder(manager: EntityManager, order: Order): Promise<void> {
@@ -26,7 +32,7 @@ export class LoyaltyService {
       where: { orderId: order.id, reason: LoyaltyEntryReason.ORDER_DELIVERED },
     });
     if (already) return;
-    const points = Math.floor(Number(order.totalAmount ?? 0) * POINTS_PER_NAIRA);
+    const points = Math.floor(Number(order.totalAmount ?? 0) * this.pointsPerNaira);
     if (points <= 0) return;
     await this.apply(
       manager,
@@ -88,7 +94,35 @@ export class LoyaltyService {
     }));
   }
 
-  async adjust(customerId: string, points: number, note: string) {
+  /**
+   * Spend points at checkout (1 point = N1). Called inside the order
+   * transaction so the balance cannot be spent twice.
+   */
+  async redeem(manager: EntityManager, customerId: string, points: number, orderId: string) {
+    if (!Number.isInteger(points) || points <= 0) return 0;
+    const entryRepo = manager.getRepository(LoyaltyEntry);
+    const existing = await entryRepo.findOne({
+      where: { orderId, reason: LoyaltyEntryReason.REDEEMED },
+    });
+    if (existing) return 0;
+    const accountRepo = manager.getRepository(LoyaltyAccount);
+    const account = await accountRepo.findOne({ where: { customerId } });
+    if (!account || account.points < points) {
+      throw new BadRequestException('not enough loyalty points for this redemption');
+    }
+    await this.apply(
+      manager,
+      customerId,
+      -points,
+      LoyaltyEntryReason.REDEEMED,
+      orderId,
+      'Redeemed at checkout',
+    );
+    return points;
+  }
+
+  async adjust(customerId: string, points: number, note: string, approvalRequestId: string) {
+    await this.approvals.assertApproved(approvalRequestId, ApprovalActionType.FUND_MOVEMENT);
     if (!Number.isInteger(points) || points === 0) {
       throw new BadRequestException('points must be a non-zero whole number');
     }

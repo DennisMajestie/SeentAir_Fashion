@@ -49,7 +49,7 @@ describe('MarketingAdminPage', () => {
       }) as never,
     );
     api.campaignRoi.and.returnValue(
-      of({ campaigns: [], attributedRevenue: 0, spend: 0, roi: null }) as never,
+      of({ campaigns: [], attributedRevenue: 0, unattributedRevenue: 0, spend: 0, roi: null }) as never,
     );
     api.loyaltyAccounts.and.returnValue(
       of([
@@ -96,8 +96,9 @@ describe('MarketingAdminPage', () => {
         campaigns: [
           { id: 'c1', name: 'Harmattan drop', orders: 6, revenue: 180000, roi: 350 },
         ],
-        attributedRevenue: 180000,
-        spend: 40000,
+        attributedRevenue: 180000,
+        unattributedRevenue: 25000,
+        spend: 40000,
         roi: 350,
       }) as never,
     );
@@ -112,17 +113,19 @@ describe('MarketingAdminPage', () => {
     const cards = [...el().querySelectorAll('.se-metric__label')].map((n) =>
       n.textContent!.trim(),
     );
-    expect(cards).toContain('Overall ROI');
-    expect(cards).toContain('Campaign spend');
-  });
+    expect(cards).toContain('Overall ROI');
+    expect(cards).toContain('Campaign spend');
+    expect(cards).toContain('Unattributed revenue');
+  });
 
   it('marks a campaign with no spend as "no spend yet" instead of a fake ROI', () => {
     mount(of([campaign({ spend: 0 })]));
     api.campaignRoi.and.returnValue(
       of({
         campaigns: [{ id: 'c1', name: 'Harmattan drop', orders: 0, revenue: 0, roi: null }],
-        attributedRevenue: 0,
-        spend: 0,
+        attributedRevenue: 0,
+        unattributedRevenue: 0,
+        spend: 0,
         roi: null,
       }) as never,
     );
@@ -177,9 +180,10 @@ describe('MarketingAdminPage', () => {
     page.loyaltyForm.customerId = 'u1';
     page.loyaltyForm.points = -4;
     page.loyaltyForm.note = 'Goodwill';
+    page.loyaltyForm.approvalRequestId = 'appr-1';
     page.adjustLoyalty();
 
-    expect(api.adjustLoyalty).toHaveBeenCalledWith('u1', -4, 'Goodwill');
+    expect(api.adjustLoyalty).toHaveBeenCalledWith('u1', -4, 'Goodwill', 'appr-1');
   });
 
   it('offers no add button to a role without full marketing access', () => {

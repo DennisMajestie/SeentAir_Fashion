@@ -15,6 +15,7 @@ import { InventoryService } from '../inventory/inventory.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { OrderStatusEvent } from '../orders/entities/order-status-event.entity';
 import { Order, OrderChannel, OrderStatus } from '../orders/entities/order.entity';
+import { OrdersService } from '../orders/orders.service';
 import { PermissionsService } from '../users/permissions.service';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { ResolveReturnDto } from './dto/resolve-return.dto';
@@ -24,10 +25,10 @@ import { ReturnRequest, ReturnStatus } from './return-request.entity';
 export class ReturnsService {
   constructor(
     @InjectRepository(ReturnRequest) private readonly returnRepo: Repository<ReturnRequest>,
-    @InjectRepository(Order) private readonly orderRepo: Repository<Order>,
     private readonly inventoryService: InventoryService,
     private readonly loyalty: LoyaltyService,
     private readonly permissionsService: PermissionsService,
+    private readonly ordersService: OrdersService,
     private readonly config: ConfigService,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
@@ -40,11 +41,20 @@ export class ReturnsService {
     return (this.config.get<number>('returns.completionWindowHours') ?? 24) * 3_600_000;
   }
 
-  /** Customer raises a return on their own delivered order, inside the 12h window. */
-  async create(dto: CreateReturnDto, user: AuthenticatedUser): Promise<ReturnRequest> {
-    const order = await this.orderRepo.findOne({ where: { id: dto.orderId } });
-    if (!order) throw new NotFoundException(`Order ${dto.orderId} not found`);
-    if (order.customer?.id !== user.id) {
+  /**
+   * Customer raises a return on their own delivered order, inside the 12h
+   * window. `token` is the guest path: the emailed tracking link proves the
+   * order is theirs, exactly as it does for reviews and tracking. It is only
+   * consulted when there is no session, so a signed-in caller cannot widen
+   * access by attaching one.
+   */
+  async create(
+    dto: CreateReturnDto,
+    user?: AuthenticatedUser,
+    token?: string,
+  ): Promise<ReturnRequest> {
+    const order = await this.ordersService.findById(dto.orderId, user, token);
+    if (user && order.customer?.id !== user.id) {
       throw new ForbiddenException('Only the ordering customer can request a return');
     }
     // Eligibility: any product EXCEPT custom/special orders (appendix 10).

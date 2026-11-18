@@ -15,6 +15,7 @@ import { OrderPage } from './order.page';
 describe('OrderPage', () => {
   let fixture: ComponentFixture<OrderPage>;
   let element: HTMLElement;
+  let requestReturnSpy: jasmine.Spy;
 
   const ORDER_ID = 'abc12345-0000-0000-0000-000000000000';
 
@@ -63,6 +64,7 @@ describe('OrderPage', () => {
     query: Record<string, string> = {},
   ) => {
     const order$ = new BehaviorSubject<Order | null>(order);
+    requestReturnSpy = jasmine.createSpy('requestReturn').and.returnValue(of({}));
     TestBed.configureTestingModule({
       imports: [OrderPage],
       providers: [
@@ -85,7 +87,7 @@ describe('OrderPage', () => {
             orderSocketStream: () => Promise.resolve(),
             payWithPaystack: () => of({ authorizationUrl: 'https://checkout.test/x' }),
             submitReview: () => of({}),
-            requestReturn: () => of({}),
+            requestReturn: requestReturnSpy,
           },
         },
       ],
@@ -551,6 +553,27 @@ describe('OrderPage', () => {
       mountWithFailingOrder(403, 'Forbidden');
       expect(text()).toContain('not on this account');
       expect(text()).not.toContain('Forbidden');
+    });
+  });
+
+  describe('returns', () => {
+    it('passes the emailed guest token to the return request', () => {
+      setUp(
+        makeOrder({ status: 'delivered', deliveredAt: '2026-11-18T06:00:00.000Z' }),
+        undefined,
+        { token: 'guest-tracking-token' },
+      );
+      const page = fixture.componentInstance;
+      page.returnReasons['v1'] = 'wrong size';
+      page.requestReturn('v1', 2);
+      expect(requestReturnSpy).toHaveBeenCalledWith(
+        ORDER_ID,
+        'v1',
+        2,
+        'wrong size',
+        'guest-tracking-token',
+      );
+      localStorage.removeItem(`seentair.order.${ORDER_ID}`);
     });
   });
 

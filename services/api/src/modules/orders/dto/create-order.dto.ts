@@ -48,6 +48,17 @@ export class CreateOrderDto {
   @IsNotEmpty()
   source?: string;
 
+  /** Marketing campaign id from a tracked link/UTM, for ROI attribution. */
+  @IsOptional()
+  @IsUUID()
+  campaignId?: string;
+
+  /** Loyalty points to spend (1 point = N1), only for a signed-in customer. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  pointsToRedeem?: number;
+
   /**
    * Delivery destination. Optional at this layer because a staff-recorded
    * in-store sale is handed over the counter and has nowhere to ship to; for

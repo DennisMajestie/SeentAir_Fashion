@@ -103,6 +103,13 @@ const EMPTY_CAMPAIGN = () => ({
             [value]="currency.format(roiSummary().attributedRevenue)"
             hint="Paid orders tagged with a campaign"
           />
+          @if (roiSummary().unattributedRevenue > 0) {
+            <se-metric-card
+              label="Unattributed revenue"
+              [value]="currency.format(roiSummary().unattributedRevenue)"
+              hint="Paid orders with no campaign tag"
+            />
+          }
           <se-metric-card
             label="Campaign spend"
             [value]="currency.format(roiSummary().spend)"
@@ -173,6 +180,13 @@ const EMPTY_CAMPAIGN = () => ({
           </se-field>
           <se-field label="Note" [error]="loyaltyErrors()['note']">
             <input seInput [(ngModel)]="loyaltyForm.note" name="loyaltyNote" />
+          </se-field>
+          <se-field
+            label="Approval request ID"
+            hint="Create a fund-movement approval first; the server checks it"
+            [error]="loyaltyErrors()['approvalRequestId']"
+          >
+            <input seInput [(ngModel)]="loyaltyForm.approvalRequestId" name="loyaltyApproval" />
           </se-field>
           <button seButton type="submit">Adjust points</button>
         </form>
@@ -249,15 +263,21 @@ export class MarketingAdminPage implements OnInit {
   readonly campaigns = signal<CampaignRow[]>([]);
   readonly sources = signal<SourceRow[]>([]);
   readonly roiById = signal<Record<string, RoiRow>>({});
-  readonly roiSummary = signal<{ attributedRevenue: number; spend: number; roi: number | null }>({
+  readonly roiSummary = signal<{
+    attributedRevenue: number;
+    unattributedRevenue: number;
+    spend: number;
+    roi: number | null;
+  }>({
     attributedRevenue: 0,
+    unattributedRevenue: 0,
     spend: 0,
     roi: null,
   });
   readonly loyaltyAccounts = signal<LoyaltyRow[]>([]);
   readonly totalLoyaltyPoints = () =>
     this.loyaltyAccounts().reduce((sum, a) => sum + a.points, 0);
-  loyaltyForm = { customerId: '', points: 0, note: '' };
+  loyaltyForm = { customerId: '', points: 0, note: '', approvalRequestId: '' };
   readonly loyaltyErrors = signal<Record<string, string>>({});
   /** True only until the first answer arrives. */
   readonly loading = signal(true);
@@ -330,16 +350,24 @@ export class MarketingAdminPage implements OnInit {
       errors['points'] = 'Enter a non-zero whole number of points.';
     }
     if (!f.note.trim()) errors['note'] = 'Say why the balance is changing.';
+    if (!f.approvalRequestId.trim()) errors['approvalRequestId'] = 'Enter the approved request ID.';
     this.loyaltyErrors.set(errors);
     if (Object.keys(errors).length > 0) return;
-    this.api.adjustLoyalty(f.customerId.trim(), Number(f.points), f.note.trim()).subscribe({
-      next: () => {
-        this.toast.show(`Adjusted loyalty points for ${f.customerId.trim()}`);
-        this.loyaltyForm = { customerId: '', points: 0, note: '' };
-        this.loadLoyalty();
-      },
-      error: (err) => this.toast.show(err?.error?.message ?? 'Could not adjust points.'),
-    });
+    this.api
+      .adjustLoyalty(
+        f.customerId.trim(),
+        Number(f.points),
+        f.note.trim(),
+        f.approvalRequestId.trim(),
+      )
+      .subscribe({
+        next: () => {
+          this.toast.show(`Adjusted loyalty points for ${f.customerId.trim()}`);
+          this.loyaltyForm = { customerId: '', points: 0, note: '', approvalRequestId: '' };
+          this.loadLoyalty();
+        },
+        error: (err) => this.toast.show(err?.error?.message ?? 'Could not adjust points.'),
+      });
   }
 
   private loadLoyalty(): void {
@@ -384,6 +412,7 @@ export class MarketingAdminPage implements OnInit {
         );
         this.roiSummary.set({
           attributedRevenue: r.attributedRevenue,
+          unattributedRevenue: r.unattributedRevenue,
           spend: r.spend,
           roi: r.roi,
         });

@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService, ShippingAddress } from '../api.service';
 import type { DeliveryMethod, DeliveryQuote, Order } from '../api.service';
 import { catchError, Observable, of, tap } from 'rxjs';
@@ -478,6 +478,24 @@ const NIGERIAN_STATES = [
               }
             </div>
           }
+          @if (api.isLoggedIn && loyaltyPoints() > 0) {
+            <div class="coupon-card">
+              <div class="matrix-row coupon-row">
+                <span>Loyalty points <b>{{ loyaltyPoints() }}</b></span>
+                <label>
+                  Use
+                  <input
+                    type="number"
+                    min="0"
+                    [max]="loyaltyPoints()"
+                    [(ngModel)]="pointsToRedeem"
+                    name="pointsToRedeem"
+                  />
+                </label>
+              </div>
+              <p class="small muted">One point takes one naira off this order.</p>
+            </div>
+          }
           <div class="matrix-divider"></div>
           <div class="matrix-total">
             <span class="label">Total due</span>
@@ -516,12 +534,15 @@ export class CheckoutPage {
   readonly cart = inject(CartService);
   readonly api = inject(ApiService);
   readonly coupons = inject(CouponService);
+  private readonly route = inject(ActivatedRoute);
   private readonly alerts = inject(BrandAlertService);
   private readonly details = viewChild<ElementRef<HTMLElement>>('details');
 
   /** Guest checkout is the default; sign-in is revealed on request. */
   readonly showSignIn = signal(false);
   readonly placing = signal(false);
+  readonly loyaltyPoints = signal(0);
+  pointsToRedeem = 0;
   readonly error = signal<string | null>(null);
   readonly signinError = signal<string | null>(null);
   readonly deliveryError = signal<string | null>(null);
@@ -665,6 +686,10 @@ export class CheckoutPage {
       next: (user) => this.accountEmail.set(user.email),
       error: () => this.accountEmail.set(null),
     });
+    this.api.loyaltyWallet().subscribe({
+      next: (wallet) => this.loyaltyPoints.set(wallet.points),
+      error: () => this.loyaltyPoints.set(0),
+    });
   }
 
   /** Signing in is an alternative to guest checkout, never a gate before it. */
@@ -802,6 +827,8 @@ export class CheckoutPage {
           this.deliveryMethod(),
           quote?.quoteId,
           this.coupons.customerCouponId() ?? undefined,
+          this.route.snapshot.queryParamMap.get('campaign') ?? undefined,
+          Math.max(0, Math.min(Math.floor(this.pointsToRedeem || 0), this.loyaltyPoints())),
         )
         .subscribe({
           next: (order) => this.onOrderPlaced(order),

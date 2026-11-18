@@ -26,7 +26,7 @@ export class LoyaltyController {
 
   @Post('adjust')
   @RequireAccess(ModuleName.MARKETING, AccessLevel.FULL)
-  adjust(@Body() body: { customerId: string; points: number; note: string }) {
-    return this.loyalty.adjust(body.customerId, body.points, body.note);
+  adjust(@Body() body: { customerId: string; points: number; note: string; approvalRequestId: string }) {
+    return this.loyalty.adjust(body.customerId, body.points, body.note, body.approvalRequestId);
   }
 }

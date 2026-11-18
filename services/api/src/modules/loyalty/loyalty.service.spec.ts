@@ -1,5 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
+import { ApprovalsService } from '../approvals/approvals.service';
 import { EntityManager } from 'typeorm';
 import { LoyaltyAccount } from './loyalty-account.entity';
 import { LoyaltyEntry, LoyaltyEntryReason } from './loyalty-entry.entity';
@@ -13,7 +15,9 @@ describe('LoyaltyService', () => {
     save: jest.fn(async (v) => ({ ...v, id: 'a1' })),
     increment: jest.fn(async () => undefined),
     find: jest.fn(async () => []),
-    manager: {} as EntityManager,
+    manager: {
+      getRepository: (entity: unknown) => (entity === LoyaltyAccount ? accounts : entries),
+    } as unknown as EntityManager,
   };
   const entries = {
     findOne: jest.fn(async () => null as unknown),
@@ -34,6 +38,8 @@ describe('LoyaltyService', () => {
         LoyaltyService,
         { provide: getRepositoryToken(LoyaltyAccount), useValue: accounts },
         { provide: getRepositoryToken(LoyaltyEntry), useValue: entries },
+        { provide: ConfigService, useValue: { get: jest.fn(() => 0.001) } },
+        { provide: ApprovalsService, useValue: { assertApproved: jest.fn(async () => undefined) } },
       ],
     }).compile();
     service = moduleRef.get(LoyaltyService);
@@ -94,5 +100,34 @@ describe('LoyaltyService', () => {
         reason: LoyaltyEntryReason.RETURN_REVERSAL,
       }),
     );
+  });
+
+  it('redeems points inside the order transaction', async () => {
+    accounts.findOne.mockResolvedValueOnce({ id: 'a1', points: 30 } as never);
+
+    const spent = await service.redeem(manager, 'u1', 12, 'o1');
+
+    expect(spent).toBe(12);
+    expect(accounts.increment).toHaveBeenCalledWith({ id: 'a1' }, 'points', -12);
+    expect(entries.save).toHaveBeenCalledWith(
+      expect.objectContaining({ points: -12, reason: LoyaltyEntryReason.REDEEMED }),
+    );
+  });
+
+  it('refuses to redeem more points than the shopper has', async () => {
+    accounts.findOne.mockResolvedValueOnce({ id: 'a1', points: 5 } as never);
+
+    await expect(service.redeem(manager, 'u1', 12, 'o1')).rejects.toThrow(
+      'not enough loyalty points',
+    );
+  });
+
+  it('requires an approved request for a manual adjustment', async () => {
+    accounts.findOne.mockResolvedValue({ id: 'a1', points: 10 } as never);
+
+    await service.adjust('u1', 5, 'Goodwill', 'appr-1');
+
+    const approvals = (service as unknown as { approvals: { assertApproved: jest.Mock } }).approvals;
+    expect(approvals.assertApproved).toHaveBeenCalledWith('appr-1', 'fund_movement');
   });
 });

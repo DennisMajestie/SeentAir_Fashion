@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { AccountingService } from '../accounting/accounting.service';
 import { ApprovalRequest } from '../approvals/approval-request.entity';
 import { InventoryItemType, InventoryMovement } from '../inventory/inventory-movement.entity';
@@ -30,6 +30,11 @@ describe('AnalyticsService inventory valuation', () => {
   const accountingService = { report: jest.fn() };
   const inventoryService = { summary: jest.fn() };
   const materialsService = { lowStock: jest.fn() };
+  const dataSource = {
+    query: jest.fn<Promise<Array<Record<string, string>>>, [string, ...unknown[]]>(
+      async () => [],
+    ),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -44,6 +49,7 @@ describe('AnalyticsService inventory valuation', () => {
         { provide: getRepositoryToken(ApprovalRequest), useValue: approvalRepo },
         { provide: getRepositoryToken(RawMaterial), useValue: materialRepo },
         { provide: getRepositoryToken(InventoryMovement), useValue: movementRepo },
+        { provide: getDataSourceToken(), useValue: dataSource },
         { provide: AccountingService, useValue: accountingService },
         { provide: InventoryService, useValue: inventoryService },
         { provide: MaterialsService, useValue: materialsService },
@@ -536,9 +542,33 @@ describe('AnalyticsService inventory valuation', () => {
 
       const result = await service.productProfitability();
 
-      expect(result.withRecordedCost).toBe(false);
-      expect(result.products[0].margin).toBeNull();
-    });
+    expect(result.withRecordedCost).toBe(false);
+    expect(result.products[0].margin).toBeNull();
   });
+
+  it('uses a complete BOM estimate when no batch cost exists, and flags it', async () => {
+    const revenueQb = qbChain([
+      { product_id: 'p2', product_name: 'Hoodie', units: '4', revenue: '90000' },
+    ]);
+    const costQb = qbChain([]);
+    orderItemRepo.createQueryBuilder = jest.fn(() => revenueQb);
+    productionCostRepo.createQueryBuilder = jest.fn(() => costQb);
+    dataSource.query.mockResolvedValueOnce([{ product_id: 'p2', cost: '5000' }]);
+
+    const result = await service.productProfitability();
+
+    expect(result.products[0]).toEqual({
+      productId: 'p2',
+      productName: 'Hoodie',
+      unitsSold: 4,
+      revenue: 90000,
+      costOfUnitsSold: 20000,
+      margin: 70000,
+      marginPct: 77.8,
+      costBasis: 'estimated',
+    });
+    expect(result.withRecordedCost).toBe(false);
+  });
+});
 
 });

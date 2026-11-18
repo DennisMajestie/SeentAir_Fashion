@@ -119,6 +119,11 @@ export class Order {
   @Column({ type: 'varchar', nullable: true })
   source: string | null;
 
+  /** Marketing campaign attributed at checkout (tracked link/UTM). */
+  @Index()
+  @Column({ name: 'campaign_id', type: 'uuid', nullable: true })
+  campaignId: string | null;
+
   @Index()
   @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.AWAITING_PAYMENT })
   status: OrderStatus;

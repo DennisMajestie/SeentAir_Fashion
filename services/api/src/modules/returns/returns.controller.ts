@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { OptionalAuth } from '../../common/decorators/optional-auth.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
 import { AccessLevel, ModuleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
@@ -15,10 +16,25 @@ import { ReturnsService } from './returns.service';
 export class ReturnsController {
   constructor(private readonly returnsService: ReturnsService) {}
 
-  /** Customer raises a return (ownership + 12h window enforced in service). */
+  /**
+   * Customer raises a return (ownership + 12h window enforced in service).
+   * Signed-in customers use their session; guests use the emailed tracking
+   * token, the same way reviews and order tracking do.
+   */
   @Post()
-  create(@Body() dto: CreateReturnDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.returnsService.create(dto, user);
+  @ApiBearerAuth()
+  @OptionalAuth()
+  @ApiQuery({
+    name: 'token',
+    required: false,
+    description: 'Guest tracking token — proves ownership when there is no session',
+  })
+  create(
+    @Body() dto: CreateReturnDto,
+    @CurrentUser() user?: AuthenticatedUser,
+    @Query('token') token?: string,
+  ) {
+    return this.returnsService.create(dto, user, token);
   }
 
   @Get()
