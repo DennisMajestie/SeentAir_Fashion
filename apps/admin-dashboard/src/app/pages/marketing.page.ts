@@ -32,11 +32,20 @@ interface SourceRow {
   revenue: number;
 }
 
+interface RoiRow {
+  id: string;
+  name: string;
+  orders: number;
+  revenue: number;
+  roi: number | null;
+}
+
 const EMPTY_CAMPAIGN = () => ({
   name: '',
   type: 'campaign',
   channel: '',
   discountPercent: null as number | null,
+  spend: 0,
   startDate: '',
   endDate: '',
 });
@@ -78,6 +87,26 @@ const EMPTY_CAMPAIGN = () => ({
               [hint]="currency.format(s.revenue) + ' in sales'"
             />
           }
+        </div>
+      }
+
+      @if (roiSummary().spend > 0) {
+        <div class="se-metric-grid">
+          <se-metric-card
+            label="Attributed revenue"
+            [value]="currency.format(roiSummary().attributedRevenue)"
+            hint="Paid orders tagged with a campaign"
+          />
+          <se-metric-card
+            label="Campaign spend"
+            [value]="currency.format(roiSummary().spend)"
+            hint="What the campaigns cost"
+          />
+          <se-metric-card
+            label="Overall ROI"
+            [value]="roiSummary().roi === null ? '—' : roiSummary().roi + '%'"
+            hint="(revenue − spend) ÷ spend"
+          />
         </div>
       }
 
@@ -131,6 +160,14 @@ const EMPTY_CAMPAIGN = () => ({
                 name="discountPercent"
               />
             </se-field>
+            <se-field
+              label="Spend so far"
+              optional
+              hint="Money already put into this campaign, for ROI"
+              [error]="errors()['spend']"
+            >
+              <input seInput type="number" min="0" [(ngModel)]="form.spend" name="spend" />
+            </se-field>
             <div class="se-form__row">
               <se-field label="Starts" [error]="errors()['startDate']">
                 <input seInput type="date" [(ngModel)]="form.startDate" name="startDate" />
@@ -167,6 +204,12 @@ export class MarketingAdminPage implements OnInit {
   readonly canWrite = this.access.can('marketing', 'full');
   readonly campaigns = signal<CampaignRow[]>([]);
   readonly sources = signal<SourceRow[]>([]);
+  readonly roiById = signal<Record<string, RoiRow>>({});
+  readonly roiSummary = signal<{ attributedRevenue: number; spend: number; roi: number | null }>({
+    attributedRevenue: 0,
+    spend: 0,
+    roi: null,
+  });
   /** True only until the first answer arrives. */
   readonly loading = signal(true);
   readonly error = signal('');
@@ -191,6 +234,34 @@ export class MarketingAdminPage implements OnInit {
       numeric: true,
       value: (c) => c.discountPercent,
       format: (v) => (v === null || v === undefined ? 'None' : `${v}%`),
+    },
+    {
+      key: 'spend',
+      header: 'Spend',
+      numeric: true,
+      value: (c) => c.spend,
+      format: (v) => this.currency.format(Number(v) || 0),
+    },
+    {
+      key: 'orders',
+      header: 'Orders',
+      numeric: true,
+      value: (c) => this.roiById()[c.id]?.orders ?? null,
+      format: (v) => (v === null || v === undefined ? '—' : String(v)),
+    },
+    {
+      key: 'revenue',
+      header: 'Attributed revenue',
+      numeric: true,
+      value: (c) => this.roiById()[c.id]?.revenue ?? null,
+      format: (v) => (v === null || v === undefined ? '—' : this.currency.format(Number(v))),
+    },
+    {
+      key: 'roi',
+      header: 'ROI',
+      numeric: true,
+      value: (c) => this.roiById()[c.id]?.roi ?? null,
+      format: (v) => (v === null || v === undefined ? 'No spend yet' : `${v}%`),
     },
     { key: 'runs', header: 'Runs', sortable: true, value: (c) => c.startDate },
     { key: 'run', header: 'Status', value: (c) => campaignRun(c) },
@@ -224,6 +295,19 @@ export class MarketingAdminPage implements OnInit {
       next: (d) => this.sources.set(d.marketingSourcePerformance),
       error: () => undefined,
     });
+    this.api.campaignRoi().subscribe({
+      next: (r) => {
+        this.roiById.set(
+          Object.fromEntries(r.campaigns.map((c) => [c.id, c])) as Record<string, RoiRow>,
+        );
+        this.roiSummary.set({
+          attributedRevenue: r.attributedRevenue,
+          spend: r.spend,
+          roi: r.roi,
+        });
+      },
+      error: () => undefined,
+    });
   }
 
   openAdd(): void {
@@ -244,6 +328,9 @@ export class MarketingAdminPage implements OnInit {
     if (f.discountPercent !== null && (f.discountPercent < 0 || f.discountPercent > 100)) {
       errors['discountPercent'] = 'A discount is between 0 and 100 percent.';
     }
+    if (f.spend !== null && f.spend !== undefined && f.spend < 0) {
+      errors['spend'] = 'Spend cannot be negative.';
+    }
     this.errors.set(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -254,6 +341,7 @@ export class MarketingAdminPage implements OnInit {
         type: f.type,
         channel: f.channel || undefined,
         discountPercent: f.discountPercent ?? undefined,
+        spend: f.spend || undefined,
         startDate: f.startDate,
         endDate: f.endDate,
       })

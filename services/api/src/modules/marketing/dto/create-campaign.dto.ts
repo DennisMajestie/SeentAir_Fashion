@@ -28,6 +28,11 @@ export class CreateCampaignDto {
   @Max(100)
   discountPercent?: number;
 
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  spend?: number;
+
   @IsDateString()
   startDate: string;
 

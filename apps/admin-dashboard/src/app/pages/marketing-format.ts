@@ -6,6 +6,7 @@ export interface CampaignRow {
   type: string;
   channel: string | null;
   discountPercent: number | null;
+  spend: number;
   startDate: string;
   endDate: string;
 }

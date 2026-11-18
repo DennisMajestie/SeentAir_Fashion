@@ -34,6 +34,16 @@ export class Campaign {
   })
   discountPercent: number | null;
 
+  /** Money actually put into this campaign, for ROI (appendix 16). */
+  @Column({
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
+  spend: number;
+
   @Column({ name: 'start_date', type: 'date' })
   startDate: string;
 

@@ -17,6 +17,13 @@ export class MarketingController {
     return this.marketingService.findAll(active === 'true');
   }
 
+  /** Revenue attributed to each campaign against what was spent on it. */
+  @Get('roi')
+  @RequireAccess(ModuleName.MARKETING, AccessLevel.VIEW)
+  roi() {
+    return this.marketingService.roi();
+  }
+
   @Post()
   @RequireAccess(ModuleName.MARKETING, AccessLevel.FULL)
   create(@Body() dto: CreateCampaignDto) {

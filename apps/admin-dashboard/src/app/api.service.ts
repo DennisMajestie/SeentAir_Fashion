@@ -1099,6 +1099,31 @@ endProductSale(id: string): Observable<unknown> {
   createCampaign(body: Record<string, unknown>): Observable<unknown> {
     return this.http.post(`${API_BASE}/campaigns`, body);
   }
+  campaignRoi(): Observable<{
+    campaigns: Array<{
+      id: string;
+      name: string;
+      orders: number;
+      revenue: number;
+      roi: number | null;
+    }>;
+    attributedRevenue: number;
+    spend: number;
+    roi: number | null;
+  }> {
+    return this.http.get<{
+      campaigns: Array<{
+        id: string;
+        name: string;
+        orders: number;
+        revenue: number;
+        roi: number | null;
+      }>;
+      attributedRevenue: number;
+      spend: number;
+      roi: number | null;
+    }>(`${API_BASE}/campaigns/roi`);
+  }
 
   // --- Tech packs (make-ready specs with revision history) ---
   techPacks(): Observable<Array<Record<string, unknown>>> {
