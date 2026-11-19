@@ -562,11 +562,13 @@ describe('ProductCardComponent', () => {
       expect(element.querySelector('.cartbtn')!.getAttribute('aria-label')).toBe(
         'Add Harmattan Tee to cart',
       );
+      expect(element.querySelector('.cartbtn__label')!.textContent).toContain('Add');
 
       mountCard(product({ variants: [variant({ size: 'S' }), variant({ id: 'v2', size: 'M' })] }));
       expect(element.querySelector('.cartbtn')!.getAttribute('aria-label')).toBe(
         'Choose size and colour for Harmattan Tee',
       );
+      expect(element.querySelector('.cartbtn__label')!.textContent).toContain('Pick');
     });
 
     it('is omitted entirely for a sold-out product', () => {

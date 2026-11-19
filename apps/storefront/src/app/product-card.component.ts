@@ -138,6 +138,7 @@ export const SWATCHES: Record<string, string> = {
               <circle cx="9" cy="20" r="1" />
               <circle cx="17" cy="20" r="1" />
             </svg>
+            <span class="cartbtn__label">{{ quickAddLabel(product()) }}</span>
           </button>
         }
 
@@ -316,6 +317,11 @@ export class ProductCardComponent implements OnDestroy {
     return this.defaultVariant(p)
       ? `Add ${p.name} to cart`
       : `Choose size and colour for ${p.name}`;
+  }
+
+  /** Visible wording on the tile: an icon alone reads as decoration. */
+  quickAddLabel(p: Product): string {
+    return this.defaultVariant(p) ? 'Add' : 'Pick';
   }
 
   private defaultVariant(p: Product): ProductVariant | null {

@@ -2656,7 +2656,7 @@ app-product-card {
   &::before {
     content: '';
     grid-area: 1 / 1;
-    width: 30px;
+    width: 42px;
     height: 30px;
     border-radius: 9px;
     background: var(--m-gold);
@@ -2666,13 +2666,25 @@ app-product-card {
   }
   svg {
     grid-area: 1 / 1;
-    width: 17px;
-    height: 17px;
+    width: 14px;
+    height: 14px;
+    transform: translateX(-8px);
     fill: none;
     stroke: #141210;
     stroke-width: 1.7;
     stroke-linecap: round;
     stroke-linejoin: round;
+    pointer-events: none;
+  }
+  .cartbtn__label {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #141210;
     pointer-events: none;
   }
   &:hover::before {
