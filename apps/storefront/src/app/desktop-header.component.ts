@@ -215,11 +215,10 @@ background: var(--m-fg, #141210);
           padding: 0 12px;
         }
 .d-logo img {
-          /* 50px, aligned across all four apps. The plate above adds 7px of
-             padding each side, so this bar is still taller than the portals',
-             which have no plate -- that is the cost of this asset's light
-             lockup, not an inconsistency in the bar's own metrics. */
-          height: 50px;
+          /* Requested brand size: 4.7rem (75px at the default root). The plate
+             above adds horizontal padding; the mark keeps the dark backing it
+             needs to be readable on the light desktop bar. */
+          height: 4.7rem;
           width: auto;
           display: block;
         }
