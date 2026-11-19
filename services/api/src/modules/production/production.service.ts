@@ -304,9 +304,13 @@ export class ProductionService {
       // Pessimistic lock serializes concurrent completion attempts on this
       // batch; the check below runs while holding the row lock, so a second
       // caller cannot slip through between check and write.
+      // Eager relations must NOT load under FOR UPDATE: the LEFT JOIN to the
+      // variant is on the nullable side and Postgres rejects the lock. The
+      // variant FK is read separately below, after the row is locked.
       const batch = await manager.getRepository(ProductionBatch).findOne({
         where: { id: batchId },
         lock: { mode: 'pessimistic_write' },
+        loadEagerRelations: false,
       });
       if (!batch) {
         throw new NotFoundException(`Production batch ${batchId} not found`);
@@ -331,6 +335,13 @@ export class ProductionService {
         );
       }
 
+      const variantRows: Array<{ variant_id: string }> = await manager.query(
+        `SELECT variant_id FROM production_batches WHERE id = $1`,
+        [batchId],
+      );
+      const variantId = variantRows[0]?.variant_id;
+      if (!variantId) throw new NotFoundException(`Production batch ${batchId} not found`);
+
       const burned = await this.burnedQuantity(batchId, manager);
       const goodUnits = Math.max(0, batch.quantity - burned);
       batch.stage = this.completionStage;
@@ -340,7 +351,7 @@ export class ProductionService {
         await this.inventoryService.record(
           {
             itemType: InventoryItemType.VARIANT,
-            itemId: batch.variant.id,
+            itemId: variantId,
             movementType: MovementType.PRODUCTION,
             quantityDelta: goodUnits,
             actorId,

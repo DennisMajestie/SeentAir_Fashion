@@ -83,7 +83,9 @@ describe('ProductionService', () => {
       fn({
         getRepository: (entity: unknown) =>
           entity === QCRejection ? rejectionRepo : batchRepo,
-        query: jest.fn(async () => [{ count: '1' }]),
+        query: jest.fn(async (sql: string) =>
+          sql.includes('variant_id') ? [{ variant_id: 'v1' }] : [{ count: '1' }],
+        ),
       }),
     ),
     query: dataSourceQuery,
@@ -285,6 +287,17 @@ describe('ProductionService', () => {
         quantityDelta: 92,
       }),
       expect.anything(),
+    );
+  });
+
+  it('locks the batch row without joining its eager variant relation', async () => {
+    await service.updateStage('b1', 'Completed', 'u1');
+    expect(batchRepo.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'b1' },
+        lock: { mode: 'pessimistic_write' },
+        loadEagerRelations: false,
+      }),
     );
   });
 
