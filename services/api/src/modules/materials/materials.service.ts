@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { InventoryItemType, MovementType } from '../inventory/inventory-movement.entity';
@@ -8,6 +8,7 @@ import { LedgerEntryType } from '../accounting/ledger-entry.entity';
 import { CreateMaterialDto } from './dto/create-material.dto';
 import { RecordPurchaseDto } from './dto/record-purchase.dto';
 import { RecordUsageDto } from './dto/record-usage.dto';
+import { UpdateMaterialDto } from './dto/update-material.dto';
 import { MaterialPurchase } from './entities/material-purchase.entity';
 import { MaterialUsage } from './entities/material-usage.entity';
 import { RawMaterial } from './entities/raw-material.entity';
@@ -66,6 +67,26 @@ export class MaterialsService {
       }),
     );
     return this.withQuantity(material);
+  }
+
+  /** Master data only: name, unit, kind, location and reorder point. */
+  async update(id: string, dto: UpdateMaterialDto): Promise<MaterialWithQuantity> {
+    const material = await this.materialRepo.findOne({ where: { id } });
+    if (!material) throw new NotFoundException(`Material ${id} not found`);
+
+    if (dto.name !== undefined && dto.name !== material.name) {
+      const duplicate = await this.materialRepo.findOne({ where: { name: dto.name } });
+      if (duplicate && duplicate.id !== id) {
+        throw new ConflictException(`Material ${dto.name} already exists`);
+      }
+      material.name = dto.name;
+    }
+    if (dto.unit !== undefined) material.unit = dto.unit;
+    if (dto.category !== undefined) material.category = dto.category || null;
+    if (dto.storageLocation !== undefined) material.storageLocation = dto.storageLocation || null;
+    if (dto.reorderThreshold !== undefined) material.reorderThreshold = dto.reorderThreshold;
+
+    return this.withQuantity(await this.materialRepo.save(material));
   }
 
   /**

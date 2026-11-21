@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireAccess } from '../../common/decorators/require-access.decorator';
@@ -9,6 +20,7 @@ import { ApprovalsService } from '../approvals/approvals.service';
 import { CreateMaterialDto } from './dto/create-material.dto';
 import { RecordPurchaseDto } from './dto/record-purchase.dto';
 import { RecordUsageDto } from './dto/record-usage.dto';
+import { UpdateMaterialDto } from './dto/update-material.dto';
 import { MaterialsService } from './materials.service';
 
 @ApiTags('Raw Materials')
@@ -57,6 +69,14 @@ export class MaterialsController {
   @RequireAccess(ModuleName.RAW_MATERIALS, AccessLevel.FULL)
   create(@Body() dto: CreateMaterialDto) {
     return this.materialsService.create(dto);
+  }
+
+  /** Master data only — stock changes go through purchases, usage and counts. */
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  @RequireAccess(ModuleName.RAW_MATERIALS, AccessLevel.FULL)
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateMaterialDto) {
+    return this.materialsService.update(id, dto);
   }
 
   /** Purchasing is approval-gated at the API layer (appendix 19). */
