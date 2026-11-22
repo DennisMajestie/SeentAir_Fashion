@@ -10,6 +10,7 @@ export interface HelpArticle {
   summary: string;
   content: string[];
   source: string;
+  keywords?: string[];
 }
 
 const ARTICLES: HelpArticle[] = [
@@ -45,6 +46,24 @@ const ARTICLES: HelpArticle[] = [
       'Supplier profiles are not required; an optional free-text note can be used for context.',
     ],
     source: 'docs/appendix-requirements/03-Raw-Materials.md',
+  },
+  {
+    id: 'restock',
+    title: 'How to restock a material — step by step',
+    summary: 'Set the reorder point, receive stock, confirm it, then consume it against a batch.',
+    content: [
+      'Restocking means receiving material into stock. Stock is never typed in: On hand is calculated from a movement ledger. Purchases add to it; usage and approved adjustments subtract from it. The correct order is always set up → purchase → confirm → use.',
+      'Step 1 — Check the material record. Open Purchasing → Materials and click the material. Confirm that Unit is a measure word such as metres, yards or kg — never a number. If it is wrong, click Edit details and correct it, because every quantity you enter is interpreted in this unit.',
+      'Step 2 — Set the reorder point. In Edit details, set Reorder at to the level where you want to be warned. The On hand column turns red when stock is at or below that number. A red row is a reminder to reorder, not an error.',
+      'Step 3 — Raise the purchase. Go to Purchasing → Material purchases → New purchase. Choose the material, enter Quantity received (whole units in the material\'s unit) and Cost per unit (0 is allowed if unknown). Supplier and note are optional. Click Record purchase.',
+      'Step 4 — Approval. The owner\'s purchase is approved instantly and stock is added straight away. If you are staff, the request waits in Approvals for a manager. Approving a request alone does not post the purchase, so the owner should raise purchases to avoid a gap.',
+      'Step 5 — Confirm the stock. Return to Purchasing → Materials. On hand should now show what you received, the red warning should clear once you are above the reorder point, and Last unit cost should show the cost you entered. Open the item ledger to see the purchase movement behind the number.',
+      'Step 6 — Use the stock. Open Purchasing → Materials → Record usage. Choose the material, a whole Quantity used, and select the Batch. The Batch field is labelled optional but is required if you want to complete that production run.',
+      'Step 7 — Complete production. In Production → Queue, open the batch and advance it to Completed. The API refuses completion until at least one usage record is linked to that batch, because finished goods cannot appear in stock without recording what was consumed.',
+      'If the physical stock is still wrong, do not edit On hand. Use Warehouses → Cycle counts to record the real count; the difference is posted as an approved adjustment so the audit trail stays intact.',
+    ],
+    source: 'docs/appendix-requirements/11-Inventory.md',
+    keywords: ['purchasing', 'stock', 'count', 'restock', 'reorder', 'material'],
   },
   {
     id: 'access',

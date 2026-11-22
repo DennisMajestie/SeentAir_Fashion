@@ -19,6 +19,14 @@ describe('HelpService', () => {
     expect(service.articles().every((article) => article.source.length > 0)).toBe(true);
   });
 
+  it('includes a step-by-step restock guide tagged for purchasing and stock', () => {
+    const guide = service.articles().find((article) => article.id === 'restock');
+    expect(guide).toBeDefined();
+    expect(guide?.keywords).toContain('purchasing');
+    expect(guide?.keywords).toContain('stock');
+    expect(guide?.content.join(' ')).toContain('New purchase');
+  });
+
   it('trims ticket content and creates tickets in the open state', async () => {
     const dto = {
       subject: '  Need assistance  ',
