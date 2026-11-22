@@ -39,6 +39,7 @@ import { DeliveryLeg, DeliveryLegStatus } from '../logistics/entities/delivery-l
 import { CUSTOMER_AWAITING_STOCK } from './customer-status';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { GuestContactDto } from './dto/guest-contact.dto';
+import { WalkInContactDto } from './dto/walk-in-contact.dto';
 import { OrderDetailDto, mapOrderDetail } from './dto/order-detail.dto';
 import { OrderFulfilmentDto } from './dto/order-fulfilment.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
@@ -364,6 +365,8 @@ export class OrdersService {
     // batch with "shippingAddress is required" -- the portal never sends one,
     // because wholesale addressing is tracked separately.
     const { shopFromRetail, shopFromWholesale } = resolveChannelIntent(user, dto.source);
+    let staffBranch = false;
+    let walkIn: WalkInContactDto | undefined;
 
     if (shopFromRetail) {
       channel = OrderChannel.RETAIL;
@@ -394,6 +397,19 @@ export class OrdersService {
       }
       channel = dto.channel ?? OrderChannel.IN_STORE;
       customerId = dto.customerId ?? null;
+      staffBranch = true;
+      if (dto.walkIn) {
+        if (channel !== OrderChannel.IN_STORE || customerId) {
+          throw new BadRequestException(
+            'walkIn is only allowed on an in-store sale without a customer account',
+          );
+        }
+        walkIn = dto.walkIn;
+      }
+    }
+
+    if (dto.walkIn && !staffBranch) {
+      throw new ForbiddenException('Walk-in details are staff-only');
     }
 
     // A retail parcel cannot be routed without a destination, and a guest order
@@ -448,8 +464,9 @@ export class OrdersService {
 
     const order = this.orderRepo.create({
       customer: customerId ? await this.usersService.findById(customerId) : null,
-      guestName: guest?.name ?? null,
+      guestName: walkIn?.name ?? guest?.name ?? null,
       guestEmail: guest?.email ?? null,
+      guestPhone: walkIn?.phone ?? null,
       claimedAt: null,
       channel,
       source: dto.source ?? null,

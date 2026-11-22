@@ -14,6 +14,7 @@ import {
 } from 'class-validator';
 import { DeliveryMethod, OrderChannel } from '../entities/order.entity';
 import { GuestContactDto } from './guest-contact.dto';
+import { WalkInContactDto } from './walk-in-contact.dto';
 import { ShippingAddressDto } from './shipping-address.dto';
 
 export class OrderItemDto {
@@ -79,6 +80,15 @@ export class CreateOrderDto {
   @ValidateNested()
   @Type(() => GuestContactDto)
   guest?: GuestContactDto;
+
+  /**
+   * Staff-only: name and phone of a walk-in buyer on an in-store sale. Unlike
+   * guest checkout this needs no email, and is ignored for non-staff callers.
+   */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WalkInContactDto)
+  walkIn?: WalkInContactDto;
 
   /**
    * Wholesale checkout: the buyer's requested fulfilment. Optional so every

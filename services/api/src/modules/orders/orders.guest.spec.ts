@@ -245,6 +245,39 @@ describe('OrdersService — guest checkout', () => {
     expect(created.shippingAddress).toBeNull();
   });
 
+  it('records the walk-in buyer name and phone on a staff in-store sale', async () => {
+    permissionsService.getAccessLevel.mockResolvedValue(AccessLevel.FULL);
+    const staff: AuthenticatedUser = {
+      id: 's1',
+      email: 'sales@seentair.test',
+      role: RoleName.SALES,
+    };
+    const created = await service.create(
+      order({
+        channel: OrderChannel.IN_STORE,
+        walkIn: { name: 'Ada Buyer', phone: '08012345678' },
+      }),
+      staff,
+    );
+
+    expect(created.guestName).toBe('Ada Buyer');
+    expect(created.guestPhone).toBe('08012345678');
+    expect(created.guestEmail).toBeNull();
+  });
+
+  it('refuses walk-in details outside a staff in-store sale', async () => {
+    const walkIn = { name: 'Ada Buyer', phone: '08012345678' };
+    await expect(
+      service.create(order({ channel: OrderChannel.IN_STORE, walkIn })),
+    ).rejects.toThrow();
+    await expect(
+      service.create(
+        order({ shippingAddress: SHIP_TO, walkIn }),
+        customer,
+      ),
+    ).rejects.toThrow(/staff-only/i);
+  });
+
   // ---- tracking without an account ----
 
   describe('tracking token', () => {

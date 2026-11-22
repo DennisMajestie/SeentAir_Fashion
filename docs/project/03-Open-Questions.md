@@ -18,4 +18,6 @@ Log the client's answer to each item directly in this file (with date), and upda
 
 ## Client answers log
 
-_(append answers here as they arrive, with date)_
+- **2026-11-22 — #1 POS priority:** build now (owner chose the priority table's "Must Have Now" over the section's "LATER"). Scope: a record-sale screen in Vessa, no POS hardware. Buyer identity: named walk-in (name + phone on the order), which required the staff-set walk-in contact fields on `POST /orders`. Implemented in `services/api` + Vessa `/orders/in-store`.
+
+_(append further answers here as they arrive, with date)_

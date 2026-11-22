@@ -99,6 +99,10 @@ export class Order {
   @Column({ name: 'guest_email', type: 'varchar', length: 320, nullable: true })
   guestEmail: string | null;
 
+  /** Walk-in buyer recorded by staff on an in-store sale — no account required. */
+  @Column({ name: 'guest_phone', type: 'varchar', length: 32, nullable: true })
+  guestPhone: string | null;
+
   /** Set when a verified registration attached this guest order to an account. */
   @Column({ name: 'claimed_at', type: 'timestamptz', nullable: true })
   claimedAt: Date | null;

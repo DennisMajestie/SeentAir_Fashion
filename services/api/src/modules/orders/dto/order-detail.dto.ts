@@ -92,6 +92,9 @@ export class OrderDetailDto {
   guestEmail: string | null;
 
   @ApiProperty({ nullable: true })
+  guestPhone: string | null;
+
+  @ApiProperty({ nullable: true })
   customerName: string | null;
 
   @ApiProperty({ nullable: true })
@@ -163,6 +166,7 @@ export function mapOrderDetail(
     shippingAddress: order.shippingAddress,
     guestName: order.guestName,
     guestEmail: order.guestEmail,
+    guestPhone: order.guestPhone,
     customerName: order.customer?.name ?? null,
     customerEmail: order.customer?.email ?? null,
     customerPhone: order.customer?.phone ?? null,

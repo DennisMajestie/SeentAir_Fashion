@@ -31,7 +31,9 @@ Based on the client's feature-priority table (Section 28 of the review document)
 
 ## ⚠ Contradiction to resolve before sprint planning
 
-The feature-priority table marks **"POS/physical sales" as Must Have Now**, but the client's direct confirmation on Section 24 (POS / Mall Sales System) marked it **"LATER."** Recommend treating POS as **Later** for MVP scope (deferred spec, per her explicit written answer), and getting written confirmation from her which one is correct before committing sprint capacity either way. See `25-Remaining-Clarification-Questions.md`.
+~~The feature-priority table marks **"POS/physical sales" as Must Have Now**, but the client's direct confirmation on Section 24 (POS / Mall Sales System) marked it **"LATER."** Recommend treating POS as **Later** for MVP scope (deferred spec, per her explicit written answer), and getting written confirmation from her which one is correct before committing sprint capacity either way.~~
+
+**Resolved 2026-11-22:** the owner chose **"Must Have Now"** — build a record-sale screen now, with a named walk-in buyer. Full POS hardware/receipts remain out of scope for this first version. See `../project/03-Open-Questions.md`.
 
 ## Suggested MVP build order (proposed, pending client sign-off)
 
