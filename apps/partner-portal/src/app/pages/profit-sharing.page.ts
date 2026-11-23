@@ -7,8 +7,12 @@ interface PayoutRow {
   id: string;
   period: string;
   totalProfit: number;
+  reinvestmentAmount: number;
   dividendPool: number;
+  reserveAmount: number;
   myDividend: number;
+  founderAmount: number;
+  partnerBreakdown: Array<{ partnerId: string; amount: number }>;
 }
 
 /** Screen P8: declared dividend distributions under the operating covenant. */
@@ -81,6 +85,25 @@ interface PayoutRow {
                     <strong class="font-mono text-accent text-[14px]">{{ row.myDividend | seMoney }}</strong>
                   </div>
                 </div>
+
+                <div class="grid grid-cols-3 gap-2 text-[11px] font-mono bg-canvas/70 p-2.5 rounded-lg border border-border">
+                  <div>
+                    <span class="text-light-secondary block">Reinvestment:</span>
+                    <strong class="text-light-primary">{{ row.reinvestmentAmount | seMoney }}</strong>
+                  </div>
+                  <div>
+                    <span class="text-light-secondary block">Reserve:</span>
+                    <strong class="text-light-primary">{{ row.reserveAmount | seMoney }}</strong>
+                  </div>
+                  <div>
+                    <span class="text-light-secondary block">Founder (60%):</span>
+                    <strong class="text-light-primary">{{ row.founderAmount | seMoney }}</strong>
+                  </div>
+                </div>
+
+                <p class="text-[10px] text-light-secondary font-mono">
+                  Dividend pool allocated across {{ row.partnerBreakdown.length }} partner account{{ row.partnerBreakdown.length === 1 ? '' : 's' }} by equity.
+                </p>
 
                 <div class="flex justify-between items-center text-[11px] text-light-secondary pt-1">
                   <span>Net certified profit: <strong class="font-mono text-light-primary">{{ row.totalProfit | seMoney }}</strong></span>

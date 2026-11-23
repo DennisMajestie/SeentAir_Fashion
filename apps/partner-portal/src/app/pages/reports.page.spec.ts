@@ -46,7 +46,7 @@ describe('ReportsPage', () => {
     configurePortal();
     fixture = TestBed.createComponent(ReportsPage);
     fixture.detectChanges();
-    expect(el().textContent).toContain('Not yet uploaded');
+    expect(el().textContent).toContain('Request a copy');
   });
 
   it('never shows a customer name, email or address', () => {

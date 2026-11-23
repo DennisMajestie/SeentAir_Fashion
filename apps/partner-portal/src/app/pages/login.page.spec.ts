@@ -90,6 +90,24 @@ describe('LoginPage', () => {
     expect(el().querySelectorAll('input[maxlength="1"]').length).toBe(6);
   });
 
+  it('shows authenticator enrolment when the API requires 2FA setup', async () => {
+    mount({
+      requires2fa: true,
+      challengeToken: 'tok',
+      requiresSetup: true,
+      secret: 'JBSWY3DPEHPK3PXP',
+      otpauthUrl: 'otpauth://totp/Seentair:p%40seentair.test?secret=JBSWY3DPEHPK3PXP',
+    });
+    fixture.componentInstance.email = 'p@seentair.test';
+    fixture.componentInstance.password = 'key-123';
+    button('Proceed to 2FA Challenge').click();
+    await settle();
+
+    expect(el().textContent).toContain('Set up your authenticator');
+    expect(el().textContent).toContain('JBSWY3DPEHPK3PXP');
+    expect(el().querySelector('a[href^="otpauth://"]')).toBeTruthy();
+  });
+
   it('shows the auth failure banner without navigating', async () => {
     mount({ accessToken: 'st' });
     api.login.and.returnValue(throwError(() => new Error('denied')));

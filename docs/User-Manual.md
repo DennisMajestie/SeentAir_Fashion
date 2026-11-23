@@ -244,12 +244,12 @@ The portal shows data for the **current period** — a **Period** chip in the he
 | Page | What it's for |
 |---|---|
 | **Overview** | The partnership dashboard: share structure (1,000,000 shares; 60% founder / 40% partners), split ratios (40% reinvestment / 40% dividends / 20% reserve), current values and headline metrics |
-| **My Investment** | Your stake: shares, units, valuation and movement history |
+| **My Investment** | Your stake: invested amount, shares, equity percentage and lifetime dividends |
 | **Performance** | Live operational performance across the business |
 | **Inventory** | Current stock picture at variant level (volume view, not customer data) |
 | **Accounts & Reports** | Profitability, ledgers and financial reports for the period |
 | **Profit Sharing** | The 40/40/20 model applied to the period: how profits flow to reinvestment, dividends and reserve |
-| **Documents & Messages** | In-platform messages and documents Seentair shares with you |
+| **Documents & Messages** | In-platform notices, inquiry threads with the management desk, and the document vault (empty until Seentair publishes files) |
 | **Investor Settings** | Your profile, security (incl. managing your 2FA authenticator) |
 
 ### 6.4 Notifications

@@ -43,7 +43,7 @@ interface IncomeRow {
               </div>
               <div class="p-2.5 rounded-lg bg-canvas border border-border/80">
                 <span class="text-[10px] text-light-secondary font-mono block">Ledger basis</span>
-                <strong class="font-mono text-light-primary text-[13px] block mt-0.5">Verified entries</strong>
+                <strong class="font-mono text-light-primary text-[13px] block mt-0.5">Ledger entries</strong>
                 <span class="text-[10px] text-light-secondary font-mono">Company accounting ledger</span>
               </div>
             </div>
@@ -99,19 +99,19 @@ interface IncomeRow {
             <h3 class="text-[13px] font-bold text-light-primary border-b border-border pb-2">More telemetry</h3>
             <div class="flex justify-between py-1.5 border-b border-border/60 gap-3">
               <span class="text-light-secondary">Channel mix (retail / wholesale / in-store):</span>
-              <strong class="text-light-primary text-right">Not yet published</strong>
+              <strong class="text-light-primary text-right">Not available in this view</strong>
             </div>
             <div class="flex justify-between py-1.5 border-b border-border/60 gap-3">
               <span class="text-light-secondary">Top products by revenue:</span>
-              <strong class="text-light-primary text-right">Not yet published</strong>
+              <strong class="text-light-primary text-right">Not available in this view</strong>
             </div>
             <div class="flex justify-between py-1.5 border-b border-border/60 gap-3">
               <span class="text-light-secondary">Factory floor (batches / output / QC):</span>
-              <strong class="text-light-primary text-right">Not yet published</strong>
+              <strong class="text-light-primary text-right">Not available in this view</strong>
             </div>
             <div class="flex justify-between py-1.5 gap-3">
               <span class="text-light-secondary">Quarter-by-quarter margin trend:</span>
-              <strong class="text-light-primary text-right">Not yet published</strong>
+              <strong class="text-light-primary text-right">Not available in this view</strong>
             </div>
             <p class="text-[11px] text-light-secondary leading-normal pt-2">When released, rankings are anonymized SKU aggregates only — never individual people.</p>
           </section>

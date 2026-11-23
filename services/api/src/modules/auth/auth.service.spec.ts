@@ -214,6 +214,52 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
       expect(refreshRepo.save).not.toHaveBeenCalled(); // no session yet
     });
 
+    it('partner login always demands 2FA and offers enrolment when not yet enabled', async () => {
+      user.role = { name: RoleName.PARTNER_INVESTOR };
+      user.totpEnabled = false;
+      usersService.findByIdWithTotpSecret = jest.fn(async () => null) as never;
+
+      const result = await service.login('c@x.test', 'CorrectHorse1!');
+
+      expect('requires2fa' in result).toBe(true);
+      if ('requiresSetup' in result) {
+        expect(result.requiresSetup).toBe(true);
+        expect(result.secret).toBeTruthy();
+        expect(result.otpauthUrl).toContain('otpauth://');
+      }
+      expect(refreshRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('a first code on a setup challenge enables 2FA and issues tokens', async () => {
+      const { authenticator } = await import('otplib');
+      const secret = authenticator.generateSecret();
+      jwtService.verifyAsync.mockResolvedValue({ sub: 'u1', type: '2fa', setup: true });
+      usersService.findByIdWithTotpSecret = jest.fn(async () => ({
+        id: 'u1',
+        email: 'c@x.test',
+        status: UserStatus.ACTIVE,
+        totpEnabled: false,
+        totpSecret: secret,
+        role: { name: RoleName.PARTNER_INVESTOR },
+      })) as never;
+
+      const pair = await service.verify2fa('challenge', authenticator.generate(secret));
+
+      expect(pair.accessToken).toBeTruthy();
+      expect(userRepo.update).toHaveBeenCalledWith('u1', { totpEnabled: true });
+    });
+
+    it('partner accounts cannot disable 2FA', async () => {
+      usersService.findByIdWithTotpSecret = jest.fn(async () => ({
+        id: 'u1',
+        totpEnabled: true,
+        totpSecret: 'secret',
+        role: { name: RoleName.PARTNER_INVESTOR },
+      })) as never;
+
+      await expect(service.disable2fa('u1', '123456')).rejects.toThrow(/must keep/);
+    });
+
     it('a correct code on a valid challenge completes the login', async () => {
       const { authenticator } = await import('otplib');
       const secret = authenticator.generateSecret();

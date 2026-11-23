@@ -31,8 +31,8 @@ const SEGMENT_CLASSES = ['bg-accent', 'bg-warning', 'bg-light-secondary'];
             <div class="metrics grid grid-cols-2 gap-2 pt-1 border-t border-border text-[12px] md:grid-cols-4">
               <div class="p-2.5 rounded-lg bg-canvas border border-border/80">
                 <span class="text-[10px] text-light-secondary font-mono block">Finished goods value</span>
-                <strong class="font-mono text-light-primary text-[13px] block mt-0.5">Not yet valued</strong>
-                <span class="text-[9px] text-light-secondary font-semibold">Published after audit</span>
+                <strong class="font-mono text-light-primary text-[13px] block mt-0.5">Not available in this view</strong>
+                <span class="text-[9px] text-light-secondary font-semibold">Valuation not published</span>
               </div>
               <div class="p-2.5 rounded-lg bg-canvas border border-border/80">
                 <span class="text-[10px] text-light-secondary font-mono block">Raw material holdings</span>
@@ -41,8 +41,8 @@ const SEGMENT_CLASSES = ['bg-accent', 'bg-warning', 'bg-light-secondary'];
               </div>
               <div class="p-2.5 rounded-lg bg-canvas border border-border/80">
                 <span class="text-[10px] text-light-secondary font-mono block">Reserved &amp; written off</span>
-                <strong class="font-mono text-light-primary text-[13px] block mt-0.5">-</strong>
-                <span class="text-[9px] text-light-secondary font-semibold">QC reason-coded, quarterly</span>
+                <strong class="font-mono text-light-primary text-[13px] block mt-0.5">Not available in this view</strong>
+                <span class="text-[9px] text-light-secondary font-semibold">QC write-offs not published</span>
               </div>
               <div class="p-2.5 rounded-lg bg-canvas border border-border/80">
                 <span class="text-[10px] text-light-secondary font-mono block">Position period</span>
@@ -132,12 +132,12 @@ const SEGMENT_CLASSES = ['bg-accent', 'bg-warning', 'bg-light-secondary'];
             } @else {
               <div class="flex justify-between py-1.5 border-b border-border/60 gap-3">
                 <span class="text-light-secondary">Mill custody lots (cotton, poly, trims, packaging):</span>
-                <strong class="text-light-primary">Not yet published</strong>
+                <strong class="text-light-primary">Not available in this view</strong>
               </div>
             }
             <div class="flex justify-between py-1.5 gap-3">
               <span class="text-light-secondary">Per-floor utilisation:</span>
-              <strong class="text-light-primary">Not yet shared</strong>
+              <strong class="text-light-primary">Not available in this view</strong>
             </div>
             <p class="text-[11px] text-light-secondary leading-normal pt-2">Seentair operates a single factory. Aggregate telemetry only, never individual person data.</p>
           </section>

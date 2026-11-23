@@ -1,12 +1,14 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { SeMoneyPipe } from '@seentair/ui';
+import { ApiService, type PartnerInquiry } from '../api.service';
 import { PortalStore } from '../portal.store';
 
 /** Screen P9: shareholder document vault (awaiting first release) + executive message desk. */
 @Component({
   selector: 'app-documents-page',
-  imports: [DatePipe, DecimalPipe, SeMoneyPipe],
+  imports: [DatePipe, DecimalPipe, SeMoneyPipe, FormsModule],
   template: `
     @if (store.dash(); as d) {
       <div class="stitch">
@@ -15,7 +17,7 @@ import { PortalStore } from '../portal.store';
           <div class="p-3.5 rounded-xl bg-canvas-tint/70 border border-border flex items-start gap-2.5 shadow-xs md:col-span-2">
             <span class="material-symbols-outlined text-accent text-[20px] mt-0.5">enhanced_encryption</span>
             <div class="text-[12px] leading-relaxed text-light-primary">
-              <strong class="font-semibold text-light-primary">Secured Enclave:</strong> All executed instruments are watermarked with your partner reference upon download and released through the governance desk.
+              <strong class="font-semibold text-light-primary">Document vault:</strong> Instruments shared by the governance desk will be listed here. Inquiry threads go to the management desk.
             </div>
           </div>
 
@@ -32,9 +34,9 @@ import { PortalStore } from '../portal.store';
               <span class="text-[10px] text-light-secondary font-semibold">Subscribed &amp; fully paid</span>
             </div>
             <div class="p-2.5 rounded-lg bg-light-surface border border-border shadow-xs">
-              <span class="text-[10px] text-light-secondary font-mono block">Vault records</span>
-              <strong class="font-mono text-light-primary text-[15px] block mt-0.5">0</strong>
-              <span class="text-[10px] text-light-secondary font-semibold">Verified documents shared</span>
+              <span class="text-[10px] text-light-secondary font-mono block">Inquiries</span>
+              <strong class="font-mono text-light-primary text-[15px] block mt-0.5">{{ inquiries().length }}</strong>
+              <span class="text-[10px] text-light-secondary font-semibold">Opened with the desk</span>
             </div>
             <div class="p-2.5 rounded-lg bg-light-surface border border-border shadow-xs">
               <span class="text-[10px] text-light-secondary font-mono block">Messages</span>
@@ -47,50 +49,30 @@ import { PortalStore } from '../portal.store';
           <section class="vault flex flex-col gap-3">
             <div class="flex items-center justify-between">
               <h3 class="text-[15px] font-bold text-light-primary">Corporate document vault</h3>
-              <span class="text-[11px] font-mono text-light-secondary">0 VAULT ITEMS</span>
+              <span class="text-[11px] font-mono text-light-secondary">{{ inquiries().length }} INQUIRIES</span>
+            </div>
+            <div class="bg-light-surface rounded-xl p-4 border border-border shadow-xs">
+              <p class="text-[12px] text-light-primary">No documents have been shared yet.</p>
+              <p class="text-[11px] text-light-secondary mt-1">
+                Agreements, quarterly letters and statutory receipts will appear here when the
+                governance desk releases them. Use the inquiry form to request a copy.
+              </p>
             </div>
 
-            <article class="vault-item bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-xl bg-accent/15 text-warning flex items-center justify-center flex-shrink-0 shadow-xs">
-                  <span class="material-symbols-outlined text-[22px]">verified_user</span>
-                </div>
-                <div>
-                  <h2 class="text-[13px] font-bold text-light-primary leading-tight">Shareholders' Agreement &amp; CAC filings</h2>
-                  <span class="text-[11px] text-light-secondary font-mono block mt-0.5">Legal operating covenant</span>
-                  <span class="text-[10px] text-light-secondary">Awaiting release</span>
-                </div>
+            @if (inquiries().length) {
+              <div class="flex flex-col gap-2">
+                @for (q of inquiries(); track q.id) {
+                  <article class="bg-light-surface rounded-xl p-3 border border-border shadow-xs">
+                    <div class="flex items-center justify-between gap-2">
+                      <strong class="text-[12px] text-light-primary">{{ q.subject ?? 'Partner inquiry' }}</strong>
+                      <span class="text-[10px] font-mono text-light-secondary">{{ q.lastMessageAt ? (q.lastMessageAt | date: 'mediumDate') : '' }}</span>
+                    </div>
+                    <p class="text-[11px] text-light-secondary mt-1">{{ q.lastMessagePreview }}</p>
+                    <span class="text-[10px] font-mono text-warning">{{ q.status }}</span>
+                  </article>
+                }
               </div>
-              <span class="text-[10px] text-light-secondary">Not yet shared</span>
-            </article>
-
-            <article class="vault-item bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-xl bg-canvas-tint text-light-primary flex items-center justify-center flex-shrink-0 shadow-xs">
-                  <span class="material-symbols-outlined text-[22px]">mark_email_read</span>
-                </div>
-                <div>
-                  <h2 class="text-[13px] font-bold text-light-primary leading-tight">Managing Director's quarterly letters</h2>
-                  <span class="text-[11px] text-light-secondary font-mono block mt-0.5">Filed with each distribution cycle</span>
-                  <span class="text-[10px] text-light-secondary">Awaiting release</span>
-                </div>
-              </div>
-              <span class="text-[10px] text-light-secondary">Not yet shared</span>
-            </article>
-
-            <article class="vault-item bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-xl bg-canvas-tint text-light-primary flex items-center justify-center flex-shrink-0 shadow-xs">
-                  <span class="material-symbols-outlined text-[22px]">receipt_long</span>
-                </div>
-                <div>
-                  <h2 class="text-[13px] font-bold text-light-primary leading-tight">Statutory receipts &amp; tax credit notes</h2>
-                  <span class="text-[11px] text-light-secondary font-mono block mt-0.5">Withholding-tax deposits</span>
-                  <span class="text-[10px] text-light-secondary">Awaiting release</span>
-                </div>
-              </div>
-              <span class="text-[10px] text-light-secondary">Not yet shared</span>
-            </article>
+            }
           </section>
 
           <!-- Message Management -->
@@ -121,15 +103,18 @@ import { PortalStore } from '../portal.store';
             }
             <div class="compose flex flex-col gap-2 mt-1">
               <label for="inquiry" class="text-[12px] font-semibold text-light-primary">New management inquiry</label>
-              <textarea id="inquiry" rows="4" disabled placeholder="Submitting an inquiry is not yet enabled — reply via your liaison desk contact." class="w-full p-2.5 border border-border rounded-lg bg-canvas text-[12px] text-light-secondary resize-none"></textarea>
-              <button type="button" disabled class="px-4 py-3 rounded-lg bg-light-surface-variant text-light-on-surface-variant text-[13px] font-bold">Send secure message</button>
+              <textarea id="inquiry" rows="4" [(ngModel)]="draft" placeholder="Write your question to the management desk…" class="w-full p-2.5 border border-border rounded-lg bg-canvas text-[12px] text-light-primary resize-none"></textarea>
+              <button type="button" [disabled]="busy() || !draft.trim()" (click)="send()" class="px-4 py-3 rounded-lg bg-accent text-on-accent text-[13px] font-bold disabled:opacity-60">
+                {{ busy() ? 'Sending…' : 'Send secure message' }}
+              </button>
+              @if (error()) { <p class="text-[11px] text-danger" role="alert">{{ error() }}</p> }
             </div>
           </section>
 
           <!-- Statutory Governance Office -->
           <section class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)]">
             <h3 class="text-[13px] font-bold text-light-primary border-b border-border pb-2">Statutory governance office</h3>
-            <p class="text-[12px] text-light-secondary mt-2 leading-normal">For physical AGM proxies, share re-allotments, or direct trust deeds, lodge a governance query via the direct desk once enabled.</p>
+            <p class="text-[12px] text-light-secondary mt-2 leading-normal">For AGM proxies, share re-allotments or trust deeds, send an inquiry above and the governance desk will respond.</p>
           </section>
         </div>
       </div>
@@ -138,6 +123,37 @@ import { PortalStore } from '../portal.store';
 })
 export class DocumentsPage {
   readonly store = inject(PortalStore);
+  private readonly api = inject(ApiService);
+
+  readonly inquiries = signal<PartnerInquiry[]>([]);
+  readonly busy = signal(false);
+  readonly error = signal<string | null>(null);
+  draft = '';
+
+  constructor() {
+    this.api.myInquiries().subscribe({
+      next: (rows) => this.inquiries.set(rows ?? []),
+      error: () => this.inquiries.set([]),
+    });
+  }
+
+  send(): void {
+    const body = this.draft.trim();
+    if (!body || this.busy()) return;
+    this.busy.set(true);
+    this.error.set(null);
+    this.api.createInquiry(body).subscribe({
+      next: (thread) => {
+        this.inquiries.update((rows) => [thread, ...rows]);
+        this.draft = '';
+        this.busy.set(false);
+      },
+      error: () => {
+        this.error.set('The inquiry could not be sent. Try again.');
+        this.busy.set(false);
+      },
+    });
+  }
 
   readonly activity = computed(() =>
     (this.store.messages() ?? []).map((m) => ({

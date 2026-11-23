@@ -118,13 +118,13 @@ import { ThemeService } from '../theme.service';
               <div class="bg-light-surface/80 p-3 rounded-xl border border-border">
                 <span class="material-symbols-outlined text-[18px] text-accent mb-1">payments</span>
                 <strong class="font-bold text-light-primary block">Quarterly Dividends</strong>
-                <p class="text-[11px] text-light-secondary mt-0.5 leading-snug">Calculated on audited EBITDA covenants every 90 days.</p>
+                <p class="text-[11px] text-light-secondary mt-0.5 leading-snug">Declared quarterly from certified profit and paid by equity percentage.</p>
               </div>
 
               <div class="bg-light-surface/80 p-3 rounded-xl border border-border">
                 <span class="material-symbols-outlined text-[18px] text-accent mb-1">gavel</span>
-                <strong class="font-bold text-light-primary block">SEC &amp; NDA Compliance</strong>
-                <p class="text-[11px] text-light-secondary mt-0.5 leading-snug">All financial statements governed under confidentiality covenants.</p>
+                <strong class="font-bold text-light-primary block">Confidential Access</strong>
+                <p class="text-[11px] text-light-secondary mt-0.5 leading-snug">Aggregates only — no customer personal data is exposed to partner accounts.</p>
               </div>
             </section>
 
@@ -156,6 +156,20 @@ import { ThemeService } from '../theme.service';
               <p class="text-[13px] text-light-secondary mt-1 max-w-[280px] mx-auto">Enter the 6-digit rotating verification code from your hardware token or authenticator app.</p>
             </div>
 
+            @if (setupSecret(); as secret) {
+              <section class="bg-canvas-tint/70 rounded-xl p-4 border border-border flex flex-col gap-2">
+                <h2 class="text-[13px] font-bold text-light-primary">Set up your authenticator</h2>
+                <p class="text-[12px] text-light-secondary leading-normal">
+                  Partner accounts always require two-factor authentication. Open the setup link in
+                  your authenticator app, then enter the first 6-digit code below to finish.
+                </p>
+                @if (setupOtpauthUrl(); as otpauth) {
+                  <a [href]="otpauth" target="_blank" rel="noopener" class="text-[12px] text-accent underline break-all">Open authenticator setup link</a>
+                }
+                <p class="text-[11px] font-mono text-light-secondary break-all">Secret: {{ secret }}</p>
+              </section>
+            }
+
             <!-- P2 · Verification Card -->
             <section class="bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-4">
 
@@ -169,14 +183,9 @@ import { ThemeService } from '../theme.service';
                 </div>
               </div>
 
-              <!-- Rotating Code Timer & Rate-limit Note -->
-              <div class="flex items-center justify-between text-[11px] font-mono text-light-secondary border-t border-border pt-3">
-                <span class="flex items-center gap-1 text-accent font-semibold">
-                  <span class="material-symbols-outlined text-[15px]">timer</span>
-                  Codes rotate every 30s
-                </span>
-                <span>Rate-limited attempts</span>
-              </div>
+              <p class="text-[11px] text-light-secondary border-t border-border pt-3">
+                Enter the current 6-digit code from your authenticator app. The challenge expires after five minutes.
+              </p>
 
               <!-- Verify Button -->
               <form (ngSubmit)="verify()" novalidate>
@@ -187,22 +196,19 @@ import { ThemeService } from '../theme.service';
               </form>
 
               <div class="text-center">
-                <button type="button" class="text-[12px] text-light-secondary hover:text-light-primary font-medium" (click)="restart()">Use backup recovery key instead</button>
+                <button type="button" class="text-[12px] text-light-secondary hover:text-light-primary font-medium" (click)="restart()">Use a different account</button>
               </div>
               @if (error()) { <p class="p-3 rounded-md bg-danger/10 border border-danger/25 text-danger text-[12px]" role="alert">{{ error() }}</p> }
             </section>
 
-            <!-- P2 · Trust Guard Note -->
             <div class="p-3.5 rounded-xl bg-canvas-tint/70 border border-border text-[11px] text-light-secondary text-center leading-normal">
-              Partner telemetry access is audited under Section 14 of the Seentair Partner Operating Covenant. Session tokens expire after 30 minutes of inactivity.
+              Partner access shows business aggregates only. Contact Seentair if you need help with your authenticator.
             </div>
 
           </main>
 
-          <!-- P2 · Regulatory Strip Footer -->
-          <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-border flex items-center justify-between text-[11px] font-mono text-light-secondary">
-            <span>SESSION ID: #ST-AUTH-7719</span>
-            <span>ENCRYPTED: ED25519</span>
+          <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-0 border-border flex items-center justify-center text-[11px] font-mono text-light-secondary">
+            <span>SEENTAIR EQUITY LEDGER · ABA, NIGERIA</span>
           </footer>
         }
       </div>
@@ -221,6 +227,8 @@ export class LoginPage {
   readonly error = signal<string | null>(null);
   readonly info = signal<string | null>(null);
   readonly showPassword = signal(false);
+  readonly setupSecret = signal<string | null>(null);
+  readonly setupOtpauthUrl = signal<string | null>(null);
   private challengeToken: string | null = null;
 
   /** One cell per code digit; the joined string is the code sent to the API. */
@@ -257,6 +265,8 @@ export class LoginPage {
         this.busy.set(false);
         if ('requires2fa' in res) {
           this.challengeToken = res.challengeToken;
+          this.setupSecret.set(res.requiresSetup ? res.secret ?? null : null);
+          this.setupOtpauthUrl.set(res.requiresSetup ? res.otpauthUrl ?? null : null);
           this.phase.set(2);
         } else {
           this.enter();
@@ -289,6 +299,8 @@ export class LoginPage {
   restart(): void {
     this.phase.set(1);
     this.challengeToken = null;
+    this.setupSecret.set(null);
+    this.setupOtpauthUrl.set(null);
     this.digits.fill('');
     this.error.set(null);
     this.info.set(null);

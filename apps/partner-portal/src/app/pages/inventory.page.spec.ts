@@ -14,7 +14,7 @@ describe('InventoryPage', () => {
     fixture.detectChanges();
     const hero = el().querySelector('.hero')!.textContent!;
     expect(hero).toContain('1,148 units');
-    expect(hero).toContain('Not yet valued');
+    expect(hero).toContain('Not available in this view');
   });
 
   it('lists a live stock row from the event-sourced summary with a status badge', () => {
@@ -35,7 +35,7 @@ describe('InventoryPage', () => {
     fixture = TestBed.createComponent(InventoryPage);
     fixture.detectChanges();
     expect(el().textContent).toContain('Line items appear per SKU');
-    expect(el().textContent).toContain('Not yet published');
+    expect(el().textContent).toContain('Not available in this view');
   });
 
   it('never shows a customer name, email or address', () => {

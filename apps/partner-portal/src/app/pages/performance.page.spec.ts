@@ -42,7 +42,7 @@ describe('PerformancePage', () => {
     fixture.detectChanges();
     expect(el().querySelector('.income-row')).toBeNull();
     expect(el().textContent).toContain('No income entries yet');
-    expect(el().textContent).toContain('Not yet published');
+    expect(el().textContent).toContain('Not available in this view');
   });
 
   it('never shows a name, email or address', () => {

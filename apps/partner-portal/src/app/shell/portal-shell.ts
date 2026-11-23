@@ -73,6 +73,13 @@ import { RailIndicator } from '../rail-indicator.directive';
           </a>
 
           <div class="top-actions">
+            <div class="period-chip" aria-label="Reporting period">
+              <span>Period</span>
+              <strong>{{ store.periodLabel() }}</strong>
+            </div>
+            @if (store.lastUpdatedLabel(); as synced) {
+              <span class="last-synced">Synced {{ synced }}</span>
+            }
             <button seButton variant="ghost" iconOnly type="button"
                     [attr.aria-label]="store.lastUpdatedLabel() ? 'Refresh portfolio data, last synced ' + store.lastUpdatedLabel() : 'Refresh portfolio data'"
                     (click)="refresh()">
@@ -151,6 +158,10 @@ import { RailIndicator } from '../rail-indicator.directive';
     .vessa-logo{display:block;width:88px;height:auto;max-height:46px;object-fit:contain;object-position:left center;}
     .tag{font:600 10px/1 'JetBrains Mono',monospace;padding:3px 6px;border-radius:999px;background:rgba(200,138,18,.2);color:#93600a;border:1px solid rgba(200,138,18,.35);}
     .top-actions{display:flex;align-items:center;gap:6px;}
+    .period-chip{display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);font-size:11px;color:var(--text-muted);}
+    .period-chip strong{font-family:var(--font-mono,monospace);color:var(--text);}
+    .last-synced{font-size:10px;color:var(--text-muted);font-family:var(--font-mono,monospace);white-space:nowrap;}
+    @media(max-width:900px){.last-synced{display:none;}}
     .top-actions .material-symbols-outlined{font-size:20px;color:var(--text);}
     @media (max-width:767px){.user__text,.user__chev{display:none;}.user{padding:3px;border-color:transparent;}}
 

@@ -157,6 +157,8 @@ export class PartnersService {
 
     // Aggregates only — never customer PII (client-explicit boundary).
     return {
+      partnerId: partner.id,
+      currentPeriod: distributions[0]?.period ?? null,
       // The confirmed covenant (appendix 17) ships to the portal so the
       // partner surfaces mirror server configuration, never reinvented values.
       config: {
@@ -182,14 +184,22 @@ export class PartnersService {
       accountsReports: { income, profit },
       profitSharing: distributions.map((d) => {
         const breakdown = d.perPartnerBreakdown as {
-          partners: Array<{ partnerId: string; amount: number }>;
+          founderCeo?: number;
+          partners?: Array<{ partnerId: string; amount: number }>;
         };
-        const mine = breakdown.partners.find((p) => p.partnerId === partner.id);
+        const mine = (breakdown.partners ?? []).find((p) => p.partnerId === partner.id);
         return {
           period: d.period,
           totalProfit: d.totalProfit,
+          reinvestmentAmount: d.reinvestmentAmount,
           dividendPool: d.dividendPool,
+          reserveAmount: d.reserveAmount,
           myDividend: mine?.amount ?? 0,
+          founderAmount: breakdown.founderCeo ?? 0,
+          partnerBreakdown: (breakdown.partners ?? []).map((p) => ({
+            partnerId: p.partnerId,
+            amount: p.amount,
+          })),
         };
       }),
     };

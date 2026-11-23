@@ -46,7 +46,7 @@ interface IncomeRow {
               </div>
               <div class="p-2.5 rounded-lg bg-canvas border border-border/80">
                 <span class="text-[10px] text-light-secondary font-mono block">Ledger status</span>
-                <strong class="font-mono text-success text-[13px] block mt-0.5">Reconciled</strong>
+                <strong class="font-mono text-success text-[13px] block mt-0.5">From the ledger</strong>
                 <span class="text-[10px] text-light-secondary font-semibold">Single-source company ledger</span>
               </div>
             </div>
@@ -116,22 +116,20 @@ interface IncomeRow {
             <h3 class="text-[13px] font-bold text-light-primary border-b border-border pb-2">Signatories &amp; document shelf</h3>
             <div class="flex justify-between py-1.5 border-b border-border/60 gap-3">
               <span class="text-light-secondary">Managing Director:</span>
-              <strong class="text-light-primary">Signature on file</strong>
+              <strong class="text-light-primary">Not available in the portal</strong>
             </div>
             <div class="flex justify-between py-1.5 border-b border-border/60 gap-3">
               <span class="text-light-secondary">Company Secretary:</span>
-              <strong class="text-light-primary">Signature on file</strong>
+              <strong class="text-light-primary">Not available in the portal</strong>
             </div>
             <div class="flex justify-between py-1.5 border-b border-border/60 gap-3">
               <span class="text-light-secondary">External Auditors:</span>
-              <strong class="text-light-primary">Engagement on file</strong>
+              <strong class="text-light-primary">Not available in the portal</strong>
             </div>
-            <div class="grid grid-cols-2 gap-2 pt-2">
-              <div class="p-2.5 border border-dashed border-border rounded-lg text-[11px] text-light-secondary bg-canvas/60">Quarterly income &amp; profit statement · Not yet uploaded</div>
-              <div class="p-2.5 border border-dashed border-border rounded-lg text-[11px] text-light-secondary bg-canvas/60">Cost &amp; working capital schedule · Not yet uploaded</div>
-              <div class="p-2.5 border border-dashed border-border rounded-lg text-[11px] text-light-secondary bg-canvas/60">Management letter · Not yet uploaded</div>
-              <div class="p-2.5 border border-dashed border-border rounded-lg text-[11px] text-light-secondary bg-canvas/60">Audited annual report · Not yet uploaded</div>
-            </div>
+            <p class="text-[11px] text-light-secondary leading-normal pt-1">
+              Signed statements and document shelves are not published in the portal. Request a copy
+              through the inquiry form on the Documents page.
+            </p>
           </section>
         </div>
       </div>

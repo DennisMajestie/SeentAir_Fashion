@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { SeCurrencyService } from '@seentair/ui';
 import { ApiService } from '../api.service';
 import { BrandAlertService } from '../brand-alert.service';
 import { PortalStore } from '../portal.store';
@@ -80,7 +81,7 @@ import { ThemeService } from '../theme.service';
               <span class="text-[13px] font-semibold text-light-primary block">Currency display</span>
               <span class="text-[11px] text-light-secondary">Company configuration</span>
             </div>
-            <span class="text-[12px] font-mono text-light-primary font-bold">NGN Naira</span>
+            <span class="text-[12px] font-mono text-light-primary font-bold">{{ currencyLabel() }}</span>
           </div>
         </section>
 
@@ -101,6 +102,12 @@ export class SettingsPage {
   private readonly router = inject(Router);
   readonly store = inject(PortalStore);
   readonly theme = inject(ThemeService);
+  private readonly currency = inject(SeCurrencyService);
+
+  readonly currencyLabel = computed(() => {
+    const config = this.currency.config();
+    return config ? `${config.currencyCode} ${config.currencySymbol}`.trim() : 'Company default';
+  });
 
   readonly busy = signal(false);
   readonly setup = signal<{ secret: string; otpauthUrl: string } | null>(null);

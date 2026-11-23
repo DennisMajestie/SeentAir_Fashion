@@ -37,7 +37,20 @@ export interface DashboardConfig {
   reservePct: number;
 }
 
+export interface PartnerDistribution {
+  period: string;
+  totalProfit: number;
+  reinvestmentAmount: number;
+  dividendPool: number;
+  reserveAmount: number;
+  myDividend: number;
+  founderAmount: number;
+  partnerBreakdown: Array<{ partnerId: string; amount: number }>;
+}
+
 export interface PartnerDashboard {
+  partnerId: string;
+  currentPeriod: string | null;
   config: DashboardConfig;
   businessOverview: { totalIncome: number; profitLoss: ProfitReport };
   investmentInformation: {
@@ -49,16 +62,19 @@ export interface PartnerDashboard {
   performance: ProfitReport;
   inventoryVisibility: { finishedGoodsUnits: number };
   accountsReports: { income: IncomeReport; profit: ProfitReport };
-  profitSharing: Array<{
-    period: string;
-    totalProfit: number;
-    dividendPool: number;
-    myDividend: number;
-  }>;
+  profitSharing: PartnerDistribution[];
 }
 
 /** Login either completes (access token) or demands the TOTP second step. */
-export type LoginResult = { accessToken: string } | { requires2fa: true; challengeToken: string };
+export type LoginResult =
+  | { accessToken: string }
+  | {
+      requires2fa: true;
+      challengeToken: string;
+      requiresSetup?: boolean;
+      secret?: string;
+      otpauthUrl?: string;
+    };
 
 export interface Me {
   id: string;
@@ -85,6 +101,15 @@ export interface PartnerMessage {
   message: string;
   status: 'sent' | 'failed' | 'skipped';
   sentAt: string;
+}
+
+/** An inquiry thread the partner opened with the management desk. */
+export interface PartnerInquiry {
+  id: string;
+  subject: string | null;
+  status: 'open' | 'pending' | 'closed';
+  lastMessageAt: string | null;
+  lastMessagePreview: string | null;
 }
 
 /** Public product catalogue compound for labelling variant registers. */
@@ -158,6 +183,26 @@ export class ApiService {
 
   dashboard(): Observable<PartnerDashboard> {
     return this.http.get<PartnerDashboard>(`${API_BASE}/partners/me/dashboard`);
+  }
+
+  /** Inquiry threads this account opened with the management desk. */
+  myInquiries(): Observable<PartnerInquiry[]> {
+    return this.http.post<PartnerInquiry[]>(`${API_BASE}/messaging/conversations/mine`, {});
+  }
+
+  /** Open a confidential inquiry with the management desk. */
+  createInquiry(body: string, subject?: string): Observable<PartnerInquiry> {
+    return this.http.post<PartnerInquiry>(`${API_BASE}/messaging/conversations`, {
+      body,
+      subject: subject || 'Partner inquiry',
+    });
+  }
+
+  /** Declared quarterly distributions with the full 40/40/20 breakdown. */
+  distributions(partnerId: string): Observable<PartnerDistribution[]> {
+    return this.http.get<PartnerDistribution[]>(
+      `${API_BASE}/partners/${encodeURIComponent(partnerId)}/profit-distributions`,
+    );
   }
 
   /** Per-item current stock quantities (partner has INVENTORY VIEW). */

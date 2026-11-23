@@ -176,4 +176,56 @@ describe('PartnersService — confirmed profit-sharing model', () => {
     expect(dash.investmentInformation.shares).toBe(250_000);
     expect(dash.investmentInformation.totalShares).toBe(1_000_000);
   });
+
+  it('publishes the full 40/40/20 breakdown and real period on the dashboard', async () => {
+    const permissionsService = service['permissionsService'] as unknown as {
+      getAccessLevel: jest.Mock;
+    };
+    permissionsService.getAccessLevel.mockResolvedValue(AccessLevel.VIEW);
+    partnerRepo.findOne.mockResolvedValue({
+      id: 'p1',
+      user: { id: 'u1', name: 'Ada' },
+      equityPercentage: 25,
+      investedAmount: 2_000_000,
+    });
+    (distributionRepo.find as jest.Mock).mockResolvedValueOnce([
+      {
+        period: '2026-Q3',
+        totalProfit: 1_000_000,
+        reinvestmentAmount: 400_000,
+        dividendPool: 400_000,
+        reserveAmount: 200_000,
+        perPartnerBreakdown: {
+          founderCeo: 240_000,
+          partners: [
+            { partnerId: 'p1', name: 'Ada', amount: 100_000 },
+            { partnerId: 'p2', name: 'Bola', amount: 60_000 },
+          ],
+        },
+      },
+    ]);
+
+    const dash = (await service.dashboard('p1', owner)) as unknown as {
+      partnerId: string;
+      currentPeriod: string;
+      profitSharing: Array<{
+        reinvestmentAmount: number;
+        reserveAmount: number;
+        myDividend: number;
+        founderAmount: number;
+        partnerBreakdown: Array<{ partnerId: string; amount: number; name?: string }>;
+      }>;
+    };
+
+    expect(dash.partnerId).toBe('p1');
+    expect(dash.currentPeriod).toBe('2026-Q3');
+    expect(dash.profitSharing[0].reinvestmentAmount).toBe(400_000);
+    expect(dash.profitSharing[0].reserveAmount).toBe(200_000);
+    expect(dash.profitSharing[0].myDividend).toBe(100_000);
+    expect(dash.profitSharing[0].founderAmount).toBe(240_000);
+    expect(dash.profitSharing[0].partnerBreakdown).toEqual([
+      { partnerId: 'p1', amount: 100_000 },
+      { partnerId: 'p2', amount: 60_000 },
+    ]);
+  });
 });

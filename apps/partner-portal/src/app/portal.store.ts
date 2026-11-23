@@ -5,6 +5,7 @@ import {
   PartnerDashboard,
   InventorySummaryRow,
   PartnerMessage,
+  PartnerDistribution,
   ProductVariantRef,
 } from './api.service';
 
@@ -24,14 +25,13 @@ export class PortalStore {
   readonly inventory = signal<InventorySummaryRow[] | null>(null);
   /** In-platform messages addressed to this account (notifications inbox). */
   readonly messages = signal<PartnerMessage[] | null>(null);
+  /** Declared distributions from the dedicated partner endpoint. */
+  readonly distributions = signal<PartnerDistribution[] | null>(null);
   private readonly variantIndex = signal<Record<string, ProductVariantRef>>({});
   private readonly lastUpdated = signal<number | null>(null);
 
-  /** Calendar quarter label, e.g. "Q3 2026"- real calendar, not a fabricated period. */
-  readonly periodLabel = computed(() => {
-    const now = new Date();
-    return `Q${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`;
-  });
+  /** Period declared by the ledger, never inferred from the browser clock. */
+  readonly periodLabel = computed(() => this.dash()?.currentPeriod ?? 'Unpublished period');
 
   readonly firstName = computed(() => {
     const name = this.me()?.name?.trim();
@@ -109,6 +109,10 @@ export class PortalStore {
       next: (d) => {
         this.dash.set(d);
         this.lastUpdated.set(Date.now());
+        this.api.distributions(d.partnerId).subscribe({
+          next: (rows) => this.distributions.set(rows),
+          error: () => this.distributions.set(null),
+        });
       },
       error: (err: { error?: { message?: string } }) =>
         this.loadError.set(
@@ -153,6 +157,7 @@ export class PortalStore {
     this.loadError.set(null);
     this.inventory.set(null);
     this.messages.set(null);
+    this.distributions.set(null);
     this.variantIndex.set({});
     this.lastUpdated.set(null);
   }

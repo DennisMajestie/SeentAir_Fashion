@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -22,7 +28,16 @@ export interface TokenPair {
 }
 
 /** Login either completes, or returns a short-lived 2FA challenge to finish. */
-export type LoginResult = TokenPair | { requires2fa: true; challengeToken: string };
+export type LoginResult =
+  | TokenPair
+  | {
+      requires2fa: true;
+      challengeToken: string;
+      /** Partner accounts without TOTP must enrol before the first challenge can be verified. */
+      requiresSetup?: boolean;
+      secret?: string;
+      otpauthUrl?: string;
+    };
 
 @Injectable()
 export class AuthService {
@@ -161,19 +176,39 @@ export class AuthService {
     }
 
     // 2FA-enabled accounts get a short-lived challenge instead of tokens.
-    if (user.totpEnabled) {
+    // Partner/investor accounts must always use it, even before enrolment:
+    // login prepares a pending secret and the portal completes setup in step 2.
+    const isPartner = user.role?.name === RoleName.PARTNER_INVESTOR;
+    if (user.totpEnabled || isPartner) {
+      let requiresSetup = false;
+      let secret: string | undefined;
+      let otpauthUrl: string | undefined;
+      if (!user.totpEnabled) {
+        const full = await this.usersService.findByIdWithTotpSecret(user.id);
+        secret = full?.totpSecret ?? undefined;
+        if (!secret) {
+          secret = authenticator.generateSecret();
+          await this.userRepo.update(user.id, { totpSecret: secret });
+        }
+        otpauthUrl = authenticator.keyuri(user.email, 'Seentair', secret);
+        requiresSetup = true;
+      }
       const challengeToken = await this.jwtService.signAsync(
-        { sub: user.id, email: user.email, role: user.role.name, type: '2fa' },
+        { sub: user.id, email: user.email, role: user.role.name, type: '2fa', setup: requiresSetup },
         { secret: this.config.get<string>('jwt.secret'), expiresIn: '5m' },
       );
-      return { requires2fa: true, challengeToken };
+      return {
+        requires2fa: true,
+        challengeToken,
+        ...(requiresSetup ? { requiresSetup: true, secret, otpauthUrl } : {}),
+      };
     }
     return this.issueTokens(user.id, user.email, user.role.name);
   }
 
   /** Step 2 of a 2FA login: challenge token + authenticator code → real tokens. */
   async verify2fa(challengeToken: string, code: string): Promise<TokenPair> {
-    let payload: { sub: string; type: string };
+    let payload: { sub: string; type: string; setup?: boolean };
     try {
       payload = await this.jwtService.verifyAsync(challengeToken, {
         secret: this.config.get<string>('jwt.secret'),
@@ -183,11 +218,16 @@ export class AuthService {
     }
     if (payload.type !== '2fa') throw new UnauthorizedException('Not a 2FA challenge token');
     const user = await this.usersService.findByIdWithTotpSecret(payload.sub);
-    if (!user?.totpSecret || !user.totpEnabled || user.status !== UserStatus.ACTIVE) {
+    if (!user?.totpSecret || user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException('2FA is not active on this account');
     }
     if (!authenticator.check(code, user.totpSecret)) {
       throw new UnauthorizedException('Incorrect authentication code');
+    }
+    if (payload.setup) {
+      await this.userRepo.update(user.id, { totpEnabled: true });
+    } else if (!user.totpEnabled) {
+      throw new UnauthorizedException('2FA is not active on this account');
     }
     return this.issueTokens(user.id, user.email, user.role.name);
   }
@@ -222,6 +262,9 @@ export class AuthService {
   /** Disabling requires a live code — a stolen session alone cannot turn 2FA off. */
   async disable2fa(userId: string, code: string): Promise<{ enabled: boolean }> {
     const user = await this.usersService.findByIdWithTotpSecret(userId);
+    if (user?.role?.name === RoleName.PARTNER_INVESTOR) {
+      throw new ForbiddenException('Partner accounts must keep two-factor authentication enabled');
+    }
     if (!user?.totpSecret || !user.totpEnabled) {
       throw new BadRequestException('2FA is not enabled');
     }

@@ -12,6 +12,8 @@ import { PortalStore } from './portal.store';
 /** A dashboard payload the way partners.service.ts serves it: aggregates only. */
 export function dashboard(over: Partial<PartnerDashboard> = {}): PartnerDashboard {
   return {
+    partnerId: 'p1',
+    currentPeriod: '2026-Q3',
     config: {
       totalShares: 1_000_000,
       founderSharePct: 60,
@@ -37,7 +39,19 @@ export function dashboard(over: Partial<PartnerDashboard> = {}): PartnerDashboar
       profit: { income: 2_777_000, expenditure: 250_000, profit: 2_527_000, net: 2_527_000 },
     },
     profitSharing: [
-      { period: '2026-Q3', totalProfit: 1_000_000, dividendPool: 400_000, myDividend: 100_000 },
+      {
+        period: '2026-Q3',
+        totalProfit: 1_000_000,
+        reinvestmentAmount: 400_000,
+        dividendPool: 400_000,
+        reserveAmount: 200_000,
+        myDividend: 100_000,
+        founderAmount: 240_000,
+        partnerBreakdown: [
+          { partnerId: 'p1', amount: 100_000 },
+          { partnerId: 'p2', amount: 60_000 },
+        ],
+      },
     ],
     ...over,
   };
@@ -55,6 +69,7 @@ export function configurePortal(dash: PartnerDashboard | null = dashboard(), ext
   });
   const store = TestBed.inject(PortalStore);
   store.dash.set(dash);
+  store.distributions.set(dash?.profitSharing ?? []);
   store.me.set({
     id: 'p1',
     email: 'partner@seentair.test',
