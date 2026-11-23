@@ -9,12 +9,11 @@ export const environment = {
   /** Partner/investor portal (separate app). Run it with: npm start -- --port 4203 */
   partnerUrl: 'http://localhost:4203',
   /**
-   * Support contact for customer-facing help surfaces (the order tracking dock).
-   * Empty string means "not configured": the WhatsApp button is hidden and a
-   * plain "Contact support" link is shown instead. Deliberately blank until a
-   * WhatsApp-enabled number is confirmed - a dead wa.me link is worse than none.
+   * Support number for customer-facing help surfaces (floating WhatsApp button
+   * and order tracking dock). Digits are normalised to a wa.me link. An operator
+   * can override this through the dashboard's "Storefront WhatsApp link" setting.
    */
-  supportWhatsapp: '',
+  supportWhatsapp: '+2347010361332',
   /** Shown under the help button, e.g. 'Mon-Sat, 9am-6pm WAT'. Empty = hidden. */
   supportHours: '',
 };

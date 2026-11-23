@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { environment } from '../../environments/environment';
 import { ApiService, DeliveryLegView, Order } from '../api.service';
+import { SupportConfigService } from '../support-config.service';
 
 /** One customer-visible stage. `blurb` is always rendered, including for stages
  *  that have not happened yet, so the timeline is never an empty list. */
@@ -501,6 +502,7 @@ const STREAM_RETRY_MS = 30_000;
 export class OrderPage implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly support = inject(SupportConfigService);
 
   readonly stages = STAGES;
   /** Set for a guest viewing their own order; undefined when signed in. */
@@ -539,15 +541,8 @@ export class OrderPage implements OnInit, OnDestroy {
 
   readonly shortId = computed(() => this.orderId.slice(0, 8).toUpperCase());
 
-  readonly supportWhatsapp = computed(() => this.waLink());
+  readonly supportWhatsapp = computed(() => this.support.whatsappUrl());
   readonly supportHours = computed(() => environment.supportHours?.trim() ?? '');
-
-  private waLink(): string {
-    const raw = (environment.supportWhatsapp ?? '').trim();
-    if (!raw) return '';
-    const digits = raw.replace(/[^\d]/g, '');
-    return digits ? `https://wa.me/${digits}` : '';
-  }
 
   /** The copy entry for the current status. Public: the template reads it. */
   statusCopy = computed<StatusCopy>(() => {

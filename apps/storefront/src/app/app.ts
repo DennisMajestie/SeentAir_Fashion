@@ -7,7 +7,6 @@ import { MobileBottomNavComponent } from './mobile-bottom-nav.component';
 import { DesktopShellComponent } from './desktop-shell.component';
 import { PromisesRowComponent } from './promises-row.component';
 import { WhatsappFloatComponent } from './whatsapp-float.component';
-import { ChatWidgetComponent } from './chat-widget.component';
 import { ViewportService } from './viewport.service';
 import { ChromeService } from './chrome.service';
 
@@ -26,7 +25,6 @@ import { ChromeService } from './chrome.service';
     DesktopShellComponent,
     PromisesRowComponent,
     WhatsappFloatComponent,
-    ChatWidgetComponent,
   ],
   template: `
     <!--
@@ -74,8 +72,8 @@ import { ChromeService } from './chrome.service';
            has no link published. Hidden on immersive routes for the same
            reason the rest of the chrome is. -->
       <app-whatsapp-float />
-      <!-- The in-app chat panel: the customer's direct line to the team. -->
-      <app-chat-widget />
+      <!-- In-app chat stays pending: customers enquire through the WhatsApp button.
+           The component is kept in the repo for when live chat is enabled. -->
     }
     @if (!chrome.immersive() && viewport.isDesktop()) {
       <footer class="site-footer">

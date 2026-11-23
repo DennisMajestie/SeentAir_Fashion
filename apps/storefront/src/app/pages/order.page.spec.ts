@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { BehaviorSubject, of, throwError } from 'rxjs';
+import { signal } from '@angular/core';
 import { ApiService, Order, OrderTracking } from '../api.service';
+import { SupportConfigService } from '../support-config.service';
 import { OrderPage } from './order.page';
 
 /**
@@ -69,6 +71,7 @@ describe('OrderPage', () => {
       imports: [OrderPage],
       providers: [
         provideRouter([]),
+        { provide: SupportConfigService, useValue: { whatsappUrl: signal<string | null>(null) } },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -504,17 +507,18 @@ describe('OrderPage', () => {
     const mountWithFailingOrder = (status: number, message: string) => {
       TestBed.configureTestingModule({
         imports: [OrderPage],
-        providers: [
-          provideRouter([]),
-          {
-            provide: ActivatedRoute,
-            useValue: {
-              snapshot: {
-                paramMap: { get: () => ORDER_ID },
-                queryParamMap: { get: () => null },
-              },
+      providers: [
+        provideRouter([]),
+        { provide: SupportConfigService, useValue: { whatsappUrl: signal<string | null>(null) } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: { get: () => ORDER_ID },
+              queryParamMap: { get: () => null },
             },
           },
+        },
           {
             provide: ApiService,
             useValue: {
