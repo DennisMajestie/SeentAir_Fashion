@@ -287,7 +287,7 @@ Honest status so you know what is fully live today:
 | Wholesale pricing tiers, MOQ, invoices, custom-design flow | ✅ Live | Buyer + staff sides working |
 | Partner portal with 2FA, profit-sharing, reporting | ✅ Live | Working; depends on the latest backend deployment |
 | **Transactional email** (password reset links) | ⏳ Pending | Reset links currently appear in the Seentair team's logs only — no email is delivered until an SMTP provider + credentials are configured (code ready, waiting on credentials) |
-| **Paystack cards/bank (online payment)** | ⏳ Pending key | Checkout creates the order; the "Pay with Paystack" link needs a Paystack **secret key** before live transactions. Until then, orders settle **offline** (bank transfer / cash / POS) and the team confirms payment |
+| **Paystack cards/bank (online payment)** | ✅ Live | Card and bank payments complete through Paystack at checkout. Offline methods (cash, POS, bank transfer) are recorded manually by staff for in-store sales |
 | **GIGL automated logistics** | ⏳ Pending key | Manual carriers/legs work today; automated GIGL shipment creation needs a **GIGL API key** |
 | **SMS / WhatsApp notifications** (Termii) | ⏳ Pending key | On in-app notifications only until a **Termii key** is provisioned |
 | Catalogue coverage | ⏳ Live with limits | Shop shows the first 50 products; add more and let engineering raise the catalogue cap |
