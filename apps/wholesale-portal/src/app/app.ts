@@ -21,13 +21,10 @@ import { ThemeService } from './theme.service';
         @if (mode() === 'signin') {
           <div class="bg-canvas text-light-on-surface min-h-screen flex flex-col justify-between antialiased selection:bg-accent/20">
             <header class="ws-topbar px-5 pt-4 pb-3 flex items-center justify-between border-b border-border/70 bg-canvas/80 backdrop-blur-md sticky top-0 z-20">
-              <div class="flex items-center gap-2">
-                <div class="w-2 h-2 rounded-full bg-success animate-pulse"></div>
-                <span class="text-[12px] font-medium tracking-tight text-light-secondary flex items-center gap-1">
-                  <span class="material-symbols-outlined text-[14px] text-success">lock</span>
-                  256-bit TLS Aba Hub Verified
-                </span>
-              </div>
+              <span class="text-[12px] font-medium tracking-tight text-light-secondary flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px] text-success">lock</span>
+                Seentair wholesale portal
+              </span>
               <div class="flex items-center gap-2">
                 <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full bg-canvas-tint text-light-primary border border-border">Portal 01</span>
                 <button type="button" aria-label="Toggle theme" class="w-8 h-8 rounded-full flex items-center justify-center bg-light-surface border border-border text-light-secondary hover:text-light-primary" (click)="theme.toggle()">
@@ -102,32 +99,17 @@ import { ThemeService } from './theme.service';
                     <span class="material-symbols-outlined text-[16px] text-accent">fact_check</span>
                     Aba Factory Criteria
                   </span>
-                  <span class="text-light-secondary font-mono text-[11px]">MOQ 20 / SILHOUETTE</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2 text-[12px]">
-                  <div class="p-2.5 rounded-lg bg-canvas border border-border/80">
-                    <span class="text-light-secondary text-[10px] uppercase font-mono block">Volume Rate</span>
-                    <span class="font-bold text-light-primary">₦8,500 – ₦16,000</span>
-                    <span class="text-[10px] text-light-secondary block">Ex-factory Aba unit cost</span>
-                  </div>
-                  <div class="p-2.5 rounded-lg bg-canvas border border-border/80">
-                    <span class="text-light-secondary text-[10px] uppercase font-mono block">Verification</span>
-                    <span class="font-bold text-light-primary">CAC / Tin Required</span>
-                    <span class="text-[10px] text-light-secondary block">24hr Desk appraisal</span>
-                  </div>
+                  <span class="text-light-secondary font-mono text-[11px]">MOQ 20</span>
                 </div>
                 <p class="text-[11px] text-light-secondary leading-normal">
-                  Freight handled via GIG Logistics &amp; Red Star Aba Central Hub. 100% upfront invoice settlement prior to cut-and-sew scheduling.
+                  Approved wholesale accounts see tiered prices and current stock in the catalogue.
+                  Orders are paid in full upfront; delivery is arranged after payment.
                 </p>
               </section>
             </main>
 
-            <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-border flex items-center justify-between text-[11px] font-mono text-light-secondary">
-              <div class="flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-success"></span>
-                <span>ABA SEWING MILL ACTIVE</span>
-              </div>
-              <span>SEENTAIR IND. v2.4</span>
+            <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-0 border-border flex items-center justify-center text-[11px] font-mono text-light-secondary">
+              <span>SEENTAIR WHOLESALE · ABA, NIGERIA</span>
             </footer>
           </div>
         } @else if (mode() === 'apply') {
@@ -210,9 +192,8 @@ import { ThemeService } from './theme.service';
               </div>
             </main>
 
-            <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-border flex items-center justify-between text-[11px] font-mono text-light-secondary">
-              <span>SEENTAIR ABA ONBOARDING</span>
-              <span>VETTING: 24H SLA</span>
+            <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-0 border-border flex items-center justify-center text-[11px] font-mono text-light-secondary">
+              <span>SEENTAIR WHOLESALE · ABA, NIGERIA</span>
             </footer>
           </div>
         } @else {
@@ -220,9 +201,9 @@ import { ThemeService } from './theme.service';
             <header class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-border/70 bg-canvas/80 backdrop-blur-md sticky top-0 z-20">
               <div class="flex items-center gap-1.5 text-[12px] font-mono text-light-secondary">
                 <span class="w-2 h-2 rounded-full bg-success"></span>
-                APP-REF: {{ appRef() }}
+                @if (appRef(); as reference) { APP-REF: {{ reference }} } @else { APPLICATION SUBMITTED }
               </div>
-              <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-success/15 text-success border border-success/30 font-semibold">RECEIVED</span>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/30 font-semibold">PENDING REVIEW</span>
             </header>
 
             <main class="flex-1 px-4 py-6 flex flex-col gap-5 max-w-[390px] mx-auto w-full md:max-w-md">
@@ -231,7 +212,7 @@ import { ThemeService } from './theme.service';
                   <span class="material-symbols-outlined text-[32px]">task_alt</span>
                 </div>
                 <h1 class="text-[22px] font-bold text-light-primary">Application Received</h1>
-                <p class="text-[13px] text-light-secondary mt-1">Our Aba wholesale desk vets all CAC credentials and commercial references within <strong>24 operational hours</strong>.</p>
+                <p class="text-[13px] text-light-secondary mt-1">Your application has been recorded. The wholesale desk reviews it before your account is activated.</p>
               </div>
 
               <section class="bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-4">
@@ -248,7 +229,7 @@ import { ThemeService } from './theme.service';
                 </div>
                 <div class="p-3 rounded-lg bg-canvas-tint/70 border border-border text-[12px] text-light-primary leading-normal flex items-start gap-2">
                   <span class="material-symbols-outlined text-[18px] text-warning mt-0.5">mail</span>
-                  <span>A temporary activation link will be delivered to your corporate inbox once vetting completes.</span>
+                  <span>You can sign in now. Wholesale pricing unlocks once the desk approves your account.</span>
                 </div>
               </section>
 
@@ -261,9 +242,8 @@ import { ThemeService } from './theme.service';
               </div>
             </main>
 
-            <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-border flex items-center justify-between text-[11px] font-mono text-light-secondary">
-              <span>ABA FACTORY DESK: +234 814 200 9010</span>
-              <span>STATUS: PENDING</span>
+            <footer class="px-5 py-3 bg-canvas-tint/60 border-t border-0 border-border flex items-center justify-center text-[11px] font-mono text-light-secondary">
+              <span>SEENTAIR WHOLESALE · ABA, NIGERIA</span>
             </footer>
           </div>
         }
@@ -276,7 +256,7 @@ export class App {
   readonly api = inject(ApiService);
   readonly theme = inject(ThemeService);
 
-  readonly appRef = computed(() => 'ST-APP-9214');
+  readonly appRef = signal<string | null>(null);
 
   readonly error = signal<string | null>(null);
   readonly info = signal<string | null>(null);
@@ -386,8 +366,9 @@ export class App {
         openingVolume: volume ? +volume : undefined,
       })
       .subscribe({
-        next: () => {
+        next: (account) => {
           this.applyBusy.set(false);
+          this.appRef.set(account?.id ?? null);
           this.applyDone.set(this.email.trim());
           this.submittedAt.set(this.formatSubmittedAt());
           this.mode.set('success');

@@ -49,9 +49,19 @@ describe('InvoiceDetailPage', () => {
     data: Invoice[] | 'fail' = [invoice()],
     payResult: { authorizationUrl: string } | 'fail' = { authorizationUrl: '' },
   ): Promise<void> {
-    api = jasmine.createSpyObj<ApiService>('ApiService', ['invoices', 'me', 'payWithPaystack']);
+    api = jasmine.createSpyObj<ApiService>('ApiService', [
+      'invoices',
+      'invoiceById',
+      'me',
+      'payWithPaystack',
+    ]);
     api.invoices.and.returnValue(
       data === 'fail' ? throwError(() => new Error('down')) : of({ data, total: data.length }),
+    );
+    api.invoiceById.and.returnValue(
+      data === 'fail'
+        ? throwError(() => new Error('down'))
+        : of(data.find((i) => i.orderId === ORDER_ID) ?? null),
     );
     api.me.and.returnValue(
       of({ id: 'u1', email: 'b@test', role: 'wholesaler', name: 'Test Buyer' }),
@@ -120,9 +130,10 @@ describe('InvoiceDetailPage', () => {
       expect(text()).toContain('no part-payments');
     });
 
-    it('keeps the finance desk reachable for buyers paying by transfer', async () => {
+    it('points transfer payers to support without inventing a phone number', async () => {
       await boot();
-      expect(el().querySelector('a[href="tel:+23418887400"]')).not.toBeNull();
+      expect(text()).toContain('Contact Seentair support');
+      expect(el().querySelector('a[href^="tel:"]')).toBeNull();
     });
 
     it('charges the invoice total after the buyer confirms the amount', async () => {

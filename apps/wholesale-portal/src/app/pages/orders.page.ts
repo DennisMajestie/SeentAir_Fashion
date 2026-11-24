@@ -165,10 +165,57 @@ import { inTransit, isClosed, isPaid, orderRef, payMethod, summarise, units } fr
                       <span class="material-symbols-outlined text-[15px]">replay</span>
                       Reorder
                     </button>
+                    @if (isDelivered(inv)) {
+                      <button type="button" class="text-accent text-[12px] font-semibold hover:underline flex items-center gap-1" aria-label="Review batch" (click)="openReview(inv)">
+                        <span class="material-symbols-outlined text-[15px]">star</span>
+                        Review
+                      </button>
+                    }
                   </span>
                 </div>
               </article>
             }
+            @if (invoices().length < total()) {
+              <button type="button" class="self-center px-4 py-2 rounded-full border border-border bg-light-surface text-light-primary text-[12px] font-semibold disabled:opacity-60" [disabled]="loadingMore()" (click)="loadMore()">
+                {{ loadingMore() ? 'Loading…' : 'Load more orders' }} ({{ total() - invoices().length }} remaining)
+              </button>
+            }
+          }
+
+          @if (reviewOrder(); as order) {
+            <section class="bg-light-surface rounded-xl p-4 border border-border flex flex-col gap-3" aria-label="Review delivered batch">
+              <div class="flex items-center justify-between">
+                <h2 class="text-[13px] font-bold text-light-primary">Review {{ orderRef(order.orderId) }}</h2>
+                <button type="button" class="text-[12px] text-light-secondary hover:text-light-primary" (click)="closeReview()">Close</button>
+              </div>
+              <form class="flex flex-col gap-3" (ngSubmit)="submitReview()">
+                <label class="flex flex-col gap-1 text-[12px]">
+                  <span class="text-light-secondary">Item</span>
+                  <select [(ngModel)]="reviewVariantId" name="reviewVariant" required class="rounded-lg border border-border bg-canvas px-3 py-2 text-light-primary">
+                    @for (variant of reviewVariants(); track variant.id) {
+                      <option [value]="variant.id">{{ variant.sku }}</option>
+                    }
+                  </select>
+                </label>
+                <label class="flex flex-col gap-1 text-[12px]">
+                  <span class="text-light-secondary">Rating</span>
+                  <select [(ngModel)]="reviewRating" name="reviewRating" class="rounded-lg border border-border bg-canvas px-3 py-2 text-light-primary">
+                    <option [value]="5">5 — Excellent</option>
+                    <option [value]="4">4 — Good</option>
+                    <option [value]="3">3 — Average</option>
+                    <option [value]="2">2 — Poor</option>
+                    <option [value]="1">1 — Very poor</option>
+                  </select>
+                </label>
+                <label class="flex flex-col gap-1 text-[12px]">
+                  <span class="text-light-secondary">Comment (optional)</span>
+                  <textarea [(ngModel)]="reviewComment" name="reviewComment" rows="3" maxlength="1000" class="rounded-lg border border-border bg-canvas px-3 py-2 text-light-primary resize-none"></textarea>
+                </label>
+                <button type="submit" class="self-start px-4 py-2 rounded-full bg-accent text-on-accent text-[12px] font-bold disabled:opacity-60" [disabled]="reviewBusy() || !reviewVariantId()">
+                  {{ reviewBusy() ? 'Submitting…' : 'Submit review' }}
+                </button>
+              </form>
+            </section>
           }
         </main>
 
@@ -183,12 +230,23 @@ export class OrdersPage implements OnInit {
   readonly router = inject(Router);
 
   readonly invoices = signal<Invoice[]>([]);
+  readonly total = signal(0);
+  readonly page = signal(1);
+  readonly loadingMore = signal(false);
   readonly loading = signal(true);
   readonly error = signal('');
   readonly query = signal('');
   readonly filterValue = signal<SeFilterValue>({});
   readonly isPaid = isPaid;
   readonly isClosed = isClosed;
+  readonly isDelivered = (invoice: Invoice): boolean => /delivered|completed/.test(invoice.status);
+
+  readonly reviewOrder = signal<Invoice | null>(null);
+  readonly reviewVariants = signal<Array<{ id: string; sku: string }>>([]);
+  readonly reviewVariantId = signal('');
+  readonly reviewRating = 5;
+  readonly reviewComment = '';
+  readonly reviewBusy = signal(false);
   readonly orderRef = orderRef;
   readonly units = units;
   readonly pill = pill;
@@ -242,9 +300,11 @@ export class OrdersPage implements OnInit {
   }
 
   load(): void {
-    this.api.invoices().subscribe({
+    this.api.invoices(1, 100).subscribe({
       next: (r) => {
         this.invoices.set(r.data);
+        this.total.set(r.total ?? r.data.length);
+        this.page.set(1);
         this.loading.set(false);
         this.error.set('');
       },
@@ -254,6 +314,21 @@ export class OrdersPage implements OnInit {
           this.error.set(err?.error?.message ?? 'The server did not respond.');
         }
       },
+    });
+  }
+
+  loadMore(): void {
+    if (this.loadingMore() || this.invoices().length >= this.total()) return;
+    const next = this.page() + 1;
+    this.loadingMore.set(true);
+    this.api.invoices(next, 100).subscribe({
+      next: (r) => {
+        this.invoices.update((rows) => [...rows, ...r.data]);
+        this.page.set(next);
+        this.total.set(r.total ?? this.total());
+        this.loadingMore.set(false);
+      },
+      error: () => this.loadingMore.set(false),
     });
   }
 
@@ -335,6 +410,54 @@ export class OrdersPage implements OnInit {
           action: { label: 'Try again', run: () => this.reorder(invoice) },
         }),
     });
+  }
+
+  openReview(invoice: Invoice): void {
+    this.reviewOrder.set(invoice);
+    this.reviewVariants.set([]);
+    this.reviewVariantId.set('');
+    this.api.orderDetail(invoice.orderId).subscribe({
+      next: (detail) => {
+        const variants = (detail.items ?? []).map((item) => ({
+          id: item.variant.id,
+          sku: item.variant.sku,
+        }));
+        this.reviewVariants.set(variants);
+        this.reviewVariantId.set(variants[0]?.id ?? '');
+      },
+      error: () => this.reviewVariants.set([]),
+    });
+  }
+
+  closeReview(): void {
+    this.reviewOrder.set(null);
+    this.reviewVariants.set([]);
+    this.reviewVariantId.set('');
+  }
+
+  submitReview(): void {
+    const order = this.reviewOrder();
+    if (!order || !this.reviewVariantId() || this.reviewBusy()) return;
+    this.reviewBusy.set(true);
+    this.api
+      .submitReview(order.orderId, {
+        variantId: this.reviewVariantId(),
+        rating: Number(this.reviewRating),
+        comment: this.reviewComment.trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.reviewBusy.set(false);
+          this.closeReview();
+          this.toast.show('Review submitted for moderation');
+        },
+        error: (err) => {
+          this.reviewBusy.set(false);
+          this.toast.show(err?.error?.message ?? 'The review could not be submitted', {
+            tone: 'danger',
+          });
+        },
+      });
   }
 
   /** Real export: the visible ledger, one row per invoice line. */

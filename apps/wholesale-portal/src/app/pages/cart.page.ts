@@ -96,7 +96,7 @@ const NIGERIAN_STATES = [
             <div class="upfront-notice p-3.5 rounded-xl bg-canvas-tint/70 border border-border flex items-start gap-2.5">
               <span class="material-symbols-outlined text-warning text-[18px] mt-0.5">account_balance_wallet</span>
               <div class="text-[12px] leading-relaxed text-light-primary">
-                <strong class="font-semibold text-light-primary">Full 100% Upfront Payment:</strong> Aba Mill cutting schedules lock immediately upon cleared funds. Orders are non-cancellable once cut. No part-payments.
+                <strong class="font-semibold text-light-primary">Full 100% Upfront Payment:</strong> Production starts only after payment clears. No part-payments.
               </div>
             </div>
 

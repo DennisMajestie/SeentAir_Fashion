@@ -7,6 +7,8 @@ export * from './chart/sparkline.component';
 export * from './feedback/empty-state.component';
 export * from './feedback/banner.component';
 export * from './feedback/skeleton.component';
+export * from './feedback/spinner.component';
+export * from './feedback/alert.service';
 export * from './feedback/toast.service';
 export * from './feedback/confirm.service';
 export * from './feedback/drawer.component';

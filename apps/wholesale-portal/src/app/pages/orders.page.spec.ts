@@ -45,9 +45,18 @@ describe('OrdersPage', () => {
     row.querySelector(`button[aria-label^="${label}"]`);
 
   const mount = (invoices: unknown): void => {
-    api = jasmine.createSpyObj<ApiService>('ApiService', ['invoices', 'reorder']);
+    api = jasmine.createSpyObj<ApiService>('ApiService', [
+      'invoices',
+      'reorder',
+      'orderDetail',
+      'submitReview',
+    ]);
     api.invoices.and.returnValue(invoices as never);
     api.reorder.and.returnValue(of({ id: 'new-order-0000' }));
+    api.orderDetail.and.returnValue(
+      of({ items: [{ variant: { id: 'v1', sku: 'SE-TEE-BLK-L' }, quantity: 4 }] }),
+    );
+    api.submitReview.and.returnValue(of({}));
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: ApiService, useValue: api }],
     });
@@ -251,6 +260,26 @@ describe('OrdersPage', () => {
       fixture.detectChanges();
       expect(rows().length).toBe(1);
       expect(el().querySelector('.load-error')).toBeNull();
+    });
+  });
+
+  describe('reviews', () => {
+    it('lets a buyer review a delivered order against the real variant', () => {
+      mount(of({ data: [invoice('aaaaaaaa', 'delivered')], total: 1 }));
+      const card = rows()[0];
+      (action(card, 'Review batch') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(api.orderDetail).toHaveBeenCalledOnceWith('aaaaaaaa-2222-3333-4444-555555555555');
+      (el().querySelector('button[type="submit"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(api.submitReview).toHaveBeenCalledOnceWith('aaaaaaaa-2222-3333-4444-555555555555', {
+        variantId: 'v1',
+        rating: 5,
+        comment: undefined,
+      });
+      expect(el().querySelector('[aria-label="Review delivered batch"]')).toBeNull();
     });
   });
 

@@ -3,6 +3,7 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import { SeConfirmService, SeCurrencyService } from '@seentair/ui';
 import { Observable, of, throwError } from 'rxjs';
 
+import { SeToastService } from '@seentair/ui';
 import { ApiService, DeliveryLegView, WholesaleTracking } from '../api.service';
 import { TrackingPage } from './tracking.page';
 
@@ -58,12 +59,16 @@ describe('Wholesale TrackingPage', () => {
   const configure = (loggedIn: boolean, tracking: () => Observable<WholesaleTracking>) => {
     api = jasmine.createSpyObj<ApiService>(
       'ApiService',
-      ['tracking', 'invoices', 'orderSocketStream'],
+      ['tracking', 'invoices', 'orderSocketStream', 'orderDetail', 'requestReturn'],
       { isLoggedIn: loggedIn },
     );
     api.tracking.and.callFake(tracking);
     api.invoices.and.returnValue(of({ data: [], total: 0 }));
     api.orderSocketStream.and.returnValue(new Promise<void>(() => undefined));
+    api.orderDetail.and.returnValue(
+      of({ items: [{ variant: { id: 'v1', sku: 'SE-TEE-BLK-L' }, quantity: 4 }] }),
+    );
+    api.requestReturn.and.returnValue(of({}));
     confirm = jasmine.createSpyObj<SeConfirmService>('SeConfirmService', ['ask', 'askWithReason']);
     confirm.ask.and.resolveTo(true);
     TestBed.configureTestingModule({
@@ -71,6 +76,7 @@ describe('Wholesale TrackingPage', () => {
         provideRouter([]),
         { provide: ApiService, useValue: api },
         { provide: SeConfirmService, useValue: confirm },
+        { provide: SeToastService, useValue: jasmine.createSpyObj('SeToastService', ['show']) },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ id: ORDER_ID }) } },
@@ -121,6 +127,38 @@ describe('Wholesale TrackingPage', () => {
     expect(text()).toContain('with the courier and on its way');
     expect(text()).toContain('within 12 hours');
     expect(text()).toContain('Custom orders are excluded from returns');
+  });
+
+  it('submits a real return request for the delivered order and its variant', async () => {
+    configure(true, () =>
+      of({ ...trackingWith(reducedLeg, 'delivered'), deliveredAt: new Date().toISOString() }),
+    );
+    await render();
+
+    const page = fixture.componentInstance as unknown as {
+      canRequestReturn: () => boolean;
+      openReturnForm: () => void;
+      returnReason: string;
+      returnDetails: string;
+      submitReturnRequest: () => void;
+      returnVariantId: () => string;
+    };
+    expect(page.canRequestReturn()).toBeTrue();
+
+    page.openReturnForm();
+    await tick();
+    expect(api.orderDetail).toHaveBeenCalledOnceWith(ORDER_ID);
+    expect(page.returnVariantId()).toBe('v1');
+
+    page.returnReason = 'damaged';
+    page.returnDetails = 'Box crushed on arrival';
+    page.submitReturnRequest();
+
+    expect(api.requestReturn).toHaveBeenCalledOnceWith({
+      orderId: ORDER_ID,
+      variantId: 'v1',
+      reason: 'damaged: Box crushed on arrival',
+    });
   });
 
   describe('against the reduced customer shape', () => {

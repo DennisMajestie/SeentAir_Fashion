@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, of, tap } from 'rxjs';
+import { Observable, concatMap, of, tap } from 'rxjs';
 import { API_BASE, TokenStore } from './auth-token.store';
 
 export { API_BASE, authInterceptor } from './auth-token.store';
@@ -180,6 +180,26 @@ export class ApiService {
     }>(`${API_BASE}/notifications`);
   }
 
+  /** Find one catalogue product across every page, not just the first. */
+  findPricedProduct(id: string): Observable<PricingProduct | null> {
+    return this.pricing(1, 100).pipe(
+      concatMap((first) => this.scanPricingPages(first, id, 2)),
+    );
+  }
+
+  private scanPricingPages(
+    current: Pricing,
+    id: string,
+    nextPage: number,
+  ): Observable<PricingProduct | null> {
+    const found = current.data.find((product) => product.id === id);
+    if (found) return of(found);
+    if (current.data.length === 0 || current.data.length >= current.total) return of(null);
+    return this.pricing(nextPage, 100).pipe(
+      concatMap((page) => this.scanPricingPages(page, id, nextPage + 1)),
+    );
+  }
+
   /**
    * Tier-priced catalogue, one page at a time. The response carries the
    * catalogue's `total`, so the page knows when to stop paging in.
@@ -222,12 +242,59 @@ export class ApiService {
     city: string;
     state: string;
     openingVolume?: number;
-  }): Observable<unknown> {
-    return this.http.post(`${API_BASE}/wholesale/apply`, payload);
+  }): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${API_BASE}/wholesale/apply`, payload);
   }
 
-  invoices(): Observable<{ data: Invoice[]; total: number }> {
-    return this.http.get<{ data: Invoice[]; total: number }>(`${API_BASE}/wholesale/invoices`);
+  /** Order items with variant ids, needed to attach a return to the right line. */
+  orderDetail(orderId: string): Observable<{
+    items: Array<{ variant: { id: string; sku: string }; quantity: number }>;
+  }> {
+    return this.http.get<{ items: Array<{ variant: { id: string; sku: string }; quantity: number }> }>(
+      `${API_BASE}/orders/${encodeURIComponent(orderId)}`,
+    );
+  }
+
+  submitReview(
+    orderId: string,
+    input: { variantId: string; rating: number; comment?: string },
+  ): Observable<unknown> {
+    return this.http.post(`${API_BASE}/orders/${encodeURIComponent(orderId)}/review`, input);
+  }
+
+  requestReturn(input: {
+    orderId: string;
+    variantId: string;
+    reason: string;
+    quantity?: number;
+  }): Observable<unknown> {
+    return this.http.post(`${API_BASE}/returns`, input);
+  }
+
+  invoices(page = 1, limit = 100): Observable<{ data: Invoice[]; total: number }> {
+    return this.http.get<{ data: Invoice[]; total: number }>(`${API_BASE}/wholesale/invoices`, {
+      params: { page, limit },
+    });
+  }
+
+  /** Find one invoice across the whole history, not just the first page. */
+  invoiceById(orderId: string): Observable<Invoice | null> {
+    return this.invoices(1, 100).pipe(
+      concatMap((first) => this.scanPages(first, orderId, 2)),
+    );
+  }
+
+  private scanPages(
+    current: { data: Invoice[]; total: number },
+    orderId: string,
+    nextPage: number,
+  ): Observable<Invoice | null> {
+    const found = current.data.find((invoice) => invoice.orderId === orderId);
+    if (found) return of(found);
+    if (current.data.length === 0 || current.data.length >= current.total) return of(null);
+    return this.invoices(nextPage, 100).pipe(
+      concatMap((page) => this.scanPages(page, orderId, nextPage + 1)),
+    );
   }
 
   /** Asks what dispatch costs for this basket and destination. Public route,

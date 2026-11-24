@@ -1,7 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { SeMoneyPipe } from '@seentair/ui';
+import { SeAlertService, SeMoneyPipe } from '@seentair/ui';
 import { ApiService, type PartnerInquiry } from '../api.service';
 import { PortalStore } from '../portal.store';
 
@@ -124,6 +124,7 @@ import { PortalStore } from '../portal.store';
 export class DocumentsPage {
   readonly store = inject(PortalStore);
   private readonly api = inject(ApiService);
+  private readonly alert = inject(SeAlertService);
 
   readonly inquiries = signal<PartnerInquiry[]>([]);
   readonly busy = signal(false);
@@ -147,6 +148,11 @@ export class DocumentsPage {
         this.inquiries.update((rows) => [thread, ...rows]);
         this.draft = '';
         this.busy.set(false);
+        void this.alert.show({
+          title: 'Inquiry sent',
+          message: 'The management desk has your message and will reply here.',
+          confirmLabel: 'Done',
+        });
       },
       error: () => {
         this.error.set('The inquiry could not be sent. Try again.');

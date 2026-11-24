@@ -1,7 +1,7 @@
-import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { SeConfirmService, SeDatePipe } from '@seentair/ui';
+import { SeConfirmService, SeDatePipe, SeToastService } from '@seentair/ui';
 import { ApiService, DeliveryCheckpoint, DeliveryLegView, Invoice } from '../api.service';
 import { PIPELINE, orderRef, units } from '../wholesale-format';
 
@@ -191,6 +191,16 @@ interface Milestone {
                   <button type="button" class="self-start px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold hover:brightness-105 active:scale-[0.98] transition-all" (click)="openReturnForm()">Request return</button>
                 } @else {
                   <form class="return-form" (ngSubmit)="submitReturnRequest()">
+                    @if (returnVariants().length > 0) {
+                      <label class="return-field">
+                        <span>Item</span>
+                        <select [(ngModel)]="returnVariantId" name="variant" required>
+                          @for (variant of returnVariants(); track variant.id) {
+                            <option [value]="variant.id">{{ variant.sku }}</option>
+                          }
+                        </select>
+                      </label>
+                    }
                     <label class="return-field">
                       <span>Reason</span>
                       <select [(ngModel)]="returnReason" name="reason" required>
@@ -233,7 +243,7 @@ interface Milestone {
             <!-- Support Help Box -->
             <div class="p-3.5 rounded-xl bg-canvas-tint/70 border border-border flex items-center justify-between text-[12px]">
               <span class="text-light-secondary">Need to modify consignee delivery address?</span>
-              <a href="tel:+2348142009010" class="text-warning font-semibold hover:underline">Contact Aba Desk</a>
+              <span class="text-warning font-semibold">Contact Seentair support</span>
             </div>
           } @else if (failed()) {
             <div class="load-error p-3.5 rounded-xl bg-light-surface border border-danger/30 flex items-center justify-between gap-2">
@@ -305,6 +315,7 @@ interface Milestone {
 })
 export class TrackingPage implements OnInit, OnDestroy {
   private readonly confirm = inject(SeConfirmService);
+  private readonly toast = inject(SeToastService);
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -322,10 +333,11 @@ export class TrackingPage implements OnInit, OnDestroy {
 
   readonly showReturnForm = signal(false);
   readonly submittingReturn = signal(false);
+  readonly returnVariants = signal<Array<{ id: string; sku: string }>>([]);
+  readonly returnVariantId = signal('');
   returnReason = '';
   returnDetails = '';
   readonly RETURN_WINDOW_HOURS = 12;
-  private deliveryConfirmed = signal(this.getDeliveryConfirmed());
   readonly leg = computed<DeliveryLegView | null>(() => this.deliveries()[0] ?? null);
 
   /** The delivery state the page summarises around. */
@@ -599,7 +611,26 @@ export class TrackingPage implements OnInit, OnDestroy {
 
   openReturnForm(): void {
     if (!this.canRequestReturn()) return;
-    this.showReturnForm.set(true);
+    this.returnReason = '';
+    this.returnDetails = '';
+    this.returnVariants.set([]);
+    this.returnVariantId.set('');
+    this.api.orderDetail(this.orderId()).subscribe({
+      next: (detail) => {
+        const variants = (detail.items ?? []).map((item) => ({
+          id: item.variant.id,
+          sku: item.variant.sku,
+        }));
+        this.returnVariants.set(variants);
+        this.returnVariantId.set(variants[0]?.id ?? '');
+        this.showReturnForm.set(true);
+      },
+      error: () => {
+        this.returnVariants.set([]);
+        this.returnVariantId.set('');
+        this.showReturnForm.set(true);
+      },
+    });
   }
 
   cancelReturnForm(): void {
@@ -610,15 +641,27 @@ export class TrackingPage implements OnInit, OnDestroy {
 
   submitReturnRequest(): void {
     if (!this.canRequestReturn() || this.submittingReturn()) return;
-    if (!this.returnReason.trim() || !this.returnDetails.trim()) return;
+    if (!this.returnReason.trim() || !this.returnDetails.trim() || !this.returnVariantId()) return;
     this.submittingReturn.set(true);
-    // API endpoint not present in current service; keep UI flow consistent.
-    setTimeout(() => {
-      this.submittingReturn.set(false);
-      this.showReturnForm.set(false);
-      this.returnReason = '';
-      this.returnDetails = '';
-    }, 300);
+    this.api
+      .requestReturn({
+        orderId: this.orderId(),
+        variantId: this.returnVariantId(),
+        reason: `${this.returnReason}: ${this.returnDetails.trim()}`,
+      })
+      .subscribe({
+        next: () => {
+          this.submittingReturn.set(false);
+          this.showReturnForm.set(false);
+          this.returnReason = '';
+          this.returnDetails = '';
+          this.toast.show('Return request submitted. The desk will contact you with next steps.');
+        },
+        error: () => {
+          this.submittingReturn.set(false);
+          this.toast.show('The return request could not be submitted. Try again.', { tone: 'danger' });
+        },
+      });
   }
 
   readonly ref = computed(() => orderRef(this.orderId()));
@@ -659,52 +702,6 @@ export class TrackingPage implements OnInit, OnDestroy {
         return `${prefix} on the Factory Floor`;
     }
   });
-
-  private getDeliveryConfirmedKey(): string {
-    const id = this.orderId();
-    return `delivery_confirmed_${id}`;
-  }
-
-  private getDeliveryConfirmed(): boolean {
-    if (typeof localStorage === 'undefined') return false;
-    try {
-      return localStorage.getItem(this.getDeliveryConfirmedKey()) === 'true';
-    } catch {
-      return false;
-    }
-  }
-
-  private setDeliveryConfirmed(value: boolean): void {
-    this.deliveryConfirmed.set(value);
-    if (typeof localStorage !== 'undefined') {
-      try {
-        const key = this.getDeliveryConfirmedKey();
-        if (value) localStorage.setItem(key, 'true');
-        else localStorage.removeItem(key);
-      } catch {}
-    }
-  }
-
-  private async showDeliveryConfirmationIfNeeded(): Promise<void> {
-    if (!this.isDeliveredSignal() || this.deliveryConfirmed()) return;
-    const confirmed = await this.confirm.ask({
-      title: 'Have you received your package?',
-      consequence: 'Please confirm you have received your delivery in good condition.',
-      confirmLabel: 'I have received it',
-      cancelLabel: 'Not yet',
-    });
-    if (confirmed) {
-      this.setDeliveryConfirmed(true);
-    }
-  }
-
-  constructor() {
-    effect(() => {
-      if (this.loaded()) {
-        void this.showDeliveryConfirmationIfNeeded();
-      }
-    });
-  }
 
   /**
    * Customer-facing flag for a paid order that is short on stock. The API

@@ -8,6 +8,7 @@ import { catchError, Observable, of, tap } from 'rxjs';
 import { BrandAlertService } from '../brand-alert.service';
 import { CartService } from '../cart.service';
 import { CouponService } from '../coupon.service';
+import { OrbitalSpinnerComponent } from '../orbital-spinner.component';
 
 /** Middle dot, kept as a named constant so the stage labels stay readable and
     the character never has to survive a copy-paste through a shell. */
@@ -60,7 +61,7 @@ const NIGERIAN_STATES = [
     sticky CTA footer with in-flight spinner, safe-area + WCAG AA. */
 @Component({
   selector: 'app-checkout',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, OrbitalSpinnerComponent],
   template: `
     <div class="stage-bar u-rise">
       <div class="stage-label-line">
@@ -513,9 +514,7 @@ const NIGERIAN_STATES = [
           <span class="scta-trust">{{ ctaTrust() }}</span>
           <button class="cta" type="button" (click)="primaryAction()" [disabled]="placing()">
             @if (placing()) {
-              <span class="btn-loading"
-                ><span class="spinner" aria-hidden="true"></span>Placing order…</span
-              >
+              <span class="btn-loading"><app-orbital-spinner size="sm" />Placing order…</span>
             } @else {
               {{ primaryLabel() }}
             }

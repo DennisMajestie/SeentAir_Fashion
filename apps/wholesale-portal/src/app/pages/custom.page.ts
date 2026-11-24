@@ -10,7 +10,7 @@ const SIZE_KEYS = ['S', 'M', 'L', 'XL', 'XXL'] as const;
 /** The factory gate sequence. Facts about the process, not per-request state. */
 const ROADMAP: Array<{ label: string; detail: string }> = [
   { label: '1. Brief', detail: 'Specs & Ref' },
-  { label: '2. Quote', detail: '24hr costing' },
+  { label: '2. Quote', detail: 'Manual costing' },
   { label: '3. Sample', detail: 'Fit signoff' },
   { label: '4. Mill Cut', detail: 'Bulk run' },
 ];
@@ -219,7 +219,7 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
                     </div>
                     <div class="flex flex-col">
                       <span class="text-[12px] font-bold text-light-primary truncate max-w-[170px]">Reference photo</span>
-                      <span class="text-[10px] text-light-secondary font-mono">Uploaded &amp; verified</span>
+                      <span class="text-[10px] text-light-secondary font-mono">Uploaded with this request</span>
                     </div>
                   </div>
                   <button type="button" aria-label="Remove image" class="text-light-secondary hover:text-danger p-1" (click)="clearPhoto()">
@@ -337,7 +337,7 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
 
             <!-- Policy Reminder -->
             <div class="p-3 rounded-lg bg-canvas-tint/70 border border-border text-[11px] text-light-secondary leading-normal">
-              Aba pattern room quotes within 24 working hours. Sampling commences upon 100% upfront quote acceptance.
+              Quotes are prepared manually after the design is reviewed. Sampling starts once the quote is accepted and paid in full.
             </div>
           </form>
 

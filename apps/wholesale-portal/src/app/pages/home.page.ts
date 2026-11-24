@@ -148,10 +148,7 @@ import {
           <!-- Batch Progress Card: 4-Step Pipeline -->
           <section class="bg-light-surface rounded-xl p-4 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)]">
             <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-accent animate-ping"></span>
-                <h2 class="text-[13px] font-bold text-light-primary">Live Batch Progress</h2>
-              </div>
+              <h2 class="text-[13px] font-bold text-light-primary">Latest batch progress</h2>
               <span class="text-[11px] font-mono text-light-secondary">{{ lastOrder() ? orderRef(lastOrder()!.orderId) : '—' }}</span>
             </div>
             <p class="text-[12px] text-light-secondary mb-3">{{ summary().next }}</p>
@@ -259,12 +256,12 @@ import {
                 <span class="material-symbols-outlined text-[20px]">support_agent</span>
               </div>
               <div>
-                <h2 class="text-[13px] font-bold text-light-primary">Aba Wholesale Desk</h2>
-                <span class="text-[11px] text-light-secondary">Direct mill lead line • 08:00 - 18:00 WAT</span>
+                <h2 class="text-[13px] font-bold text-light-primary">Seentair Wholesale Desk</h2>
+                <span class="text-[11px] text-light-secondary">Your orders and invoices are always available here</span>
               </div>
             </div>
-            <a href="tel:+2348142009010" class="w-9 h-9 rounded-full bg-light-surface border border-border flex items-center justify-center text-light-primary hover:bg-canvas" aria-label="Call the desk">
-              <span class="material-symbols-outlined text-[18px]">call</span>
+            <a routerLink="/orders" class="w-9 h-9 rounded-full bg-light-surface border border-border flex items-center justify-center text-light-primary hover:bg-canvas" aria-label="View orders">
+              <span class="material-symbols-outlined text-[18px]">receipt_long</span>
             </a>
           </section>
         </main>
@@ -393,7 +390,7 @@ export class HomePage implements OnInit {
   }
 
   load(): void {
-    this.api.invoices().subscribe({
+    this.api.invoices(1, 100).subscribe({
       next: (r) => {
         this.invoices.set(r.data);
         this.loading.set(false);

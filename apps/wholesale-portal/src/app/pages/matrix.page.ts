@@ -83,7 +83,9 @@ import { CartService } from '../cart.service';
                 <div class="mt-1 flex items-baseline gap-2 flex-wrap">
                   <span class="font-mono font-bold text-accent text-[16px]">{{ prod.wholesalePrice | seMoney: 2 }}</span>
                   <span class="text-[10px] font-normal text-light-secondary">/unit</span>
-                  <span class="text-[11px] text-light-secondary line-through">{{ prod.retailPrice | seMoney: 2 }} Retail</span>
+                  @if (pricingData()?.hasDiscount) {
+                    <span class="text-[11px] text-light-secondary line-through">{{ prod.retailPrice | seMoney: 2 }} Retail</span>
+                  }
                   @if (pricingData()?.hasDiscount) {
                     <span class="text-[10px] text-success font-semibold">{{ discountPct() }}% Wholesale</span>
                   }
@@ -268,24 +270,29 @@ export class MatrixPage implements OnInit {
     const id = this.route.snapshot.paramMap.get('id');
     this.loading.set(true);
     this.loadError.set(null);
-    this.api.pricing().subscribe({
+    this.api.pricing(1, 100).subscribe({
       next: (p) => {
         this.pricingData.set(p);
-        const prod = p.data.find((x) => x.id === id) ?? null;
-        this.product.set(prod);
         this.loading.set(false);
-        // Seed from existing draft lines so editing a product round-trips.
-        const seeded: Record<string, number> = {};
-        for (const line of this.cart.lines()) {
-          if (line.productId === id) seeded[line.variantId] = line.quantity;
-        }
-        this.quantities.set(seeded);
-        if (prod && prod.variants.length > 0) {
-          this.api.stock(prod.variants.map((v) => v.id)).subscribe({
-            next: (s) => this.stockState.set(s),
-            error: () => this.stockState.set({}),
-          });
-        }
+        if (!id) return;
+        this.api.findPricedProduct(id).subscribe({
+          next: (prod) => {
+            this.product.set(prod);
+            // Seed from existing draft lines so editing a product round-trips.
+            const seeded: Record<string, number> = {};
+            for (const line of this.cart.lines()) {
+              if (line.productId === id) seeded[line.variantId] = line.quantity;
+            }
+            this.quantities.set(seeded);
+            if (prod && prod.variants.length > 0) {
+              this.api.stock(prod.variants.map((v) => v.id)).subscribe({
+                next: (s) => this.stockState.set(s),
+                error: () => this.stockState.set({}),
+              });
+            }
+          },
+          error: () => this.product.set(null),
+        });
       },
       error: (err) => {
         this.loading.set(false);

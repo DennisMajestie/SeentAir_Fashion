@@ -1,6 +1,13 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { SeConfirmService, SeCurrencyService, SeDatePipe, SeMoneyPipe, formatDate } from '@seentair/ui';
+import {
+  SeConfirmService,
+  SeCurrencyService,
+  SeDatePipe,
+  SeMoneyPipe,
+  SeSpinnerComponent,
+  formatDate,
+} from '@seentair/ui';
 import { ApiService, Invoice } from '../api.service';
 import { isClosed, isPaid, orderRef, payMethod, units } from '../wholesale-format';
 import { pill } from '../status-pill';
@@ -16,7 +23,7 @@ import { pill } from '../status-pill';
  */
 @Component({
   selector: 'app-invoice-detail',
-  imports: [SeDatePipe, SeMoneyPipe],
+  imports: [SeDatePipe, SeMoneyPipe, SeSpinnerComponent],
   template: `
     <div class="stitch">
       <div class="bg-canvas text-light-on-surface min-h-screen md:bg-transparent pb-32 antialiased md:pb-8 selection:bg-accent/20">
@@ -74,10 +81,7 @@ import { pill } from '../status-pill';
                   <span class="text-[10px] uppercase font-mono text-light-secondary block">Manufacturer</span>
                   <strong class="font-bold text-light-primary block">Seentair Limited</strong>
                   <span class="text-light-secondary text-[11px]">Aba, Nigeria</span>
-                  <span class="text-[11px] text-light-secondary block mt-0.5">
-                    Finance desk:
-                    <a class="text-accent font-semibold" href="tel:+23418887400">+234 1 888 7400</a>
-                  </span>
+                  <span class="text-[11px] text-light-secondary block mt-0.5">Questions? Contact Seentair support.</span>
                 </div>
                 <div>
                   <span class="text-[10px] uppercase font-mono text-light-secondary block">Billed To (Buyer)</span>
@@ -109,7 +113,7 @@ import { pill } from '../status-pill';
                 </div>
                 <div class="flex justify-between text-light-secondary">
                   <span>Wholesale tier rate</span>
-                  <span class="font-mono text-light-primary">Applied at order time</span>
+                  <span class="font-mono text-light-primary">Reflected in unit prices</span>
                 </div>
                 <div class="pt-2 border-t border-border flex justify-between items-baseline font-bold" [attr.data-kv]="totalLabel(inv)">
                   <span class="text-light-primary text-[15px]">{{ totalLabel(inv) }}</span>
@@ -189,6 +193,7 @@ import { pill } from '../status-pill';
                 [disabled]="paying()"
                 (click)="payNow(inv)"
               >
+                @if (paying()) { <se-spinner size="sm" /> }
                 <span>{{ paying() ? 'Opening Paystack…' : 'Pay now' }}</span>
                 <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
@@ -247,9 +252,8 @@ export class InvoiceDetailPage implements OnInit {
   load(): void {
     this.failed.set(false);
     this.missing.set(false);
-    this.api.invoices().subscribe({
-      next: (res) => {
-        const inv = res.data.find((i) => i.orderId === this.id) ?? null;
+    this.api.invoiceById(this.id).subscribe({
+      next: (inv) => {
         this.invoice.set(inv);
         this.missing.set(!inv);
       },
@@ -315,7 +319,7 @@ export class InvoiceDetailPage implements OnInit {
 
   payNote(inv: Invoice): string {
     if (this.payable(inv))
-      return 'Wholesale is full payment upfront; there are no part-payments. Prefer a transfer? Call the finance desk on +234 1 888 7400.';
+      return 'Wholesale is full payment upfront; there are no part-payments. Contact Seentair support if you need help with payment.';
     if (isPaid(inv)) return this.settledLine(inv);
     return 'The order is closed, so the invoice carries nothing payable.';
   }

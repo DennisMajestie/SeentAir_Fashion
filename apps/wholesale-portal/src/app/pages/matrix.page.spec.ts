@@ -63,8 +63,9 @@ describe('MatrixPage', () => {
     id = 'p1',
     seed: Parameters<CartService['add']>[0] = [],
   ): Promise<void> {
-    api = jasmine.createSpyObj<ApiService>('ApiService', ['pricing', 'stock']);
+    api = jasmine.createSpyObj<ApiService>('ApiService', ['pricing', 'findPricedProduct', 'stock']);
     api.pricing.and.returnValue(of(PRICING));
+    api.findPricedProduct.and.returnValue(of(PRICING.data.find((p) => p.id === id) ?? null));
     api.stock.and.returnValue(of(stock));
     await TestBed.configureTestingModule({
       imports: [MatrixPage],
