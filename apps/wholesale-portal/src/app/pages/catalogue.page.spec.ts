@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { SeCurrencyService } from '@seentair/ui';
 import { of, throwError } from 'rxjs';
 
@@ -183,13 +183,13 @@ describe('CataloguePage', () => {
       expect(el().querySelector('a.product-cta')).toBeNull();
     });
 
-    it('calls applyForAccount and shows the pending state', async () => {
+    it('sends an existing applicant to their application status instead of applying twice', async () => {
+      const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
       await boot(Object.assign(new Error('forbidden'), { status: 401 }));
       el().querySelector<HTMLButtonElement>('.needs-account button')!.click();
       fixture.detectChanges();
-      expect(api.applyForAccount).toHaveBeenCalledTimes(1);
-      expect(component.applied()).toBe(true);
-      expect(text()).toContain('Application submitted');
+      expect(api.applyForAccount).not.toHaveBeenCalled();
+      expect(navigate).toHaveBeenCalledWith(['/application']);
     });
 
     it('treats any other failure as a load error with a retry, not the apply path', async () => {

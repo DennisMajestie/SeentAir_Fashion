@@ -143,11 +143,12 @@ export class PartnersService {
   async dashboard(partnerId: string, user: AuthenticatedUser) {
     const partner = await this.getPartnerWithAccessCheck(partnerId, user);
 
-    const [income, profit, inventorySummary, distributions] = await Promise.all([
+    const [income, profit, inventorySummary, distributions, allPartners] = await Promise.all([
       this.accountingService.report('income'),
       this.accountingService.report('profit'),
       this.inventoryService.summary(),
       this.distributionRepo.find({ order: { period: 'DESC' } }),
+      this.partnerRepo.find({ order: { equityPercentage: 'DESC' } }),
     ]);
 
     const finishedGoodsUnits = inventorySummary
@@ -159,6 +160,12 @@ export class PartnersService {
     return {
       partnerId: partner.id,
       currentPeriod: distributions[0]?.period ?? null,
+      partnerRegistry: allPartners.map((p) => ({
+        partnerId: p.id,
+        equityPercentage: p.equityPercentage,
+        shares: Math.round((totalShares * p.equityPercentage) / 100),
+        isMine: p.id === partner.id,
+      })),
       // The confirmed covenant (appendix 17) ships to the portal so the
       // partner surfaces mirror server configuration, never reinvented values.
       config: {

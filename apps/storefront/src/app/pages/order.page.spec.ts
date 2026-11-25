@@ -18,6 +18,7 @@ describe('OrderPage', () => {
   let fixture: ComponentFixture<OrderPage>;
   let element: HTMLElement;
   let requestReturnSpy: jasmine.Spy;
+  let payWithPaystackSpy: jasmine.Spy;
 
   const ORDER_ID = 'abc12345-0000-0000-0000-000000000000';
 
@@ -67,6 +68,9 @@ describe('OrderPage', () => {
   ) => {
     const order$ = new BehaviorSubject<Order | null>(order);
     requestReturnSpy = jasmine.createSpy('requestReturn').and.returnValue(of({}));
+    payWithPaystackSpy = jasmine
+      .createSpy('payWithPaystack')
+      .and.returnValue(of({ authorizationUrl: 'https://checkout.test/x' }));
     TestBed.configureTestingModule({
       imports: [OrderPage],
       providers: [
@@ -88,7 +92,7 @@ describe('OrderPage', () => {
             order: () => order$,
             tracking: () => of(tracking ?? makeTracking()),
             orderSocketStream: () => Promise.resolve(),
-            payWithPaystack: () => of({ authorizationUrl: 'https://checkout.test/x' }),
+            payWithPaystack: payWithPaystackSpy,
             submitReview: () => of({}),
             requestReturn: requestReturnSpy,
           },
@@ -560,6 +564,25 @@ describe('OrderPage', () => {
     });
   });
 
+  describe('guest payment', () => {
+    it('passes the emailed tracking token so a guest can pay for their order', () => {
+      setUp(
+        makeOrder({ paymentStatus: 'unpaid' }),
+        undefined,
+        { token: 'guest-tracking-token' },
+      );
+      const page = fixture.componentInstance;
+      page.startPayment();
+      expect(payWithPaystackSpy).toHaveBeenCalledWith(
+        ORDER_ID,
+        370000,
+        undefined,
+        'guest-tracking-token',
+      );
+      localStorage.removeItem(`seentair.order.${ORDER_ID}`);
+    });
+  });
+
   describe('returns', () => {
     it('passes the emailed guest token to the return request', () => {
       setUp(
@@ -576,6 +599,7 @@ describe('OrderPage', () => {
         2,
         'wrong size',
         'guest-tracking-token',
+        undefined,
       );
       localStorage.removeItem(`seentair.order.${ORDER_ID}`);
     });

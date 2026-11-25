@@ -48,9 +48,17 @@ export interface PartnerDistribution {
   partnerBreakdown: Array<{ partnerId: string; amount: number }>;
 }
 
+export interface PartnerRegistryRow {
+  partnerId: string;
+  equityPercentage: number;
+  shares: number;
+  isMine: boolean;
+}
+
 export interface PartnerDashboard {
   partnerId: string;
   currentPeriod: string | null;
+  partnerRegistry: PartnerRegistryRow[];
   config: DashboardConfig;
   businessOverview: { totalIncome: number; profitLoss: ProfitReport };
   investmentInformation: {

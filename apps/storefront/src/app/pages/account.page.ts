@@ -89,31 +89,10 @@ import { ChatService } from '../chat.service';
         }
 
         <h2 id="messages">Messages</h2>
-        @if (chat.threads().length === 0) {
-          <p class="muted">
-            No conversations yet.
-            <button type="button" class="chat-open-link" (click)="openChat()">
-              Start a conversation
-            </button>
-          </p>
-        } @else {
-          @for (t of chat.threads(); track t.id) {
-            <button type="button" class="order-row chat-thread-row" (click)="openChat(t.id)">
-              <span>
-                <strong>{{ t.subject ?? 'Conversation' }}</strong>
-                @if (t.lastMessagePreview) {
-                  <span class="muted small"> · {{ t.lastMessagePreview }}</span>
-                }
-              </span>
-              <span>
-                @if (t.unreadCustomer > 0) {
-                  <span class="status chat-unread">{{ t.unreadCustomer }} new</span>
-                }
-                <span class="muted small">{{ t.lastMessageAt | date: 'medium' }}</span>
-              </span>
-            </button>
-          }
-        }
+        <p class="muted">
+          Live chat is not open yet. For help with an order, use the WhatsApp button on the page or
+          email <a href="mailto:hello@seentair.com">hello@seentair.com</a>.
+        </p>
 
         <h2 id="orders">Your orders</h2>
         @if (orders().length === 0) {

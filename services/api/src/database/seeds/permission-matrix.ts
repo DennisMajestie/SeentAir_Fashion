@@ -96,7 +96,6 @@ export const PERMISSION_MATRIX: Record<RoleName, Partial<Record<ModuleName, Acce
     [ModuleName.ACCOUNTING]: VIEW,
     [ModuleName.ANALYTICS]: VIEW,
     [ModuleName.PARTNERS]: OWN,
-    [ModuleName.CUSTOMERS]: VIEW,
   },
 
   [RoleName.WHOLESALER]: {

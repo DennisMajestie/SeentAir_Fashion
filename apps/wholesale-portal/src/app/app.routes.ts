@@ -24,6 +24,11 @@ export const routes: Routes = [
         title: 'Seentair Wholesale: Catalogue',
       },
       {
+        path: 'application',
+        loadComponent: () => import('./pages/application.page').then((m) => m.ApplicationPage),
+        title: 'Seentair Wholesale: Application status',
+      },
+      {
         path: 'catalogue/:id/matrix',
         loadComponent: () => import('./pages/matrix.page').then((m) => m.MatrixPage),
         title: 'Seentair Wholesale: Bulk Order Form',

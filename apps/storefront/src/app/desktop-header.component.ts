@@ -126,10 +126,10 @@ import { productImage } from './product-image';
                 <a
                   class="d-acct__item"
                   role="menuitem"
-                  routerLink="/account"
+                  [routerLink]="api.isLoggedIn ? '/account' : '/signin'"
                   (click)="menuOpen.set(false)"
                 >
-                  <span class="d-acct__name">My account</span>
+                  <span class="d-acct__name">{{ api.isLoggedIn ? 'My account' : 'Sign in' }}</span>
                   <span class="d-acct__hint">Orders, wishlist, details</span>
                 </a>
                 @for (surface of surfaces; track surface.label) {
@@ -461,7 +461,7 @@ export class DesktopHeaderComponent {
   readonly search = inject(CatalogueSearchService);
   readonly cart = inject(CartService);
   readonly wish = inject(WishlistService);
-  private readonly api = inject(ApiService);
+  readonly api = inject(ApiService);
 
   /** Whether the account menu is open. Closed on navigation so a link that
       moves the shopper somewhere else does not leave it hanging open. */

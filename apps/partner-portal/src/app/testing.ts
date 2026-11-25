@@ -14,6 +14,10 @@ export function dashboard(over: Partial<PartnerDashboard> = {}): PartnerDashboar
   return {
     partnerId: 'p1',
     currentPeriod: '2026-Q3',
+    partnerRegistry: [
+      { partnerId: 'p1', equityPercentage: 25, shares: 250_000, isMine: true },
+      { partnerId: 'p2', equityPercentage: 15, shares: 150_000, isMine: false },
+    ],
     config: {
       totalShares: 1_000_000,
       founderSharePct: 60,

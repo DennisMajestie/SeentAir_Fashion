@@ -45,11 +45,7 @@ import { ThemeService } from '../theme.service';
           </div>
 
           @if (store.me()?.totpEnabled) {
-            <p class="text-[12px] text-light-secondary leading-normal">Two-step verification is <strong class="text-light-primary">active</strong>. Every sign-in requires a rotating 6-digit code from your authenticator app. Enter a live code to disable it.</p>
-            <label class="flex flex-col gap-1.5 text-[12px] font-semibold text-light-primary">Live code to disable
-              <input type="text" inputmode="numeric" maxlength="6" [(ngModel)]="code" name="code" aria-label="Live code to disable" class="px-3 py-2.5 rounded-lg border border-border bg-canvas font-mono tracking-[0.2em] text-[14px] text-light-primary" />
-            </label>
-            <button type="button" [disabled]="busy() || code.length < 6" (click)="disable()" class="w-full py-3 rounded-full bg-light-surface border border-danger/30 text-danger font-semibold text-[13px] disabled:opacity-50">Disable two-step verification</button>
+            <p class="text-[12px] text-light-secondary leading-normal">Two-step verification is <strong class="text-light-primary">active</strong>. Every sign-in requires a rotating 6-digit code from your authenticator app. Partner accounts must keep it enabled — contact Seentair support if you lose access.</p>
           } @else if (setup(); as s) {
             <p class="text-[12px] text-light-secondary leading-normal">Add this secret to your authenticator app, then confirm with a live code to activate.</p>
             <div class="p-3 rounded-lg border border-dashed border-border bg-canvas/60 font-mono text-[12px] tracking-wider break-all text-light-primary">{{ s.secret }}</div>

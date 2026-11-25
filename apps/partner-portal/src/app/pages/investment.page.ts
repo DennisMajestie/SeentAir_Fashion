@@ -183,10 +183,23 @@ export class InvestmentPage {
   readonly equityRows = computed(() => {
     const d = this.store.dash();
     if (!d) return [];
+    const mine = d.partnerRegistry.find((row) => row.isMine);
     return [
       { label: 'Founder & executive team', pct: d.config.founderSharePct, shares: this.founderShares(), me: false },
-      { label: 'Other strategic partners', pct: this.otherPartnersPct(), shares: this.otherPartnersShares(), me: false },
-      { label: `Your holding (${this.store.firstName()})`, pct: d.investmentInformation.equityPercentage, shares: d.investmentInformation.shares, me: true },
+      ...d.partnerRegistry
+        .filter((row) => !row.isMine)
+        .map((row) => ({
+          label: `Partner ${row.partnerId.slice(0, 8).toUpperCase()}`,
+          pct: row.equityPercentage,
+          shares: row.shares,
+          me: false,
+        })),
+      {
+        label: `Your holding (${this.store.firstName()})`,
+        pct: mine?.equityPercentage ?? d.investmentInformation.equityPercentage,
+        shares: mine?.shares ?? d.investmentInformation.shares,
+        me: true,
+      },
     ];
   });
   readonly capRows = computed(() => {

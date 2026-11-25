@@ -1,6 +1,6 @@
 ﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { SeFilter, SeFilterValue, SeMoneyPipe, SeToastService } from '@seentair/ui';
 import { AvailabilityStatus, Pricing, PricingProduct } from '../api.service';
 import { ApiService } from '../api.service';
@@ -217,6 +217,7 @@ import { InfiniteScrollDirective } from '../infinite-scroll.directive';
 })
 export class CataloguePage implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly router = inject(Router);
   private readonly toast = inject(SeToastService);
   readonly cart = inject(CartService);
 
@@ -355,17 +356,8 @@ export class CataloguePage implements OnInit {
   }
 
   apply(): void {
-    this.applying.set(true);
-    this.api.applyForAccount().subscribe({
-      next: () => {
-        this.applying.set(false);
-        this.applied.set(true);
-        this.toast.show('Application submitted: pending review.');
-      },
-      error: (err) => {
-        this.applying.set(false);
-        this.toast.show(err?.error?.message ?? 'Application failed.', { tone: 'danger' });
-      },
-    });
+    // A signed-in buyer who already applied has a pending account. Posting
+    // again would 409; send them to their application status instead.
+    void this.router.navigate(['/application']);
   }
 }

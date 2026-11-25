@@ -46,7 +46,7 @@ describe('SettingsPage', () => {
     });
     create();
     expect(el().textContent).toContain('Enabled');
-    expect(el().textContent).toContain('Disable two-step verification');
+    expect(el().textContent).toContain('Partner accounts must keep it enabled');
   });
 
   it('exposes the terminal theme toggle', () => {

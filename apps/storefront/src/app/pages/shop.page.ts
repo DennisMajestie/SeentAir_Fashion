@@ -115,6 +115,40 @@ function collectionKey(name: string): string {
       }
     </div>
 
+    <div class="shop-filters">
+      <label class="shop-sort">
+        <span>Sort by</span>
+        <select [value]="sort()" (change)="sort.set($any($event.target).value)">
+          <option value="featured">Featured</option>
+          <option value="newest">Newest</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+          <option value="best-selling">Best selling</option>
+        </select>
+      </label>
+      <div class="filter-group">
+        <span>Collection</span>
+        <button type="button" class="filter-chip" [class.active]="selectedCollection() === null" (click)="selectedCollection.set(null)">All</button>
+        @for (name of collections(); track name) {
+          <button type="button" class="filter-chip" [class.active]="selectedCollection() === name" (click)="selectedCollection.set(name)">{{ name }}</button>
+        }
+      </div>
+      <div class="filter-group">
+        <span>Size</span>
+        <button type="button" class="filter-chip" [class.active]="selectedSize() === null" (click)="selectedSize.set(null)">All</button>
+        @for (size of allSizes(); track size) {
+          <button type="button" class="filter-chip" [class.active]="selectedSize() === size" (click)="selectedSize.set(size)">{{ size }}</button>
+        }
+      </div>
+      <div class="filter-group">
+        <span>Colour</span>
+        <button type="button" class="filter-chip" [class.active]="selectedColour() === null" (click)="selectedColour.set(null)">All</button>
+        @for (colour of allColours(); track colour) {
+          <button type="button" class="filter-chip" [class.active]="selectedColour() === colour" (click)="selectedColour.set(colour)">{{ colour }}</button>
+        }
+      </div>
+    </div>
+
     @if (loading()) {
       <div class="grid" aria-hidden="true">
         @for (g of skCards; track g) {
@@ -199,6 +233,9 @@ export class ShopPage implements OnInit {
   readonly query = this.search.term;
   readonly category = signal<string | null>(null);
   readonly sort = signal<SortKey>('featured');
+  readonly selectedCollection = signal<string | null>(null);
+  readonly selectedSize = signal<string | null>(null);
+  readonly selectedColour = signal<string | null>(null);
   /** productId → average rating + review count (public reviews endpoint). */
   readonly ratings = signal<Map<string, { avg: number; count: number }>>(new Map());
 
@@ -262,6 +299,12 @@ export class ShopPage implements OnInit {
     const cat = this.category();
     const rows = this.all().filter((p) => {
       if (cat && (p.category ?? 'other') !== cat) return false;
+      const collection = this.selectedCollection();
+      if (collection && p.collection?.name !== collection) return false;
+      const size = this.selectedSize();
+      if (size && !p.variants.some((v) => v.size === size)) return false;
+      const colour = this.selectedColour();
+      if (colour && !p.variants.some((v) => v.colour === colour)) return false;
       if (!q) return true;
       const haystack = [
         p.name,
@@ -326,6 +369,10 @@ export class ShopPage implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((params) => {
         this.category.set(params.get('category'));
+        const collection = params.get('collection');
+        this.selectedCollection.set(
+          collection ? this.collections().find((name) => name.toLowerCase().includes(collection.toLowerCase())) ?? null : null,
+        );
         // The category is part of what this page is "about": a filtered listing
         // should not share a search-result title with the unfiltered one.
         const cat = params.get('category');
@@ -426,6 +473,9 @@ export class ShopPage implements OnInit {
   /** Clears the category and the search. */
   clearFilters(): void {
     this.category.set(null);
+    this.selectedCollection.set(null);
+    this.selectedSize.set(null);
+    this.selectedColour.set(null);
     this.query.set('');
     void this.router.navigate([], {
       relativeTo: this.route,

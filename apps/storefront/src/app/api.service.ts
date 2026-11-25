@@ -720,11 +720,18 @@ export class ApiService {
     quantity: number,
     reason: string,
     token?: string,
+    trackingNumber?: string,
   ): Observable<unknown> {
     // A guest has no session bearer token, so the emailed tracking token proves
     // ownership the same way it does for reviews, tracking and payment.
     const query = token ? `?token=${encodeURIComponent(token)}` : '';
-    return this.http.post(`${API_BASE}/returns${query}`, { orderId, variantId, quantity, reason });
+    return this.http.post(`${API_BASE}/returns${query}`, {
+      orderId,
+      variantId,
+      quantity,
+      reason,
+      ...(trackingNumber ? { trackingNumber } : {}),
+    });
   }
 
   submitReview(
@@ -742,18 +749,4 @@ export class ApiService {
     });
   }
 
-  createSpecialRequest(payload: {
-    type: 'size' | 'logistics' | 'preorder';
-    productName: string;
-    variant?: string;
-    desiredSize?: string;
-    destination?: string;
-    quantity: number;
-    contact: string;
-    note?: string;
-    productId?: string;
-    variantId?: string;
-  }): Observable<{ id: string }> {
-    return this.http.post<{ id: string }>(`${API_BASE}/special-requests`, payload);
-  }
 }

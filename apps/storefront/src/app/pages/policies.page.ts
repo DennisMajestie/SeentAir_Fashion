@@ -49,8 +49,8 @@ import { RouterLink } from '@angular/router';
         <ul>
           <li>Email: <a href="mailto:hello@seentair.com">hello@seentair.com</a></li>
           <li>
-            WhatsApp: order and dispatch updates arrive there automatically if you add your phone
-            number at checkout
+            WhatsApp: use the floating WhatsApp button for enquiries. Order updates arrive in-app;
+            SMS notifications are enabled separately
           </li>
           <li>Atelier: Aba, Abia State (visits by appointment)</li>
         </ul>

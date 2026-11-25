@@ -18,7 +18,7 @@ import { ApiService } from '../api.service';
         </p>
       } @else if (done()) {
         <p class="success">{{ done() }}</p>
-        <a class="cta" routerLink="/account">Sign in</a>
+        <a class="cta" routerLink="/signin">Sign in</a>
       } @else {
         <label>
           New password (min 8 characters)

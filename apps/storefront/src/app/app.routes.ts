@@ -57,6 +57,11 @@ export const routes: Routes = [
     title: 'Seentair: Account',
   },
   {
+    path: 'signin',
+    loadComponent: () => import('./pages/signin.page').then((m) => m.SigninPage),
+    title: 'Seentair: Sign in',
+  },
+  {
     path: 'reset-password',
     loadComponent: () => import('./pages/reset-password.page').then((m) => m.ResetPasswordPage),
     title: 'Seentair: Reset password',

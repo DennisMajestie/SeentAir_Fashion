@@ -88,8 +88,8 @@ import { ChromeService } from './chrome.service';
           <nav class="footer-col" aria-label="Shop">
             <h4>Shop</h4>
             <a routerLink="/shop">All products</a>
-            <a routerLink="/shop">Drop 04: Harmattan</a>
-            <a routerLink="/shop">Studio Essentials</a>
+            <a routerLink="/shop" [queryParams]="{ collection: 'harmattan' }">Harmattan collection</a>
+            <a routerLink="/shop" [queryParams]="{ collection: 'essentials' }">Studio essentials</a>
           </nav>
 <nav class="footer-col" aria-label="Help">
             <h4>Help</h4>

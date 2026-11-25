@@ -489,7 +489,8 @@ const NIGERIAN_STATES = [
                     type="number"
                     min="0"
                     [max]="loyaltyPoints()"
-                    [(ngModel)]="pointsToRedeem"
+                    [ngModel]="pointsToRedeem()"
+                    (ngModelChange)="pointsToRedeem.set(+$event || 0)"
                     name="pointsToRedeem"
                   />
                 </label>
@@ -541,7 +542,7 @@ export class CheckoutPage {
   readonly showSignIn = signal(false);
   readonly placing = signal(false);
   readonly loyaltyPoints = signal(0);
-  pointsToRedeem = 0;
+  readonly pointsToRedeem = signal(0);
   readonly error = signal<string | null>(null);
   readonly signinError = signal<string | null>(null);
   readonly deliveryError = signal<string | null>(null);
@@ -603,7 +604,14 @@ export class CheckoutPage {
   });
 
   readonly totalDue = computed(
-    () => this.cart.total - this.coupons.discount() + this.deliveryFee(),
+    () =>
+      Math.max(
+        0,
+        this.cart.total -
+          this.coupons.discount() -
+          Math.max(0, Math.floor(this.pointsToRedeem() || 0)) +
+          this.deliveryFee(),
+      ),
   );
 
   /** One button, two jobs: the details step advances, the delivery step places. */
@@ -644,6 +652,22 @@ export class CheckoutPage {
     this.cart.settlePrices();
     this.loadAccount();
     this.refreshCoupons();
+
+    const utm = this.route.snapshot.queryParamMap.get('utm_source');
+    if (utm?.trim()) {
+      try {
+        sessionStorage.setItem('seentair.utm_source', utm.trim().slice(0, 120));
+      } catch {}
+    }
+  }
+
+  /** UTM source captured on entry, falling back to the storefront tag. */
+  private marketingSource(): string {
+    try {
+      return sessionStorage.getItem('seentair.utm_source') || 'storefront';
+    } catch {
+      return 'storefront';
+    }
   }
 
   /**
@@ -820,14 +844,14 @@ export class CheckoutPage {
       this.api
         .createOrder(
           items,
-          'storefront',
+          this.marketingSource(),
           this.shippingAddress(),
           guest,
           this.deliveryMethod(),
           quote?.quoteId,
           this.coupons.customerCouponId() ?? undefined,
           this.route.snapshot.queryParamMap.get('campaign') ?? undefined,
-          Math.max(0, Math.min(Math.floor(this.pointsToRedeem || 0), this.loyaltyPoints())),
+          Math.max(0, Math.min(Math.floor(this.pointsToRedeem()), this.loyaltyPoints())),
         )
         .subscribe({
           next: (order) => this.onOrderPlaced(order),

@@ -460,6 +460,11 @@ const STREAM_RETRY_MS = 30_000;
                   placeholder="Reason (required)"
                   required
                 />
+                <input
+                  [(ngModel)]="returnTracking[item.variant.id]"
+                  [name]="'rettrack' + item.variant.id"
+                  placeholder="Parcel/tracking ID (optional)"
+                />
                 <button class="cta small ghost" type="submit">Request return</button>
               </form>
             }
@@ -531,6 +536,7 @@ export class OrderPage implements OnInit, OnDestroy {
   ratings: Record<string, number> = {};
   comments: Record<string, string> = {};
   returnReasons: Record<string, string> = {};
+  returnTracking: Record<string, string> = {};
 
   private orderId = '';
   private pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -887,7 +893,9 @@ export class OrderPage implements OnInit, OnDestroy {
     if (!o || this.paying()) return;
     this.paying.set(true);
     this.paymentError.set(null);
-    this.api.payWithPaystack(o.id, o.totalAmount).subscribe({
+    this.api
+      .payWithPaystack(o.id, o.totalAmount, undefined, this.guestToken)
+      .subscribe({
       next: (res) => {
         this.paying.set(false);
         // Leave the app: Paystack hosts the payment, then redirects back here.
@@ -964,7 +972,16 @@ export class OrderPage implements OnInit, OnDestroy {
       this.returnError.set('A reason is required for returns.');
       return;
     }
-    this.api.requestReturn(order.id, variantId, quantity, reason, this.guestToken).subscribe({
+    this.api
+      .requestReturn(
+        order.id,
+        variantId,
+        quantity,
+        reason,
+        this.guestToken,
+        this.returnTracking[variantId]?.trim() || undefined,
+      )
+      .subscribe({
       next: () =>
         this.returnMessage.set(
           'Return requested: send the item back via a logistics company within 24 hours and keep the tracking number.',

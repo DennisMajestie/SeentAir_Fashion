@@ -5727,3 +5727,47 @@ editing the shared .page-kicker, which other pages also use. */
     height: 28px;
   }
 }
+
+.shop-filters {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+.shop-sort {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.shop-sort select {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line, #e8e1d3);
+  border-radius: 999px;
+  background: var(--card, #fffdf9);
+  color: inherit;
+}
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted, #7b756a);
+}
+.filter-chip {
+  padding: 6px 12px;
+  border: 1px solid var(--line, #e8e1d3);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.filter-chip.active {
+  background: var(--accent, #c88a12);
+  border-color: var(--accent, #c88a12);
+  color: #1a1405;
+  font-weight: 700;
+}
