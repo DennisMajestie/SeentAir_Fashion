@@ -26,7 +26,7 @@ import { pill } from '../status-pill';
   imports: [SeDatePipe, SeMoneyPipe, SeSpinnerComponent],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen md:bg-transparent pb-32 antialiased md:pb-8 selection:bg-accent/20">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:bg-transparent pb-36 antialiased md:pb-8 selection:bg-accent/20">
         <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 md:static flex items-center justify-between">
           <div class="flex items-center gap-2">
             <a routerLink="/orders" class="w-8 h-8 rounded-full bg-light-surface border border-border flex items-center justify-center text-light-primary" aria-label="Back to orders">

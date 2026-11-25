@@ -23,7 +23,7 @@ type Quote = { amount: number; note: string | null };
   imports: [RouterLink, SeDatePipe, SeMoneyPipe],
   template: `
     <div class="stitch">
-      <div class="bg-canvas text-light-on-surface min-h-screen md:bg-transparent pb-28 antialiased md:pb-8 selection:bg-accent/20">
+      <div class="bg-canvas text-light-on-surface min-h-screen md:bg-transparent pb-36 antialiased md:pb-8 selection:bg-accent/20">
         <!-- Header -->
         <header class="px-4 pt-4 pb-3 border-b border-border/70 bg-canvas/90 backdrop-blur-md sticky top-0 z-30 md:static flex items-center justify-between">
           <div class="flex items-center gap-2">

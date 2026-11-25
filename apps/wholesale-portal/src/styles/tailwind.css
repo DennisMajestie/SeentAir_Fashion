@@ -16,6 +16,15 @@
   display: none !important;
 }
 
+/* On mobile the section nav is fixed at the bottom. A page action bar must sit
+   just above it, not at the same bottom/z-index (the nav renders last and would
+   cover the primary action). */
+@media (max-width: 767px) {
+  .ws-cta-bar {
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
 /* Fixed checkout/quote action bars: full-width beside the island rail.
    The rail is an in-flow grid column (12px pad + 248px rail + 16px gap on
    desktop; 12px + 88px + 16px when collapsed). */
