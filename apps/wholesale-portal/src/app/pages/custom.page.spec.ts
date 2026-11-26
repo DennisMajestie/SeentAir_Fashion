@@ -100,12 +100,11 @@ describe('CustomPage', () => {
     expect(el().textContent).toContain('New Custom Design Request');
   });
 
-  it('does not let the tap that opened the sheet close it via the backdrop', () => {
+  it('renders the request form inline when the New Request button is tapped', () => {
     mount(of({ data: [], total: 0 }));
     el().querySelector<HTMLButtonElement>('.new-btn')!.click();
     fixture.detectChanges();
-    el().querySelector<HTMLElement>('.fixed.inset-0 > div')!.click();
-    fixture.detectChanges();
+    expect(el().querySelector('#custom-form-panel')).not.toBeNull();
     expect(fixture.componentInstance.formOpen()).toBeTrue();
   });
 
