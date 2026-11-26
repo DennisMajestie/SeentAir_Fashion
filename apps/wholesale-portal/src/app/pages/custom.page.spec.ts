@@ -92,6 +92,23 @@ describe('CustomPage', () => {
     expect(el().querySelector('.request-card')).not.toBeNull();
   });
 
+  it('opens the request sheet when the New Request button is clicked', () => {
+    mount(of({ data: [], total: 0 }));
+    el().querySelector<HTMLButtonElement>('.new-btn')!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.formOpen()).toBeTrue();
+    expect(el().textContent).toContain('New Custom Design Request');
+  });
+
+  it('does not let the tap that opened the sheet close it via the backdrop', () => {
+    mount(of({ data: [], total: 0 }));
+    el().querySelector<HTMLButtonElement>('.new-btn')!.click();
+    fixture.detectChanges();
+    el().querySelector<HTMLElement>('.fixed.inset-0 > div')!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.formOpen()).toBeTrue();
+  });
+
   it('rejects an empty form with errors under the fields and does not call the API', () => {
     mount(of({ data: [], total: 0 }));
     const page = fixture.componentInstance;

@@ -141,7 +141,7 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
     <!-- Request Sheet (Drawer Pattern) -->
     @if (formOpen()) {
       <div class="fixed inset-0 z-50 flex flex-col justify-end">
-        <div class="absolute inset-0 bg-black/40" (click)="formOpen.set(false)"></div>
+        <div class="absolute inset-0 bg-black/40" (click)="closeSheetFromBackdrop()"></div>
         <div class="sheet relative bg-light-surface rounded-t-[28px] border-t border-border shadow-[0_-12px_40px_rgba(27,25,22,0.18)] max-w-[390px] mx-auto w-full md:max-w-lg max-h-[92vh] flex flex-col overflow-hidden">
           <!-- Sheet Drag Handle & Header -->
           <div class="pt-3 pb-3 px-5 border-b border-border flex flex-col items-center relative">
@@ -436,9 +436,19 @@ export class CustomPage implements OnInit {
     void this.router.navigate(['/custom', request.id]);
   }
 
+  private sheetOpenedAt = 0;
+
   openForm(): void {
     this.errors.set({});
+    this.sheetOpenedAt = Date.now();
     this.formOpen.set(true);
+  }
+
+  /** Ignore the tap that opened the sheet — on touch devices the backdrop can
+      receive the same event and close it immediately, looking like a dead button. */
+  closeSheetFromBackdrop(): void {
+    if (Date.now() - this.sheetOpenedAt < 300) return;
+    this.formOpen.set(false);
   }
 
   qtyOf(size: string): number {
