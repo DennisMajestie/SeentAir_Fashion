@@ -153,7 +153,7 @@ import { InfiniteScrollDirective } from '../infinite-scroll.directive';
                 <button type="button" class="mt-1 px-3.5 py-1.5 rounded-full bg-accent text-on-accent text-[12px] font-semibold" (click)="clearFilters()">Clear filters</button>
               </div>
             } @else {
-              <div class="md:grid md:grid-cols-2 md:gap-3.5 md:items-start">
+              <div class="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-3.5 md:items-start">
               @for (product of filtered(); track product.id) {
                 <article class="product-card bg-light-surface rounded-xl p-3.5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.05)] flex gap-3.5">
                   <div class="w-24 h-28 rounded-lg bg-canvas-tint/70 border border-border flex flex-col items-center justify-center flex-shrink-0 relative overflow-hidden">
