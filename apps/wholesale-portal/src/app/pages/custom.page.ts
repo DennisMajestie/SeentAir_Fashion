@@ -140,6 +140,7 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
 
     <!-- Request Sheet (Drawer Pattern) -->
     @if (formOpen()) {
+      <div class="stitch">
       <section id="custom-form-panel" class="sheet bg-light-surface rounded-[22px] border border-border shadow-sm max-w-[390px] mx-auto w-full md:max-w-lg flex flex-col mb-4">
           <!-- Sheet Drag Handle & Header -->
           <div class="pt-3 pb-3 px-5 border-b border-border flex flex-col items-center relative">
@@ -355,6 +356,7 @@ type FieldKey = 'fabricQuality' | 'colours' | 'description' | 'location' | 'desi
             </button>
           </div>
       </section>
+      </div>
     }
   `,
 })
