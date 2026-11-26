@@ -34,7 +34,7 @@ export type SeSpinnerSize = 'sm' | 'md' | 'lg';
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: var(--se-space-3);
+      gap: 6px;
       color: var(--se-color-text);
     }
     .se-spinner__orbits {
@@ -53,9 +53,9 @@ export type SeSpinnerSize = 'sm' | 'md' | 'lg';
     .se-spinner__arc--mid { stroke: var(--se-color-accent, #c88a12); }
     .se-spinner__arc--soft { stroke: var(--se-color-accent-soft, #e4b85c); }
     .se-spinner__label { font: var(--se-type-caption); color: var(--se-color-text-muted); }
-    .se-spinner--sm { --se-spinner-size: 24px; }
-    .se-spinner--md { --se-spinner-size: 48px; }
-    .se-spinner--lg { --se-spinner-size: 64px; }
+    .se-spinner--sm { --se-spinner-size: 12px; }
+    .se-spinner--md { --se-spinner-size: 16px; }
+    .se-spinner--lg { --se-spinner-size: 24px; }
     @keyframes se-orbital-spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
@@ -66,6 +66,6 @@ export type SeSpinnerSize = 'sm' | 'md' | 'lg';
   `,
 })
 export class SeSpinnerComponent {
-  readonly size = input<SeSpinnerSize>('md');
+  readonly size = input<SeSpinnerSize>('sm');
   readonly label = input('');
 }
