@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 export type SeSpinnerSize = 'sm' | 'md' | 'lg';
 
@@ -20,7 +20,14 @@ export type SeSpinnerSize = 'sm' | 'md' | 'lg';
     '[attr.aria-live]': 'label() ? "polite" : null',
   },
   template: `
-    <svg class="se-spinner__orbits" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+    <svg
+      class="se-spinner__orbits"
+      viewBox="0 0 48 48"
+      fill="none"
+      aria-hidden="true"
+      [style.width.px]="pixelSize()"
+      [style.height.px]="pixelSize()"
+    >
       <path class="se-spinner__arc se-spinner__arc--deep" d="M24 6C31.5 6 38.2 10.6 40.8 17.6" />
       <path class="se-spinner__arc se-spinner__arc--mid" d="M7.2 30.4C5.4 24.4 6.7 17.8 10.8 12.8" />
       <path class="se-spinner__arc se-spinner__arc--soft" d="M36.5 37.2C31.2 42.1 23.4 43.4 16.8 40.5" />
@@ -38,8 +45,6 @@ export type SeSpinnerSize = 'sm' | 'md' | 'lg';
       color: var(--se-color-text);
     }
     .se-spinner__orbits {
-      width: var(--se-spinner-size);
-      height: var(--se-spinner-size);
       flex: none;
       animation: se-orbital-spin 1.15s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
       transform-box: fill-box;
@@ -53,9 +58,6 @@ export type SeSpinnerSize = 'sm' | 'md' | 'lg';
     .se-spinner__arc--mid { stroke: var(--se-color-accent, #c88a12); }
     .se-spinner__arc--soft { stroke: var(--se-color-accent-soft, #e4b85c); }
     .se-spinner__label { font: var(--se-type-caption); color: var(--se-color-text-muted); }
-    .se-spinner--sm { --se-spinner-size: 12px; }
-    .se-spinner--md { --se-spinner-size: 16px; }
-    .se-spinner--lg { --se-spinner-size: 24px; }
     @keyframes se-orbital-spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
@@ -68,4 +70,12 @@ export type SeSpinnerSize = 'sm' | 'md' | 'lg';
 export class SeSpinnerComponent {
   readonly size = input<SeSpinnerSize>('sm');
   readonly label = input('');
+
+  readonly pixelSize = computed(() => {
+    switch (this.size()) {
+      case 'md': return 16;
+      case 'lg': return 24;
+      default: return 12;
+    }
+  });
 }
