@@ -161,6 +161,13 @@ export class ApiService {
       .pipe(tap((res) => this.store.set(res.accessToken)));
   }
 
+  /** Lost-device path: a single-use recovery code completes the challenge. */
+  verifyRecovery(challengeToken: string, code: string): Observable<{ accessToken: string }> {
+    return this.http
+      .post<{ accessToken: string }>(`${API_BASE}/auth/2fa/recovery`, { challengeToken, code })
+      .pipe(tap((res) => this.store.set(res.accessToken)));
+  }
+
   me(): Observable<Me> {
     return this.http.get<Me>(`${API_BASE}/auth/me`);
   }

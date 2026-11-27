@@ -27,7 +27,7 @@ import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/password-reset.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
-import { TotpCodeDto, Verify2faDto } from './dto/twofa.dto';
+import { RecoveryCodeDto, TotpCodeDto, Verify2faDto } from './dto/twofa.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
@@ -142,6 +142,15 @@ export class AuthController {
   @HttpCode(200)
   async verify2fa(@Body() dto: Verify2faDto, @Res({ passthrough: true }) res: Response) {
     return this.deliver(res, await this.authService.verify2fa(dto.challengeToken, dto.code));
+  }
+
+  /** Lost-device path: a single-use recovery code finishes the same challenge. */
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('2fa/recovery')
+  @HttpCode(200)
+  async verifyRecovery(@Body() dto: RecoveryCodeDto, @Res({ passthrough: true }) res: Response) {
+    return this.deliver(res, await this.authService.verifyRecovery(dto.challengeToken, dto.code));
   }
 
   /** Begin 2FA enrolment: returns the secret + otpauth URI for an authenticator app. */

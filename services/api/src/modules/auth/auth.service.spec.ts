@@ -276,6 +276,37 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
       expect(pair.accessToken).toBeTruthy();
     });
 
+    it('a recovery code finishes the challenge and cannot be reused', async () => {
+      const bcrypt = await import('bcryptjs');
+      const codes = [{ hash: bcrypt.hashSync('RECOVER-1', 4), usedAt: null }];
+      jwtService.verifyAsync.mockResolvedValue({ sub: 'u1', type: '2fa', jti: 'rec-1' });
+      usersService.findByIdWithTotpSecret = jest.fn(async () => ({
+        id: 'u1',
+        email: 'c@x.test',
+        status: UserStatus.ACTIVE,
+        totpEnabled: true,
+        totpSecret: 'secret',
+        recoveryCodes: codes,
+        role: { name: RoleName.MANAGEMENT },
+      })) as never;
+
+      const pair = await service.verifyRecovery('challenge', 'RECOVER-1');
+      expect(pair.accessToken).toBeTruthy();
+      expect(codes[0].usedAt).toBeTruthy();
+
+      usersService.findByIdWithTotpSecret = jest.fn(async () => ({
+        id: 'u1',
+        email: 'c@x.test',
+        status: UserStatus.ACTIVE,
+        totpEnabled: true,
+        totpSecret: 'secret',
+        recoveryCodes: codes,
+        role: { name: RoleName.MANAGEMENT },
+      })) as never;
+      jwtService.verifyAsync.mockResolvedValue({ sub: 'u1', type: '2fa', jti: 'rec-2' });
+      await expect(service.verifyRecovery('challenge', 'RECOVER-1')).rejects.toThrow('Incorrect');
+    });
+
     it('a wrong code is rejected', async () => {
       const { authenticator } = await import('otplib');
       jwtService.verifyAsync.mockResolvedValue({ sub: 'u1', type: '2fa' });
@@ -307,7 +338,11 @@ describe('AuthService — brute-force lockout & refresh rotation', () => {
       })) as never;
       await expect(service.disable2fa('u1', '000000')).rejects.toThrow('Incorrect');
       await service.disable2fa('u1', authenticator.generate(secret));
-      expect(userRepo.update).toHaveBeenCalledWith('u1', { totpEnabled: false, totpSecret: null });
+      expect(userRepo.update).toHaveBeenCalledWith('u1', {
+        totpEnabled: false,
+        totpSecret: null,
+        recoveryCodes: null,
+      });
       expect(refreshRepo.update).toHaveBeenCalledWith(
         { userId: 'u1', revokedAt: expect.anything() },
         { revokedAt: expect.any(Date) },

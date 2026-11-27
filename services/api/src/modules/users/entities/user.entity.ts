@@ -61,6 +61,10 @@ export class User {
   @Column({ name: 'totp_enabled', type: 'boolean', default: false })
   totpEnabled: boolean;
 
+  /** Bcrypt-hashed, single-use recovery codes; hidden from normal queries. */
+  @Column({ name: 'totp_recovery_codes', type: 'jsonb', nullable: true, select: false })
+  recoveryCodes: Array<{ hash: string; usedAt: string | null }> | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

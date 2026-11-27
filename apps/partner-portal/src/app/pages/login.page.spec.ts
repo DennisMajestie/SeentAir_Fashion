@@ -35,10 +35,12 @@ describe('LoginPage', () => {
     api = jasmine.createSpyObj<ApiService>('ApiService', [
       'login',
       'verify2fa',
+      'verifyRecovery',
       'forgotPassword',
     ]);
     api.login.and.returnValue(of(login));
     api.verify2fa.and.returnValue(of({ accessToken: 'st' }));
+    api.verifyRecovery.and.returnValue(of({ accessToken: 'st' }));
     api.forgotPassword.and.returnValue(of({ message: 'sent' }));
     alerts = jasmine.createSpyObj<BrandAlertService>('BrandAlertService', ['toast']);
     TestBed.configureTestingModule({
@@ -133,6 +135,29 @@ describe('LoginPage', () => {
     await settle();
     expect(api.verify2fa).toHaveBeenCalledOnceWith('tok', '849130');
     expect(router.navigateByUrl).toHaveBeenCalledWith('/overview');
+  });
+
+  it('accepts a saved recovery code when the device is unavailable', async () => {
+    mount({ requires2fa: true, challengeToken: 'tok' });
+    fixture.componentInstance.email = 'p@seentair.test';
+    fixture.componentInstance.password = 'key-123';
+    button('Proceed to 2FA Challenge').click();
+    await settle();
+
+    const toggle = [...el().querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Lost your device?'),
+    ) as HTMLButtonElement;
+    toggle.click();
+    fixture.detectChanges();
+
+    const input = el().querySelector<HTMLInputElement>('input[name="recoveryCode"]')!;
+    type(input, 'RECOVER-1');
+    fixture.detectChanges();
+    button('Verify & Enter Portal').click();
+    await settle();
+
+    expect(api.verifyRecovery).toHaveBeenCalledOnceWith('tok', 'RECOVER-1');
+    expect(api.verify2fa).not.toHaveBeenCalled();
   });
 
   it('keeps the verify button disabled until six digits are present', async () => {

@@ -40,6 +40,24 @@ export class UsersService {
     private readonly dataSource: DataSource,
   ) {}
 
+  /** Audited admin recovery: clears 2FA so the person can re-enrol on next sign-in. */
+  async resetTwoFactor(userId: string): Promise<{ reset: boolean }> {
+    const user = await this.findById(userId);
+    if (!user.totpEnabled) throw new BadRequestException('2FA is not enabled on this account');
+    await this.userRepo.update(userId, {
+      totpEnabled: false,
+      totpSecret: null,
+      recoveryCodes: null,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    });
+    await this.refreshTokenRepo.update(
+      { userId, revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
+    return { reset: true };
+  }
+
   async findAll(page = 1, limit = 20): Promise<{ data: User[]; total: number }> {
     const [data, total] = await this.userRepo.findAndCount({
       skip: (page - 1) * limit,
@@ -80,6 +98,7 @@ export class UsersService {
     return this.userRepo
       .createQueryBuilder('user')
       .addSelect('user.totpSecret')
+      .addSelect('user.recoveryCodes')
       .leftJoinAndSelect('user.role', 'role')
       .where('user.id = :id', { id })
       .getOne();

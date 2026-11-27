@@ -1,4 +1,4 @@
-import { IsJWT, IsNumberString, Length } from 'class-validator';
+import { IsJWT, IsNotEmpty, IsNumberString, IsString, Length, MaxLength } from 'class-validator';
 
 export class Verify2faDto {
   @IsJWT()
@@ -6,6 +6,16 @@ export class Verify2faDto {
 
   @IsNumberString()
   @Length(6, 6)
+  code: string;
+}
+
+export class RecoveryCodeDto {
+  @IsJWT()
+  challengeToken: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
   code: string;
 }
 

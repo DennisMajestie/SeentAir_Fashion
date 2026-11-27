@@ -9,11 +9,12 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { authenticator } from 'otplib';
 import { IsNull, Repository } from 'typeorm';
 import { RoleName, UserStatus } from '../../common/enums';
 import { JwtPayload } from '../../common/interfaces';
+import { decryptTotpSecret, encryptTotpSecret } from '../../common/totp-crypto';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { OrdersService } from '../orders/orders.service';
@@ -37,6 +38,7 @@ export type LoginResult =
       requiresSetup?: boolean;
       secret?: string;
       otpauthUrl?: string;
+      recoveryCodes?: string[];
     };
 
 @Injectable()
@@ -57,6 +59,49 @@ export class AuthService {
     private readonly mailAdapter: MailAdapter,
     private readonly ordersService: OrdersService,
   ) {}
+
+  private readonly usedChallenges = new Map<string, number>();
+  private readonly verifyFailures = new Map<string, { count: number; until: number }>();
+
+  private totpKey(): string | undefined {
+    return this.config.get<string>('security.totpEncryptionKey');
+  }
+
+  private generateRecoveryCodes(): { plain: string[]; stored: Array<{ hash: string; usedAt: null }> } {
+    const plain = Array.from({ length: 8 }, () => randomBytes(6).toString('base64url').toUpperCase());
+    return {
+      plain,
+      stored: plain.map((code) => ({ hash: bcrypt.hashSync(code, 8), usedAt: null })),
+    };
+  }
+
+  private assertChallengeUsable(payload: { sub: string; jti?: string }): void {
+    const now = Date.now();
+    if (payload.jti) {
+      for (const [jti, expires] of this.usedChallenges) {
+        if (expires < now) this.usedChallenges.delete(jti);
+      }
+      if (this.usedChallenges.has(payload.jti)) {
+        throw new UnauthorizedException('2FA challenge was already used — sign in again');
+      }
+    }
+    const failure = this.verifyFailures.get(payload.sub);
+    if (failure && failure.until > now && failure.count >= 5) {
+      throw new UnauthorizedException('Too many failed verification attempts. Try again later.');
+    }
+    if (failure && failure.until <= now) this.verifyFailures.delete(payload.sub);
+  }
+
+  private recordVerifyFailure(userId: string): void {
+    const now = Date.now();
+    const entry = this.verifyFailures.get(userId) ?? { count: 0, until: now + 15 * 60_000 };
+    entry.count += 1;
+    this.verifyFailures.set(userId, entry);
+  }
+
+  private clearVerifyFailures(userId: string): void {
+    this.verifyFailures.delete(userId);
+  }
 
   /**
    * Public storefront self-registration. The role is ALWAYS customer —
@@ -183,32 +228,47 @@ export class AuthService {
       let requiresSetup = false;
       let secret: string | undefined;
       let otpauthUrl: string | undefined;
+      let recoveryCodes: string[] | undefined;
       if (!user.totpEnabled) {
         const full = await this.usersService.findByIdWithTotpSecret(user.id);
-        secret = full?.totpSecret ?? undefined;
-        if (!secret) {
-          secret = authenticator.generateSecret();
-          await this.userRepo.update(user.id, { totpSecret: secret });
-        }
+        secret = full?.totpSecret ? decryptTotpSecret(full.totpSecret, this.totpKey()) : undefined;
+        if (!secret) secret = authenticator.generateSecret();
+        const codes = this.generateRecoveryCodes();
+        recoveryCodes = codes.plain;
+        await this.userRepo.update(user.id, {
+          totpSecret: encryptTotpSecret(secret, this.totpKey()),
+          recoveryCodes: codes.stored,
+        });
         otpauthUrl = authenticator.keyuri(user.email, 'Seentair', secret);
         requiresSetup = true;
       }
       const challengeToken = await this.jwtService.signAsync(
-        { sub: user.id, email: user.email, role: user.role.name, type: '2fa', setup: requiresSetup },
+        {
+          sub: user.id,
+          email: user.email,
+          role: user.role.name,
+          type: '2fa',
+          setup: requiresSetup,
+          jti: randomUUID(),
+        },
         { secret: this.config.get<string>('jwt.secret'), expiresIn: '5m' },
       );
       return {
         requires2fa: true,
         challengeToken,
-        ...(requiresSetup ? { requiresSetup: true, secret, otpauthUrl } : {}),
+        ...(requiresSetup ? { requiresSetup: true, secret, otpauthUrl, recoveryCodes } : {}),
       };
     }
     return this.issueTokens(user.id, user.email, user.role.name);
   }
 
-  /** Step 2 of a 2FA login: challenge token + authenticator code → real tokens. */
-  async verify2fa(challengeToken: string, code: string): Promise<TokenPair> {
-    let payload: { sub: string; type: string; setup?: boolean };
+  private async readChallenge(challengeToken: string): Promise<{
+    sub: string;
+    type: string;
+    setup?: boolean;
+    jti?: string;
+  }> {
+    let payload: { sub: string; type: string; setup?: boolean; jti?: string };
     try {
       payload = await this.jwtService.verifyAsync(challengeToken, {
         secret: this.config.get<string>('jwt.secret'),
@@ -217,11 +277,20 @@ export class AuthService {
       throw new UnauthorizedException('2FA challenge expired — sign in again');
     }
     if (payload.type !== '2fa') throw new UnauthorizedException('Not a 2FA challenge token');
+    this.assertChallengeUsable(payload);
+    return payload;
+  }
+
+  /** Step 2 of a 2FA login: challenge token + authenticator code → real tokens. */
+  async verify2fa(challengeToken: string, code: string): Promise<TokenPair> {
+    const payload = await this.readChallenge(challengeToken);
     const user = await this.usersService.findByIdWithTotpSecret(payload.sub);
     if (!user?.totpSecret || user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException('2FA is not active on this account');
     }
-    if (!authenticator.check(code, user.totpSecret)) {
+    const secret = decryptTotpSecret(user.totpSecret, this.totpKey());
+    if (!authenticator.check(code, secret)) {
+      this.recordVerifyFailure(user.id);
       throw new UnauthorizedException('Incorrect authentication code');
     }
     if (payload.setup) {
@@ -229,20 +298,62 @@ export class AuthService {
     } else if (!user.totpEnabled) {
       throw new UnauthorizedException('2FA is not active on this account');
     }
+    if (payload.jti) this.usedChallenges.set(payload.jti, Date.now() + 5 * 60_000);
+    this.clearVerifyFailures(user.id);
     return this.issueTokens(user.id, user.email, user.role.name);
   }
 
+  /** Device-lost path: a single-use recovery code finishes the same challenge. */
+  async verifyRecovery(challengeToken: string, code: string): Promise<TokenPair> {
+    const payload = await this.readChallenge(challengeToken);
+    const user = await this.usersService.findByIdWithTotpSecret(payload.sub);
+    if (!user || user.status !== UserStatus.ACTIVE || !user.totpEnabled) {
+      throw new UnauthorizedException('2FA is not active on this account');
+    }
+    const codes = user.recoveryCodes ?? [];
+    const index = await this.matchRecoveryCode(codes, code);
+    if (index < 0) {
+      this.recordVerifyFailure(user.id);
+      throw new UnauthorizedException('Incorrect recovery code');
+    }
+    codes[index] = { ...codes[index], usedAt: new Date().toISOString() };
+    await this.userRepo.update(user.id, { recoveryCodes: codes });
+    if (payload.jti) this.usedChallenges.set(payload.jti, Date.now() + 5 * 60_000);
+    this.clearVerifyFailures(user.id);
+    return this.issueTokens(user.id, user.email, user.role.name);
+  }
+
+  private async matchRecoveryCode(
+    codes: Array<{ hash: string; usedAt: string | null }>,
+    candidate: string,
+  ): Promise<number> {
+    for (let i = 0; i < codes.length; i += 1) {
+      if (codes[i].usedAt) continue;
+      if (await bcrypt.compare(candidate, codes[i].hash)) return i;
+    }
+    return -1;
+  }
+
   /** Generate a pending TOTP secret; 2FA activates only after a verified code. */
-  async setup2fa(userId: string): Promise<{ secret: string; otpauthUrl: string }> {
+  async setup2fa(userId: string): Promise<{
+    secret: string;
+    otpauthUrl: string;
+    recoveryCodes: string[];
+  }> {
     const user = await this.usersService.findById(userId);
     if (user.totpEnabled) {
       throw new BadRequestException('2FA is already enabled — disable it first to re-enrol');
     }
     const secret = authenticator.generateSecret();
-    await this.userRepo.update(userId, { totpSecret: secret });
+    const codes = this.generateRecoveryCodes();
+    await this.userRepo.update(userId, {
+      totpSecret: encryptTotpSecret(secret, this.totpKey()),
+      recoveryCodes: codes.stored,
+    });
     return {
       secret,
       otpauthUrl: authenticator.keyuri(user.email, 'Seentair', secret),
+      recoveryCodes: codes.plain,
     };
   }
 
@@ -252,7 +363,7 @@ export class AuthService {
     if (!user?.totpSecret) {
       throw new BadRequestException('Run 2FA setup first');
     }
-    if (!authenticator.check(code, user.totpSecret)) {
+    if (!authenticator.check(code, decryptTotpSecret(user.totpSecret, this.totpKey()))) {
       throw new UnauthorizedException('Incorrect authentication code');
     }
     await this.userRepo.update(userId, { totpEnabled: true });
@@ -268,10 +379,10 @@ export class AuthService {
     if (!user?.totpSecret || !user.totpEnabled) {
       throw new BadRequestException('2FA is not enabled');
     }
-    if (!authenticator.check(code, user.totpSecret)) {
+    if (!authenticator.check(code, decryptTotpSecret(user.totpSecret, this.totpKey()))) {
       throw new UnauthorizedException('Incorrect authentication code');
     }
-    await this.userRepo.update(userId, { totpEnabled: false, totpSecret: null });
+    await this.userRepo.update(userId, { totpEnabled: false, totpSecret: null, recoveryCodes: null });
     await this.revokeAllForUser(userId);
     return { enabled: false };
   }

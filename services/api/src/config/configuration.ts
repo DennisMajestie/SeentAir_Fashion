@@ -71,6 +71,9 @@ export default () => ({
     // Brute-force protection (client requirement): lock after N failures.
     maxFailedLogins: parseInt(process.env.MAX_FAILED_LOGINS ?? '5', 10),
     lockoutMinutes: parseInt(process.env.LOCKOUT_MINUTES ?? '15', 10),
+    // Encrypts TOTP secrets at rest. Set a strong random value in production;
+    // without it, secrets are stored verbatim (legacy-compatible).
+    totpEncryptionKey: process.env.TOTP_ENCRYPTION_KEY,
     // Explicit allowlist, never '*'. The built-in origins (dev + the
     // deployed storefront) are always permitted; CORS_ORIGINS can only ADD
     // more (e.g. wholesale/admin/partner URLs) — an override can never

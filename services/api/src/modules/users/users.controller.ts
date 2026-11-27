@@ -16,6 +16,7 @@ import { AccessLevel, ModuleName, RoleName } from '../../common/enums';
 import { AuthenticatedUser } from '../../common/interfaces';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { ResetTwoFactorDto } from './dto/reset-two-factor.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdatePermissionsDto } from './dto/update-permissions.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -85,5 +86,15 @@ export class UsersController {
   @RequireAccess(ModuleName.STAFF_ACCESS, AccessLevel.FULL)
   activate(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.activate(id);
+  }
+
+  /** Owner/admin recovery when someone loses their authenticator device. */
+  @Post(':id/2fa/reset')
+  @RequireAccess(ModuleName.STAFF_ACCESS, AccessLevel.FULL)
+  resetTwoFactor(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ResetTwoFactorDto,
+  ) {
+    return this.usersService.resetTwoFactor(id).then((result) => ({ ...result, reason: dto.reason }));
   }
 }

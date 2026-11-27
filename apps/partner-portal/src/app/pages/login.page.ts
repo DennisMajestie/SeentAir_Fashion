@@ -173,23 +173,39 @@ import { ThemeService } from '../theme.service';
             <!-- P2 · Verification Card -->
             <section class="bg-light-surface rounded-xl p-5 border border-border shadow-[0_8px_24px_-4px_rgba(27,25,22,0.06)] flex flex-col gap-4">
 
-              <!-- 6-digit Code Input Grid -->
-              <div class="flex flex-col gap-2">
-                <label class="text-[12px] font-semibold text-light-primary text-center">6-Digit Authenticator Code</label>
-                <div class="grid grid-cols-6 gap-2">
-                  @for (d of digits; track $index; let i = $index) {
-                    <input #digit type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" [value]="digits[i]" [attr.aria-label]="'Authenticator digit ' + (i + 1)" class="w-full h-13 py-3 text-center font-mono font-bold text-[20px] bg-canvas border border-accent rounded-lg text-light-primary focus:outline-none focus:ring-2 focus:ring-accent" (input)="onDigit(i, $event)" (keydown.backspace)="onBack(i)" />
-                  }
+              @if (usingRecovery()) {
+                <label class="flex flex-col gap-1.5">
+                  <span class="text-[12px] font-semibold text-light-primary text-center">Recovery code</span>
+                  <input type="text" [(ngModel)]="recoveryCode" name="recoveryCode" autocomplete="one-time-code" placeholder="Enter a saved recovery code" class="w-full py-3 px-3 text-center font-mono text-[14px] bg-canvas border border-accent rounded-lg text-light-primary focus:outline-none focus:ring-2 focus:ring-accent" />
+                </label>
+                <p class="text-[11px] text-light-secondary border-t border-border pt-3">
+                  Recovery codes work once. Save the remaining codes for future sign-ins.
+                </p>
+              } @else {
+                <!-- 6-digit Code Input Grid -->
+                <div class="flex flex-col gap-2">
+                  <label class="text-[12px] font-semibold text-light-primary text-center">6-Digit Authenticator Code</label>
+                  <div class="grid grid-cols-6 gap-2">
+                    @for (d of digits; track $index; let i = $index) {
+                      <input #digit type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" [value]="digits[i]" [attr.aria-label]="'Authenticator digit ' + (i + 1)" class="w-full h-13 py-3 text-center font-mono font-bold text-[20px] bg-canvas border border-accent rounded-lg text-light-primary focus:outline-none focus:ring-2 focus:ring-accent" (input)="onDigit(i, $event)" (keydown.backspace)="onBack(i)" />
+                    }
+                  </div>
                 </div>
-              </div>
 
-              <p class="text-[11px] text-light-secondary border-t border-border pt-3">
-                Enter the current 6-digit code from your authenticator app. The challenge expires after five minutes.
-              </p>
+                <p class="text-[11px] text-light-secondary border-t border-border pt-3">
+                  Enter the current 6-digit code from your authenticator app. The challenge expires after five minutes.
+                </p>
+              }
+
+              <div class="text-center">
+                <button type="button" class="text-[12px] text-warning hover:underline" (click)="usingRecovery.set(!usingRecovery())">
+                  {{ usingRecovery() ? 'Use authenticator app instead' : 'Lost your device? Use a recovery code' }}
+                </button>
+              </div>
 
               <!-- Verify Button -->
               <form (ngSubmit)="verify()" novalidate>
-                <button type="submit" [disabled]="busy() || code.length < 6" class="w-full py-3.5 rounded-full bg-accent text-on-accent font-semibold text-[15px] flex items-center justify-center gap-2 shadow-sm hover:brightness-105 active:scale-[0.99] transition-all disabled:opacity-60">
+                <button type="submit" [disabled]="busy() || (usingRecovery() ? !recoveryCode.trim() : code.length < 6)" class="w-full py-3.5 rounded-full bg-accent text-on-accent font-semibold text-[15px] flex items-center justify-center gap-2 shadow-sm hover:brightness-105 active:scale-[0.99] transition-all disabled:opacity-60">
                   <span>{{ busy() ? 'Verifying…' : 'Verify & Enter Portal' }}</span>
                   <span class="material-symbols-outlined text-[18px]">lock_open</span>
                 </button>
@@ -224,6 +240,8 @@ export class LoginPage {
 
   readonly phase = signal<1 | 2>(1);
   readonly busy = signal(false);
+  readonly usingRecovery = signal(false);
+  recoveryCode = '';
   readonly error = signal<string | null>(null);
   readonly info = signal<string | null>(null);
   readonly showPassword = signal(false);
@@ -284,7 +302,10 @@ export class LoginPage {
     this.error.set(null);
     this.info.set(null);
     this.busy.set(true);
-    this.api.verify2fa(this.challengeToken, this.code).subscribe({
+    const request = this.usingRecovery()
+      ? this.api.verifyRecovery(this.challengeToken, this.recoveryCode.trim())
+      : this.api.verify2fa(this.challengeToken, this.code);
+    request.subscribe({
       next: () => {
         this.busy.set(false);
         this.enter();
@@ -301,6 +322,8 @@ export class LoginPage {
     this.challengeToken = null;
     this.setupSecret.set(null);
     this.setupOtpauthUrl.set(null);
+    this.usingRecovery.set(false);
+    this.recoveryCode = '';
     this.digits.fill('');
     this.error.set(null);
     this.info.set(null);
