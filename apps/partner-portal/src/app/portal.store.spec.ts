@@ -52,7 +52,7 @@ describe('PortalStore', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it('takes the reporting period from the dashboard payload, not the browser clock', () => {
-    expect(store.periodLabel()).toBe('Unpublished period');
+    expect(store.periodLabel()).toBe('—');
 
     store.load(true);
 
@@ -73,6 +73,19 @@ describe('PortalStore', () => {
     store.load(true);
 
     expect(store.loadError()).toBeTruthy();
+    expect(store.loadErrorKind()).toBe('generic');
     expect(store.distributions()).toBeNull();
+  });
+
+  it('turns an unlinked partner account into an actionable setup message', () => {
+    api.dashboard.and.returnValue(
+      throwError(() => ({ error: { message: 'No partner record for this account' } })),
+    );
+
+    store.load(true);
+
+    expect(store.loadErrorKind()).toBe('setup');
+    expect(store.loadError()).toContain('administrator needs to add you as a partner');
+    expect(store.loadError()).not.toContain('No partner record');
   });
 });

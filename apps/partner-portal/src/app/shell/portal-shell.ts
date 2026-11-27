@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { SeBannerComponent, SeButtonDirective, SeConfirmService, SeSkeletonComponent, SeToastService } from '@seentair/ui';
 import { ApiService } from '../api.service';
@@ -73,10 +73,12 @@ import { RailIndicator } from '../rail-indicator.directive';
           </a>
 
           <div class="top-actions">
-            <div class="period-chip" aria-label="Reporting period">
-              <span>Period</span>
-              <strong>{{ store.periodLabel() }}</strong>
-            </div>
+            @if (store.dash()?.currentPeriod; as period) {
+              <div class="period-chip" aria-label="Reporting period">
+                <span>Period</span>
+                <strong>{{ period }}</strong>
+              </div>
+            }
             @if (store.lastUpdatedLabel(); as synced) {
               <span class="last-synced">Synced {{ synced }}</span>
             }
@@ -120,7 +122,15 @@ import { RailIndicator } from '../rail-indicator.directive';
 
         <main class="p-main">
           @if (store.loadError(); as err) {
-            <se-banner tone="danger" title="Your portfolio could not be loaded" actionLabel="Try again" (action)="refresh()">{{ err }}</se-banner>
+            @if (store.loadErrorKind() === 'setup') {
+              <se-banner tone="warning" title="Your partner profile is not set up yet" actionLabel="Try again" (action)="refresh()">{{ err }}</se-banner>
+              <div class="error-help">
+                <p>Already added as a partner? Sign out and sign back in to pick up your new access.</p>
+                <button seButton variant="ghost" size="sm" type="button" (click)="signOut()">Sign out</button>
+              </div>
+            } @else {
+              <se-banner tone="danger" title="Your portfolio could not be loaded" actionLabel="Try again" (action)="refresh()">{{ err }}</se-banner>
+            }
           } @else if (!store.dash()) {
             <div class="loading" aria-busy="true">
               <se-skeleton shape="metric" [columns]="2" />
@@ -133,13 +143,32 @@ import { RailIndicator } from '../rail-indicator.directive';
       </div>
 
       <nav class="p-nav" aria-label="Partner navigation">
-        @for (item of navItems; track item.link) {
+        @for (item of primaryNavItems; track item.link) {
           <a [routerLink]="item.link" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">
             <span class="material-symbols-outlined">{{ item.icon }}</span>
             <span>{{ item.label }}</span>
           </a>
         }
+        <button type="button" class="p-nav__more" [class.active]="moreOpen()" [attr.aria-expanded]="moreOpen()" aria-label="More partner sections" (click)="toggleMore()">
+          <span class="material-symbols-outlined">{{ moreOpen() ? 'close' : 'more_horiz' }}</span>
+          <span>More</span>
+        </button>
       </nav>
+
+      @if (moreOpen()) {
+        <button type="button" class="more-backdrop" aria-label="Close more menu" (click)="moreOpen.set(false)"></button>
+        <div class="more-sheet" role="dialog" aria-label="More partner sections">
+          <p>More sections</p>
+          <div class="more-sheet__grid">
+            @for (item of moreNavItems; track item.link) {
+              <a [routerLink]="item.link" routerLinkActive="active" (click)="moreOpen.set(false)">
+                <span class="material-symbols-outlined">{{ item.icon }}</span>
+                <span>{{ item.label }}</span>
+              </a>
+            }
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -150,22 +179,18 @@ import { RailIndicator } from '../rail-indicator.directive';
       --ochre:#c88a12; --ochre-ink:#1a1405; --dark:#171512; --darkink:#f4f0e6;
       --shadow:0 12px 30px -16px rgba(60,45,10,.3); --r-rail:34px; --r-active:22px;
       background: radial-gradient(80% 70% at 0% 0%, var(--tint), transparent 55%), var(--pg);
-      color: var(--text); font-family:'Urbanist',sans-serif; min-height:100dvh; padding-bottom:132px;
+      color: var(--text); font-family:'Urbanist',sans-serif; min-height:100dvh; padding-bottom:88px;
     }
-    /* ---- top bar (mobile: slim bar; desktop: Vessa island) ---- */
     .p-top{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px 10px;border-bottom:1px solid var(--line);background:rgba(247,242,234,.94);backdrop-filter:blur(10px);}
     .brand{display:flex;align-items:center;gap:10px;min-width:0;text-decoration:none;}
     .vessa-logo{display:block;width:88px;height:auto;max-height:46px;object-fit:contain;object-position:left center;}
     .tag{font:600 10px/1 'JetBrains Mono',monospace;padding:3px 6px;border-radius:999px;background:rgba(200,138,18,.2);color:#93600a;border:1px solid rgba(200,138,18,.35);}
     .top-actions{display:flex;align-items:center;gap:6px;}
-    .period-chip{display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);font-size:11px;color:var(--text-muted);}
+    .period-chip{display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:11px;color:var(--muted);white-space:nowrap;}
     .period-chip strong{font-family:var(--font-mono,monospace);color:var(--text);}
-    .last-synced{font-size:10px;color:var(--text-muted);font-family:var(--font-mono,monospace);white-space:nowrap;}
+    .last-synced{font-size:10px;color:var(--muted);font-family:var(--font-mono,monospace);white-space:nowrap;}
     @media(max-width:900px){.last-synced{display:none;}}
     .top-actions .material-symbols-outlined{font-size:20px;color:var(--text);}
-    @media (max-width:767px){.user__text,.user__chev{display:none;}.user{padding:3px;border-color:transparent;}}
-
-    /* user chip + account menu */
     .menu{position:relative;}
     .user{display:flex;align-items:center;gap:8px;border:1px solid var(--line-2);border-radius:999px;background:transparent;padding:4px 10px 4px 5px;cursor:pointer;color:var(--text);}
     .user:hover{background:var(--well);}
@@ -174,6 +199,10 @@ import { RailIndicator } from '../rail-indicator.directive';
     .user__text small{font-size:10px;color:var(--muted);}
     .user__text span{font-size:12px;font-weight:600;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .user__chev{font-size:16px;color:var(--muted);}
+    @media (max-width:767px){
+      .user__text,.user__chev{display:none;}
+      .user{padding:3px;border-color:transparent;}
+    }
     .menu__backdrop{position:fixed;inset:0;z-index:40;border:0;background:transparent;cursor:default;}
     .menu__panel{position:absolute;right:0;top:calc(100% + 10px);min-width:240px;padding:6px;background:var(--card);border:1px solid var(--line-2);border-radius:16px;box-shadow:var(--shadow);z-index:50;animation:menupop .14s ease;}
     @keyframes menupop{from{opacity:0;transform:translateY(-4px);}}
@@ -184,17 +213,23 @@ import { RailIndicator } from '../rail-indicator.directive';
     .menu__item:hover{background:var(--well);}
 
     .p-main{max-width:390px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+    .error-help{padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--muted);font:500 12px/1.5 Urbanist,sans-serif;}
+    .error-help p{margin:0;}
     .loading{display:flex;flex-direction:column;gap:12px;}
 
-    /* ---- mobile bottom nav (unchanged) ---- */
-    .p-nav{position:fixed;left:0;right:0;bottom:0;max-width:390px;margin:0 auto;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));background:rgba(255,253,249,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);}
-    .p-nav a{display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:var(--muted);padding:4px 2px;border-radius:10px;min-width:0;}
-    .p-nav a .material-symbols-outlined{font-size:21px;}
-    .p-nav a span:last-child{font:500 10px/1.1 Urbanist,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-    .p-nav a.active{color:var(--ochre);}
-    .p-nav a.active span:last-child{font-weight:700;}
+    .p-nav{position:fixed;left:0;right:0;bottom:0;max-width:390px;margin:0 auto;z-index:30;display:grid;grid-template-columns:repeat(6,1fr);gap:2px;padding:8px 6px calc(8px + env(safe-area-inset-bottom,0px));background:rgba(255,253,249,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);}
+    .p-nav a,.p-nav__more{display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:var(--muted);padding:4px 2px;border-radius:10px;min-width:0;border:0;background:none;cursor:pointer;}
+    .p-nav .material-symbols-outlined{font-size:21px;}
+    .p-nav span:last-child{font:500 10px/1.1 Urbanist,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+    .p-nav .active{color:var(--ochre);}
+    .p-nav .active span:last-child{font-weight:700;}
 
-    /* ---- Vessa island rail (desktop only) ---- */
+    .more-backdrop{position:fixed;inset:0;z-index:39;border:0;background:rgba(27,25,22,.32);cursor:default;}
+    .more-sheet{position:fixed;left:0;right:0;bottom:0;max-width:390px;margin:0 auto;z-index:40;padding:16px 16px calc(86px + env(safe-area-inset-bottom,0px));background:var(--card);border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0;box-shadow:var(--shadow);}
+    .more-sheet p{margin:0 0 12px;font:600 11px/1 monospace;color:var(--muted);}
+    .more-sheet__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+    .more-sheet__grid a{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 6px;border:1px solid var(--line);border-radius:14px;text-decoration:none;color:var(--text);font:600 12px/1.2 Urbanist,sans-serif;}
+
     .p-side{display:none;}
     .railbox{background:var(--card);border-radius:var(--r-rail);padding:4px;display:flex;flex-direction:column;gap:4px;box-shadow:var(--shadow);width:100%;}
     .railbox--row{flex-direction:row;}
@@ -225,9 +260,8 @@ import { RailIndicator } from '../rail-indicator.directive';
       .top-actions{gap:10px;}
 
       .p-main{max-width:1180px;margin:0;padding:4px 4px 32px;}
-      .p-nav{display:none;}
+      .p-nav,.more-backdrop,.more-sheet{display:none;}
 
-      /* Collapsed rail: icon-only 60px circles + tooltips */
       .sd-collapsed .p-side{width:88px;}
       .sd-collapsed .railbox{width:72px;margin:0 auto;}
       .sd-collapsed .railbox--row{flex-direction:column;}
@@ -263,6 +297,24 @@ export class PortalShell implements OnInit {
     { label: 'Docs', icon: 'folder_open', link: '/documents' },
     { label: 'Settings', icon: 'settings', link: '/settings' },
   ];
+
+  /** Mobile keeps the five primary sections in one row; the rest live in More. */
+  readonly primaryNavItems = this.navItems.filter((item) =>
+    ['/overview', '/investment', '/performance', '/inventory', '/settings'].includes(item.link),
+  );
+  readonly moreNavItems = this.navItems.filter((item) =>
+    ['/reports', '/profit-sharing', '/documents'].includes(item.link),
+  );
+  readonly moreOpen = signal(false);
+
+  @HostListener('document:keydown.escape')
+  closeMore(): void {
+    this.moreOpen.set(false);
+  }
+
+  toggleMore(): void {
+    this.moreOpen.update((v) => !v);
+  }
 
   readonly initials = computed(() => {
     const name = (this.store.me()?.name ?? 'Partner').trim();

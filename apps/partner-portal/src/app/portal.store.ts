@@ -21,6 +21,7 @@ export class PortalStore {
   readonly dash = signal<PartnerDashboard | null>(null);
   readonly me = signal<Me | null>(null);
   readonly loadError = signal<string | null>(null);
+  readonly loadErrorKind = signal<'setup' | 'generic' | null>(null);
   /** Live event-sourced stock summary (per-item quantities, aggregate level). */
   readonly inventory = signal<InventorySummaryRow[] | null>(null);
   /** In-platform messages addressed to this account (notifications inbox). */
@@ -31,7 +32,7 @@ export class PortalStore {
   private readonly lastUpdated = signal<number | null>(null);
 
   /** Period declared by the ledger, never inferred from the browser clock. */
-  readonly periodLabel = computed(() => this.dash()?.currentPeriod ?? 'Unpublished period');
+  readonly periodLabel = computed(() => this.dash()?.currentPeriod ?? '—');
 
   readonly firstName = computed(() => {
     const name = this.me()?.name?.trim();
@@ -104,6 +105,7 @@ export class PortalStore {
   load(force = false): void {
     if (!force && this.dash()) return;
     this.loadError.set(null);
+    this.loadErrorKind.set(null);
     if (!force) this.lastUpdated.set(null);
     this.api.dashboard().subscribe({
       next: (d) => {
@@ -114,11 +116,17 @@ export class PortalStore {
           error: () => this.distributions.set(null),
         });
       },
-      error: (err: { error?: { message?: string } }) =>
+      error: (err: { error?: { message?: string } }) => {
+        const raw = err?.error?.message?.trim();
+        const isSetup = raw === 'No partner record for this account';
+        this.loadErrorKind.set(isSetup ? 'setup' : 'generic');
         this.loadError.set(
-          err?.error?.message ??
-            'No partner record is linked to this account yet, contact Seentair.',
-        ),
+          isSetup
+            ? 'You are signed in, but this account is not linked to an investment record yet. An administrator needs to add you as a partner before your portfolio can appear.'
+            : raw ||
+              'We could not reach the portfolio service. Check your connection and try again.',
+        );
+      },
     });
     this.api.me().subscribe({
       next: (m) => this.me.set(m),
@@ -155,6 +163,7 @@ export class PortalStore {
     this.dash.set(null);
     this.me.set(null);
     this.loadError.set(null);
+    this.loadErrorKind.set(null);
     this.inventory.set(null);
     this.messages.set(null);
     this.distributions.set(null);
