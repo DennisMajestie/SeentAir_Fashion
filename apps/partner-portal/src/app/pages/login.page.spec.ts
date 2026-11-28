@@ -62,10 +62,12 @@ describe('LoginPage', () => {
     TestBed.resetTestingModule();
   });
 
-  it('renders the security enclave shell and the access form', () => {
+  it('renders the brand logo in the header and the access form', () => {
     mount({ accessToken: 'st' });
-    expect(el().querySelector('header')!.textContent).toContain('Partner Portal Security Enclave');
-    expect(el().querySelector('header')!.textContent).toContain('EQUITY REGISTRY');
+    const header = el().querySelector('header')!;
+    expect(header.querySelector('img[alt*="Seentair"]')).toBeTruthy();
+    expect(header.textContent).not.toContain('Security Enclave');
+    expect(header.textContent).toContain('EQUITY REGISTRY');
     expect(el().querySelector('h1')!.textContent).toContain('SEENTAIR PARTNERS');
     expect(button('Proceed to 2FA Challenge')).toBeTruthy();
   });

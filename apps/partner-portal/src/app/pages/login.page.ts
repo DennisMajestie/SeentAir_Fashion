@@ -20,12 +20,9 @@ import { ThemeService } from '../theme.service';
         @if (phase() === 1) {
           <!-- P1 · Secured Connection Top Strip -->
           <header class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-border/70 bg-canvas/80 backdrop-blur-md sticky top-0 z-20">
-            <div class="flex items-center gap-2">
-              <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
-              <span class="text-[12px] font-medium tracking-tight text-light-secondary flex items-center gap-1">
-                <span class="material-symbols-outlined text-[14px] text-accent">shield</span>
-                Partner Portal Security Enclave
-              </span>
+            <div class="flex items-center">
+              <img class="vessa-logo vessa-logo--light h-8 w-auto" src="assets/logo-light.png" alt="Seentair — Style for Everyone" width="834" height="299" />
+              <img class="vessa-logo vessa-logo--dark h-8 w-auto" src="assets/logo-dark.png" alt="" aria-hidden="true" width="243" height="78" />
             </div>
             <div class="flex items-center gap-2">
               <span class="text-[11px] font-mono uppercase px-2 py-0.5 rounded-full bg-canvas-tint text-light-primary border border-border">EQUITY REGISTRY</span>
@@ -40,10 +37,6 @@ import { ThemeService } from '../theme.service';
 
             <!-- Hero / Title -->
             <div class="pt-2 text-center">
-                <div class="mb-3">
-                  <img class="vessa-logo vessa-logo--light h-11 w-auto mx-auto" src="assets/logo-light.png" alt="Seentair — Style for Everyone" width="834" height="299" />
-                  <img class="vessa-logo vessa-logo--dark h-11 w-auto mx-auto" src="assets/logo-dark.png" alt="" aria-hidden="true" width="243" height="78" />
-                </div>
               <h1 class="sr-only">SEENTAIR PARTNERS</h1>
               <p class="text-[13px] text-light-secondary font-medium tracking-wide uppercase mt-0.5">Equity, Dividends &amp; Manufacturing Telemetry</p>
             </div>
