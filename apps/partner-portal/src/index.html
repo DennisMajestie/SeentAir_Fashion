@@ -14,10 +14,43 @@
       href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
-    />
+    <link rel="preload" href="/fonts/material-symbols-outlined.woff2" as="font" type="font/woff2" crossorigin />
+    <style>
+      @font-face {
+        font-family: 'Material Symbols Outlined';
+        font-style: normal;
+        font-weight: 400;
+        font-display: block;
+        src: url('/fonts/material-symbols-outlined.woff2') format('woff2');
+      }
+      .material-symbols-outlined {
+        font-family: 'Material Symbols Outlined';
+        font-weight: normal;
+        font-style: normal;
+        font-size: 24px;
+        line-height: 1;
+        letter-spacing: normal;
+        text-transform: none;
+        display: inline-block;
+        white-space: nowrap;
+        word-wrap: normal;
+        direction: ltr;
+        -webkit-font-feature-settings: 'liga';
+        -webkit-font-smoothing: antialiased;
+      }
+      html:not(.icons-ready) .material-symbols-outlined { visibility: hidden; }
+    </style>
+    <script>
+      (function () {
+        var reveal = function () { document.documentElement.classList.add('icons-ready'); };
+        if (document.fonts && document.fonts.load) {
+          document.fonts.load('24px "Material Symbols Outlined"', 'arrow_back').then(reveal, reveal);
+          setTimeout(reveal, 4000);
+        } else {
+          reveal();
+        }
+      })();
+    </script>
     <script>
       (function () {
         try {
