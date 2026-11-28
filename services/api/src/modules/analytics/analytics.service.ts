@@ -42,6 +42,15 @@ interface RangeWindow {
   grain: 'hour' | 'day';
 }
 
+interface SaleRow {
+  created_at: Date;
+  status: string;
+  payment_status: string;
+  total_amount: string | number;
+}
+
+const CUSTOM_SALE_CATEGORY = 'custom_order_sale';
+
 const inWindow = (when: Date, start: Date, end: Date): boolean => {
   const t = new Date(when).getTime();
   return !Number.isNaN(t) && t >= start.getTime() && t < end.getTime();
@@ -119,20 +128,19 @@ export class AnalyticsService {
       (i) => i.itemType === InventoryItemType.VARIANT && i.currentQuantity > 0,
     ).length;
 
-    const rows: Array<{
-      created_at: Date;
-      status: string;
-      payment_status: string;
-      total_amount: string | number;
-    }> = await this.orderRepo
-      .createQueryBuilder('o')
-      .select('o.created_at', 'created_at')
-      .addSelect('o.status', 'status')
-      .addSelect('o.payment_status', 'payment_status')
-      .addSelect('o.total_amount', 'total_amount')
-      .where('o.created_at >= :from', { from: bounds.priorStart })
-      .andWhere('o.created_at < :to', { to: bounds.curEnd })
-      .getRawMany();
+    const [orderRows, customRows] = await Promise.all([
+      this.orderRepo
+        .createQueryBuilder('o')
+        .select('o.created_at', 'created_at')
+        .addSelect('o.status', 'status')
+        .addSelect('o.payment_status', 'payment_status')
+        .addSelect('o.total_amount', 'total_amount')
+        .where('o.created_at >= :from', { from: bounds.priorStart })
+        .andWhere('o.created_at < :to', { to: bounds.curEnd })
+        .getRawMany() as Promise<SaleRow[]>,
+      this.customSaleRows(bounds.priorStart, bounds.curEnd),
+    ]);
+    const rows: SaleRow[] = [...orderRows, ...customRows];
 
     const cur = this.bucketize(rows, bounds.curStart, bounds.curEnd, bounds.grain);
     const prior = this.bucketize(rows, bounds.priorStart, bounds.priorEnd, bounds.grain);
@@ -882,12 +890,7 @@ export class AnalyticsService {
   }
 
   private bucketize(
-    rows: Array<{
-      created_at: Date;
-      status: string;
-      payment_status: string;
-      total_amount: string | number;
-    }>,
+    rows: SaleRow[],
     start: Date,
     end: Date,
     grain: 'hour' | 'day',
@@ -921,20 +924,54 @@ export class AnalyticsService {
   }
 
   private async paidOrderStats(since: Date, until = new Date()) {
-    const row: { count: string; revenue: string | null } | undefined = await this.orderRepo
-      .createQueryBuilder('o')
-      .select('COUNT(*)', 'count')
-      .addSelect('SUM(o.total_amount)', 'revenue')
-      .where('o.payment_status = :paid AND o.created_at >= :since AND o.created_at < :until', {
-        paid: PaymentStatus.PAID,
-        since,
-        until,
-      })
-      .getRawOne();
+    const [row, customRows] = await Promise.all([
+      this.orderRepo
+        .createQueryBuilder('o')
+        .select('COUNT(*)', 'count')
+        .addSelect('SUM(o.total_amount)', 'revenue')
+        .where('o.payment_status = :paid AND o.created_at >= :since AND o.created_at < :until', {
+          paid: PaymentStatus.PAID,
+          since,
+          until,
+        })
+        .getRawOne() as Promise<{ count: string; revenue: string | null } | undefined>,
+      this.customSaleRows(since, until),
+    ]);
+    const customRevenue = customRows.reduce(
+      (sum, r) => sum + (Number(r.total_amount) || 0),
+      0,
+    );
     return {
-      orders: parseInt(row?.count ?? '0', 10),
-      revenue: parseFloat(row?.revenue ?? '0') || 0,
+      orders: parseInt(row?.count ?? '0', 10) + customRows.length,
+      revenue: (parseFloat(row?.revenue ?? '0') || 0) + customRevenue,
     };
+  }
+
+  private async customSaleRows(start: Date, end: Date): Promise<SaleRow[]> {
+    const rows: Array<{
+      created_at: string;
+      status: string;
+      payment_status: string;
+      total_amount: string;
+    }> = await this.dataSource.query(
+      `SELECT l.entry_date AS created_at,
+              COALESCE(r.status, 'paid') AS status,
+              'paid' AS payment_status,
+              l.amount AS total_amount
+       FROM ledger_entries l
+       LEFT JOIN custom_order_requests r ON r.id = l.reference_id
+       WHERE l.type = 'sale'
+         AND l.category = $3
+         AND l.entry_date >= $1
+         AND l.entry_date < $2`,
+      [start, end, CUSTOM_SALE_CATEGORY],
+    );
+    return rows.map((r) => ({
+      created_at: new Date(r.created_at),
+      status: r.status,
+      payment_status: r.payment_status,
+      total_amount: Number(r.total_amount) || 0,
+    }));
   }
 
   private async groupPaidOrdersBy(column: 'channel' | 'source') {

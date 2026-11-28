@@ -571,4 +571,53 @@ describe('AnalyticsService inventory valuation', () => {
   });
 });
 
+  it('counts custom-order ledger sales in dashboard revenue', async () => {
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([]),
+      getRawOne: jest.fn().mockResolvedValue({ count: '2', revenue: '1000' }),
+    };
+    orderRepo.createQueryBuilder.mockReturnValue(qb);
+    batchRepo.createQueryBuilder.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([]),
+    });
+    accountingService.report.mockResolvedValue({});
+    approvalRepo.count.mockResolvedValue(0);
+    materialsService.lowStock.mockResolvedValue([]);
+    inventoryService.summary.mockResolvedValue([]);
+    const internals = service as unknown as {
+      groupPaidOrdersBy: jest.Mock;
+      pendingApprovalsTrend: jest.Mock;
+      lowStockTrend: jest.Mock;
+    };
+    jest.spyOn(internals, 'groupPaidOrdersBy').mockResolvedValue([]);
+    jest.spyOn(internals, 'pendingApprovalsTrend').mockResolvedValue([]);
+    jest.spyOn(internals, 'lowStockTrend').mockResolvedValue([]);
+    dataSource.query.mockImplementation(async (sql: string) =>
+      sql.includes('FROM ledger_entries')
+        ? [
+            {
+              created_at: new Date().toISOString(),
+              status: 'paid',
+              payment_status: 'paid',
+              total_amount: '500',
+            },
+          ]
+        : [],
+    );
+
+    const result = await service.dashboard();
+
+    expect(result.salesToday.revenue).toBe(1500);
+    expect(result.salesMonthToDate.revenue).toBe(1500);
+    expect(result.salesToday.orders).toBe(3);
+  });
+
 });
